@@ -1,0 +1,83 @@
+# Root .gitignore for MetaQuotes Terminal workspace and Analyzer project
+# หมายเหตุ: ใช้รูปแบบ path ของ Git (/) โดย / หมายถึง root ของโปรเจคนี้
+
+############################
+# OS / Editor junk
+############################
+Thumbs.db
+Desktop.ini
+*.tmp
+*.temp
+*.bak
+*.old
+~$*
+*.swp
+*.swo
+
+############################
+# Python / Generic dev
+############################
+__pycache__/
+*.pyc
+*.pyo
+.env
+*.env
+.venv/
+venv/
+
+############################
+# MetaQuotes Terminal heavy data (ignore entire directories)
+############################
+/bases/
+/config/
+/logs/
+/profiles/
+/temp/
+/Tester/
+
+############################
+# MQL5: ignore everything except AIAnalyzer (Experts/Scripts)
+# หมายเหตุ: ใช้ negative patterns เพื่อ re-include โฟลเดอร์ย่อยที่ต้องการ
+############################
+# Ignore all content under MQL5 by default
+MQL5/*
+
+# Re-include Experts/AIAnalyzer and its contents
+!MQL5/Experts/
+MQL5/Experts/*
+!MQL5/Experts/AIAnalyzer/
+!MQL5/Experts/AIAnalyzer/**
+
+# Re-include Scripts/AIAnalyzer and its contents
+!MQL5/Scripts/
+MQL5/Scripts/*
+!MQL5/Scripts/AIAnalyzer/
+!MQL5/Scripts/AIAnalyzer/**
+############################
+# Workshop project outputs and local env
+############################
+/workshop/logs/
+/workshop/reports/
+/workshop/project/sql/*.db
+/workshop/project/sql/*.sqlite
+/workshop/project/sql/*-shm
+/workshop/project/sql/*-wal
+/workshop/project/tmp/
+/workshop/.cache/
+/workshop/.venv/
+/workshop/env/
+/workshop/data/raw/
+/workshop/data/parquet/
+/workshop/data/tmp/
+
+############################
+# Edge WebView caches in temp (already covered by /temp/)
+# เพิ่มไว้เพื่อความชัดเจน
+############################
+/temp/EBWebView/
+/temp/logs/
+
+############################
+# Misc
+############################
+.DS_Store
