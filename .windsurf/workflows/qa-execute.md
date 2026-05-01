@@ -1,0 +1,6 @@
+---
+description: Run tests from the approved QA Plan and produce an Execution Report (Phase 3T)
+---
+
+Follow the workflow defined in `.agents/workflows/qa-execute.md`.
+Input: {{input}}

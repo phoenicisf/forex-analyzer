@@ -1,0 +1,5 @@
+description = "Generate final delivery handoff — readiness assessment, documentation finalization, and delivery summary"
+prompt = """
+Follow the workflow defined in `.agents/workflows/deliver.md`.
+Input: {{args}}
+"""

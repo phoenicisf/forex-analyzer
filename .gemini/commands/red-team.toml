@@ -1,0 +1,5 @@
+description = "Run security audit (OWASP + STRIDE) on codebase and generate a Red Team findings report"
+prompt = """
+Follow the workflow defined in `.agents/workflows/red-team.md`.
+Input: {{args}}
+"""

@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "mt5-log-reader": {
+      "source": "terrylica/mql5-crossover",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/mt5-log-reader/SKILL.md",
+      "computedHash": "307f13648eb698e37fa52372c2f30c6df519b67aaa40dfbc38576a01a6558d28"
+    }
+  }
+}

@@ -1,0 +1,5 @@
+description = "Audit technical design documents and generate a structured Claim Review file"
+prompt = """
+Follow the workflow defined in `.agents/workflows/td-review.md`.
+Input: {{args}}
+"""

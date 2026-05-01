@@ -1,0 +1,5 @@
+description = "Analyze impact and execute a phase backtrack when downstream discovers upstream problems"
+prompt = """
+Follow the workflow defined in `.agents/workflows/backtrack.md`.
+Input: {{args}}
+"""

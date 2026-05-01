@@ -1,0 +1,5 @@
+description = "Lightweight UX fix — apply review feedback directly without adversarial rebuttal loop"
+prompt = """
+Follow the workflow defined in `.agents/workflows/ux-fix.md`.
+Input: {{args}}
+"""

@@ -1,0 +1,5 @@
+description = "Auto-detect current development phase and recommend next action"
+prompt = """
+Follow the workflow defined in `.agents/workflows/next.md`.
+Input: {{args}}
+"""

@@ -1,0 +1,7 @@
+---
+description: Consume SD hints (Evolution Sequence + Phase Hints) + work inventory and generate a phase-grouped plan (P1→P2→P3→P4) with honor/override audit trail
+argument-hint: <sprint-number e.g. "1" or "initial" for first sprint>
+---
+
+Follow the workflow defined in `.agents/workflows/impl-plan.md`.
+Input: $ARGUMENTS

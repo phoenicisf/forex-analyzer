@@ -1,0 +1,5 @@
+description = "Create UX/UI design deliverables (design tokens, components, layouts) using Stitch, Figma, existing UI audit, reference-driven design (DESIGN.md), direct frontend building, or Claude Design (Anthropic Labs)"
+prompt = """
+Follow the workflow defined in `.agents/workflows/ux-design.md`.
+Input: {{args}}
+"""

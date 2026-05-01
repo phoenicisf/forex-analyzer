@@ -1,0 +1,5 @@
+description = "Generate project-specific GEMINI.md + rules from approved Technical Design (Phase 2.5 bridge between Design QA and Implement)"
+prompt = """
+Follow the workflow defined in `.agents/workflows/project-init.md`.
+Input: {{args}}
+"""

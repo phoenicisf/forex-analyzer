@@ -1,0 +1,5 @@
+description = "Analyze, implement fixes, and write rebuttal for a System Design Claim Review round"
+prompt = """
+Follow the workflow defined in `.agents/workflows/sd-rebuttal.md`.
+Input: {{args}}
+"""

@@ -1,0 +1,6 @@
+---
+description: Classify failing tests from a QA Execution Report and route fixes (Phase 3T loop)
+---
+
+Follow the workflow defined in `.agents/workflows/qa-execute-fix.md`.
+Input: {{input}}

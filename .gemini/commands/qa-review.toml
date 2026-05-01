@@ -1,0 +1,5 @@
+description = "Audit QA Plan deliverables and generate a structured Claim Review file"
+prompt = """
+Follow the workflow defined in `.agents/workflows/qa-review.md`.
+Input: {{args}}
+"""

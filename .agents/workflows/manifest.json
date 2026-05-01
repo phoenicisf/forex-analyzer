@@ -1,0 +1,319 @@
+{
+  "version": "1.0",
+  "description": "Platform-agnostic workflow definitions for AI-Native Development lifecycle",
+  "playbooks": {
+    "parallel-execution": {
+      "path": "_parallel-execution-playbook.md",
+      "description": "Reference patterns for Phase 1.5 Parallel Execution — Claude Code-only subagent fan-out used by review/fix/deliver workflows and some prompt templates. Not a slash command."
+    }
+  },
+  "skill-categories": {
+    "core": {
+      "description": "Primary workflow personas — referenced by workflows below",
+      "skills": ["andm-ba-reviewer", "andm-ba-defender", "andm-sd-reviewer", "andm-sd-defender", "andm-td-reviewer", "andm-td-defender", "andm-ux-reviewer", "andm-ux-defender", "andm-qa-reviewer", "andm-qa-defender", "andm-impl-planner", "andm-impl-plan-reviewer", "andm-impl-plan-defender", "andm-impl-engineer", "andm-code-reviewer", "andm-red-team-attacker", "andm-red-team-defender", "andm-amend-engineer", "andm-deliver-handoff", "andm-project-init-engineer"]
+    },
+    "supporting": {
+      "description": "Domain knowledge and reference — used by core skills internally",
+      "skills": ["api-patterns", "architecture", "brainstorming", "business-analyst", "code-review", "database-design", "db-migration", "documentation-templates", "handoff", "product-designer", "software-architecture"]
+    },
+    "tool-specific": {
+      "description": "External tool integrations — install only if using that tool",
+      "skills": ["figma-code-connect-components", "figma-create-design-system-rules", "figma-create-new-file", "figma-generate-design", "figma-generate-library", "figma-implement-design", "figma-use", "stitch-design", "stitch-loop"]
+    },
+    "utility": {
+      "description": "Meta/diagnostic skills — for template maintenance",
+      "skills": ["find-skills", "health-check", "skill-creator"]
+    },
+    "frontend-tools": {
+      "description": "Frontend/UX specialized skills — design, audit, and demo tools",
+      "skills": ["frontend-design", "design-system", "click-path-audit", "dashboard-builder", "ui-demo", "liquid-glass-design"]
+    }
+  },
+  "workflows": {
+    "ideate": {
+      "description": "Diverge → converge an initial idea/pain-point into a BA-Ready Brief at docs/foundation-input-sources/ideation-brief.md (Phase 0, optional)",
+      "argument": {
+        "hint": "<problem-statement e.g. \"checkout ใช้เวลา 5 นาที\" | 'resume' | empty for interactive>",
+        "required": false
+      },
+      "skill": null,
+      "agent": "andm-ideation-facilitator",
+      "phase": "ideation"
+    },
+    "ba": {
+      "description": "Run BA requirements discovery → produce 5 BA deliverables in docs/ba/01-05 (Phase 1A; v1.2: 06-handoff dropped — wraps ba-requirements-prompt.md so the agent gets full onboarding context every time)",
+      "argument": {
+        "hint": "<optional focus hint e.g. \"MVP only\" | \"include mobile\" | empty for default>",
+        "required": false
+      },
+      "skill": null,
+      "phase": "design"
+    },
+    "ba-review": {
+      "description": "Audit BA deliverables and generate a structured Claim Review file",
+      "argument": {
+        "hint": "<target-ba-file or 'all'>",
+        "required": true
+      },
+      "skill": "andm-ba-reviewer",
+      "phase": "design-qa"
+    },
+    "ba-rebuttal": {
+      "description": "Analyze, implement fixes, and write rebuttal for a BA Claim Review round",
+      "argument": {
+        "hint": "<claim-review-file e.g. docs/ba/claim-review-and-rebuttal/claim-review-01.md>",
+        "required": true
+      },
+      "skill": "andm-ba-defender",
+      "phase": "design-qa"
+    },
+    "sd": {
+      "description": "Run System Design → produce 6 design docs in docs/design-docs/02-08 (v1.2: gaps 01/06 merged into 02) + ADRs + API specs (Phase 1B — wraps system-design-master-prompt.md so the agent gets full onboarding context every time)",
+      "argument": {
+        "hint": "<optional focus hint e.g. \"focus on payment flow\" | \"skip Evolution Sequence — greenfield monolith\" | empty for default>",
+        "required": false
+      },
+      "skill": null,
+      "phase": "design"
+    },
+    "sd-review": {
+      "description": "Audit system design documents (architecture-only, no implementation phasing) and generate a structured Claim Review file",
+      "argument": {
+        "hint": "<target-design-file or 'all'>",
+        "required": true
+      },
+      "skill": "andm-sd-reviewer",
+      "phase": "design-qa"
+    },
+    "sd-rebuttal": {
+      "description": "Analyze, implement fixes, and write rebuttal for a System Design Claim Review round",
+      "argument": {
+        "hint": "<claim-review-file e.g. docs/design-docs/claim-review-and-rebuttal/claim-review-01.md>",
+        "required": true
+      },
+      "skill": "andm-sd-defender",
+      "phase": "design-qa"
+    },
+    "td": {
+      "description": "Run Technical Design → produce 3 TD docs in docs/technical-design/02,03,04 (Phase 1D — wraps technical-design-master-prompt.md so the agent gets full onboarding context every time, and enforces SD-as-Master scope contract)",
+      "argument": {
+        "hint": "<optional focus hint e.g. \"focus on payment-service backend\" | \"frontend only — no DB changes\" | empty for default>",
+        "required": false
+      },
+      "skill": null,
+      "phase": "design"
+    },
+    "td-review": {
+      "description": "Audit technical design documents and generate a structured Claim Review file",
+      "argument": {
+        "hint": "<target-td-file e.g. docs/technical-design/03-frontend-design.md or 'all'>",
+        "required": true
+      },
+      "skill": "andm-td-reviewer",
+      "phase": "design-qa"
+    },
+    "td-rebuttal": {
+      "description": "Analyze, implement fixes, and write rebuttal for a Technical Design Claim Review round",
+      "argument": {
+        "hint": "<claim-review-file e.g. docs/technical-design/claim-review-and-rebuttal/claim-review-01.md>",
+        "required": true
+      },
+      "skill": "andm-td-defender",
+      "phase": "design-qa"
+    },
+    "project-init": {
+      "description": "Generate project-specific CLAUDE.md + .claude/rules/ from approved Technical Design (Phase 2.5 bridge between Design QA and Implement)",
+      "argument": {
+        "hint": "[--regen | --amend \"<desc>\" | --dry-run] [--ide=claude,windsurf,trae,antigravity]",
+        "required": false
+      },
+      "skill": "andm-project-init-engineer",
+      "phase": "bootstrap"
+    },
+    "impl-plan": {
+      "description": "Consume SD hints (Evolution Sequence + Phase Hints) + work inventory and generate a phase-grouped plan (P1→P2→P3→P4) with honor/override audit trail",
+      "argument": {
+        "hint": "<sprint-number e.g. '1' or 'initial'>",
+        "required": true
+      },
+      "skill": "andm-impl-planner",
+      "phase": "implement"
+    },
+    "impl-plan-review": {
+      "description": "Audit the implementation plan (10 dimensions including SD hint alignment, AC dual-track, deferred-AC registry, state reconciliation, readability) and generate a structured Claim Review file. Mirrors BA/SD/UX/TD review pattern.",
+      "argument": {
+        "hint": "<target e.g. 'all' or 'docs/state/impl-plan.md'>",
+        "required": true
+      },
+      "skill": "andm-impl-plan-reviewer",
+      "phase": "implement"
+    },
+    "impl-plan-rebuttal": {
+      "description": "Analyze plan review findings, fix impl-plan.md (and registry/overview as scoped), and write rebuttal report",
+      "argument": {
+        "hint": "<claim-review-file e.g. docs/state/impl-plan-claim-review-and-rebuttal/claim-review-01.md>",
+        "required": true
+      },
+      "skill": "andm-impl-plan-defender",
+      "phase": "implement"
+    },
+    "impl-task": {
+      "description": "Pick a task from the implementation plan, auto-detect size, implement, test, commit, and update handoff. Supports parallel mode for Claude Code subagent fan-out.",
+      "argument": {
+        "hint": "<task-id e.g. IMPL-003 | 'resume' | 'next' | 'parallel' | 'parallel <service>' | 'parallel <N>' | 'parallel IMPL-001,IMPL-002'>",
+        "required": true
+      },
+      "skill": "andm-impl-engineer",
+      "phase": "implement"
+    },
+    "impl-review": {
+      "description": "Review implementation code for quality, security, and design compliance",
+      "argument": {
+        "hint": "<target-service e.g. services/api/ or 'all'>",
+        "required": true
+      },
+      "skill": "andm-code-reviewer",
+      "phase": "implement"
+    },
+    "impl-review-fix": {
+      "description": "Analyze code review findings, implement fixes, and write fix report",
+      "argument": {
+        "hint": "<review-file e.g. docs/code-review/review-round-01.md>",
+        "required": true
+      },
+      "skill": "andm-impl-engineer",
+      "phase": "implement"
+    },
+    "qa-review": {
+      "description": "Audit QA Plan deliverables and generate a structured Claim Review file",
+      "argument": {
+        "hint": "<target e.g. 'all' or 'docs/qa/01-test-execution-plan.md'>",
+        "required": true
+      },
+      "skill": "andm-qa-reviewer",
+      "phase": "implement"
+    },
+    "qa-rebuttal": {
+      "description": "Analyze QA review findings, fix QA deliverables, and write rebuttal report",
+      "argument": {
+        "hint": "<claim-review-file e.g. docs/qa/claim-review-and-rebuttal/claim-review-01.md>",
+        "required": true
+      },
+      "skill": "andm-qa-defender",
+      "phase": "implement"
+    },
+    "qa-execute": {
+      "description": "Run tests from the approved QA Plan, map results to traceability matrix, and produce an Execution Report (Phase 3T — bridge to Harden)",
+      "argument": {
+        "hint": "<target e.g. 'all' | 'TC-FR-001' | 'services/api' | '--manual' | '--report-only <path>'>",
+        "required": true
+      },
+      "skill": null,
+      "agent": "andm-qa-testing",
+      "phase": "implement"
+    },
+    "qa-execute-fix": {
+      "description": "Classify failing tests from a QA Execution Report (code/test/spec/plan/flake/env) and route fixes to the correct agent/command",
+      "argument": {
+        "hint": "<execution-report-file e.g. docs/qa/execution-rounds/execution-round-01.md>",
+        "required": true
+      },
+      "skill": null,
+      "agent": "andm-qa-testing",
+      "phase": "implement"
+    },
+    "red-team": {
+      "description": "Run security audit (OWASP + STRIDE) on codebase and generate a Red Team findings report",
+      "argument": {
+        "hint": "<target-service e.g. services/api/ or 'all'>",
+        "required": true
+      },
+      "skill": "andm-red-team-attacker",
+      "phase": "harden"
+    },
+    "red-team-rebuttal": {
+      "description": "Analyze Red Team findings, fix vulnerabilities, and write a defense report",
+      "argument": {
+        "hint": "<red-team-file e.g. docs/security/red-team-round-01.md>",
+        "required": true
+      },
+      "skill": "andm-red-team-defender",
+      "phase": "harden"
+    },
+    "ux-design": {
+      "description": "Create UX/UI design deliverables (design tokens, components, layouts) using Stitch, Figma, existing UI audit, reference-driven design (DESIGN.md), direct frontend building, or Claude Design (Anthropic Labs)",
+      "argument": {
+        "hint": "<mode: 'stitch' | 'figma' | 'existing' | 'reference' | 'frontend' | 'claude-design' | 'auto'>",
+        "required": true
+      },
+      "skill": null,
+      "skills-used": ["frontend-design", "design-system", "dashboard-builder", "liquid-glass-design"],
+      "phase": "design"
+    },
+    "ux-review": {
+      "description": "Review UX/UI deliverables against 22+ attack vectors (core 22 + optional design-system audit, slop-detect, click-path audit)",
+      "argument": {
+        "hint": "<target> e.g. all or docs/ux/03-page-layouts.md",
+        "required": false
+      },
+      "skill": "andm-ux-reviewer",
+      "skills-used": ["design-system", "click-path-audit"],
+      "phase": "design-qa"
+    },
+    "ux-rebuttal": {
+      "description": "Analyze UX review findings, fix UX deliverables, and write rebuttal report",
+      "argument": {
+        "hint": "<claim-review-file> e.g. claim-review-01.md",
+        "required": true
+      },
+      "skill": "andm-ux-defender",
+      "phase": "design-qa"
+    },
+    "ux-fix": {
+      "description": "Lightweight UX fix — apply review feedback directly, with optional design-system regen and demo recording",
+      "argument": {
+        "hint": "<claim-review-file or feedback> e.g. claim-review-01.md",
+        "required": true
+      },
+      "skill": null,
+      "skills-used": ["design-system", "ui-demo"],
+      "phase": "design-qa"
+    },
+    "amend": {
+      "description": "Amend existing deliverables — add, change, or remove content with cross-document consistency",
+      "argument": {
+        "hint": "<phase> \"<description>\" e.g. ba \"เพิ่ม forgot password flow\"",
+        "required": true
+      },
+      "skill": "andm-amend-engineer",
+      "phase": "navigation"
+    },
+    "backtrack": {
+      "description": "Analyze impact and execute a phase backtrack when downstream discovers upstream problems",
+      "argument": {
+        "hint": "<target-phase: 'ba' | 'sd' | 'ux' | 'td'>",
+        "required": true
+      },
+      "skill": null,
+      "phase": "navigation"
+    },
+    "next": {
+      "description": "Auto-detect current development phase and recommend next action",
+      "argument": {
+        "hint": "",
+        "required": false
+      },
+      "skill": null,
+      "phase": "navigation"
+    },
+    "deliver": {
+      "description": "Generate final delivery handoff — readiness assessment, documentation finalization, and delivery summary",
+      "argument": {
+        "hint": "<scope e.g. 'all' or 'api' or 'web'> (default: all)",
+        "required": false
+      },
+      "skill": "andm-deliver-handoff",
+      "phase": "deliver"
+    }
+  }
+}

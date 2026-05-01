@@ -1,0 +1,113 @@
+// ============================================================
+// REFERENCE ONLY — ไม่ต้องรันทั้งหมด
+// Skills ที่มีใน .agents/skills/ แล้ว ไม่ต้อง install ซ้ำ
+// Install เฉพาะตัวที่ต้องการเพิ่มเติม
+// ============================================================
+
+//Design
+npx skills add https://github.com/obra/superpowers --skill brainstorming
+npx skills add https://github.com/jwynia/agent-skills --skill task-breakdown
+npx skills add https://github.com/pleaseprompto/notebooklm-skill --skill notebooklm
+npx skills add https://github.com/github/awesome-copilot --skill prompt-builder
+npx skills add https://github.com/sickn33/antigravity-awesome-skills --skill database-design
+npx skills add https://github.com/sickn33/antigravity-awesome-skills --skill software-architecture
+npx skills add https://github.com/sickn33/antigravity-awesome-skills --skill documentation-templates
+npx skills add https://github.com/sickn33/antigravity-awesome-skills --skill architecture
+npx skills add https://github.com/sickn33/antigravity-awesome-skills --skill research-engineer
+npx skills add https://github.com/sickn33/antigravity-awesome-skills --skill ai-agents-architect
+npx skills add https://github.com/sickn33/antigravity-awesome-skills --skill prompt-engineering
+npx skills add https://github.com/sitechfromgeorgia/georgian-distribution-system --skill saas-architect
+npx skills add https://github.com/aj-geddes/useful-ai-prompts --skill architecture-diagrams
+npx skills add https://github.com/jeffallan/claude-skills --skill microservices-architect
+npx skills add https://github.com/jeffallan/claude-skills --skill architecture-designer
+npx skills add https://github.com/aj-geddes/claude-code-bmad-skills --skill business-analyst
+npx skills add https://github.com/borghei/claude-skills --skill product-designer
+npx skills add https://github.com/google-labs-code/stitch-skills --skill stitch-loop
+npx skills add https://github.com/google-labs-code/stitch-skills --skill stitch-design
+
+// Dev BE
+npx skills add https://github.com/sickn33/antigravity-awesome-skills --skill api-patterns
+npx skills add https://github.com/sickn33/antigravity-awesome-skills --skill api-security-best-practices
+npx skills add https://github.com/sickn33/antigravity-awesome-skills --skill api-documentation-generator
+npx skills add https://github.com/wshobson/agents --skill dotnet-backend-patterns
+npx skills add https://github.com/mhagrelius/dotfiles --skill dotnet-10-csharp-14
+
+// Dev DB (useful for TD Phase 1D — docs/technical-design/04-database-design.md)
+npx skills add https://github.com/sickn33/antigravity-awesome-skills --skill database-design
+npx skills add https://github.com/sickn33/antigravity-awesome-skills --skill db-migration
+
+//Dev FE
+npx skills add https://github.com/jezweb/claude-skills --skill nextjs #https://skills.sh/jezweb/claude-skills/nextjs
+npx skills add https://github.com/nextlevelbuilder/ui-ux-pro-max-skill --skill ui-ux-pro-max #https://skills.sh/nextlevelbuilder/ui-ux-pro-max-skill/ui-ux-pro-max
+npx skills add https://github.com/vercel-labs/agent-skills --skill web-design-guidelines
+npx skills add https://github.com/vercel-labs/agent-skills --skill vercel-react-best-practices
+npx skills add https://github.com/anthropics/skills --skill frontend-design
+
+
+// ============================================================
+// Official Claude Skills (anthropics/skills) — https://github.com/anthropics/skills
+// Source: https://github.com/VoltAgent/awesome-agent-skills
+// ============================================================
+npx skills add https://github.com/anthropics/skills --skill docx                    # Create, edit, and analyze Word documents
+npx skills add https://github.com/anthropics/skills --skill doc-coauthoring         # Collaborative document editing and co-authoring
+npx skills add https://github.com/anthropics/skills --skill pptx                    # Create, edit, and analyze PowerPoint presentations
+npx skills add https://github.com/anthropics/skills --skill xlsx                    # Create, edit, and analyze Excel spreadsheets
+npx skills add https://github.com/anthropics/skills --skill pdf                     # Extract text, create PDFs, and handle forms
+npx skills add https://github.com/anthropics/skills --skill algorithmic-art         # Generative art using p5.js with seeded randomness
+npx skills add https://github.com/anthropics/skills --skill canvas-design           # Design visual art in PNG and PDF formats
+npx skills add https://github.com/anthropics/skills --skill frontend-design         # Frontend design and UI/UX development tools (↑ already listed in Dev FE)
+npx skills add https://github.com/anthropics/skills --skill slack-gif-creator       # Animated GIFs optimized for Slack size constraints
+npx skills add https://github.com/anthropics/skills --skill theme-factory           # Style artifacts with professional or custom themes
+npx skills add https://github.com/anthropics/skills --skill web-artifacts-builder   # Build complex claude.ai HTML artifacts (React + Tailwind)
+npx skills add https://github.com/anthropics/skills --skill mcp-builder             # Create MCP servers to integrate external APIs and services
+npx skills add https://github.com/anthropics/skills --skill webapp-testing          # Test local web applications using Playwright
+npx skills add https://github.com/anthropics/skills --skill brand-guidelines        # Apply Anthropic brand colors and typography to artifacts
+npx skills add https://github.com/anthropics/skills --skill internal-comms          # Write status reports, newsletters, and FAQs
+npx skills add https://github.com/anthropics/skills --skill skill-creator           # Guide for creating skills (↑ already listed in Design)
+npx skills add https://github.com/anthropics/skills --skill template                # Basic template for creating new skills
+
+// ============================================================
+// Official Figma Skills (figma/mcp-server-guide) — https://github.com/figma/mcp-server-guide
+// Source: https://github.com/VoltAgent/awesome-agent-skills
+// ============================================================
+npx skills add https://github.com/figma/mcp-server-guide --skill figma-code-connect-components    # Connect Figma components ↔ code via Code Connect
+npx skills add https://github.com/figma/mcp-server-guide --skill figma-create-design-system-rules # Generate project-specific design system rules
+npx skills add https://github.com/figma/mcp-server-guide --skill figma-create-new-file            # Create a new blank Figma Design or FigJam file
+npx skills add https://github.com/figma/mcp-server-guide --skill figma-generate-design            # Build/update screens from code or description using design system
+npx skills add https://github.com/figma/mcp-server-guide --skill figma-generate-library           # Build/update a design system library from a codebase
+npx skills add https://github.com/figma/mcp-server-guide --skill figma-implement-design           # Translate Figma designs → production code 1:1 (↑ already listed in Design)
+npx skills add https://github.com/figma/mcp-server-guide --skill figma-use                        # Run Figma Plugin API scripts (canvas, variables, design-system)
+
+// ============================================================
+// Security Fundamentals — Trail of Bits (https://github.com/trailofbits/skills)
+// Free, open-source security firm. Useful in Phase 4 Red Team + Phase 3 Code Review.
+// ============================================================
+npx skills add https://github.com/trailofbits/skills --skill static-analysis              # CodeQL + Semgrep + SARIF toolkit
+npx skills add https://github.com/trailofbits/skills --skill insecure-defaults            # Detect hardcoded secrets, default creds, weak crypto
+npx skills add https://github.com/trailofbits/skills --skill sharp-edges                  # Identify error-prone APIs + dangerous configs
+npx skills add https://github.com/trailofbits/skills --skill differential-review          # Security-focused diff review with git history
+npx skills add https://github.com/trailofbits/skills --skill semgrep-rule-creator         # Create/refine Semgrep rules for vuln detection
+npx skills add https://github.com/trailofbits/skills --skill property-based-testing       # Property-based testing (multi-language)
+npx skills add https://github.com/trailofbits/skills --skill ask-questions-if-underspecified  # Force clarification on ambiguous requirements (anti-hallucination)
+
+// ============================================================
+// Dev Workflow Fundamentals — Sentry (https://github.com/getsentry/skills)
+// Free, no account required. Cross-cutting git/PR/AGENTS.md patterns.
+// ============================================================
+npx skills add https://github.com/getsentry/skills --skill code-review                    # Structured code review protocol
+npx skills add https://github.com/getsentry/skills --skill find-bugs                      # Bug identification workflow
+npx skills add https://github.com/getsentry/skills --skill commit                         # Commit message best practices
+npx skills add https://github.com/getsentry/skills --skill create-pr                      # PR creation with proper structure
+npx skills add https://github.com/getsentry/skills --skill iterate-pr                     # Iterate on PR feedback
+npx skills add https://github.com/getsentry/skills --skill agents-md                      # Generate/manage AGENTS.md files (fits multi-IDE repo)
+npx skills add https://github.com/getsentry/skills --skill claude-settings-audit          # Audit .claude/ configs
+
+// ============================================================
+// Web Quality Fundamentals — Addy Osmani / Google Chrome (https://github.com/addyosmani/web-quality-skills)
+// Free. Lighthouse pillars. Add only if the project ships a web UI.
+// ============================================================
+npx skills add https://github.com/addyosmani/web-quality-skills --skill web-quality-audit  # Comprehensive audit (perf + a11y + SEO + best practices)
+npx skills add https://github.com/addyosmani/web-quality-skills --skill performance        # Loading speed, runtime efficiency, resource optimization
+npx skills add https://github.com/addyosmani/web-quality-skills --skill core-web-vitals    # LCP, INP, CLS-specific optimizations
+npx skills add https://github.com/addyosmani/web-quality-skills --skill accessibility      # WCAG compliance, screen reader, keyboard nav
+npx skills add https://github.com/addyosmani/web-quality-skills --skill best-practices     # Security, modern web APIs, code quality

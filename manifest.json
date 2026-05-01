@@ -1,0 +1,63 @@
+{
+  "name": "full-track",
+  "version": "1.2",
+  "description": "ANDM Full Track — Full QA-gated AI-Native Development Methodology lifecycle with adversarial review at every phase. v1.2: bridge-doc removal (BA 6→5, SD 8→6) + amendment T1-T4 tiering",
+  "when_to_use": "Large projects requiring governance, audit trail, multi-stakeholder sign-off, or multi-module coordination",
+  "lifecycle": {
+    "phases": ["design", "design-qa", "implement", "harden", "deliver"],
+    "count": 5,
+    "optional_pre_phase": "ideation"
+  },
+  "workflows": {
+    "count": 29,
+    "path": ".agents/workflows/",
+    "registry": ".agents/workflows/manifest.json",
+    "list": [
+      "ideate",
+      "ba", "ba-review", "ba-rebuttal",
+      "sd", "sd-review", "sd-rebuttal",
+      "td", "td-review", "td-rebuttal",
+      "ux-design", "ux-review", "ux-rebuttal", "ux-fix",
+      "project-init",
+      "qa-review", "qa-rebuttal",
+      "qa-execute", "qa-execute-fix",
+      "impl-plan", "impl-task",
+      "impl-review", "impl-review-fix",
+      "red-team", "red-team-rebuttal",
+      "deliver",
+      "amend", "backtrack", "next"
+    ]
+  },
+  "skills": {
+    "path": ".agents/skills/",
+    "count": 47
+  },
+  "prompt_templates": {
+    "path": ".agents/prompt-templates/",
+    "count": 11,
+    "list": ["quick-start.md", "idea-refinement-prompt.md", "ba-requirements-prompt.md", "system-design-master-prompt.md", "technical-design-master-prompt.md", "ux-design-stitch-prompt.md", "ux-design-figma-prompt.md", "ux-design-existing-prompt.md", "ux-design-reference-prompt.md", "ux-design-claude-design-prompt.md", "qa-plan-direct-prompt.md"]
+  },
+  "agents": {
+    "path": ".agents/agents/",
+    "count": 18,
+    "format": "Claude Code subagent (YAML frontmatter: name + description)",
+    "claude_code_discovery_path": ".claude/agents/"
+  },
+  "ide_adapters": {
+    "claude_code": {
+      "commands": ".claude/commands/",
+      "agents": ".claude/agents/"
+    },
+    "windsurf": ".windsurf/workflows/",
+    "other": "Point workflow runner at .agents/workflows/<name>.md"
+  },
+  "development_guide": {
+    "path": ".agents/development-guide/",
+    "count": 14
+  },
+  "entry_points": {
+    "constitution": "constitution/ai-native-development-runbook.md",
+    "journey": ".agents/development-guide/full-journey.md",
+    "core_behaviors": ".agents/skills/_core-behaviors.md"
+  }
+}

@@ -1,0 +1,5 @@
+description = "Analyze QA review findings, fix QA deliverables, and write rebuttal report"
+prompt = """
+Follow the workflow defined in `.agents/workflows/qa-rebuttal.md`.
+Input: {{args}}
+"""
