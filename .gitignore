@@ -1,83 +1,89 @@
-# Root .gitignore for MetaQuotes Terminal workspace and Analyzer project
-# หมายเหตุ: ใช้รูปแบบ path ของ Git (/) โดย / หมายถึง root ของโปรเจคนี้
-
-############################
-# OS / Editor junk
-############################
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
-Desktop.ini
-*.tmp
-*.temp
-*.bak
-*.old
-~$*
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+.venv/
+.env
+.env.local
+.env.*.local
+
+# IDEs and Editors
+.vscode/
+.idea/
 *.swp
 *.swo
+*~
 
-############################
-# Python / Generic dev
-############################
-__pycache__/
-*.pyc
-*.pyo
-.env
-*.env
-.venv/
-venv/
+# Log files
+*.log
 
-############################
-# MetaQuotes Terminal heavy data (ignore entire directories)
-############################
-/bases/
-/config/
-/logs/
-/profiles/
-/temp/
-/Tester/
+# Secrets / Keys
+*.pem
 
-############################
-# MQL5: ignore everything except AIAnalyzer (Experts/Scripts)
-# หมายเหตุ: ใช้ negative patterns เพื่อ re-include โฟลเดอร์ย่อยที่ต้องการ
-############################
-# Ignore all content under MQL5 by default
-MQL5/*
+# .NET
+bin/
+obj/
+TestResults/
+*.user
+*.suo
+*.pdb
+*.dll
+*.exe
 
-# Re-include Experts/AIAnalyzer and its contents
-!MQL5/Experts/
-MQL5/Experts/*
-!MQL5/Experts/AIAnalyzer/
-!MQL5/Experts/AIAnalyzer/**
+# MQL5 compile artifacts
+*.ex5
+*.ex4
 
-# Re-include Scripts/AIAnalyzer and its contents
-!MQL5/Scripts/
-MQL5/Scripts/*
-!MQL5/Scripts/AIAnalyzer/
-!MQL5/Scripts/AIAnalyzer/**
-############################
-# Workshop project outputs and local env
-############################
-/workshop/logs/
-/workshop/reports/
-/workshop/project/sql/*.db
-/workshop/project/sql/*.sqlite
-/workshop/project/sql/*-shm
-/workshop/project/sql/*-wal
-/workshop/project/tmp/
-/workshop/.cache/
-/workshop/.venv/
-/workshop/env/
-/workshop/data/raw/
-/workshop/data/parquet/
-/workshop/data/tmp/
+# Custom ignores
+bases/
+config/
+!docs/config/
+profiles/
+liveupdate/
+temp/
+Tester/
+origin.txt
 
-############################
-# Edge WebView caches in temp (already covered by /temp/)
-# เพิ่มไว้เพื่อความชัดเจน
-############################
-/temp/EBWebView/
-/temp/logs/
+# Parallel-subagent scratch worktrees (created by Agent tool with isolation="worktree")
+.claude/worktrees/*
+.claude/settings.local.json
 
-############################
-# Misc
-############################
-.DS_Store
+# Parallel execution shared-context briefings (runtime only — playbook §4.2)
+docs/state/_parallel-context/
+
+# Runtime junk
+bash.exe.stackdump
+.claude/scheduled_tasks.lock
+artifacts/
