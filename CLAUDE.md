@@ -216,5 +216,5 @@ docs/
   state/impl-plan.md              <- (created by /impl-plan)
 simulation/headless-tests/        <- committed .ini files for reproducible headless backtest runs
 MQL5/Experts/PhoenicisNex/        <- EA source code (created during Phase 3I IMPL-001+)
-origin.txt                        <- MT5 install path (e.g. "C:\Program Files\MetaTrader 5")
+origin.txt                        <- MT5 install path (e.g. "C:\Program Files\FBS MetaTrader 5ph")
 ```

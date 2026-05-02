@@ -37,7 +37,7 @@
 
 ```bash
 # 1. Resolve install + data dirs
-ORIGIN=$(cat origin.txt | tr -d '\r')                     # e.g. "C:\Program Files\MetaTrader 5"
+ORIGIN=$(cat origin.txt | tr -d '\r')                     # e.g. "C:\Program Files\FBS MetaTrader 5ph"
 TERMINAL_ID=$(basename "$(pwd)")                          # 32-char hex
 DATA_DIR="/c/Users/$USER/AppData/Roaming/MetaQuotes/Terminal/$TERMINAL_ID"
 TESTER_LOG_DIR="/c/Users/$USER/AppData/Roaming/MetaQuotes/Tester/$TERMINAL_ID/Agent-127.0.0.1-3000/logs"
