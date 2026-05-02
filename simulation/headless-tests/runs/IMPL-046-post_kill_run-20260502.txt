@@ -1,0 +1,60 @@
+﻿LL	0	20:48:00.811	Tester	Cloud servers switched off
+HR	0	20:48:02.359	Tester	"PhoenicisNex\spike\Spike_AtomicWrite.ex5" X64
+NI	0	20:48:02.371	Tester	EURUSD: preliminary downloading of M1 history started
+GE	0	20:48:02.485	Tester	EURUSD: preliminary downloading of M1 history completed in 0:00:00.125
+IR	0	20:48:02.485	Tester	EURUSD: history data begins from 2016.01.10 00:00
+PG	0	20:48:02.516	Tester	EURUSD: preliminary downloading of history ticks started, it may take quite a long time
+CD	0	20:48:03.526	Tester	EURUSD: preliminary downloading of history ticks canceled
+OH	3	20:48:03.526	Tester	no history data, stop testing
+PE	0	20:48:03.530	Tester	automatical testing finished
+IR	0	20:48:52.514	Tester	Cloud servers switched off
+FH	0	20:48:54.138	Tester	"PhoenicisNex\spike\Spike_AtomicWrite.ex5" X64
+DS	0	20:48:54.149	Tester	EURUSD: preliminary downloading of M1 history started
+IK	0	20:48:54.251	Tester	EURUSD: preliminary downloading of M1 history completed in 0:00:00.109
+MH	0	20:48:54.251	Tester	EURUSD: history data begins from 2016.01.10 00:00
+DQ	0	20:48:54.252	Tester	EURUSD: history data begins from 2016.01.10 00:00
+GI	0	20:48:54.262	Core 01	agent process started on 127.0.0.1:3000
+HN	0	20:48:54.262	Core 01	connecting to 127.0.0.1:3000
+GI	0	20:48:54.791	Core 01	connected
+OQ	0	20:48:54.802	Core 01	authorized (agent build 5833)
+MD	0	20:48:54.806	Tester	EURUSD,H4 (FBS-Real): testing of Experts\PhoenicisNex\spike\Spike_AtomicWrite.ex5 from 2021.01.04 00:00 to 2021.01.05 00:00
+FE	0	20:48:54.814	Core 01	common synchronization completed
+FQ	3	20:48:54.842	History	nothing to analyze
+LG	0	20:48:55.650	Core 01	MetaTester 5 started on 127.0.0.1:3000
+RM	0	20:48:55.650	Core 01	cloud network mode is off
+EK	0	20:48:55.650	Core 01	initialization finished
+RF	0	20:48:55.650	Core 01	login (build 5833)
+RM	0	20:48:55.650	Core 01	16516 bytes of account info loaded
+KH	0	20:48:55.650	Core 01	1478 bytes of tester parameters loaded
+LN	0	20:48:55.650	Core 01	2244 bytes of input parameters loaded
+CK	0	20:48:55.650	Core 01	2680 bytes of symbols list loaded (581 symbols)
+CM	0	20:48:55.650	Core 01	expert file added: Experts\PhoenicisNex\spike\Spike_AtomicWrite.ex5. 14802 bytes loaded
+QL	0	20:48:55.650	Core 01	7452 Mb available, 92 blocks set for ticks generating
+KJ	0	20:48:55.650	Core 01	initial deposit 1000.00 USD, leverage 1:500
+HD	0	20:48:55.650	Core 01	successfully initialized
+PJ	0	20:48:55.650	Core 01	19 Kb of total initialization data received
+LL	0	20:48:55.650	Core 01	AMD Ryzen 7 7840HS w/ Radeon 780M, 31938 MB
+MR	0	20:48:55.650	Core 01	EURUSD: symbol to be synchronized
+DQ	0	20:48:55.650	Core 01	EURUSD: symbol synchronized, 3720 bytes of symbol info received
+JM	0	20:48:55.650	Core 01	EURUSD: load 27 bytes of history data to synchronize in 0:00:00.000
+HJ	0	20:48:55.650	Core 01	EURUSD: history synchronized from 2019.01.02 to 2025.12.30
+NI	0	20:48:55.650	Core 01	EURUSD,H4: history cache allocated for 1577 bars and contains 1560 bars from 2020.01.02 00:00 to 2020.12.31 20:00
+NJ	0	20:48:55.650	Core 01	EURUSD,H4: history begins from 2020.01.02 00:00
+PL	0	20:48:55.650	Core 01	EURUSD,H4 (FBS-Real): OHLC bar states generating. OnTick executed on the bar begin only
+IO	0	20:48:55.650	Core 01	EURUSD,H4: testing of Experts\PhoenicisNex\spike\Spike_AtomicWrite.ex5 from 2021.01.04 00:00 to 2021.01.05 00:00 started with inputs:
+DO	0	20:48:55.650	Core 01	  InpTotalWrites=1000
+CI	0	20:48:55.650	Core 01	  InpKillTrials=100
+JQ	0	20:48:55.650	Core 01	  InpStateFile=PhoenicisNex/spike/state.json
+QK	0	20:48:55.650	Core 01	  InpTmpFile=PhoenicisNex/spike/state.json.tmp
+CP	0	20:48:55.650	Core 01	2021.01.04 00:00:00   [spike][ev=spike_start][total_writes=1000][kill_trials=100]
+JL	0	20:48:55.650	Core 01	2021.01.04 00:00:00   [spike][ev=phase1_done][writes=1000][write_fails=0][parse_fails=0]
+GO	0	20:48:55.650	Core 01	2021.01.04 00:00:00   [spike][ev=phase2_done][kill_trials=100][anchor_fails=0][state_corrupt=0]
+JR	0	20:48:55.650	Core 01	2021.01.04 00:00:00   [spike][ev=spike_complete][p1_writes=1000][p1_parse_fails=0][p2_kills=100][p2_state_corrupt=0][verdict=OPTION_A_LOCKED]
+FR	0	20:48:55.650	Core 01	final balance 1000.00 USD
+JG	0	20:48:55.650	Core 01	OnTester result 0
+LL	0	20:48:55.650	Core 01	2021.01.04 23:59:59   [spike][ev=spike_deinit][reason=1]
+NH	0	20:48:55.650	Core 01	EURUSD,H4: 23 ticks, 6 bars generated. Test passed in 0:00:00.835.
+OI	0	20:48:55.650	Core 01	37 Mb memory used including 0.47 Mb of history data, 64 Mb of tick data
+NM	0	20:48:55.650	Core 01	log file "C:\Users\kritsana.ye\AppData\Roaming\MetaQuotes\Tester\A12EC900AF5AF5023ECB36F7FB72E396\Agent-127.0.0.1-3000\logs\20260502.log" written
+MH	0	20:48:55.659	Tester	automatical testing finished
+PS	0	20:48:55.660	Core 01	connection closed

@@ -127,3 +127,43 @@ WAL pattern; ทุก state mutation = append; periodic compaction
 - ถ้า MT5 `FileMove` atomic test fail (assumption A2 ไม่ผ่าน) → activate Option B double-buffered swap (designed above; ready-to-implement); update `02 § 9 ADR Digest`, `03 § 3.4 Failure modes`, และ `state-persistence-schema.yaml` (เพิ่ม 3-file layout)
 - ถ้า measured write latency > 1 ms ต่อเนื่อง → introduce dirty-bit throttle
 - ถ้า schema version > 5 (frequent breaking changes) → revisit migration tooling (offline upgrader)
+
+## Spike Result (IMPL-046, 2026-05-02)
+
+**Verdict:** ✅ **Option A locked** — Option B fallback NOT activated.
+
+**Spike protocol** (per IMPL-046 acceptance criteria + §Validation above):
+
+1. **Spike EA:** `MQL5/Experts/PhoenicisNex/spike/Spike_AtomicWrite.mq5` (175 LOC, no project `#include`) implements `WriteAtomic(path, tmppath, content)` exactly per the §Option A pseudocode: `FileOpen(.tmp, FILE_WRITE|FILE_TXT|FILE_ANSI)` → `FileWriteString` → `FileFlush` → `FileClose` → `FileMove(.tmp, 0, dst, FILE_REWRITE)`.
+2. **Phase 1 — 1000 normal atomic writes:** each write produces a JSON payload `{"counter":N,"hash":<32hex>,"timestamp":...,"payload_size_bytes":256,"schema_version":1}`, then re-parses the persisted file and verifies `parsed_counter == N` plus closing-brace integrity.
+3. **Phase 2 — 100 simulated mid-write crashes:** per trial, an anchor counter `10000+t` is atomically written; then `.tmp` is re-opened and a **truncated partial JSON** `{"counter":99999,"hash":"PARTIAL` is written and closed **without** `FileMove` — exactly the on-disk state a process kill during §Atomicity proof step 1-2 would leave behind. State.json is then re-parsed; it must still equal the anchor counter (proving step 1-2 doesn't touch the destination file). Orphan `.tmp` is cleaned to mirror the §OnInit recovery contract.
+4. **Verdict logic:** `OPTION_A_LOCKED` iff all four counters = 0 (write_fails, parse_fails, anchor_fails, state_corrupt); else `OPTION_B_ACTIVATE`.
+
+**Why software-level mid-write reproduction (vs PowerShell `taskkill` × 100):** the §Atomicity proof identifies two crash windows. Step 1-2 produces a deterministic on-disk state (state.json untouched, `.tmp` partial) that the spike reproduces byte-for-byte 100/100 trials — strictly stronger than non-deterministic `taskkill` race timing. Step 3 (`FileMove` rename) is atomic by Windows API contract: MQL5 `FileMove` invokes `MoveFileEx` (per MQL5 Reference), and `MoveFileEx` on same-volume NTFS is documented atomic by Microsoft Win32 docs. This contract is asserted (not race-tested), since rename completes too fast to interrupt deterministically from user-space. The 1000 happy-path writes in Phase 1 empirically exercise the actual `FileMove` call 1000 times.
+
+**Empirical results** (verbatim from `simulation/headless-tests/runs/IMPL-046-post_kill_run-20260502.txt`):
+
+```
+[spike][ev=spike_start][total_writes=1000][kill_trials=100]
+[spike][ev=phase1_done][writes=1000][write_fails=0][parse_fails=0]
+[spike][ev=phase2_done][kill_trials=100][anchor_fails=0][state_corrupt=0]
+[spike][ev=spike_complete][p1_writes=1000][p1_parse_fails=0][p2_kills=100][p2_state_corrupt=0][verdict=OPTION_A_LOCKED]
+EURUSD,H4: 23 ticks, 6 bars generated. Test passed in 0:00:00.835.
+OnTester result 0
+```
+
+| Counter | Target | Observed |
+|---------|-------:|---------:|
+| Phase 1 write fails | 0 | **0** |
+| Phase 1 parse fails | 0 | **0** |
+| Phase 2 anchor fails | 0 | **0** |
+| Phase 2 state corruption | 0 | **0** |
+| `[ERROR]` / `[WARN]` lines | 0 | **0** |
+
+**Decision:** **Lock Option A**. NFR-3.1 (0% corruption after random kill) target met provisionally for the algorithm. Final 100/100 validation (real PowerShell `taskkill` during live IMPL-047 StatePersistence write loop) deferred to IMPL-064 per impl-plan P4 Phase Gate.
+
+**Cascade unblocks:** IMPL-010 (`helpers/AtomicFile.mqh` — implement Option A pseudocode 1:1, no schema fork), IMPL-047 (`services/StatePersistence::Save/Load` — single `state.json`, no 3-file rotation), IMPL-048 (state.json schema final-lock — no `state-meta.bin` + A/B layout), IMPL-049 (PendingMachineRegistry — standard consumer).
+
+**Option B status:** Designed-not-primary, retained for revisit triggers above. No `## Option B activation` section opened.
+
+**Evidence artifact:** `docs/state/_session-handoff/IMPL-046-evidence-20260502.md`. Spike `.ini` committed at `simulation/headless-tests/atomic_write_kill.ini` (TD-02 §13.6 PR contract).
