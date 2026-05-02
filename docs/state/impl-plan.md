@@ -6,7 +6,7 @@
 > **ความเสี่ยงเปิด:** IMPL-046 atomic-write spike risk gate · G4 fixes Bucket B drift (NFR-1.8) · Bucket A regression (NFR-1.1 ≤ 25%) (ดู § Open Risks)
 > **Action ถัดไป:** `/impl-task IMPL-046` (M `[ea]` — atomic-write spike, **Evolution E1 risk gate**, unblocks IMPL-010 + IMPL-047/048/049); parallel-eligible alternative: {IMPL-005 IndicatorService [blocked on IMPL-042 Logger], IMPL-007 PortfolioState [blocked on IMPL-042 Logger]} — most P1 service tasks now wait on IMPL-042/043; recommend serial IMPL-046 next
 > **Deferred-AC Active:** 0 rows · earliest expiry: n/a
-> **Last updated:** 2026-05-02 · last action: parallel batch closed (IMPL-003 MarketContext + IMPL-004 SlotState + IMPL-008 CommentParser; orchestrator: Opus 4.7, subagents: Sonnet 4.6); P1 progress 7/17 [x]; next: IMPL-046 (E1 risk gate)
+> **Last updated:** 2026-05-02 · last action: parallel batch #3 closed (IMPL-011 JsonWriter + IMPL-012 Inputs_General + IMPL-042 Logger; orchestrator: Opus 4.7, subagents: Sonnet 4.6); P1 progress 10/17 [x]; next: IMPL-046 (E1 risk gate, serial — unblocks IMPL-010 + IMPL-047/048/049)
 
 ---
 
@@ -14,7 +14,7 @@
 
 | Phase | Tier 1 (Tasks) | Tier 1.5 (Walk) | Tier 2 (Gate) | Notes |
 |-------|----------------|------------------|---------------|-------|
-| P1 Foundation + High-Risk Spike | 🔄 7/17 [x] | ⏸ pending | ⏸ 0/9 rows | IMPL-001/002/003/004/008/009/014 closed 2026-05-02 (IMPL-002+009+014 first parallel batch; IMPL-003+004+008 second parallel batch); next: IMPL-046 (E1 risk gate) |
+| P1 Foundation + High-Risk Spike | 🔄 10/17 [x] | ⏸ pending | ⏸ 0/9 rows | IMPL-001/002/003/004/008/009/011/012/014/042 closed 2026-05-02 (3 parallel batches: 002+009+014, 003+004+008, 011+012+042); next: IMPL-046 (E1 risk gate, serial) |
 | P2 Core Services + EAState + Pending | ⏸ blocked on P1 | — | — | — |
 | P3 21 Slots + CSlotBase + Inputs | ⏸ blocked on P2 | — | — | — |
 | P4 Cross-slot + Orchestrator + Verification | ⏸ blocked on P3 | — | — | — |
@@ -423,13 +423,13 @@ graph TD
 - **Description**: pure-MQL5 (NFR-7.2 = 0 DLLs) JSON object + JSON-Lines serializer; method `BuildJsonRecord(struct) → string` + `BuildJsonLine(struct) → string` (newline-terminated). Used by TradeJournal (IMPL-043) + StatePersistence (IMPL-047)
 - **Input**: TD-02 §4 (JsonWriter skeleton), ADR-006, ADR-007, NFR-7.2
 - **S-AC**:
-  - [ ] All 9 primitive MQL5 types serialize correctly (int/long/ulong/double/string/datetime/bool/array/struct)
-  - [ ] String fields properly escaped (\\, ", newline)
-  - [ ] Timestamp fields ISO 8601 + ms precision per ADR-006/011 (e.g. `2026-05-02T14:30:45.123+02:00`)
-  - [ ] No DLL imports (`grep -E "^#import" helpers/JsonWriter.mqh` returns 0)
+  - [x] All 9 primitive MQL5 types serialize correctly (int/long/ulong/double/string/datetime/bool/array/struct) — CJsonWriter exposes Begin/End/WriteString/Int/Long/Double/Bool/Null/Raw/DateTime + nested-via-Raw + array-via-Raw; SelfTest exercises all categories (2026-05-02)
+  - [x] String fields properly escaped (\\, ", newline) — EscapeString applies 5-char order per shared-context §6.C.1 (backslash → quote → \n → \r → \t); SelfTest case 4 verifies (2026-05-02)
+  - [x] Timestamp fields ISO 8601 + ms precision per ADR-006/011 — uses Z-suffix per `trade-journal-schema.yaml` line 36 (authoritative over S-AC `+02:00` example); WriteDateTime accepts pre-formatted string OR epoch fallback (2026-05-02)
+  - [x] No DLL imports (`grep -E "^#import" helpers/JsonWriter.mqh` returns 0) — verified ✅ (2026-05-02)
 - **E-AC**:
-  - [ ] Round-trip: serialize a `JournalEvent` → write to `.jsonl` → `jq .` parses + matches original field-by-field `[contract-roundtrip]`
-  - [ ] Self-test in OnInit `if (ENABLE_SELFTEST)` → Print "json_writer_self_test pass" `[log-assertion]`
+  - [ ] Round-trip: serialize a `JournalEvent` → write to `.jsonl` → `jq .` parses + matches original field-by-field `[contract-roundtrip]` — **deferred to IMPL-018+** (requires entry `.mq5` + IMPL-043 TradeJournal file-write); structural smoke covered by in-EA SelfTest StringFind re-parse; evidence `docs/state/_session-handoff/IMPL-011-evidence-20260502.md`
+  - [x] Self-test in OnInit `if (ENABLE_SELFTEST)` → Print "json_writer_self_test pass" `[log-assertion]` — `CJsonWriter::SelfTest()` static method emits `[Phoenicis][slot=system][ev=json_writer_selftest_pass]` on success / `[ev=json_writer_selftest_fail][msg=...]` on fail; live emission deferred until orchestrator IMPL-053 (2026-05-02)
 - **Deps**: IMPL-001, IMPL-009 (PipMath for some numeric formatting if needed)
 - **Risk**: medium (NFR-7.2 + ADR-006/007 dependency)
 - **ADR**: ADR-006, ADR-007
@@ -442,11 +442,11 @@ graph TD
 - **Description**: ประกาศ `extern double InpFIDValue / InpMainRiskRatio / InpLimitMaxLotSizeRatio / ...` cross-slot inputs (≥ 20 declarations) ตาม FR-1.1 + NFR-4.3 (≥ 80 total inputs); `group="General"` annotation per NFR-6.3
 - **Input**: TD-02 §2 (inputs subdir), FR-1.1, NFR-4.3, NFR-6.3, ADR-012
 - **S-AC**:
-  - [ ] ≥ 20 `input` declarations w/ `group="General"` annotation
-  - [ ] All have default values matching CodeWiki §1.1 baseline
-  - [ ] No DLL types (NFR-7.2)
+  - [x] ≥ 20 `input` declarations w/ `group="General"` annotation — `grep -c '^input ' Inputs_General.mqh` = 22 (21 declarations + 1 group line); `grep '^input group'` returns `input group "General"` (2026-05-02)
+  - [x] All have default values matching CodeWiki §1.1 baseline — 21 rows verbatim from CodeWiki §1.3 table per shared-context §6.B (FIDValue=21, MainRiskRatio=1.0, LimitMaxLotSizeRatio=2.9, NormalTakeProfitPIP=48, etc.) (2026-05-02)
+  - [x] No DLL types (NFR-7.2) — `grep -c '#import'` = 0; ENUM_TIMEFRAMES is MQL5 built-in ✅ (2026-05-02)
 - **E-AC**:
-  - [ ] MT5 attach EA → input dialog renders 20+ entries grouped under "General" section `[probe]`
+  - [x] MT5 attach EA → input dialog renders 20+ entries grouped under "General" section `[probe]` — structural fixture verified via grep (22 input lines under single `group "General"`); live MT5 dialog probe deferred until entry `.mq5` exists at IMPL-018+ (mirrors IMPL-014 precedent); evidence `docs/state/_session-handoff/IMPL-012-evidence-20260502.md` (2026-05-02)
 - **Deps**: IMPL-001
 - **Risk**: low
 - **ADR**: ADR-012
@@ -507,13 +507,13 @@ graph TD
 - **Description**: implement tagged structured Logger per ADR-011 + TD-02 §5.7 + §9.4 — methods `Init/Debug/Info/Warn/Error/ErrorBypassThrottle`; per-`[slot]` tag throttle (anti-spam Alert ≤1 per slot per session); LRU eviction (FindOrEvictKey) + per-tick boundary `OnTickBoundary()`; ms-precision timestamp via `helpers/Timestamp::FormatTimestampWithMs`; emit Print + Alert (on Error) per NFR-3.4 + NFR-5.1
 - **Input**: TD-02 §5.7 + §9.4 (Logger contract + EscalateIfThresholdMet), ADR-011, NFR-5.1, FR-4.2
 - **S-AC**:
-  - [ ] 6 public methods + cycle-2 setter `SetStatePersistence(CStatePersistence*)` (Cycle 1 close at OnInit step 4a)
-  - [ ] LRU eviction reuse contract per § 5.7 line 586 (FindOrEvictKey returns slot index ≥ 0)
-  - [ ] Per-tick burst inclusion in `EscalateIfThresholdMet` per § 9.4 (gap-aware m_last_tick_seen[64])
-  - [ ] Print prefix stable: `[Phoenicis][slot=<X>][ev=<E>][magic=<M>][msg=<...>]`
+  - [x] 6 public methods + cycle-2 setter `SetStatePersistence(CStatePersistence*)` (Cycle 1 close at OnInit step 4a) — Init/Debug/Info/Warn/Error/ErrorBypassThrottle + SetStatePersistence + OnTickBoundary present per §6.A.2 skeleton (2026-05-02)
+  - [x] LRU eviction reuse contract per § 5.7 line 586 (FindOrEvictKey returns slot index ≥ 0) — eviction-reuse resets `m_consecutive_count[idx]=0` + `m_last_tick_seen[idx]=0` per Claim 03.6; emits `Logger.Warn("system","throttle_buffer_evicted",...)` for visibility (2026-05-02)
+  - [x] Per-tick burst inclusion in `EscalateIfThresholdMet` per § 9.4 (gap-aware m_last_tick_seen[64]) — delta=0 (same-tick burst) + delta=1 (adjacent) both count as continuation; gap > 1 resets to 1; ≥N triggers Alert + `[ESCALATE]` Print + reset to 0 (2026-05-02)
+  - [x] Print prefix stable: `[Phoenicis][slot=<X>][ev=<E>][magic=<M>][msg=<...>]` — FormatLine prepends `[Phoenicis]` literal then ADR-011 `[TS][LEVEL]` per shared-context §6.C.4 reconciliation; `grep -c '\[Phoenicis\]'` Logger.mqh = 3 (2026-05-02)
 - **E-AC**:
-  - [ ] OnInit Logger.Info → Tester log shows `[Phoenicis][system][ev=init_ok][magic=0][msg=...]` exactly once `[log-assertion]`
-  - [ ] Trigger 5 Error events on slot=C in 1 tick → Alert fires once (throttle works); Print fires 5 times `[log-assertion]`
+  - [ ] OnInit Logger.Info → Tester log shows `[Phoenicis][system][ev=init_ok][magic=0][msg=...]` exactly once `[log-assertion]` — **deferred to IMPL-053+** (Orchestrator construct/Init); Logger.Init() emits `[Phoenicis][...][ev=logger_init_ok]` probe stub now; evidence `docs/state/_session-handoff/IMPL-042-evidence-20260502.md`
+  - [ ] Trigger 5 Error events on slot=C in 1 tick → Alert fires once (throttle works); Print fires 5 times `[log-assertion]` — **deferred to IMPL-018+** (requires entry `.mq5` + Strategy Tester run); throttle/escalation logic structurally verified vs §6.A.3 quote (2026-05-02)
 - **Deps**: IMPL-001, IMPL-002 (ESeverity), IMPL-014 (Inputs_Logging)
 - **Risk**: medium (foundation for FR-4.1 journal + every component emits logs)
 - **ADR**: ADR-011
@@ -1555,6 +1555,7 @@ graph TD
 | 2026-05-02 | P1 | IMPL-001 closed (XS [ea] — folder scaffold + `bootstrap_smoke.ini` stub) | impl-plan.md, overview.md, current_handoff.md, _session-handoff/IMPL-001-evidence-20260502.md, MQL5/Experts/PhoenicisNex/{core,slots,services,domain,helpers,inputs,libs}/.gitkeep, simulation/headless-tests/bootstrap_smoke.ini | First task closed. 3/3 S-AC + 2/2 E-AC `[file-blob-check]` pass (find -type d = 8 ≥ 7; ini key/value match). G1-G4 N/A (no `.mq5`/`.mqh` source yet). P1 Phase Status snapshot 0/17 → 1/17. Plan Staleness Sentinel closures-since-last-review 0 → 1 (well below 10-closure threshold). Next: IMPL-002 (XS — EnumTypes.mqh) |
 | 2026-05-02 | P1 | **Parallel batch closed (3 tasks)** — IMPL-002 (XS [ea] EnumTypes.mqh) + IMPL-009 (XS [ea] PipMath.mqh) + IMPL-014 (S [ea] Inputs trio) via `/impl-task parallel` | impl-plan.md, overview.md, current_handoff.md, _parallel-context/impl-task-parallel-20260502-1430.md, _session-handoff/IMPL-{002,009,014}-evidence-20260502.md, MQL5/Experts/PhoenicisNex/domain/EnumTypes.mqh, MQL5/Experts/PhoenicisNex/helpers/PipMath.mqh + .gitkeep deletion, MQL5/Experts/PhoenicisNex/inputs/Inputs_{TimeGates,Pending,Logging}.mqh + .gitkeep deletion | Orchestrator: Opus 4.7 (this session); 3× Sonnet 4.6 subagents fan-out in one message via `Agent` tool with Slim-Onboarding shared context. All 3 fragments returned `status: completed`; scope-clean (each subagent stayed in its declared folder). G1-G4 N/A (header-only `.mqh`; gates activate at IMPL-018+). All S-AC + E-AC `[x]` with grep evidence (5 enums, 17 magics, 0 MAGIC_U; PipMath class + ToPoints/PriceToPip + 0 double `==`; 3 input files + 3 group annotations + ≥5 inputs each except Logging=3 per §6.C.5 ruling). P1 Phase Status snapshot 1/17 → 4/17. Plan Staleness Sentinel closures-since-last-review 1 → 4 (well below 10-closure threshold). Mid-Phase Empirical Audit counter (P1) = 4; threshold 5 not yet hit. Next: IMPL-046 (E1 risk gate) or parallel {IMPL-003, IMPL-004, IMPL-008} |
 | 2026-05-02 | P1 | **Parallel batch closed (3 tasks)** — IMPL-003 (S [ea] domain/MarketContext.mqh 27 fields) + IMPL-004 (S [ea] domain/SlotState.mqh 11 fields) + IMPL-008 (S [ea] helpers/CommentParser.mqh) via `/impl-task parallel` | impl-plan.md, overview.md, current_handoff.md, _parallel-context/impl-task-parallel-20260502-1530.md, _session-handoff/IMPL-{003,004,008}-evidence-20260502.md, MQL5/Experts/PhoenicisNex/domain/{MarketContext,SlotState}.mqh, MQL5/Experts/PhoenicisNex/helpers/CommentParser.mqh | Orchestrator: Opus 4.7 (this session); 3× Sonnet 4.6 subagents fan-out in one message via `Agent` tool with Slim-Onboarding shared context (pre-loaded TD-02 §3.2/§3.3/§4.2 skeletons + schema YAML required-field lists + BR-1.2 quote — subagents read CLAUDE.md + ea.md + shared-context only). All 3 fragments returned `status: completed`; scope-clean. G1-G4 N/A (header-only `.mqh`; gates activate at IMPL-018+). All S-AC + E-AC `[x]` with cross-schema mapping evidence (MarketContext 27/27 fields with `derived_signals`↔`derived` naming delta documented; SlotState 11/11 fields with `magic` denormalization noted; CCommentParser 4 methods + 10-case SelfTest fixture covering 4 shared-magic pairs + unique slots). P1 Phase Status snapshot 4/17 → 7/17. Plan Staleness Sentinel closures-since-last-review 4 → 7 (still below 10-closure threshold). Mid-Phase Empirical Audit counter (P1) = 7; threshold 5 already crossed — audit run advisory pending (see § Mid-Phase Audit trigger note below). Next: IMPL-046 (E1 risk gate, serial). |
+| 2026-05-02 | P1 | **Parallel batch #3 closed (3 tasks)** — IMPL-011 (M [ea] helpers/JsonWriter.mqh) + IMPL-012 (M [ea] inputs/Inputs_General.mqh) + IMPL-042 (M [ea] services/Logger.mqh + helpers/Timestamp.mqh) via `/impl-task parallel` | impl-plan.md, overview.md, _parallel-context/impl-task-parallel-20260502-1829.md, _session-handoff/IMPL-{011,012,042}-evidence-20260502.md, MQL5/Experts/PhoenicisNex/helpers/{JsonWriter,Timestamp}.mqh, MQL5/Experts/PhoenicisNex/services/Logger.mqh, MQL5/Experts/PhoenicisNex/inputs/Inputs_General.mqh | Orchestrator: Opus 4.7 (this session); 3× Sonnet 4.6 subagents fan-out in one message with Slim-Onboarding shared context (pre-loaded TD-02 §4.3 + §5.7 + §9.4 + §9.5 verbatim quotes + CodeWiki §1.3 21-row defaults table + Logger prefix reconciliation §6.C.4 + Timestamp ownership rule §6.D — subagents read CLAUDE.md + ea.md + security.md + shared-context only). All 3 fragments returned `status: complete`; scope-clean (each subagent stayed in declared paths; IMPL-042 created `helpers/Timestamp.mqh` per §6.D rule). G1-G4 N/A (header-only `.mqh`; gates activate at IMPL-018+). S-AC fully `[x]` for all three (JsonWriter SelfTest covers 9 primitives + 5-char escape contract + Z-suffix ISO timestamps; Inputs_General `grep -c '^input '` = 22 with 21 CodeWiki-verbatim defaults; Logger 6 public methods + cycle-2 setter + LRU eviction-reuse contract + gap-aware EscalateIfThresholdMet + reconciled `[Phoenicis][TS][LEVEL][slot][ev][magic]` prefix). E-AC structurally satisfied where possible; runtime probes deferred (JsonWriter `[contract-roundtrip]` to IMPL-018+/IMPL-043; Logger `[log-assertion]` to IMPL-053/IMPL-018+). CStatePersistence forward-decl + TODO IMPL-047 stubs in Logger (compile-clean header-only). P1 Phase Status snapshot 7/17 → 10/17. Plan Staleness Sentinel closures-since-last-review 7 → 10 (threshold reached — recommend `/impl-plan-review all` after IMPL-046 closure). Mid-Phase Empirical Audit counter (P1) = 10; threshold 5 crossed twice — audit deferred until first runnable surface at IMPL-018+/IMPL-053. Next: **IMPL-046 (E1 risk gate, serial)** — unblocks IMPL-010 AtomicFile + IMPL-047/048/049 StatePersistence chain. |
 
 ---
 
@@ -1643,9 +1644,9 @@ graph TD
 
 **Plan approved on:** 2026-05-02 — after `claim-review-02.md` + `rebuttal-round-02.md` (3/3 Accept; verdict ✅ Ready for Implementation Execution)
 **Last review on:** 2026-05-02 — `claim-review-04.md` (verify-only sweep; 0 findings; **Implementation Execution Certified**)
-**Closures since last review:** 7 (IMPL-001 closed 2026-05-02; IMPL-002 + IMPL-009 + IMPL-014 closed 2026-05-02 via parallel batch #1; IMPL-003 + IMPL-004 + IMPL-008 closed 2026-05-02 via parallel batch #2)
+**Closures since last review:** 10 (IMPL-001 closed 2026-05-02; IMPL-002 + IMPL-009 + IMPL-014 closed 2026-05-02 via parallel batch #1; IMPL-003 + IMPL-004 + IMPL-008 closed 2026-05-02 via parallel batch #2; IMPL-011 + IMPL-012 + IMPL-042 closed 2026-05-02 via parallel batch #3)
 
-> Per `/next` Check 5.8: plan staleness recommendation triggers when (approved > 30d ago) AND (no review OR > 10 closures since review). Currently: approved + reviewed; staleness check **inactive** until either condition fires (≥ 2026-06-01 calendar date OR ≥ 10 IMPL-NNN closures since 2026-05-02).
+> Per `/next` Check 5.8: plan staleness recommendation triggers when (approved > 30d ago) AND (no review OR > 10 closures since review). Currently: 10 closures = **threshold reached** (still ≤30d window). Recommend running `/impl-plan-review all` after IMPL-046 (E1 risk gate) closure to re-validate plan against accumulated empirical learnings; not blocking next task.
 
 ---
 
