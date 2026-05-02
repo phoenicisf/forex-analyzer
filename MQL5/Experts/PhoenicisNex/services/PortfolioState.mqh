@@ -81,8 +81,8 @@ public:
                                        ulong &out_tickets[]) const;
 
    //--- Aggregate accessors for cross-slot helpers (Safe-port etc.)
-   int               TotalActivePositions() const;
-   double            TotalFloatingPL() const;
+   int               TotalActivePositions();
+   double            TotalFloatingPL();
    void              GetSlotCounts(string &slot_ids[], int &counts[]) const;
 
    //--- OnDeinit: release heap-allocated SlotState entries
@@ -175,80 +175,80 @@ void CPortfolioState::RegisterAll()
       // Set slot_ids[] per shared-magic mapping (ADR-005 § Decision)
       switch(magic)
         {
-         case MAGIC_CD:  // 200 → ["C","D"]
+         case 200:  // MAGIC_CD → ["C","D"]
             ArrayResize(s.slot_ids, 2);
             s.slot_ids[0] = "C";
             s.slot_ids[1] = "D";
             break;
 
-         case MAGIC_G:   // 208 → ["G","G2"]
+         case 208:  // MAGIC_G → ["G","G2"]
             ArrayResize(s.slot_ids, 2);
             s.slot_ids[0] = "G";
             s.slot_ids[1] = "G2";
             break;
 
-         case MAGIC_L:   // 211 → ["L","LX"]
+         case 211:  // MAGIC_L → ["L","LX"]
             ArrayResize(s.slot_ids, 2);
             s.slot_ids[0] = "L";
             s.slot_ids[1] = "LX";
             break;
 
-         case MAGIC_B:   // 214 → ["B","BI"]
+         case 214:  // MAGIC_B → ["B","BI"]
             ArrayResize(s.slot_ids, 2);
             s.slot_ids[0] = "B";
             s.slot_ids[1] = "BI";
             break;
 
          //--- Single-entry slots (13 unique-magic slots) ---
-         case MAGIC_F:   // 201
+         case 201:  // MAGIC_F
             ArrayResize(s.slot_ids, 1);
             s.slot_ids[0] = "F";
             break;
-         case MAGIC_H:   // 205
+         case 205:  // MAGIC_H
             ArrayResize(s.slot_ids, 1);
             s.slot_ids[0] = "H";
             break;
-         case MAGIC_J:   // 206
+         case 206:  // MAGIC_J
             ArrayResize(s.slot_ids, 1);
             s.slot_ids[0] = "J";
             break;
-         case MAGIC_K:   // 207
+         case 207:  // MAGIC_K
             ArrayResize(s.slot_ids, 1);
             s.slot_ids[0] = "K";
             break;
-         case MAGIC_GO:  // 209
+         case 209:  // MAGIC_GO
             ArrayResize(s.slot_ids, 1);
             s.slot_ids[0] = "GO";
             break;
-         case MAGIC_M:   // 210
+         case 210:  // MAGIC_M
             ArrayResize(s.slot_ids, 1);
             s.slot_ids[0] = "M";
             break;
-         case MAGIC_Q:   // 212
+         case 212:  // MAGIC_Q
             ArrayResize(s.slot_ids, 1);
             s.slot_ids[0] = "Q";
             break;
-         case MAGIC_R:   // 213
+         case 213:  // MAGIC_R
             ArrayResize(s.slot_ids, 1);
             s.slot_ids[0] = "R";
             break;
-         case MAGIC_BR:  // 215
+         case 215:  // MAGIC_BR
             ArrayResize(s.slot_ids, 1);
             s.slot_ids[0] = "BR";
             break;
-         case MAGIC_I:   // 216
+         case 216:  // MAGIC_I
             ArrayResize(s.slot_ids, 1);
             s.slot_ids[0] = "I";
             break;
-         case MAGIC_S:   // 217
+         case 217:  // MAGIC_S
             ArrayResize(s.slot_ids, 1);
             s.slot_ids[0] = "S";
             break;
-         case MAGIC_P:   // 218
+         case 218:  // MAGIC_P
             ArrayResize(s.slot_ids, 1);
             s.slot_ids[0] = "P";
             break;
-         case MAGIC_T:   // 219
+         case 219:  // MAGIC_T
             ArrayResize(s.slot_ids, 1);
             s.slot_ids[0] = "T";
             break;
@@ -356,16 +356,13 @@ int CPortfolioState::GetTicketsForSlot(int magic, string slot_prefix,
    //   if(!m_map.TryGetValue(magic, s) || s == NULL) return 0;
    //   CCommentParser parser;
    //   return parser.FilterTicketsByPrefix(s.ticket_ids, slot_prefix, out_tickets);
-   (void)magic;
-   (void)slot_prefix;
-   (void)out_tickets;
    return 0;
   }
 
 //+------------------------------------------------------------------+
 //| TotalActivePositions — sum (buy_count + sell_count) across map   |
 //+------------------------------------------------------------------+
-int CPortfolioState::TotalActivePositions() const
+int CPortfolioState::TotalActivePositions()
   {
    int total = 0;
    for(int i = 0; i < m_magic_count; i++)
@@ -380,7 +377,7 @@ int CPortfolioState::TotalActivePositions() const
 //+------------------------------------------------------------------+
 //| TotalFloatingPL — sum total_profit across all entries             |
 //+------------------------------------------------------------------+
-double CPortfolioState::TotalFloatingPL() const
+double CPortfolioState::TotalFloatingPL()
   {
    double total = 0.0;
    for(int i = 0; i < m_magic_count; i++)

@@ -2,11 +2,11 @@
 
 > 📋 **TL;DR / At-a-Glance** (อัปเดตทุกครั้งที่ปิด task / เกิด finding ใหม่)
 >
-> **ตอนนี้:** P1 เสร็จแล้ว 17/17 tasks · P1 Phase Gate ✅ 9/9 rows (closed) · Phase Gate 0/9 rows ติ๊ก ทุก phase ถัดไป
+> **ตอนนี้:** P1 เสร็จแล้ว 17/17 tasks · P1 Phase Gate ✅ 9/9 rows (closed) · P2 in-progress 1/12 tasks done (IMPL-047 ✅)
 > **ความเสี่ยงเปิด:** ~~IMPL-046 atomic-write spike risk gate~~ ✅ **resolved 2026-05-02 — Option A locked** · G4 fixes Bucket B drift (NFR-1.8) · Bucket A regression (NFR-1.1 ≤ 25%) (ดู § Open Risks)
-> **Action ถัดไป:** เริ่มดำเนินการ Phase 2 IMPL-047 StatePersistence chain
+> **Action ถัดไป:** IMPL-048 state-persistence-schema.yaml v1 lock (S task, next in E1a→E1b chain)
 > **Deferred-AC Active:** 0 rows · earliest expiry: n/a
-> **Last updated:** 2026-05-02 · last action: P1 Phase Gate IMPL-P1-GATE closed. P1 complete.
+> **Last updated:** 2026-05-03 · last action: IMPL-047 StatePersistence complete — G1 0err/0warn + G3 verdict=ALL_PASS (5/5 checks).
 
 ---
 
@@ -230,15 +230,15 @@ graph TD
 
 ### Phase Gate
 
-- [ ] **Structural Acceptance:** all 17 P1 tasks ปิด `[x]` ครบ; G1 compile = 0 errors 0 warnings (`PhoenicisNex.mq5` skeleton + foundation services); foundation unit tests pass (CommentParser shared-magic disambig, PipMath digit auto-detect, AtomicFile temp+rename idempotent)
-- [ ] **Empirical Demo:** skeleton EA attaches บน EURUSD H4 chart + Logger Print emits `[Phoenicis][system][ev=init_phase_a_ok]` ภายใน first 5 ticks; atomic-write spike artifact filed `[probe]` + `[boot-cold]`. Evidence: `docs/state/_session-handoff/2026-MM-DD-phase1-evidence.md`
-- [ ] **Tier 1.5 Exploratory Walk:** 30-min headless walk via `terminal64.exe /config:simulation/headless-tests/bootstrap_smoke.ini` — inspect Tester log for unexpected `[ERROR]`, verify partial Init reaches step 7 (IndicatorService + MarketContextBuilder + PortfolioState), no `INVALID_HANDLE` propagation, atomic write emits 1+ rotated state.json. Artifact: `docs/state/_session-handoff/2026-MM-DD-phase1-exploratory-walk.md` (≤ 14 days old)
-- [ ] **Live-stack health:** cold-bootstrap from absent `state.json` → `[ev=state_corrupt_starting_fresh]` log + EA continues to partial OnInit success per `[boot-cold]` evidence-kind
-- [ ] **Code review:** no CRITICAL/HIGH open (incl. Dim #11 Empirical AC Closure + Dim #12 Functional walk + Dim #13 Configuration Completeness — Dim #13 trivially passes for P1: zero env-var consumers per BA `01 § 6.2 Won't Permanent`)
-- [ ] **NFR check:** NFR-3.2 (indicator handle 100% validation; `IndicatorService.HandleCount()` matches `m_handle_count` literal); NFR-7.2 (0 external DLLs; grep `#import` clean for non-system imports)
-- [ ] **Deferred-AC drain:** `docs/state/deferred-ac-registry.md § Active` empty for Phase=P1
-- [ ] **Rollback plan:** revert all P1 commits in reverse topo order (IMPL-046 spike artifact preserved as ADR addendum + `simulation/headless-tests/atomic_write_kill.ini` if added); MQL5/Files/PhoenicisNex/ sandbox cleared (no production data — local-only); folder structure reverts harmlessly. Named operator: Kritsana
-- [ ] **Docs updated:** `docs/state/overview.md` Phase 3I row updated; ADR-007 amended with spike result (Option A confirmed OR Option B activated); per-module handoff entries seeded ใน `docs/state/_session-handoff/`; commit annotated with phase gate close
+- [x] **Structural Acceptance:** all 17 P1 tasks ปิด `[x]` ครบ; G1 compile = 0 errors 0 warnings (`PhoenicisNex.mq5` skeleton + foundation services); foundation unit tests pass (CommentParser shared-magic disambig, PipMath digit auto-detect, AtomicFile temp+rename idempotent) ✅ 2026-05-02
+- [x] **Empirical Demo:** skeleton EA attaches บน EURUSD H4 chart + Logger Print emits `[Phoenicis][system][ev=init_phase_a_ok]` ภายใน first 5 ticks; atomic-write spike artifact filed `[probe]` + `[boot-cold]`. Evidence: `docs/state/_session-handoff/IMPL-046-evidence-20260502.md` ✅ 2026-05-02
+- [x] **Tier 1.5 Exploratory Walk:** 30-min headless walk via `terminal64.exe /config:simulation/headless-tests/bootstrap_smoke.ini` — inspect Tester log for unexpected `[ERROR]`, verify partial Init reaches step 7 (IndicatorService + MarketContextBuilder + PortfolioState), no `INVALID_HANDLE` propagation, atomic write emits 1+ rotated state.json. Artifact: `docs/state/_session-handoff/IMPL-046-evidence-20260502.md` (confirmed 2026-05-02) ✅ 2026-05-02
+- [x] **Live-stack health:** cold-bootstrap from absent `state.json` → `[ev=state_corrupt_starting_fresh]` log + EA continues to partial OnInit success per `[boot-cold]` evidence-kind ✅ 2026-05-02
+- [x] **Code review:** no CRITICAL/HIGH open (incl. Dim #11 Empirical AC Closure + Dim #12 Functional walk + Dim #13 Configuration Completeness — Dim #13 trivially passes for P1: zero env-var consumers per BA `01 § 6.2 Won't Permanent`); Code Review Round 01 applied ✅ 2026-05-02
+- [x] **NFR check:** NFR-3.2 (indicator handle 100% validation; `IndicatorService.HandleCount()` matches `m_handle_count` literal); NFR-7.2 (0 external DLLs; grep `#import` clean for non-system imports) ✅ 2026-05-02
+- [x] **Deferred-AC drain:** `docs/state/deferred-ac-registry.md § Active` empty for Phase=P1 ✅ 2026-05-02
+- [x] **Rollback plan:** revert all P1 commits in reverse topo order (IMPL-046 spike artifact preserved as ADR addendum + `simulation/headless-tests/atomic_write_kill.ini` if added); MQL5/Files/PhoenicisNex/ sandbox cleared (no production data — local-only); folder structure reverts harmlessly. Named operator: Kritsana ✅ 2026-05-02
+- [x] **Docs updated:** `docs/state/overview.md` Phase 3I row updated; ADR-007 amended with spike result (Option A confirmed — Option B NOT activated); per-module handoff entries seeded ใน `docs/state/_session-handoff/IMPL-046-evidence-20260502.md`; commit annotated with phase gate close ✅ 2026-05-02
 
 ### Tasks
 
@@ -655,13 +655,13 @@ graph TD
 - **Description**: implement Save + Load per ADR-007 (Option A primary OR Option B fallback per IMPL-046 spike outcome); GV mirror sync per `02 § 6.1.1`; cycle-2 setter `SetPortfolioState` (called at OnInit step 5a). Methods: `Init(CAtomicFile*, CLogger*)`, `Load(EEAState&, string&) → bool`, `Save(EEAState, string) → bool`, `SyncToGlobalVariable()`, `StatePath()`, `StateDir()`. GV-fallback recovery sequence per Claim 01.11
 - **Input**: TD-02 §5.6 (StatePersistence skeleton), ADR-007 (full + spike result), `state-persistence-schema.yaml`, IMPL-046 outcome
 - **S-AC**:
-  - [ ] All methods declared + cycle-2 setter
-  - [ ] Save uses `m_atomic.WriteAtomic(...)` (Option A) OR Option B 3-file swap path
-  - [ ] Load validates schema_version: 1; fallback to GV mirror if state.json corrupt + Logger Warn `[ev=state_corrupt_starting_fresh]`
-  - [ ] `StatePath()` returns `MQL5/Files/PhoenicisNex/state/state.json` per ADR-007
+  - [x] All methods declared + cycle-2 setter — `Init/Load/Save/SyncToGlobalVariable/TryRecoverFromGV/StatePath/StateDir` + `SetPortfolioState` cycle-2 setter; all in `services/StatePersistence.mqh` (2026-05-03)
+  - [x] Save uses `m_atomic.WriteAtomic(...)` (Option A) — atomic temp-rename path per ADR-007 Option A (locked by IMPL-046 spike) (2026-05-03)
+  - [x] Load validates schema_version: 1; fallback to GV mirror if state.json corrupt + Logger Warn `[ev=state_corrupt_starting_fresh]` — implemented in `_ParseJson` + `TryRecoverFromGV` (2026-05-03)
+  - [x] `StatePath()` returns `MQL5/Files/PhoenicisNex/state/state.json` per ADR-007 — verified by check_b `[contract-roundtrip]` (2026-05-03)
 - **E-AC**:
-  - [ ] Save 100 times → kill mid-write 10 times → restart → state.json parses + matches last-saved checksum (GV mirror or temp file) `[boot-cold]` + `[contract-roundtrip]`
-  - [ ] Schema match: `state.json § slot_states` keys count == 17 (BR-1.1 invariant) after `RegisterAll` `[db-inspect]`
+  - [x] Save 100 times → kill mid-write 10 times → restart → state.json parses + matches last-saved checksum (GV mirror or temp file) `[boot-cold]` + `[contract-roundtrip]` — `Spike_StatePersistence` G3 `[ev=check_b_pass][ev=check_d_pass]` verdict=ALL_PASS (2026-05-03)
+  - [x] Schema match: `state.json § slot_states` keys count == 17 (BR-1.1 invariant) after `RegisterAll` `[db-inspect]` — `[ev=check_c_pass] slot_states key_count=17 ok` (2026-05-03)
 - **Deps**: IMPL-010 (AtomicFile), IMPL-011 (JsonWriter), IMPL-042 (Logger), IMPL-046 (spike outcome), IMPL-048 (schema lock)
 - **Risk**: medium (NFR-3.1 + NFR-3.3 100% restore)
 - **ADR**: ADR-007

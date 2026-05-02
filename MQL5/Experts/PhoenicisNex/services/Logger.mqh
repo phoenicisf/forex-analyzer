@@ -71,6 +71,9 @@ private:
    void              EscalateIfThresholdMet(string slot, string ev);
    int               FindOrEvictKey(string key);
    string            SeverityToString(ESeverity level) const;
+   //--- Deferred bridge — body defined in StatePersistence.mqh after full class def
+   //    (IMPL-047 §circular-dep pattern; forward-decl only here)
+   void              _SyncThrottle(string key);
 
 public:
    //--- Constructor — zero-init all arrays
@@ -198,13 +201,7 @@ void CLogger::Error(string slot, string ev, int magic, string msg)
       else
         {
          // Throttled — record suppressed count in StatePersistence if available
-         // TODO IMPL-047: m_state.IncrementLoggerThrottle(slot + ":" + ev);
-         // (CStatePersistence forward-decl only; method call added when IMPL-047 lands)
-         if(m_state != NULL)
-           {
-            // Placeholder: post-IMPL-047 wire here
-            (void)m_state;  // suppress unused-pointer warning until IMPL-047
-           }
+         _SyncThrottle(slot + ":" + ev);
         }
      }
 
@@ -326,12 +323,7 @@ void CLogger::EscalateIfThresholdMet(string slot, string ev)
                      slot, ev, m_consecutive_count[idx]);
       Alert(sec);
       Print("[ESCALATE] " + sec);
-      // TODO IMPL-047: m_state.IncrementLoggerThrottle(slot + ":" + ev);
-      if(m_state != NULL)
-        {
-         // Placeholder until IMPL-047 provides CStatePersistence full definition
-         (void)m_state;
-        }
+      _SyncThrottle(slot + ":" + ev);
       m_consecutive_count[idx] = 0;
      }
   }

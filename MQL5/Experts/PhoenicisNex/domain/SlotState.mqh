@@ -26,7 +26,8 @@
 //| `ticket_ids[]` and `ticket_max_profit_pip[]` are parallel       |
 //| arrays (BR-5.2 trailing per ticket). Always keep lengths equal. |
 //+------------------------------------------------------------------+
-struct SlotState {
+class SlotState {
+public:
    int           magic;                   // 200..219 per BR-1.1; denormalized in-memory field
    string        slot_ids[];              // ["C","D"] shared; single entry otherwise
    int           buy_count;
