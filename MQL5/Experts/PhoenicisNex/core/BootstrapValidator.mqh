@@ -482,13 +482,21 @@ bool CBootstrapValidator::ValidateInputs() const
 //+------------------------------------------------------------------+
 //| ValidateSymbol — FR-1.2 + BR-9.1 EURUSD whitelist               |
 //|                                                                  |
-//| TODO IMPL-016: implement EURUSD whitelist per FR-1.2 + BR-9.1.  |
-//|   Body: if (_Symbol != "EURUSD") { ErrorBypassThrottle(...); return false; }
-//|   IMPL-016 is XS — same file, serial-bundle after IMPL-015.     |
+//| Rejects any chart symbol other than "EURUSD". Called from        |
+//| Orchestrator OnInit Phase B (step 2) before any slot or service  |
+//| init. On rejection: ErrorBypassThrottle (ADR-011 boot bypass) +  |
+//| Alert() native popup (NFR-5.1) + return false → INIT_FAILED.    |
+//| (Implemented IMPL-016)                                           |
 //+------------------------------------------------------------------+
 bool CBootstrapValidator::ValidateSymbol() const
   {
-   // TODO IMPL-016: EURUSD whitelist per FR-1.2 + BR-9.1
+   if(_Symbol != "EURUSD")
+     {
+      string msg = StringFormat("symbol=%s expected=EURUSD (FR-1.2 + BR-9.1)", _Symbol);
+      m_logger.ErrorBypassThrottle("system", "symbol_not_whitelist", 0, msg);
+      Alert("PhoenicisNex requires EURUSD — current chart symbol is " + _Symbol);
+      return false;
+     }
    return true;
   }
 
