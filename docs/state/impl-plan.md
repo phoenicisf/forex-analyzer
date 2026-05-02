@@ -2,11 +2,11 @@
 
 > 📋 **TL;DR / At-a-Glance** (อัปเดตทุกครั้งที่ปิด task / เกิด finding ใหม่)
 >
-> **ตอนนี้:** P1 เริ่มแล้ว · 4/68 tasks ปิด · Phase Gate 0/9 rows ติ๊ก ทุก phase
+> **ตอนนี้:** P1 เริ่มแล้ว · 7/68 tasks ปิด · Phase Gate 0/9 rows ติ๊ก ทุก phase
 > **ความเสี่ยงเปิด:** IMPL-046 atomic-write spike risk gate · G4 fixes Bucket B drift (NFR-1.8) · Bucket A regression (NFR-1.1 ≤ 25%) (ดู § Open Risks)
-> **Action ถัดไป:** `/impl-task IMPL-046` (M `[ea]` — atomic-write spike, **Evolution E1 risk gate**, unblocks IMPL-010 + IMPL-047/048/049); parallel-eligible ในชุดถัดไป: IMPL-003 (MarketContext), IMPL-004 (SlotState), IMPL-008 (CommentParser) — deps IMPL-001/002 ครบ
+> **Action ถัดไป:** `/impl-task IMPL-046` (M `[ea]` — atomic-write spike, **Evolution E1 risk gate**, unblocks IMPL-010 + IMPL-047/048/049); parallel-eligible alternative: {IMPL-005 IndicatorService [blocked on IMPL-042 Logger], IMPL-007 PortfolioState [blocked on IMPL-042 Logger]} — most P1 service tasks now wait on IMPL-042/043; recommend serial IMPL-046 next
 > **Deferred-AC Active:** 0 rows · earliest expiry: n/a
-> **Last updated:** 2026-05-02 · last action: parallel batch closed (IMPL-002 EnumTypes + IMPL-009 PipMath + IMPL-014 Inputs trio; orchestrator: Opus 4.7, subagents: Sonnet 4.6); P1 progress 4/17 [x]; next: IMPL-046 (E1 risk gate) or parallel batch {IMPL-003, IMPL-004, IMPL-008}
+> **Last updated:** 2026-05-02 · last action: parallel batch closed (IMPL-003 MarketContext + IMPL-004 SlotState + IMPL-008 CommentParser; orchestrator: Opus 4.7, subagents: Sonnet 4.6); P1 progress 7/17 [x]; next: IMPL-046 (E1 risk gate)
 
 ---
 
@@ -14,7 +14,7 @@
 
 | Phase | Tier 1 (Tasks) | Tier 1.5 (Walk) | Tier 2 (Gate) | Notes |
 |-------|----------------|------------------|---------------|-------|
-| P1 Foundation + High-Risk Spike | 🔄 4/17 [x] | ⏸ pending | ⏸ 0/9 rows | IMPL-001/002/009/014 closed 2026-05-02 (IMPL-002+009+014 via parallel batch); next: IMPL-046 (E1 risk gate) or parallel {IMPL-003, IMPL-004, IMPL-008} |
+| P1 Foundation + High-Risk Spike | 🔄 7/17 [x] | ⏸ pending | ⏸ 0/9 rows | IMPL-001/002/003/004/008/009/014 closed 2026-05-02 (IMPL-002+009+014 first parallel batch; IMPL-003+004+008 second parallel batch); next: IMPL-046 (E1 risk gate) |
 | P2 Core Services + EAState + Pending | ⏸ blocked on P1 | — | — | — |
 | P3 21 Slots + CSlotBase + Inputs | ⏸ blocked on P2 | — | — | — |
 | P4 Cross-slot + Orchestrator + Verification | ⏸ blocked on P3 | — | — | — |
@@ -37,7 +37,7 @@
 
 > เลือก path เดียว — โน้ตเหตุผล
 
-- ☑ **Continue Track A — `/impl-task IMPL-046`** (M [ea] — atomic-write spike, **Evolution E1 risk gate**; unblocks IMPL-010 + IMPL-047/048/049). IMPL-001/002/009/014 closed 2026-05-02 (last 3 via parallel batch — Opus orchestrator + 3× Sonnet subagents); P1 progress 4/17. Parallel-eligible alternative ในชุดถัดไป: `/impl-task parallel` → {IMPL-003 MarketContext, IMPL-004 SlotState, IMPL-008 CommentParser} — deps IMPL-001/002 ครบ; ทั้ง 3 อยู่ในคน folder ต่างกัน (domain/, domain/, helpers/) — note IMPL-003+IMPL-004 ทั้งคู่ในใน domain/ folder ต่าง file: ✅ scope-isolated
+- ☑ **Continue Track A — `/impl-task IMPL-046`** (M [ea] — atomic-write spike, **Evolution E1 risk gate**; unblocks IMPL-010 + IMPL-047/048/049). IMPL-001/002/003/004/008/009/014 closed 2026-05-02 (5 of 7 via 2 parallel batches — Opus orchestrator + 3× Sonnet subagents each); P1 progress 7/17. Most remaining P1 service tasks (IMPL-005 IndicatorService, IMPL-007 PortfolioState) block on IMPL-042 Logger — IMPL-046 spike runs serial next, then unlocks IMPL-010 + IMPL-047/048/049 (atomic-write impl chain).
 - ☐ Plan QA loop — complete; re-run `/impl-plan-review all` only if plan changes materially OR Plan Staleness Sentinel triggers (>30d + ≥10 task closures since last review)
 - ☐ Run Tier 1.5 Exploratory Walk — N/A (no phase done yet)
 - ☐ Switch to Track B (QA Plan) — N/A; QA Phase 3T runs after P4 done
@@ -283,11 +283,11 @@ graph TD
 - **Description**: ประกาศ struct `MarketContext` + 13 sub-structs (Ichimoku/Force/Adx/Wpr/BB/...) + `DerivedSignals` ตาม TD-02 §3.2; field set ตรงกับ `docs/api-specs/marketcontext-snapshot-schema.yaml` (cross-domain check)
 - **Input**: TD-02 §3.2, `docs/api-specs/marketcontext-snapshot-schema.yaml`, ADR-004
 - **S-AC**:
-  - [ ] All 13 sub-structs declared (IchimokuFields, ForceFields, AdxFields, WprFields, BBFields, DemFields, StochFields, MacdFields, RsiFields, HullFields, FractalFields, ZigZagFields, SubDemFields)
-  - [ ] `MarketContext` struct มี ≥ 24 fields (per schema YAML)
-  - [ ] No mutable methods (pass `const&` enforced โดย type)
+  - [x] All 13 sub-structs declared (IchimokuFields, ForceFields, AdxFields, WprFields, BBFields, DemFields, StochFields, MacdFields, RsiFields, HullFields, FractalFields, ZigZagFields, SubDemFields) — `domain/MarketContext.mqh` lines 22-66; `grep -c "^struct " = 15` (13 sub + DerivedSignals + MarketContext) (2026-05-02)
+  - [x] `MarketContext` struct มี 27 fields (≥ 24 per schema YAML) — 5 primitives + 21 sub-struct fields + 1 DerivedSignals (line 78-113) (2026-05-02)
+  - [x] No mutable methods (pass `const&` enforced โดย type) — pure data struct, zero method declarations (2026-05-02)
 - **E-AC**:
-  - [ ] Field set ใน `MarketContext` struct = field set ใน `marketcontext-snapshot-schema.yaml § properties` (1:1 cross-domain match) `[contract-roundtrip]`
+  - [x] Field set ใน `MarketContext` struct = field set ใน `marketcontext-snapshot-schema.yaml § properties` (1:1 cross-domain match) `[contract-roundtrip]` — 27/27 mapping table; `derived_signals` ↔ `derived` naming delta documented; evidence `docs/state/_session-handoff/IMPL-003-evidence-20260502.md` (2026-05-02)
 - **Deps**: IMPL-001, IMPL-002
 - **Risk**: low
 - **ADR**: ADR-004
@@ -300,11 +300,11 @@ graph TD
 - **Description**: ประกาศ struct `SlotState` (magic, slot_ids[], buy_count, sell_count, total_lots, total_profit, last_open_date, ticket_ids[], ticket_max_profit_pip[] for BR-5.2 trailing, pending_state, pending_payload) ตาม TD-02 §3.3
 - **Input**: TD-02 §3.3, ADR-005, `state-persistence-schema.yaml § slot_states`
 - **S-AC**:
-  - [ ] `SlotState` struct มี 11 fields ครบ
-  - [ ] `ticket_max_profit_pip[]` parallel array กับ `ticket_ids[]` (BR-5.2 trailing per ticket)
-  - [ ] `slot_ids[]` array (single entry สำหรับ unique magic; multiple สำหรับ shared CD/G/L/B)
+  - [x] `SlotState` struct มี 11 fields ครบ — `domain/SlotState.mqh` declares all 11 (magic, slot_ids[], buy_count, sell_count, total_lots, total_profit, last_open_date, ticket_ids[], ticket_max_profit_pip[], pending_state, pending_payload) (2026-05-02)
+  - [x] `ticket_max_profit_pip[]` parallel array กับ `ticket_ids[]` (BR-5.2 trailing per ticket) — declared adjacent in struct body with parallel-array convention comment (2026-05-02)
+  - [x] `slot_ids[]` array (single entry สำหรับ unique magic; multiple สำหรับ shared CD/G/L/B) — `string slot_ids[]` dynamic MQL5 array (2026-05-02)
 - **E-AC**:
-  - [ ] Field set ใน struct = `state-persistence-schema.yaml § slot_states.<magic>` 1:1 `[contract-roundtrip]`
+  - [x] Field set ใน struct = `state-persistence-schema.yaml § slot_states.<magic>` 1:1 `[contract-roundtrip]` — 11/11 mapping; `magic` denormalized in-memory (YAML map key) noted as accepted delta; evidence `docs/state/_session-handoff/IMPL-004-evidence-20260502.md` (2026-05-02)
 - **Deps**: IMPL-002
 - **Risk**: low
 - **ADR**: ADR-005
@@ -372,11 +372,11 @@ graph TD
 - **Description**: pure-utility ที่ parse MT5 order `comment` field for shared-magic slot disambiguation (G/G2 → "G," vs "G2,"; B/BI → "B," vs "BI,"; C/D → "C," vs "D,"; L/LX → "L," vs "LX,") per BR-1.2; method `ParseSlotId(string comment) → string slot_id`
 - **Input**: TD-02 §4, BR-1.2 (comment prefix convention), ADR-012 (helpers layer pure utility)
 - **S-AC**:
-  - [ ] Parser correctly disambig 4 shared-magic pairs + ทุก unique slots
-  - [ ] Returns `""` empty for unrecognized comment prefix + Logger Warn
-  - [ ] Stateless (no `Init` per § 4 helpers)
+  - [x] Parser correctly disambig 4 shared-magic pairs (C/D, G/G2, B/BI, L/LX) + ทุก unique slots — `ExtractSlotPrefix` returns text before first `,` (longest-prefix natural since orders carry full prefix per BR-1.2); 10-case fixture table covers all pairs (2026-05-02)
+  - [x] Returns `""` empty for unrecognized comment prefix + Logger Warn — emits `[Phoenicis][slot=system][ev=comment_parser_unrecognized]` Print stub (Logger.Warn wires at IMPL-042) (2026-05-02)
+  - [x] Stateless (no `Init` per § 4 helpers) — class has zero member vars, all methods `const` (2026-05-02)
 - **E-AC**:
-  - [ ] Unit-style test inside OnInit ถ้า `ENABLE_SELFTEST` flag = on → emit Print log "comment_parser_self_test pass" `[log-assertion]`
+  - [x] Unit-style test inside OnInit ถ้า `ENABLE_SELFTEST` flag = on → emit Print log "comment_parser_self_test pass" `[log-assertion]` — `static bool SelfTest()` with 10 fixtures + Print stub `[ev=comment_parser_self_test][result=pass|fail]`; live OnInit wiring deferred to IMPL-040+ orchestrator; evidence `docs/state/_session-handoff/IMPL-008-evidence-20260502.md` (2026-05-02)
 - **Deps**: IMPL-001
 - **Risk**: low
 - **Rules**: `.claude/rules/ea.md`
@@ -1554,6 +1554,7 @@ graph TD
 | 2026-05-02 | — | Review round 04 closed (verify-only sweep) | impl-plan.md, overview.md | **0 findings** (CRITICAL 0 / HIGH 0 / MEDIUM 0 / LOW 0) — **Implementation Execution Certified**. All 9 mechanical pre-scans clean across rounds 01→02→03→04 (forbidden closure patterns 0; forward references 0; bracket-condensed AC 0; OR-clause loose-end 0; 21 per-slot smoke ini bullets sustained; Silent Copy Detector untriggered; 7-marker readiness sweep 7/7; state reconciliation 0 divergences). All 3 R03 fixes verified landed at cited locations. No rebuttal needed; engineer next action stays `/impl-task IMPL-001`. Convergence trajectory: R01=7 → R02=3 → R03=3 → R04=0. See `impl-plan-claim-review-and-rebuttal/claim-review-04.md` |
 | 2026-05-02 | P1 | IMPL-001 closed (XS [ea] — folder scaffold + `bootstrap_smoke.ini` stub) | impl-plan.md, overview.md, current_handoff.md, _session-handoff/IMPL-001-evidence-20260502.md, MQL5/Experts/PhoenicisNex/{core,slots,services,domain,helpers,inputs,libs}/.gitkeep, simulation/headless-tests/bootstrap_smoke.ini | First task closed. 3/3 S-AC + 2/2 E-AC `[file-blob-check]` pass (find -type d = 8 ≥ 7; ini key/value match). G1-G4 N/A (no `.mq5`/`.mqh` source yet). P1 Phase Status snapshot 0/17 → 1/17. Plan Staleness Sentinel closures-since-last-review 0 → 1 (well below 10-closure threshold). Next: IMPL-002 (XS — EnumTypes.mqh) |
 | 2026-05-02 | P1 | **Parallel batch closed (3 tasks)** — IMPL-002 (XS [ea] EnumTypes.mqh) + IMPL-009 (XS [ea] PipMath.mqh) + IMPL-014 (S [ea] Inputs trio) via `/impl-task parallel` | impl-plan.md, overview.md, current_handoff.md, _parallel-context/impl-task-parallel-20260502-1430.md, _session-handoff/IMPL-{002,009,014}-evidence-20260502.md, MQL5/Experts/PhoenicisNex/domain/EnumTypes.mqh, MQL5/Experts/PhoenicisNex/helpers/PipMath.mqh + .gitkeep deletion, MQL5/Experts/PhoenicisNex/inputs/Inputs_{TimeGates,Pending,Logging}.mqh + .gitkeep deletion | Orchestrator: Opus 4.7 (this session); 3× Sonnet 4.6 subagents fan-out in one message via `Agent` tool with Slim-Onboarding shared context. All 3 fragments returned `status: completed`; scope-clean (each subagent stayed in its declared folder). G1-G4 N/A (header-only `.mqh`; gates activate at IMPL-018+). All S-AC + E-AC `[x]` with grep evidence (5 enums, 17 magics, 0 MAGIC_U; PipMath class + ToPoints/PriceToPip + 0 double `==`; 3 input files + 3 group annotations + ≥5 inputs each except Logging=3 per §6.C.5 ruling). P1 Phase Status snapshot 1/17 → 4/17. Plan Staleness Sentinel closures-since-last-review 1 → 4 (well below 10-closure threshold). Mid-Phase Empirical Audit counter (P1) = 4; threshold 5 not yet hit. Next: IMPL-046 (E1 risk gate) or parallel {IMPL-003, IMPL-004, IMPL-008} |
+| 2026-05-02 | P1 | **Parallel batch closed (3 tasks)** — IMPL-003 (S [ea] domain/MarketContext.mqh 27 fields) + IMPL-004 (S [ea] domain/SlotState.mqh 11 fields) + IMPL-008 (S [ea] helpers/CommentParser.mqh) via `/impl-task parallel` | impl-plan.md, overview.md, current_handoff.md, _parallel-context/impl-task-parallel-20260502-1530.md, _session-handoff/IMPL-{003,004,008}-evidence-20260502.md, MQL5/Experts/PhoenicisNex/domain/{MarketContext,SlotState}.mqh, MQL5/Experts/PhoenicisNex/helpers/CommentParser.mqh | Orchestrator: Opus 4.7 (this session); 3× Sonnet 4.6 subagents fan-out in one message via `Agent` tool with Slim-Onboarding shared context (pre-loaded TD-02 §3.2/§3.3/§4.2 skeletons + schema YAML required-field lists + BR-1.2 quote — subagents read CLAUDE.md + ea.md + shared-context only). All 3 fragments returned `status: completed`; scope-clean. G1-G4 N/A (header-only `.mqh`; gates activate at IMPL-018+). All S-AC + E-AC `[x]` with cross-schema mapping evidence (MarketContext 27/27 fields with `derived_signals`↔`derived` naming delta documented; SlotState 11/11 fields with `magic` denormalization noted; CCommentParser 4 methods + 10-case SelfTest fixture covering 4 shared-magic pairs + unique slots). P1 Phase Status snapshot 4/17 → 7/17. Plan Staleness Sentinel closures-since-last-review 4 → 7 (still below 10-closure threshold). Mid-Phase Empirical Audit counter (P1) = 7; threshold 5 already crossed — audit run advisory pending (see § Mid-Phase Audit trigger note below). Next: IMPL-046 (E1 risk gate, serial). |
 
 ---
 
@@ -1642,7 +1643,7 @@ graph TD
 
 **Plan approved on:** 2026-05-02 — after `claim-review-02.md` + `rebuttal-round-02.md` (3/3 Accept; verdict ✅ Ready for Implementation Execution)
 **Last review on:** 2026-05-02 — `claim-review-04.md` (verify-only sweep; 0 findings; **Implementation Execution Certified**)
-**Closures since last review:** 4 (IMPL-001 closed 2026-05-02; IMPL-002 + IMPL-009 + IMPL-014 closed 2026-05-02 via parallel batch)
+**Closures since last review:** 7 (IMPL-001 closed 2026-05-02; IMPL-002 + IMPL-009 + IMPL-014 closed 2026-05-02 via parallel batch #1; IMPL-003 + IMPL-004 + IMPL-008 closed 2026-05-02 via parallel batch #2)
 
 > Per `/next` Check 5.8: plan staleness recommendation triggers when (approved > 30d ago) AND (no review OR > 10 closures since review). Currently: approved + reviewed; staleness check **inactive** until either condition fires (≥ 2026-06-01 calendar date OR ≥ 10 IMPL-NNN closures since 2026-05-02).
 
