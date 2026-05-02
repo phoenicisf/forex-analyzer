@@ -96,9 +96,16 @@ public:
 //+------------------------------------------------------------------+
 void CPortfolioState::Init(CLogger *logger)
   {
+   // Defensive: if Init() is invoked a second time (MT5 re-init on input
+   // parameter change, or CleanupPartialInit → re-attempt), the prior round
+   // left 17 heap-allocated SlotState* entries in m_map. m_map.Clear()
+   // alone drops references → leak (Finding 01.5 / ADR-005 lifecycle pairing).
+   if(m_magic_count > 0)
+      ReleaseAll();   // delete each SlotState* + Clear() map + reset count
+
    m_logger      = logger;
    m_magic_count = 0;
-   m_map.Clear();
+   m_map.Clear();    // no-op if ReleaseAll ran; safe on first init
 
    // Zero-init magic list (populated by RegisterAll)
    ArrayInitialize(m_magic_list, 0);
