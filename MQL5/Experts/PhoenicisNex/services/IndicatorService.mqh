@@ -12,7 +12,7 @@
 //|  • CreateHandles() ≥ 24 handles; INIT_FAILED on first invalid     |
 //|  • AnyHandleInvalid() runtime fail-fast check                     |
 //|  • Refresh() invalidates scan cache on new H4 bar (FR-8.1)       |
-//|  • CachedScan() 10-entry LRU scan cache                          |
+//|  • CachedScan() 10-entry FIFO scan cache (insertion-order evict) |
 //|  • ReleaseHandles() OnDeinit cleanup                              |
 //+------------------------------------------------------------------+
 #ifndef PHOENICISNEX_SERVICES_INDICATORSERVICE_MQH
@@ -63,6 +63,9 @@ private:
    int               m_last_bar_index_h4;
 
    //--- CachedScan storage (key→value, up to 10 entries — FR-8.1 300-bar scan cache)
+   //    Eviction policy: FIFO (insertion-order). Cache hits do NOT refresh
+   //    position → frequently-used key may be evicted before rare-but-recent.
+   //    True LRU upgrade tracked at IMPL-006-cachedscan (see Finding 01.6).
    string            m_scan_keys[10];
    double            m_scan_values[10];
    int               m_scan_count;
@@ -228,8 +231,10 @@ bool CIndicatorService::CreateHandles()
 
    //--- ZigZag (H4 + M5) — CodeWiki §1.4 ZigZag reference
    //    TODO IMPL-005-tune: verify ZigZag ExtDepth/Deviation/Backstep params
-   m_handles[IDX_ZIGZAG_H4] = iCustom(_Symbol, PERIOD_H4, "ZigZag", 12, 5, 3);
-   m_handles[IDX_ZIGZAG_M5] = iCustom(_Symbol, PERIOD_M5,  "ZigZag", 12, 5, 3);
+   // MT5 ships the bundled ZigZag at MQL5/Indicators/Examples/ZigZag.ex5
+   // (escape backslash for the iCustom path string).
+   m_handles[IDX_ZIGZAG_H4] = iCustom(_Symbol, PERIOD_H4, "Examples\\ZigZag", 12, 5, 3);
+   m_handles[IDX_ZIGZAG_M5] = iCustom(_Symbol, PERIOD_M5,  "Examples\\ZigZag", 12, 5, 3);
 
    //--- MA Fast + Slow (H4) — trend filter (CodeWiki §1.4 MA filter)
    //    TODO IMPL-005-tune: verify MA periods and applied price
@@ -256,10 +261,21 @@ bool CIndicatorService::CreateHandles()
      {
       if(m_handles[i] == INVALID_HANDLE)
         {
-         // No silent failure (security.md + NFR-5.1)
-         m_logger.Error("indicators", "invalid_handle", i,
+         // No silent failure (security.md + NFR-5.1) — boot-time bypass per ADR-011
+         // Reason: throttled Logger.Error suppresses Alert on second invalid handle
+         // within same boot or post-CleanupPartialInit re-attach (Finding 01.4).
+         m_logger.ErrorBypassThrottle("indicators", "invalid_handle", i,
                         StringFormat("handle[%d] == INVALID_HANDLE after iXxx() call; "
                                      "symbol=%s — returning false → INIT_FAILED", i, _Symbol));
+         // Release any handles that DID succeed before bailing (Finding 01.1):
+         // m_handle_count is still 0 here, so orchestrator's ReleaseHandles()
+         // would loop 0..0 → leak everything. Do the cleanup inline.
+         for(int j = 0; j < total; j++)
+            if(j != i && m_handles[j] != INVALID_HANDLE)
+              {
+               IndicatorRelease(m_handles[j]);
+               m_handles[j] = INVALID_HANDLE;
+              }
          return false;  // orchestrator → CleanupPartialInit → INIT_FAILED (TD-02 §7.4.1)
         }
      }
@@ -339,36 +355,16 @@ double CIndicatorService::CachedScan(string key, ScanFnType scan_fn)
          return m_scan_values[i];  // cache hit — no recompute (FR-8.1 300-bar scan savings)
      }
 
-   // Step 2/3: cache miss — invoke scan_fn to compute value
-   // TODO IMPL-005-cachedscan: full scan_fn invocation per FR-8.1
-   //   Requires handle index known per key — MCB will pass IDX_* via key convention.
-   //   For now stub: call scan_fn with handle[0] depth=300 as placeholder.
-   double computed = 0.0;
-   if(scan_fn != NULL && m_handle_count > 0)
-      computed = scan_fn(m_handles[0], 300);  // TODO IMPL-005-cachedscan: resolve idx from key
-
-   // Insert into cache
-   if(m_scan_count < 10)
-     {
-      // Cache has free slots — append
-      m_scan_keys[m_scan_count]   = key;
-      m_scan_values[m_scan_count] = computed;
-      m_scan_count++;
-     }
-   else
-     {
-      // Cache full — evict oldest (index 0) by rotating left
-      for(int i = 0; i < 9; i++)
-        {
-         m_scan_keys[i]   = m_scan_keys[i + 1];
-         m_scan_values[i] = m_scan_values[i + 1];
-        }
-      m_scan_keys[9]   = key;
-      m_scan_values[9] = computed;
-      // m_scan_count stays at 10
-     }
-
-   return computed;
+   // Step 2/3: cache miss — fail-loud until IDX↔key mapping is wired (Finding 01.7).
+   //   Stub had called scan_fn with m_handles[0] regardless of key → silent
+   //   wrong-result (Ichimoku H4 returned for Force/ZigZag scans, etc.).
+   //   Until IMPL-006 (MCB) defines the key→IDX convention, refuse to compute.
+   //   No insert into cache — keep cache valid for the day the mapping lands.
+   if(m_logger != NULL)
+      m_logger.Warn("indicators", "cached_scan_unwired", 0,
+                    "CachedScan called before IDX-mapping wired; key=" + key + " — returning 0.0");
+   (void)scan_fn;
+   return 0.0;
   }
 
 //+------------------------------------------------------------------+
