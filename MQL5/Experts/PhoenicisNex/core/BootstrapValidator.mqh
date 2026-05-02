@@ -86,16 +86,18 @@ public:
 //+------------------------------------------------------------------+
 //| ValidateInputs — FR-1.4 range checks (≥30 fail-fast guards)     |
 //|                                                                  |
-//| Guard count: 43 individual if-blocks (audit in evidence file).   |
+//| Guard count: 39 individual if-blocks (matches body Guards 1..39).|
 //|                                                                  |
 //| Input sources:                                                    |
 //|  Inputs_General.mqh  — 21 inputs; 16 validatable (5 bool/enum   |
-//|                         skipped); yields 21 if-blocks            |
+//|                         skipped); yields 17 if-blocks (incl.    |
+//|                         relational LADX floor < threshold)      |
 //|  Inputs_TimeGates.mqh— 11 inputs; all int, yields 11 if-blocks  |
 //|  Inputs_Pending.mqh  — 8  inputs; all int, yields 8 if-blocks   |
 //|  Inputs_Logging.mqh  — 3  inputs; 1 bool skipped; yields 3 if-  |
 //|                         blocks (LogLevel low, LogLevel high,     |
 //|                         EscalationN)                             |
+//|                         Total: 17 + 11 + 8 + 3 = 39              |
 //|                                                                  |
 //| Fail-fast: return false on the first violated guard.             |
 //| No batch collection of all errors (per shared-context §6.C.2).  |

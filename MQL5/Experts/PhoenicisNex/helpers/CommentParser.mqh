@@ -17,10 +17,13 @@
 //|    I, P, T, S                                                    |
 //|                                                                  |
 //|  Shared-magic disambiguation pairs (4 pairs, 8 slots):          |
-//|    C / D  (magic 200) — D is force-pending wrapper of C          |
-//|    G / G2 (magic 202) — G2 prefix MUST be tested before G       |
-//|    B / BI (magic 216) — BI prefix MUST be tested before B       |
-//|    L / LX (magic 213) — LX prefix MUST be tested before L       |
+//|    C / D  (magic 200, MAGIC_CD) — D is force-pending wrapper of C|
+//|    G / G2 (magic 208, MAGIC_G ) — G2 prefix MUST be tested before G|
+//|    B / BI (magic 214, MAGIC_B ) — BI prefix MUST be tested before B|
+//|    L / LX (magic 211, MAGIC_L ) — LX prefix MUST be tested before L|
+//|                                                                  |
+//|  Canonical magic source: domain/EnumTypes.mqh — do NOT restate;  |
+//|  this header documents only the prefix-disambiguation contract.  |
 //|                                                                  |
 //| BR-1.2 Disambiguation Rule: longest-prefix match                 |
 //|   ExtractSlotPrefix looks for "," delimiter and returns the      |
