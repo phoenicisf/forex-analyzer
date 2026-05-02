@@ -1,0 +1,150 @@
+{
+  "schema_version": "1",
+  "generated_at": "2026-05-02",
+  "generated_by": "/project-init",
+  "mode": "fresh",
+  "td_source": {
+    "commit": "6ebf30379ae5dc6998e0cb3aefb390e6652ab3b2",
+    "files": [
+      "docs/technical-design/02-backend-design.md",
+      "docs/technical-design/03-frontend-design.md",
+      "docs/technical-design/04-database-design.md"
+    ],
+    "adrs": [
+      "ADR-001",
+      "ADR-002",
+      "ADR-003",
+      "ADR-004",
+      "ADR-005",
+      "ADR-006",
+      "ADR-007",
+      "ADR-008",
+      "ADR-009",
+      "ADR-010",
+      "ADR-011",
+      "ADR-012"
+    ],
+    "api_specs": [
+      "docs/api-specs/marketcontext-snapshot-schema.yaml",
+      "docs/api-specs/slot-abstraction-contract.yaml",
+      "docs/api-specs/state-persistence-schema.yaml",
+      "docs/api-specs/trade-journal-schema.yaml"
+    ]
+  },
+  "project": {
+    "name": "PhoenicisNex",
+    "type": "MetaTrader 5 Expert Advisor (EA) — single-instrument retail Forex EA (EURUSD H4)",
+    "status": "MVP",
+    "mission": "Greenfield rewrite of PhoenicisN2.10_stable.mq5 (22k LOC MQL5 EA) to fix maintainability (≥80 inputs, slot-per-file ≤5k LOC), add observability (JSON-Lines trade journal), fix 2 critical safety bugs (BI naked SL + ExtraTakeProfit_J magic), preserve behavioral parity (≤25% Net Profit deviation on 5-yr EURUSD H4 baseline)."
+  },
+  "services": [
+    {
+      "name": "ea",
+      "language": "MQL5",
+      "framework": "MetaTrader 5 platform (intra-MT5 modular monolith per ADR-001)",
+      "test_framework": "MT5 Strategy Tester headless (terminal64.exe /config:tester.ini per mt5-headless-backtest skill); compile via MetaEditor64.exe /compile per mql-developer skill; log review via mt5-log-reader skill",
+      "patterns": [
+        "Modular Monolith intra-MT5 (ADR-001)",
+        "Slot abstraction via OO inheritance (ADR-002)",
+        "Centralized indicator service (ADR-003)",
+        "MarketContext immutable snapshot (ADR-004)",
+        "PortfolioState via CHashMap (ADR-005)",
+        "Composition Root + Constructor Injection",
+        "Repository Pattern",
+        "2-phase init for circular dependencies"
+      ],
+      "naming_conventions": "m_<member>, g_<global>, Inp<SlotId><Param>; group=\"Slot <X>\" annotation; 5-layer (core/slots/services/domain/helpers per ADR-012); E<Name> enum prefix",
+      "response_envelope": "N/A (intra-process contracts via JSON Schema in docs/api-specs/*.yaml — slot-abstraction-contract.yaml, marketcontext-snapshot-schema.yaml, state-persistence-schema.yaml, trade-journal-schema.yaml)",
+      "entry_command": "MetaEditor compile → drop .ex5 + .mq5 + libs into MT5 Experts/PhoenicisNex/ → attach to EURUSD H4 chart",
+      "test_command": "G1: \"$METAEDITOR\" /compile:\"MQL5/Experts/PhoenicisNex/PhoenicisNex.mq5\" /log; G3: bash .agents/skills/mt5-headless-backtest/scripts/run_headless_backtest.sh simulation/headless-tests/<task>.ini /tmp/run.txt"
+    }
+  ],
+  "database": {
+    "engine": "File-based (no RDBMS per ADR-001 + NFR-7.2 + C-12)",
+    "version": "n/a",
+    "orm": "n/a — direct MQL5 FileOpen/FileWrite + helpers/AtomicFile.mqh",
+    "migration_tool": "n/a (Phase 2 SQLite migration plan per ADR-006/007 § Revisit-when)",
+    "storage_artifacts": [
+      "MQL5/Files/PhoenicisNex/state/state.json (atomic write per ADR-007 — 35 fields / 11 sub-objects, schema state-persistence-schema.yaml)",
+      "MQL5/Files/PhoenicisNex/journal/{live,tester}/journal-YYYYMM.jsonl (JSON-Lines per ADR-006 — 15 required + 8 optional, schema trade-journal-schema.yaml)",
+      "MT5 GlobalVariable mirror (5 entries — subset of state.watch_profits per TD-02 §6.1.1 sync rule)"
+    ]
+  },
+  "cross_cutting": {
+    "auth_flow": "N/A — solo operator, no network listener; symbol whitelist in OnInit (_Symbol == \"EURUSD\") per NFR-5.3 + FR-1.2",
+    "cache": "none",
+    "messaging": "none",
+    "observability": "Tagged structured logger (ADR-011) — sinks: MT5 native Print() + Alert() only (Phase 1). Format: [slot=<X>][ev=<E>][magic=<N>] with ms-precision timestamps + LRU eviction + N-consecutive escalation per ADR-011",
+    "containerization": {
+      "engine": "none",
+      "source": "inferred (heuristic: single intra-MT5-process EA with no managed/serverless host — matches \"Otherwise → none\" rule)",
+      "rationale": "PhoenicisNex runs as MQL5 EA inside MT5 client process on user's Windows machine; NFR-7.2 = 0 external DLLs + C-12 = \"วาง .ex5 แล้วรัน\" preclude any container runtime"
+    }
+  },
+  "api_conventions": {
+    "style": "N/A (no external HTTP/REST/GraphQL/gRPC — all contracts intra-process)",
+    "intra_process_contracts": "4 JSON Schema YAML in docs/api-specs/ (slot-abstraction-contract.yaml, marketcontext-snapshot-schema.yaml, state-persistence-schema.yaml, trade-journal-schema.yaml)",
+    "versioning": "N/A (single binary deployment)"
+  },
+  "ux_conventions": {
+    "status": "N/A — UX phase officially skipped 2026-05-02 (MT5 native UI only per TD-03 §1)",
+    "operator_surfaces": [
+      "MT5 input dialog (auto-gen from inputs/Inputs_*.mqh)",
+      "MT5 Experts log tab (Print sink)",
+      "MT5 Alert popup (halt + critical events)",
+      "MT5 Strategy Tester report",
+      "MT5 GlobalVariable inspector (Tools menu)",
+      "state.json (cat / VS Code)",
+      "journal/*.jsonl (jq / Notepad++)"
+    ]
+  },
+  "ide_targets": ["claude", "windsurf", "trae", "antigravity", "codex"],
+  "outputs": {
+    "root": ["CLAUDE.md", "AGENTS.md"],
+    "claude_rules": [
+      ".claude/rules/ea.md",
+      ".claude/rules/security.md",
+      ".claude/rules/testing.md",
+      ".claude/rules/workflow.md"
+    ],
+    "windsurf_rules": [
+      ".windsurf/rules/ea.md",
+      ".windsurf/rules/security.md",
+      ".windsurf/rules/testing.md",
+      ".windsurf/rules/workflow.md"
+    ],
+    "trae_rules": [
+      ".trae/rules/ea.md",
+      ".trae/rules/security.md",
+      ".trae/rules/testing.md",
+      ".trae/rules/workflow.md"
+    ],
+    "codex_rules": [
+      ".codex/rules/ea.md",
+      ".codex/rules/security.md",
+      ".codex/rules/testing.md",
+      ".codex/rules/workflow.md"
+    ],
+    "antigravity": "AGENTS.md (root, slim pointer)"
+  },
+  "local_overrides_preserved": [],
+  "backups_created": [],
+  "user_remarks": [
+    {
+      "date": "2026-05-02",
+      "remark": "Developer เวลาเขียน EA เมื่อทำเสร็จแล้วจะต้องมีการ test/compile ด้วย หากจะทำ Backtest ให้ใช้ headless mode และสามารถตรวจสอบ log ได้ ตาม Skill mt5-headless-backtest, mql-developer, mt5-log-reader",
+      "applied_to": [
+        "CLAUDE.md §6 — 4-gate Definition of Done (G1 Compile / G2 Smoke / G3 Headless Backtest / G4 Log Review) embedded as mandatory rule",
+        "AGENTS.md — Critical Workflow Note section",
+        ".claude/rules/testing.md — full 4-gate Definition of Done + concrete commands",
+        ".claude/rules/ea.md § Testing — per-task workflow summary",
+        ".claude/rules/workflow.md § Cold-Bootstrap Recipe — 7-step bootstrap from cold + teardown"
+      ]
+    }
+  ],
+  "skipped": {
+    "docker_md": "containerization.engine == none (single intra-MT5 process; NFR-7.2 = 0 external DLLs)",
+    "figma_conventions_md": "UX phase officially skipped (TD-03 N/A)",
+    "empirical_verification_scaffold_generic": "no HTTP/UI/worker/container surface; project's equivalent (headless backtest + Tester log + journal) baked into .claude/rules/workflow.md cold-bootstrap section per user remark"
+  }
+}
