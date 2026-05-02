@@ -4,9 +4,9 @@
 >
 > **ตอนนี้:** ก่อน P1 เริ่ม · 0/68 tasks ปิด · Phase Gate 0/9 rows ติ๊ก ทุก phase
 > **ความเสี่ยงเปิด:** IMPL-046 atomic-write spike risk gate · G4 fixes Bucket B drift (NFR-1.8) · Bucket A regression (NFR-1.1 ≤ 25%) (ดู § Open Risks)
-> **Action ถัดไป:** `/impl-task IMPL-001` (XS `[ea]` — folder structure + `bootstrap_smoke.ini` scaffold); IMPL-046 (atomic-write spike) parallelizable ASAP after IMPL-001+IMPL-010 land
+> **Action ถัดไป:** `/impl-task IMPL-002` (XS `[ea]` — `domain/EnumTypes.mqh` shared enums + 17 magic constants); IMPL-046 (atomic-write spike) parallelizable ASAP after IMPL-010 lands
 > **Deferred-AC Active:** 0 rows · earliest expiry: n/a
-> **Last updated:** 2026-05-02 · last action: review-round-04 closed (0 findings — verify-only sweep; **Implementation Execution Certified**); plan approved + ready for `/impl-task IMPL-001`
+> **Last updated:** 2026-05-02 · last action: IMPL-001 closed (folder scaffold + `bootstrap_smoke.ini` stub; 3/3 S-AC + 2/2 E-AC `[file-blob-check]` pass); P1 progress 1/17 [x]; next: IMPL-002
 
 ---
 
@@ -14,7 +14,7 @@
 
 | Phase | Tier 1 (Tasks) | Tier 1.5 (Walk) | Tier 2 (Gate) | Notes |
 |-------|----------------|------------------|---------------|-------|
-| P1 Foundation + High-Risk Spike | ⏸ 0/17 [x] | ⏸ pending | ⏸ 0/9 rows | Ready to start; first task: IMPL-001 |
+| P1 Foundation + High-Risk Spike | 🔄 1/17 [x] | ⏸ pending | ⏸ 0/9 rows | IMPL-001 closed 2026-05-02; next: IMPL-002 (XS) or IMPL-009 / IMPL-010 / IMPL-046 (parallel-eligible) |
 | P2 Core Services + EAState + Pending | ⏸ blocked on P1 | — | — | — |
 | P3 21 Slots + CSlotBase + Inputs | ⏸ blocked on P2 | — | — | — |
 | P4 Cross-slot + Orchestrator + Verification | ⏸ blocked on P3 | — | — | — |
@@ -37,7 +37,7 @@
 
 > เลือก path เดียว — โน้ตเหตุผล
 
-- ☑ **Continue Track A — `/impl-task IMPL-001`** (XS [ea] — folder structure + `bootstrap_smoke.ini` scaffold). Plan QA cycle ✅ complete after rebuttal rounds 01→02→03 (verdict: Ready for Implementation Execution per `claim-review-03.md` + `rebuttal-round-03.md`). IMPL-046 (atomic write spike — Evolution E1 risk gate) parallelizable ASAP after IMPL-001+IMPL-010 land
+- ☑ **Continue Track A — `/impl-task IMPL-002`** (XS [ea] — `domain/EnumTypes.mqh` shared enums + 17 magic constants per BR-1.1). IMPL-001 closed 2026-05-02 (folder scaffold + `bootstrap_smoke.ini`); P1 progress 1/17. IMPL-046 (atomic write spike — Evolution E1 risk gate) parallelizable ASAP after IMPL-010 lands
 - ☐ Plan QA loop — complete; re-run `/impl-plan-review all` only if plan changes materially OR Plan Staleness Sentinel triggers (>30d + ≥10 task closures since last review)
 - ☐ Run Tier 1.5 Exploratory Walk — N/A (no phase done yet)
 - ☐ Switch to Track B (QA Plan) — N/A; QA Phase 3T runs after P4 done
@@ -246,16 +246,17 @@ graph TD
 - **Description**: สร้าง folder tree ตาม ADR-012 + TD-02 §2 (5-layer + 1 entry .mq5 + inputs + libs) + create `simulation/headless-tests/bootstrap_smoke.ini` stub ที่ใช้ standard `[Tester]` block per TD-02 §13.3 (Symbol=EURUSD, Period=H4, Model=4, Visual=0, ShutdownTerminal=1). ไม่ต้องมี code logic — เพียง folder + .gitkeep + .ini scaffolding
 - **Input**: ADR-012 (file layout discipline), TD-02 §2 (project file layout), `.claude/rules/workflow.md § Cold-Bootstrap Recipe`
 - **S-AC**:
-  - [ ] All folders exist: `core/`, `slots/`, `services/`, `domain/`, `helpers/`, `inputs/`, `libs/` ภายใต้ `MQL5/Experts/PhoenicisNex/`
-  - [ ] `simulation/headless-tests/bootstrap_smoke.ini` มี `[Tester]` block ครบ + `Visual=0` + `ShutdownTerminal=1` + `Expert=PhoenicisNex\PhoenicisNex` placeholder
-  - [ ] `.gitkeep` files committed for empty folders
+  - [x] All folders exist: `core/`, `slots/`, `services/`, `domain/`, `helpers/`, `inputs/`, `libs/` ภายใต้ `MQL5/Experts/PhoenicisNex/` — 7 layered subdirs created with `.gitkeep` (2026-05-02)
+  - [x] `simulation/headless-tests/bootstrap_smoke.ini` มี `[Tester]` block ครบ + `Visual=0` + `ShutdownTerminal=1` + `Expert=PhoenicisNex\PhoenicisNex` placeholder — file at `simulation/headless-tests/bootstrap_smoke.ini` (2026-05-02)
+  - [x] `.gitkeep` files committed for empty folders — 7 `.gitkeep` files (one per layered subdir) (2026-05-02)
 - **E-AC**:
-  - [ ] `find MQL5/Experts/PhoenicisNex -type d | wc -l` returns ≥ 7 directories `[file-blob-check]`
-  - [ ] `cat simulation/headless-tests/bootstrap_smoke.ini | grep -E "^(Symbol|Period|Visual|ShutdownTerminal)="` matches expected values `[file-blob-check]`
+  - [x] `find MQL5/Experts/PhoenicisNex -type d | wc -l` returns ≥ 7 directories `[file-blob-check]` — output = 8 (root + 7 subdirs); evidence `docs/state/_session-handoff/IMPL-001-evidence-20260502.md` (2026-05-02)
+  - [x] `cat simulation/headless-tests/bootstrap_smoke.ini | grep -E "^(Symbol|Period|Visual|ShutdownTerminal)="` matches expected values `[file-blob-check]` — Symbol=EURUSD / Period=H4 / Visual=0 / ShutdownTerminal=1 confirmed; evidence `docs/state/_session-handoff/IMPL-001-evidence-20260502.md` (2026-05-02)
 - **Deps**: none
 - **Risk**: low
 - **ADR**: ADR-012
 - **Rules**: `.claude/rules/ea.md` (Project Structure section), `.claude/rules/workflow.md`
+- **Status**: ✅ Complete 2026-05-02
 
 #### IMPL-002: [XS] [ea] — `domain/EnumTypes.mqh` shared enum types
 - **Phase**: P1 — Foundation
@@ -1551,6 +1552,7 @@ graph TD
 | 2026-05-02 | — | Rebuttal round 02 closed | impl-plan.md, overview.md | 3/3 Accept (0 Partial / 0 Reject / 0 Escalate); 3 edit clusters: TL;DR last-action update + this audit-log row (Claim 02.1) / P3 Tier 1.5 OR-clause dropped (Claim 02.3) / 9 P4 tasks IMPL-053..058 + IMPL-066..068 standardized to full-bullet S-AC/E-AC (Claim 02.2). 0 forbidden patterns; 0 forward refs; registries unchanged. See `impl-plan-claim-review-and-rebuttal/rebuttal-round-02.md` |
 | 2026-05-02 | — | Rebuttal round 03 closed | impl-plan.md, overview.md | 3/3 Accept (0 Partial / 0 Reject / 0 Escalate); state-hygiene sweep — 3 readiness-marker fixes: top "Action ถัดไป" + "Next Best Action" checked-box pivoted to `/impl-task IMPL-001` (Claim 03.1) / Plan Staleness Sentinel populated with approval + last-review dates (Claim 03.2) / TL;DR `last action` line + `overview.md § Impl Tasks` row updated to reflect round 03 closure (Claim 03.3). 0 forbidden patterns; 0 forward refs; 68 tasks intact; registries unchanged. See `impl-plan-claim-review-and-rebuttal/rebuttal-round-03.md` |
 | 2026-05-02 | — | Review round 04 closed (verify-only sweep) | impl-plan.md, overview.md | **0 findings** (CRITICAL 0 / HIGH 0 / MEDIUM 0 / LOW 0) — **Implementation Execution Certified**. All 9 mechanical pre-scans clean across rounds 01→02→03→04 (forbidden closure patterns 0; forward references 0; bracket-condensed AC 0; OR-clause loose-end 0; 21 per-slot smoke ini bullets sustained; Silent Copy Detector untriggered; 7-marker readiness sweep 7/7; state reconciliation 0 divergences). All 3 R03 fixes verified landed at cited locations. No rebuttal needed; engineer next action stays `/impl-task IMPL-001`. Convergence trajectory: R01=7 → R02=3 → R03=3 → R04=0. See `impl-plan-claim-review-and-rebuttal/claim-review-04.md` |
+| 2026-05-02 | P1 | IMPL-001 closed (XS [ea] — folder scaffold + `bootstrap_smoke.ini` stub) | impl-plan.md, overview.md, current_handoff.md, _session-handoff/IMPL-001-evidence-20260502.md, MQL5/Experts/PhoenicisNex/{core,slots,services,domain,helpers,inputs,libs}/.gitkeep, simulation/headless-tests/bootstrap_smoke.ini | First task closed. 3/3 S-AC + 2/2 E-AC `[file-blob-check]` pass (find -type d = 8 ≥ 7; ini key/value match). G1-G4 N/A (no `.mq5`/`.mqh` source yet). P1 Phase Status snapshot 0/17 → 1/17. Plan Staleness Sentinel closures-since-last-review 0 → 1 (well below 10-closure threshold). Next: IMPL-002 (XS — EnumTypes.mqh) |
 
 ---
 
@@ -1639,7 +1641,7 @@ graph TD
 
 **Plan approved on:** 2026-05-02 — after `claim-review-02.md` + `rebuttal-round-02.md` (3/3 Accept; verdict ✅ Ready for Implementation Execution)
 **Last review on:** 2026-05-02 — `claim-review-04.md` (verify-only sweep; 0 findings; **Implementation Execution Certified**)
-**Closures since last review:** 0
+**Closures since last review:** 1 (IMPL-001 closed 2026-05-02)
 
 > Per `/next` Check 5.8: plan staleness recommendation triggers when (approved > 30d ago) AND (no review OR > 10 closures since review). Currently: approved + reviewed; staleness check **inactive** until either condition fires (≥ 2026-06-01 calendar date OR ≥ 10 IMPL-NNN closures since 2026-05-02).
 
