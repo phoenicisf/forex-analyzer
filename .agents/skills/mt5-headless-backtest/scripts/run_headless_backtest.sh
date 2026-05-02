@@ -10,7 +10,7 @@
 #        /tmp/headless_run.txt
 #
 # Assumptions:
-#   - origin.txt at project root contains the MT5 install path (e.g. C:\Program Files\FBS MetaTrader 5)
+#   - origin.txt at project root contains the MT5 install path (e.g. C:\Program Files\MetaTrader 5)
 #   - Project working directory's basename is the 32-char-hex terminal-id
 #     (true when the codebase lives under {AppData}/MetaQuotes/Terminal/{id}/)
 #   - The .ex5 corresponding to the Expert= line in the .ini is already built

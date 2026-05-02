@@ -54,11 +54,11 @@ When NOT to use:
 
 The terminal-id is a 32-char hex hash. When the project lives directly under the data dir (this codebase does), the working directory ends in that hash.
 
-The MT5 install path is stored in `origin.txt` at the project root (one line, e.g. `C:\Program Files\FBS MetaTrader 5`). **Always read it dynamically** instead of hardcoding a broker name:
+The MT5 install path is stored in `origin.txt` at the project root (one line, e.g. `C:\Program Files\MetaTrader 5`). **Always read it dynamically** instead of hardcoding a broker name:
 
 ```bash
 # Read origin.txt to resolve the MT5 install directory
-ORIGIN=$(cat origin.txt | tr -d '\r')                    # e.g. "C:\Program Files\FBS MetaTrader 5"
+ORIGIN=$(cat origin.txt | tr -d '\r')                    # e.g. "C:\Program Files\MetaTrader 5"
 TERMINAL=$(echo "$ORIGIN" | sed 's|^\([A-Z]\):|/\L\1|; s|\\|/|g')/terminal64.exe
 
 TERMINAL_ID=$(basename "$(pwd)")        # 776D2ACDFA4F66FAF3C8985F75FA9FF6 here
