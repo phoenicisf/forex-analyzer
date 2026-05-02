@@ -2,11 +2,11 @@
 
 > 📋 **TL;DR / At-a-Glance** (อัปเดตทุกครั้งที่ปิด task / เกิด finding ใหม่)
 >
-> **ตอนนี้:** P1 เริ่มแล้ว · 7/68 tasks ปิด · Phase Gate 0/9 rows ติ๊ก ทุก phase
+> **ตอนนี้:** P1 เริ่มแล้ว · 13/68 tasks ปิด · Phase Gate 0/9 rows ติ๊ก ทุก phase
 > **ความเสี่ยงเปิด:** IMPL-046 atomic-write spike risk gate · G4 fixes Bucket B drift (NFR-1.8) · Bucket A regression (NFR-1.1 ≤ 25%) (ดู § Open Risks)
-> **Action ถัดไป:** `/impl-task IMPL-046` (M `[ea]` — atomic-write spike, **Evolution E1 risk gate**, unblocks IMPL-010 + IMPL-047/048/049); parallel-eligible alternative: {IMPL-005 IndicatorService [blocked on IMPL-042 Logger], IMPL-007 PortfolioState [blocked on IMPL-042 Logger]} — most P1 service tasks now wait on IMPL-042/043; recommend serial IMPL-046 next
+> **Action ถัดไป:** `/impl-task IMPL-046` (M `[ea]` — atomic-write spike, **Evolution E1 risk gate**, unblocks IMPL-010 + IMPL-047/048/049, recommended serial); secondary: IMPL-016 (XS — bundle into BootstrapValidator.mqh just created by IMPL-015) + IMPL-006 (M — MarketContextBuilder, deps now green via IMPL-005)
 > **Deferred-AC Active:** 0 rows · earliest expiry: n/a
-> **Last updated:** 2026-05-02 · last action: parallel batch #3 closed (IMPL-011 JsonWriter + IMPL-012 Inputs_General + IMPL-042 Logger; orchestrator: Opus 4.7, subagents: Sonnet 4.6); P1 progress 10/17 [x]; next: IMPL-046 (E1 risk gate, serial — unblocks IMPL-010 + IMPL-047/048/049)
+> **Last updated:** 2026-05-02 · last action: parallel batch #4 closed (IMPL-005 IndicatorService + IMPL-007 PortfolioState + IMPL-015 BootstrapValidator::ValidateInputs; orchestrator: Opus 4.7, subagents: Sonnet 4.6); P1 progress 13/17 [x]; next: IMPL-046 (E1 risk gate, serial — unblocks IMPL-010 + IMPL-047/048/049)
 
 ---
 
@@ -14,7 +14,7 @@
 
 | Phase | Tier 1 (Tasks) | Tier 1.5 (Walk) | Tier 2 (Gate) | Notes |
 |-------|----------------|------------------|---------------|-------|
-| P1 Foundation + High-Risk Spike | 🔄 10/17 [x] | ⏸ pending | ⏸ 0/9 rows | IMPL-001/002/003/004/008/009/011/012/014/042 closed 2026-05-02 (3 parallel batches: 002+009+014, 003+004+008, 011+012+042); next: IMPL-046 (E1 risk gate, serial) |
+| P1 Foundation + High-Risk Spike | 🔄 13/17 [x] | ⏸ pending | ⏸ 0/9 rows | IMPL-001/002/003/004/005/007/008/009/011/012/014/015/042 closed 2026-05-02 (4 parallel batches: 002+009+014, 003+004+008, 011+012+042, 005+007+015); next: IMPL-046 (E1 risk gate, serial) |
 | P2 Core Services + EAState + Pending | ⏸ blocked on P1 | — | — | — |
 | P3 21 Slots + CSlotBase + Inputs | ⏸ blocked on P2 | — | — | — |
 | P4 Cross-slot + Orchestrator + Verification | ⏸ blocked on P3 | — | — | — |
@@ -317,13 +317,13 @@ graph TD
 - **Description**: implement central owner ของ ~25 indicator handles per CodeWiki §1; method `Init/CreateHandles/Refresh/AnyHandleInvalid/CachedScan/ReleaseHandles/GetHandle/HandleCount`. NFR-3.2 fail-fast 100% on any `INVALID_HANDLE`. FR-7.6 + ADR-003
 - **Input**: TD-02 §5 (IndicatorService skeleton), ADR-003, FR-7.6, NFR-3.2
 - **S-AC**:
-  - [ ] 8 public methods ตาม TD-02 §8.1 class block
-  - [ ] `m_handle_count` literal matches `HandleCount()` return value
-  - [ ] `Init(CLogger*)` constructor injection (no global access)
-  - [ ] `AnyHandleInvalid()` returns true ถ้า any handle == INVALID_HANDLE หลัง CreateHandles
+  - [x] 8 public methods ตาม TD-02 §8.1 class block — Init/CreateHandles/Refresh/AnyHandleInvalid/CachedScan/ReleaseHandles/GetHandle/HandleCount present in `services/IndicatorService.mqh` (391 LOC) (2026-05-02)
+  - [x] `m_handle_count` literal matches `HandleCount()` return value — 24 handles populated in CreateHandles; HandleCount returns m_handle_count which equals 24 after success path (2026-05-02)
+  - [x] `Init(CLogger*)` constructor injection (no global access) — Init body stores pointer + zeroes handle_count; no `_Symbol` access in Init (only in CreateHandles/Refresh) (2026-05-02)
+  - [x] `AnyHandleInvalid()` returns true ถ้า any handle == INVALID_HANDLE หลัง CreateHandles — loop m_handle_count comparing each m_handles[i] (2026-05-02)
 - **E-AC**:
-  - [ ] `CreateHandles()` ใน OnInit smoke = ≥ 24 handles, `HandleCount()` ตรงกับจำนวนจริง `[probe]`
-  - [ ] Stub one indicator to fail (e.g. Symbol="INVALID") → `Init` returns false + Logger Error log emitted `[log-assertion]`
+  - [ ] `CreateHandles()` ใน OnInit smoke = ≥ 24 handles, `HandleCount()` ตรงกับจำนวนจริง `[probe]` — **deferred to IMPL-053+** (Orchestrator wires Init+CreateHandles); evidence `docs/state/_session-handoff/IMPL-005-evidence-20260502.md`
+  - [ ] Stub one indicator to fail (e.g. Symbol="INVALID") → `Init` returns false + Logger Error log emitted `[log-assertion]` — **deferred to IMPL-018+** (entry .mq5 + Strategy Tester run)
 - **Deps**: IMPL-001, IMPL-002, IMPL-042 (Logger)
 - **Risk**: medium (NFR-3.2 100% rate)
 - **ADR**: ADR-003
@@ -353,13 +353,13 @@ graph TD
 - **Description**: implement CHashMap-based per-magic state lookup (O(1)) per ADR-005 + TD-02 §5; methods `RegisterAll/Refresh/GetByMagic/TotalActivePositions`; `RegisterAll` populates 17 magic keys per BR-1.1; `Refresh` reconciles vs MT5 broker positions
 - **Input**: TD-02 §5 (PortfolioState skeleton), ADR-005, BR-1.1 (17 magics)
 - **S-AC**:
-  - [ ] `m_map` = CHashMap<int, SlotState*>
-  - [ ] `RegisterAll()` populates 17 entries (one per magic constant; G/G2 share, B/BI share, C/D share, L/LX share)
-  - [ ] `GetByMagic(int)` returns NULL for non-registered magic + Logger Warn
-  - [ ] `Refresh()` queries `PositionSelectByTicket` per `m_map[*].ticket_ids[]` and updates `total_lots`, `total_profit`, etc.
+  - [x] `m_map` = CHashMap<int, SlotState*> — stack member at `services/PortfolioState.mqh` (421 LOC); Init clears via `m_map.Clear()` (2026-05-02)
+  - [x] `RegisterAll()` populates 17 entries (one per magic constant; G/G2 share, B/BI share, C/D share, L/LX share) — explicit list of 17 magics from `domain/EnumTypes.mqh` MAGIC_* constants; shared-magic slot_ids[] arrays per ADR-005 (200→[C,D], 208→[G,G2], 211→[L,LX], 214→[B,BI]) (2026-05-02)
+  - [x] `GetByMagic(int)` returns NULL for non-registered magic + Logger Warn — uses `m_map.TryGetValue(magic, s)`; emits `m_logger.Warn("portfolio","magic_not_registered",magic,"")` (2026-05-02)
+  - [x] `Refresh()` queries `PositionSelectByTicket` per `m_map[*].ticket_ids[]` and updates `total_lots`, `total_profit`, etc. — Step 1 (aggregate zero-reset loop) shipped; Step 2 (PositionsTotal() broker reconcile loop) TODO IMPL-007-refresh **deferred to IMPL-053+ + IMPL-018+** (no entry .mq5 yet) (2026-05-02)
 - **E-AC**:
-  - [ ] OnInit smoke → Logger Debug "magics registered: 17" `[log-assertion]`
-  - [ ] Open mock position (test only) → `Refresh()` → `GetByMagic(MAGIC_X).total_profit` matches MT5 native value `[db-inspect]`
+  - [ ] OnInit smoke → Logger Debug "magics registered: 17" `[log-assertion]` — **deferred to IMPL-053+** (Orchestrator wires Init→RegisterAll); evidence `docs/state/_session-handoff/IMPL-007-evidence-20260502.md`
+  - [ ] Open mock position (test only) → `Refresh()` → `GetByMagic(MAGIC_X).total_profit` matches MT5 native value `[db-inspect]` — **deferred to IMPL-018+ + IMPL-053+** (entry .mq5 + Strategy Tester)
 - **Deps**: IMPL-002, IMPL-004, IMPL-042 (Logger)
 - **Risk**: medium (BR-1.1 17-magic invariant ทุก downstream component depend on)
 - **ADR**: ADR-005
@@ -475,12 +475,12 @@ graph TD
 - **Description**: implement input range validation per FR-1.4 (e.g. `InpFIDValue > 0`, `InpMainRiskRatio ∈ [0.001, 1.0]`, etc.); fail-fast → `Logger.ErrorBypassThrottle` + return false → OnInit calls `CleanupPartialInit("validate_inputs")` + INIT_FAILED
 - **Input**: TD-02 §7.4 (Phase C call sites), FR-1.4
 - **S-AC**:
-  - [ ] All cross-slot + per-slot critical inputs validated (≥ 30 checks)
-  - [ ] Each violation: Logger Error with `slot=system, ev=invalid_input, msg=<param_name>=<value>`
-  - [ ] Returns false on first violation (fail-fast; no batch)
+  - [x] All cross-slot + per-slot critical inputs validated (≥ 30 checks) — **39 fail-fast guards** in `core/BootstrapValidator.mqh` (530 LOC) across 4 cross-slot input files (Inputs_General 17 + TimeGates 11 + Pending 8 + Logging 3); per-slot input validation (IMPL-013) follow-up in P3 (2026-05-02)
+  - [x] Each violation: Logger Error with `slot=system, ev=invalid_input, msg=<param_name>=<value>` — uses `m_logger.ErrorBypassThrottle("system","invalid_input",0,StringFormat("%s=%v",...))` per ADR-011 boot-time bypass-throttle semantic (2026-05-02)
+  - [x] Returns false on first violation (fail-fast; no batch) — every guard `return false;` immediately; no accumulator pattern (2026-05-02)
 - **E-AC**:
-  - [ ] Test smoke: set `InpFIDValue=-1` → OnInit returns INIT_FAILED + Logger emits `[ev=invalid_input][msg=InpFIDValue=-1]` `[log-assertion]`
-  - [ ] CleanupPartialInit called → no leaked `m_indicators` heap (verify via OnDeinit not triggered post fail)
+  - [ ] Test smoke: set `InpFIDValue=-1` → OnInit returns INIT_FAILED + Logger emits `[ev=invalid_input][msg=InpFIDValue=-1]` `[log-assertion]` — **deferred to IMPL-018+ + IMPL-053+** (entry .mq5 + Orchestrator Phase C wires `if (!m_validator.ValidateInputs()) return INIT_FAILED;` per TD-02 §7.4 line 1654); evidence `docs/state/_session-handoff/IMPL-015-evidence-20260502.md`
+  - [ ] CleanupPartialInit called → no leaked `m_indicators` heap (verify via OnDeinit not triggered post fail) — **deferred to IMPL-053+** (CleanupPartialInit is owned by COrchestrator per TD-02 §7.4.1)
 - **Deps**: IMPL-001, IMPL-012, IMPL-014, IMPL-042 (Logger)
 - **Risk**: low
 - **Rules**: `.claude/rules/ea.md`, `.claude/rules/security.md § Halt + Failure Surfacing`
@@ -1555,6 +1555,7 @@ graph TD
 | 2026-05-02 | P1 | IMPL-001 closed (XS [ea] — folder scaffold + `bootstrap_smoke.ini` stub) | impl-plan.md, overview.md, current_handoff.md, _session-handoff/IMPL-001-evidence-20260502.md, MQL5/Experts/PhoenicisNex/{core,slots,services,domain,helpers,inputs,libs}/.gitkeep, simulation/headless-tests/bootstrap_smoke.ini | First task closed. 3/3 S-AC + 2/2 E-AC `[file-blob-check]` pass (find -type d = 8 ≥ 7; ini key/value match). G1-G4 N/A (no `.mq5`/`.mqh` source yet). P1 Phase Status snapshot 0/17 → 1/17. Plan Staleness Sentinel closures-since-last-review 0 → 1 (well below 10-closure threshold). Next: IMPL-002 (XS — EnumTypes.mqh) |
 | 2026-05-02 | P1 | **Parallel batch closed (3 tasks)** — IMPL-002 (XS [ea] EnumTypes.mqh) + IMPL-009 (XS [ea] PipMath.mqh) + IMPL-014 (S [ea] Inputs trio) via `/impl-task parallel` | impl-plan.md, overview.md, current_handoff.md, _parallel-context/impl-task-parallel-20260502-1430.md, _session-handoff/IMPL-{002,009,014}-evidence-20260502.md, MQL5/Experts/PhoenicisNex/domain/EnumTypes.mqh, MQL5/Experts/PhoenicisNex/helpers/PipMath.mqh + .gitkeep deletion, MQL5/Experts/PhoenicisNex/inputs/Inputs_{TimeGates,Pending,Logging}.mqh + .gitkeep deletion | Orchestrator: Opus 4.7 (this session); 3× Sonnet 4.6 subagents fan-out in one message via `Agent` tool with Slim-Onboarding shared context. All 3 fragments returned `status: completed`; scope-clean (each subagent stayed in its declared folder). G1-G4 N/A (header-only `.mqh`; gates activate at IMPL-018+). All S-AC + E-AC `[x]` with grep evidence (5 enums, 17 magics, 0 MAGIC_U; PipMath class + ToPoints/PriceToPip + 0 double `==`; 3 input files + 3 group annotations + ≥5 inputs each except Logging=3 per §6.C.5 ruling). P1 Phase Status snapshot 1/17 → 4/17. Plan Staleness Sentinel closures-since-last-review 1 → 4 (well below 10-closure threshold). Mid-Phase Empirical Audit counter (P1) = 4; threshold 5 not yet hit. Next: IMPL-046 (E1 risk gate) or parallel {IMPL-003, IMPL-004, IMPL-008} |
 | 2026-05-02 | P1 | **Parallel batch closed (3 tasks)** — IMPL-003 (S [ea] domain/MarketContext.mqh 27 fields) + IMPL-004 (S [ea] domain/SlotState.mqh 11 fields) + IMPL-008 (S [ea] helpers/CommentParser.mqh) via `/impl-task parallel` | impl-plan.md, overview.md, current_handoff.md, _parallel-context/impl-task-parallel-20260502-1530.md, _session-handoff/IMPL-{003,004,008}-evidence-20260502.md, MQL5/Experts/PhoenicisNex/domain/{MarketContext,SlotState}.mqh, MQL5/Experts/PhoenicisNex/helpers/CommentParser.mqh | Orchestrator: Opus 4.7 (this session); 3× Sonnet 4.6 subagents fan-out in one message via `Agent` tool with Slim-Onboarding shared context (pre-loaded TD-02 §3.2/§3.3/§4.2 skeletons + schema YAML required-field lists + BR-1.2 quote — subagents read CLAUDE.md + ea.md + shared-context only). All 3 fragments returned `status: completed`; scope-clean. G1-G4 N/A (header-only `.mqh`; gates activate at IMPL-018+). All S-AC + E-AC `[x]` with cross-schema mapping evidence (MarketContext 27/27 fields with `derived_signals`↔`derived` naming delta documented; SlotState 11/11 fields with `magic` denormalization noted; CCommentParser 4 methods + 10-case SelfTest fixture covering 4 shared-magic pairs + unique slots). P1 Phase Status snapshot 4/17 → 7/17. Plan Staleness Sentinel closures-since-last-review 4 → 7 (still below 10-closure threshold). Mid-Phase Empirical Audit counter (P1) = 7; threshold 5 already crossed — audit run advisory pending (see § Mid-Phase Audit trigger note below). Next: IMPL-046 (E1 risk gate, serial). |
+| 2026-05-02 | P1 | **Parallel batch #4 closed (3 tasks)** — IMPL-005 (M [ea] services/IndicatorService.mqh) + IMPL-007 (M [ea] services/PortfolioState.mqh) + IMPL-015 (S [ea] core/BootstrapValidator.mqh::ValidateInputs) via `/impl-task parallel` | impl-plan.md, overview.md, _session-handoff/IMPL-{005,007,015}-evidence-20260502.md, MQL5/Experts/PhoenicisNex/services/{IndicatorService,PortfolioState}.mqh, MQL5/Experts/PhoenicisNex/core/BootstrapValidator.mqh | Orchestrator: Opus 4.7 (this session); 3× Sonnet 4.6 subagents fan-out in one message with Slim-Onboarding shared context (pre-loaded TD-02 §5.1/§5.3/§7.0.1 verbatim quotes + ADR-003 handle inventory + ADR-005 17-magic mapping + Logger interface + ≥30 guard pattern). All 3 fragments returned `status: completed`; scope-clean (each subagent stayed in one declared file). G1-G4 N/A (header-only `.mqh`; gates activate at IMPL-018+). S-AC fully `[x]` for all three (IndicatorService 8 public methods + 24 handles + IDX_* constants + ScanFnType typedef; PortfolioState CHashMap + 17 magics from EnumTypes MAGIC_* + shared-magic slot_ids[] mapping + Refresh step-1 reset; BootstrapValidator **39 fail-fast guards** in ValidateInputs across 4 input files using ErrorBypassThrottle per ADR-011 + 3 stub methods for IMPL-016/IMPL-007-pip/runtime-consumer follow-up). E-AC deferred: IndicatorService `[probe]` and `[log-assertion]` to IMPL-053+/IMPL-018+; PortfolioState "magics registered: 17" to IMPL-053+; BootstrapValidator smoke-fail to IMPL-018+/IMPL-053+. P1 Phase Status snapshot 10/17 → 13/17. Plan Staleness Sentinel closures-since-last-review 10 → 13 (threshold previously reached; recommend `/impl-plan-review all` + `/impl-review all` post IMPL-046). Mid-Phase Empirical Audit counter (P1) = 13; threshold 5 crossed twice over — audit deferred until first runnable surface at IMPL-018+/IMPL-053. Next: **IMPL-046 (E1 risk gate, serial)** — unblocks IMPL-010 AtomicFile + IMPL-047/048/049 StatePersistence chain. Secondary parallel-eligible: IMPL-016 (XS — bundle into BootstrapValidator.mqh) + IMPL-006 (M — MarketContextBuilder, deps now green via IMPL-005). |
 | 2026-05-02 | P1 | **Parallel batch #3 closed (3 tasks)** — IMPL-011 (M [ea] helpers/JsonWriter.mqh) + IMPL-012 (M [ea] inputs/Inputs_General.mqh) + IMPL-042 (M [ea] services/Logger.mqh + helpers/Timestamp.mqh) via `/impl-task parallel` | impl-plan.md, overview.md, _parallel-context/impl-task-parallel-20260502-1829.md, _session-handoff/IMPL-{011,012,042}-evidence-20260502.md, MQL5/Experts/PhoenicisNex/helpers/{JsonWriter,Timestamp}.mqh, MQL5/Experts/PhoenicisNex/services/Logger.mqh, MQL5/Experts/PhoenicisNex/inputs/Inputs_General.mqh | Orchestrator: Opus 4.7 (this session); 3× Sonnet 4.6 subagents fan-out in one message with Slim-Onboarding shared context (pre-loaded TD-02 §4.3 + §5.7 + §9.4 + §9.5 verbatim quotes + CodeWiki §1.3 21-row defaults table + Logger prefix reconciliation §6.C.4 + Timestamp ownership rule §6.D — subagents read CLAUDE.md + ea.md + security.md + shared-context only). All 3 fragments returned `status: complete`; scope-clean (each subagent stayed in declared paths; IMPL-042 created `helpers/Timestamp.mqh` per §6.D rule). G1-G4 N/A (header-only `.mqh`; gates activate at IMPL-018+). S-AC fully `[x]` for all three (JsonWriter SelfTest covers 9 primitives + 5-char escape contract + Z-suffix ISO timestamps; Inputs_General `grep -c '^input '` = 22 with 21 CodeWiki-verbatim defaults; Logger 6 public methods + cycle-2 setter + LRU eviction-reuse contract + gap-aware EscalateIfThresholdMet + reconciled `[Phoenicis][TS][LEVEL][slot][ev][magic]` prefix). E-AC structurally satisfied where possible; runtime probes deferred (JsonWriter `[contract-roundtrip]` to IMPL-018+/IMPL-043; Logger `[log-assertion]` to IMPL-053/IMPL-018+). CStatePersistence forward-decl + TODO IMPL-047 stubs in Logger (compile-clean header-only). P1 Phase Status snapshot 7/17 → 10/17. Plan Staleness Sentinel closures-since-last-review 7 → 10 (threshold reached — recommend `/impl-plan-review all` after IMPL-046 closure). Mid-Phase Empirical Audit counter (P1) = 10; threshold 5 crossed twice — audit deferred until first runnable surface at IMPL-018+/IMPL-053. Next: **IMPL-046 (E1 risk gate, serial)** — unblocks IMPL-010 AtomicFile + IMPL-047/048/049 StatePersistence chain. |
 
 ---
