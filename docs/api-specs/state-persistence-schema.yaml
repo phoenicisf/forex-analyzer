@@ -1,0 +1,301 @@
+# State Persistence Schema (JSON Schema)
+#
+# PhoenicisNex local-only EA — intra-process contract for `services/StatePersistence::Save/Load`
+# (ADR-007). Single canonical state.json file written atomically per tick (FR-5.1, FR-5.2).
+# Schema lock at SD Phase 1B; bump schema_version for breaking changes.
+#
+# Path: MQL5/Files/PhoenicisNex/state/state.json
+# Tmp:  MQL5/Files/PhoenicisNex/state/state.json.tmp (atomic temp+rename per ADR-007)
+
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://phoenicisnex.local/schema/state-persistence/v1"
+title: "PhoenicisNex State Persistence"
+description: "Full EA runtime state persisted at end of each tick; restored at OnInit (FR-5.1, NFR-3.1, NFR-3.3)"
+type: object
+additionalProperties: false
+required:
+  - schema_version
+  - last_save_timestamp
+  - ea_state
+  - pending_machines
+  - ban_dates
+  - watch_profits
+  - cross_slot_signals
+  - slot_states
+  - journal_metrics
+  - logger_metrics
+
+properties:
+  schema_version:
+    type: integer
+    const: 1
+
+  last_save_timestamp:
+    type: string
+    format: date-time
+    description: "Broker server time of last successful Save() call"
+
+  ea_state:
+    type: string
+    enum: [RUNNING, HALTED, HALTED_STABLE]
+    description: "Current EAState per ADR-010; OnInit defaults to RUNNING (per ADR-010 § 'Reset trigger')"
+
+  ea_halt_reason:
+    type: [string, "null"]
+    description: "Populated when ea_state != RUNNING (mirrors trade journal halt event)"
+
+  pending_machines:
+    type: object
+    additionalProperties: false
+    required: [c_pending, c_pending_adx, r_pending, p_pending, m_pending, t_pending, q_pending, force_pending]
+    properties:
+      c_pending:
+        $ref: "#/definitions/PendingMachineState_Bounded"  # 8 H4 bar legacy timeout (BR-6.1)
+      c_pending_adx:
+        $ref: "#/definitions/PendingMachineState_Bounded"  # 30 H4 bar legacy timeout (BR-6.2)
+      r_pending:
+        $ref: "#/definitions/PendingMachineState_Bounded"  # 40 H4 bar legacy timeout + cloud invalidation (BR-6.3)
+      p_pending:
+        $ref: "#/definitions/PendingMachineState_PVariant"  # 70 H4 bar legacy timeout + sub-modes (BR-6.4)
+      m_pending:
+        $ref: "#/definitions/PendingMachineState_ForceClear"  # 150 H4 bar force-clear per ADR-008 (BR-6.5)
+      t_pending:
+        $ref: "#/definitions/PendingMachineState_ForceClear"  # 80 H4 bar force-clear per ADR-008 (BR-6.6)
+      q_pending:
+        $ref: "#/definitions/PendingMachineState_QVariant"  # 100 H4 bar force-clear per ADR-008 + QPendingCode (BR-6.7)
+      force_pending:
+        $ref: "#/definitions/PendingMachineState_ForcePending"  # 9 H4 bar legacy timeout (BR-6.8)
+
+  ban_dates:
+    type: object
+    additionalProperties: false
+    description: "Per-slot post-loss cooldown timestamps per BR-3.4"
+    properties:
+      ban_c_start_date:
+        type: integer
+        description: "Server-time epoch seconds; 0 = not banned"
+      ban_l_start_date:
+        type: integer
+      ban_m_start_date:
+        type: integer
+      k_last_order_date:
+        type: integer
+      g_pause_date:
+        type: integer
+
+  watch_profits:
+    type: object
+    additionalProperties: false
+    required: [worst_drawdown_pct, worst_drawdown_at, equity_high_water_mark, current_dd_pct]
+    description: "PortfolioMonitor / WatchProfits replacement (FR-4.4)"
+    properties:
+      worst_drawdown_pct:
+        type: number
+        maximum: 0
+        description: "Worst DD% reached this session/lifetime; mirrored to MT5 GlobalVariable for restart parity"
+      worst_drawdown_at:
+        type: string
+        format: date-time
+        description: "Timestamp when worst DD reached"
+      equity_high_water_mark:
+        type: number
+        minimum: 0
+      current_dd_pct:
+        type: number
+        maximum: 0
+
+  cross_slot_signals:
+    type: object
+    additionalProperties: false
+    description: "Cross-slot global state (CodeWiki §1.3 state variables block)"
+    properties:
+      is_force_pending_action_buy_order:
+        type: boolean
+      is_force_pending_action_sell_order:
+        type: boolean
+      has_c_pending_order:
+        type: boolean
+      extra_force_mode_reason:
+        type: integer
+        description: "BR-8.5 ExtraCheckFunction2 demote target"
+      ichi_double_bounce_buffer:
+        type: array
+        items:
+          type: number
+        description: "Buffer for OrderGroup#2 detection (BR-8.2)"
+
+  slot_states:
+    type: object
+    description: "Per-magic SlotState entries (per ADR-005); 16 magic entries given shared magics G/G2 + B/BI + C/D + L/LX"
+    additionalProperties:
+      $ref: "#/definitions/SlotState"
+    examples:
+      - "200":
+          slot_ids: [C, D]
+          buy_count: 1
+          sell_count: 0
+          total_lots: 0.05
+          total_profit: 12.34
+          last_open_date: 1733567890
+          ticket_ids: [123456789]
+          ticket_max_profit_pip: [42.5]
+
+  journal_metrics:
+    type: object
+    additionalProperties: false
+    required: [write_failures, consecutive_write_failures, last_failure_timestamp]
+    description: |
+      Trade journal RPO observability counters per ADR-006 § Failure handling. Persisted across restarts
+      via state.json (atomic write per ADR-007). User inspects via MT5 GlobalVariable inspector OR
+      via state.json file directly. Monitoring signal surfaced ใน 05-security.md § 7.2
+    properties:
+      write_failures:
+        type: integer
+        minimum: 0
+        description: "Cumulative count ของ TradeJournal.WriteEvent fail (disk full / permission / handle invalid). Survives restart"
+      consecutive_write_failures:
+        type: integer
+        minimum: 0
+        description: "Current consecutive-fail count; reset to 0 on next successful write. Trigger halt escalation ที่ ≥ 10 (ADR-006)"
+      last_failure_timestamp:
+        type: [string, "null"]
+        format: date-time
+        description: "Broker server time ของ last write failure; null = no failure since EA install"
+      last_failure_reason:
+        type: [string, "null"]
+        description: "Last MT5 error code / reason string (e.g., 'disk_full', 'permission_denied', 'handle_invalid')"
+
+  logger_metrics:
+    type: object
+    additionalProperties: false
+    required: [throttled_alert_count]
+    description: |
+      Logger throttle observability counters per ADR-011 § Throttle policy. Surface ใน HALTED_STABLE Alert message
+      เพื่อให้ user รู้ว่ามี Alert ถูก suppress กี่ครั้ง (NFR-3.4 transparency)
+    properties:
+      throttled_alert_count:
+        type: integer
+        minimum: 0
+        description: "Cumulative counter ของ Alert ที่ถูก throttle (ERROR + same (slot, event) tuple within 100-tick window); survives restart via state.json (atomic per ADR-007). User ที่ restart EA บ่อยยังเห็น cumulative throttle pattern (NFR-3.4 transparency)"
+      last_throttle_event:
+        type: [string, "null"]
+        description: "Last `(slot,event)` tuple ที่ถูก throttle; null = no throttle this session"
+
+definitions:
+  PendingMachineState_Bounded:
+    type: object
+    additionalProperties: false
+    required: [state, pending_started_bar]
+    properties:
+      state:
+        type: string
+        enum: [IDLE, PENDING, EXECUTED]
+      pending_started_bar:
+        type: integer
+        description: "H4 bar index when entered PENDING; 0 if IDLE"
+      pending_payload:
+        type: [string, "null"]
+        description: "Per-machine payload (e.g., CPendingComment, comment string)"
+      force_clear_count:
+        type: integer
+        minimum: 0
+        description: "Cumulative counter; survives restart via state.json (atomic per ADR-007); reset only via manual delete state.json. Used by IMPL-068 / A6 to measure long-running stuck pattern across restarts (observability metric)"
+
+  PendingMachineState_ForceClear:
+    allOf:
+      - $ref: "#/definitions/PendingMachineState_Bounded"
+      - type: object
+        description: "M-Pending or T-Pending — adds force_clear_threshold per ADR-008"
+        properties:
+          force_clear_threshold_bars:
+            type: integer
+            description: "Hard timeout per ADR-008; M=150, T=80; configurable via input"
+
+  PendingMachineState_PVariant:
+    allOf:
+      - $ref: "#/definitions/PendingMachineState_Bounded"
+      - type: object
+        description: "P-Pending state — per CodeWiki §2.5 + §3.14; narrative + sub-mode mapping ใน `04-data-flow.md § 4.4`"
+        properties:
+          sub_mode:
+            type: [string, "null"]
+            enum: [PX, PH, E, N, null]
+            description: |
+              P-Pending sub-variant per CodeWiki §2.5/§3.14. Mapping (full table ใน `04-data-flow.md § 4.4`):
+                - PX = Force trigger fast-path (`Force[1]>0.1` + recent bar / diff_sl ≥ 200); TP ratio 7
+                - PH = Hull/Bollinger default path (`_diffSL < 200`); TP ratio 15
+                - E  = Pyramid extension entry (P_Extra; comment "PI,...")
+                - N  = None / mode-decision branch ยังไม่ resolve (transient ≤ 1 bar)
+                - null = IDLE (no pending active)
+              ⚠️ A7 risk: E/N semantic ต้อง confirm กับ CodeWiki §2.5 ตอน TD Phase 1D (IMPL-034)
+          diff_sl:
+            type: [number, "null"]
+            description: "SL distance pip ที่ snapshot ตอน enter pending; ใช้ branch decision PX/PH (< 200 → PH) + ใช้ตอน execute pending"
+          band_ratio:
+            type: [number, "null"]
+            description: "CalculateBollingerRatio(bid, BBTop, BBBot) ผลลัพธ์ใน [0..100]; ใช้ band-gating rule (PX requires > 75 ตอน diff_sl ≥ 250) + PH TP threshold calc"
+
+  PendingMachineState_QVariant:
+    allOf:
+      - $ref: "#/definitions/PendingMachineState_Bounded"
+      - type: object
+        properties:
+          q_pending_code:
+            type: [integer, "null"]
+            enum: [0, 1, 2, 3, null]
+            description: "Per BR-6.7 QPendingCode logic"
+          force_clear_threshold_bars:
+            type: integer
+            description: "Hard timeout per ADR-008; Q=100"
+
+  PendingMachineState_ForcePending:
+    type: object
+    description: "Cross-slot Force-Pending state per BR-6.8; 9 H4 bar legacy timeout"
+    additionalProperties: false
+    properties:
+      buy_pending:
+        type: boolean
+      sell_pending:
+        type: boolean
+      pending_started_bar:
+        type: integer
+
+  SlotState:
+    type: object
+    additionalProperties: false
+    required: [slot_ids, buy_count, sell_count, total_lots, total_profit, last_open_date]
+    properties:
+      slot_ids:
+        type: array
+        items:
+          type: string
+        description: "List of slot_ids sharing this magic; e.g., [C, D] for magic 200, [G, G2] for magic 208"
+      buy_count:
+        type: integer
+        minimum: 0
+      sell_count:
+        type: integer
+        minimum: 0
+      total_lots:
+        type: number
+        minimum: 0
+      total_profit:
+        type: number
+      last_open_date:
+        type: integer
+        description: "Server-time epoch seconds of most recent OpenOrder"
+      ticket_ids:
+        type: array
+        items:
+          type: integer
+      ticket_max_profit_pip:
+        type: array
+        items:
+          type: number
+        description: "Per-ticket max profit pip for trailing logic per BR-5.2 (G/GO/M/S)"
+
+# Reader notes:
+# - StatePersistence.Load() handles missing fields gracefully — defaults match EA fresh boot
+# - Reconcile rule (per 04-data-flow.md § 5.3): on Load, compare slot_states.*.ticket_ids vs
+#   PositionsTotal() actual — remove tickets ที่ broker ไม่มี (closed during downtime); log warn each
+# - schema_version mismatch: Phase 2 migration logic; downgrade abort + log error

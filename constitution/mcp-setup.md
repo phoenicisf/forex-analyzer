@@ -233,13 +233,10 @@ claude mcp remove pare-git
 claude mcp remove token-optimizer
 
 # Add ใหม่ด้วย cmd /c wrapper
-claude mcp add filesystem -- cmd /c npx -y @modelcontextprotocol/server-filesystem ./docs ./services
 claude mcp add notebooklm -- cmd /c npx notebooklm-mcp@latest
-claude mcp add memory -- cmd /c npx -y @modelcontextprotocol/server-memory
 claude mcp add sequential-thinking -- cmd /c npx -y @modelcontextprotocol/server-sequential-thinking
 claude mcp add playwright -- cmd /c npx -y @playwright/mcp --browser chrome
 claude mcp add pare-git -e PARE_GIT_TOOLS=status,log,diff,show -- cmd /c npx -y @paretools/git
-claude mcp add token-optimizer -- cmd /c npx -y token-optimizer-mcp
 ```
 
 **วิธีที่ 2 — แก้ไฟล์ config โดยตรง:**

@@ -1,0 +1,291 @@
+# MarketContext Immutable Snapshot Schema (intra-process contract)
+#
+# PhoenicisNex local-only EA — schema for the `domain/MarketContext` struct
+# built once per tick by `services/MarketContextBuilder::Build()` (ADR-004),
+# passed as `const MarketContext &ctx` to slot Evaluate / ManageExits methods.
+#
+# This is NOT an external API — it's the canonical field list for:
+#   1. MQL5 struct member declarations (TD Phase 1D)
+#   2. Trade journal `indicator_snapshot` field subset (per FR-4.1)
+#   3. QA test stub fixtures
+#
+# Field set chosen to cover all indicators referenced in CodeWiki §1.4 + per-slot signal logic.
+# Add field = backward compat (no schema_version bump); remove/rename = breaking change.
+
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://phoenicisnex.local/schema/marketcontext/v1"
+title: "PhoenicisNex MarketContext Per-Tick Snapshot"
+description: "Immutable struct passed to slot Evaluate/ManageExits per tick (FR-2.6, ADR-004)"
+type: object
+additionalProperties: false
+required:
+  - tick_time
+  - bid
+  - ask
+  - spread_pip
+  - bar_index_h4
+  - ichi_h4
+  - ichi_d1
+  - force_h4
+  - adx_h4
+  - adx_d1
+  - wpr_h4
+  - wpr_d1
+  - wpr_m15
+  - bb_h4
+  - dem_h4
+  - dem_m15
+  - stoch_m10
+  - stoch_h4
+  - macd_m10
+  - macd_d1
+  - rsi_h4
+  - hull_h4
+  - fractal_h4
+  - zigzag_m5
+  - subdem_h4
+  - subdem_d1
+  - derived_signals
+
+properties:
+  tick_time:
+    type: string
+    format: date-time
+    description: "Broker server time (EET, DST-aware per C-10) of OnTick event"
+
+  bid:
+    type: number
+    description: "Current bid price"
+
+  ask:
+    type: number
+    description: "Current ask price"
+
+  spread_pip:
+    type: number
+    minimum: 0
+    description: "(ask - bid) / (_Point * DigitMultipier); used by BR-3.7 spread guard"
+
+  bar_index_h4:
+    type: integer
+    minimum: 0
+    description: "Current H4 bar index (Bars(EURUSD, PERIOD_H4) - 1); used by FR-8.1 cache invalidation"
+
+  ichi_h4:
+    $ref: "#/definitions/IchimokuFields"
+    description: "Ichimoku H4 — used by C, D, F, J, H, K, G, GO, M, L, LX, Q, R, B, BR, BI, P, T, S"
+
+  ichi_d1:
+    $ref: "#/definitions/IchimokuFields"
+    description: "Ichimoku D1 — subset slots use higher TF confirmation"
+
+  force_h4:
+    type: object
+    description: "Force Index H4 — used by C, J, G, GO, M, L, B, P; ascend/descend pattern key"
+    additionalProperties: false
+    properties:
+      f0: { type: number, description: "Latest bar Force value" }
+      f1: { type: number, description: "Bar 1 ago" }
+      f2: { type: number, description: "Bar 2 ago" }
+      f3: { type: number, description: "Bar 3 ago — for ForcePeak3 pattern" }
+      peak_pattern:
+        type: string
+        enum: [ascending, descending, neutral]
+        description: "Derived: classification of f0..f3 sequence"
+
+  adx_h4:
+    type: object
+    additionalProperties: false
+    properties:
+      adx: { type: number, minimum: 0 }
+      di_plus: { type: number, minimum: 0 }
+      di_minus: { type: number, minimum: 0 }
+      adx_wave: { type: number, description: "ADXW per CodeWiki §1.4" }
+
+  adx_d1:
+    type: object
+    additionalProperties: false
+    properties:
+      adx: { type: number, minimum: 0 }
+
+  wpr_h4:
+    type: object
+    additionalProperties: false
+    properties:
+      wpr: { type: number, maximum: 0, minimum: -100 }
+      wpr_wave: { type: number, description: "WPR wave detection per RunCheckWPRWaveWithIchimoku2" }
+
+  wpr_d1:
+    type: object
+    additionalProperties: false
+    properties:
+      wpr: { type: number }
+
+  wpr_m15:
+    type: object
+    additionalProperties: false
+    properties:
+      wpr: { type: number }
+
+  bb_h4:
+    type: object
+    additionalProperties: false
+    description: "Bollinger Bands H4 — used by R, B, BR, BI, P, T, S"
+    properties:
+      bb_top: { type: number }
+      bb_mid: { type: number }
+      bb_bot: { type: number }
+      bb_width: { type: number, minimum: 0 }
+      bb_ratio: { type: number, description: "Position of price within band, normalized 0..1" }
+
+  dem_h4:
+    type: object
+    additionalProperties: false
+    description: "DeMarker H4 — used by LX (pyramid gate), M (entry confirm)"
+    properties:
+      dem: { type: number, minimum: 0, maximum: 1 }
+
+  dem_m15:
+    type: object
+    additionalProperties: false
+    properties:
+      dem: { type: number }
+
+  stoch_m10:
+    type: object
+    additionalProperties: false
+    description: "Stochastic M10 — used by C (ForceCutloss), L cross-confirm"
+    properties:
+      k_main: { type: number }
+      d_signal: { type: number }
+
+  stoch_h4:
+    type: object
+    additionalProperties: false
+    properties:
+      k_main: { type: number }
+      d_signal: { type: number }
+
+  macd_m10:
+    type: object
+    additionalProperties: false
+    description: "MACD M10 — used by C ForceCutloss"
+    properties:
+      macd: { type: number }
+      signal: { type: number }
+      hist: { type: number }
+
+  macd_d1:
+    type: object
+    additionalProperties: false
+    description: "MACD D1 — used by ForceCutloss + COverload (BR-8.4)"
+    properties:
+      macd: { type: number }
+      signal: { type: number }
+      hist: { type: number }
+      same_sign_loss_bars:
+        type: integer
+        minimum: 0
+        description: "Derived: consecutive bars with same MACD sign (≥7 trigger COverload)"
+
+  rsi_h4:
+    type: object
+    additionalProperties: false
+    properties:
+      rsi: { type: number, minimum: 0, maximum: 100 }
+
+  hull_h4:
+    type: object
+    additionalProperties: false
+    description: "Hull MA H4 — used by T, P (Hull-based SL anchor per BR-5.1)"
+    properties:
+      hull: { type: number }
+      hull_slope: { type: number, description: "Derived: trend direction" }
+
+  fractal_h4:
+    type: object
+    additionalProperties: false
+    description: "Fractals H4 — used by G (fractal floor), K (TP target)"
+    properties:
+      upper_fractal: { type: [number, "null"], description: "Most recent upper fractal price; null if none recent" }
+      lower_fractal: { type: [number, "null"] }
+
+  zigzag_m5:
+    type: object
+    additionalProperties: false
+    description: "ZigZag M5 — used by S/L wave-peak detection"
+    properties:
+      last_high: { type: number }
+      last_low: { type: number }
+
+  subdem_h4:
+    type: object
+    additionalProperties: false
+    description: "SubDem custom H4 — referenced by DrawProfitTags visual hook"
+    properties:
+      support_zone: { type: [number, "null"] }
+      demand_zone: { type: [number, "null"] }
+
+  subdem_d1:
+    type: object
+    additionalProperties: false
+    properties:
+      support_zone: { type: [number, "null"] }
+      demand_zone: { type: [number, "null"] }
+
+  derived_signals:
+    type: object
+    additionalProperties: false
+    description: "Precomputed cross-slot signals (avoid per-slot recompute drift)"
+    required: [wpr_wave_signal, adx_force_peak_valid]
+    properties:
+      wpr_wave_signal:
+        type: boolean
+        description: "Result of RunCheckWPRWaveWithIchimoku2 helper (cross-slot Boolean)"
+      adx_force_peak_valid:
+        type: boolean
+        description: "Result of CheckADXWithForcePeakValid2 helper"
+      ichi_double_bounce_active:
+        type: boolean
+        description: "Detection of OrderGroup#2 trigger pattern (BR-8.2 candidate)"
+
+definitions:
+  IchimokuFields:
+    type: object
+    additionalProperties: false
+    required: [tenkan, kijun, senkou_a, senkou_b, chikou, cloud_high, cloud_low]
+    properties:
+      tenkan:
+        type: array
+        items: { type: number }
+        minItems: 3
+        description: "[bar 0, bar 1, bar 2]"
+      kijun:
+        type: array
+        items: { type: number }
+        minItems: 3
+      senkou_a:
+        type: array
+        items: { type: number }
+        minItems: 3
+      senkou_b:
+        type: array
+        items: { type: number }
+        minItems: 3
+      chikou:
+        type: array
+        items: { type: number }
+        minItems: 3
+      cloud_high:
+        type: number
+        description: "Derived: max(senkou_a[0], senkou_b[0])"
+      cloud_low:
+        type: number
+        description: "Derived: min(senkou_a[0], senkou_b[0])"
+
+# TD notes:
+# - Approximate struct size: ~50 fields × 8 bytes = ~720 bytes (per ADR-004 estimate)
+# - Add field = no breaking; reader (slot Evaluate) tolerates missing only if field not used
+# - Schema lock at SD Phase 1B; TD Phase 1D may extend per slot translation needs; bump
+#   schema_version only on remove/rename
+# - Trade journal indicator_snapshot field stores per-slot relevant subset (FR-4.1)

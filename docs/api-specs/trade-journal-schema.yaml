@@ -1,0 +1,186 @@
+# Trade Journal Record Schema (JSON Schema)
+#
+# PhoenicisNex local-only EA — no HTTP API; this is intra-process contract used by
+# `services/TradeJournal::WriteEvent()` (ADR-006) and any external reader (Python/jq script).
+# Lock at SD Phase 1B; TD Phase 1D may add fields but ห้าม remove/rename without
+# bumping `schema_version`.
+#
+# Format: JSON-Lines (one JSON object per line, newline-delimited)
+# Path: MQL5/Files/PhoenicisNex/journal/{live|tester}/<filename>.jsonl
+#   - live mode: `journal-YYYYMM.jsonl` (monthly rotation by broker server time)
+#   - tester mode: `run-<ISO-8601>.jsonl` (per Strategy Tester run, MT5_TESTER detection)
+
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://phoenicisnex.local/schema/trade-journal/v1"
+title: "PhoenicisNex Trade Journal Record"
+description: "One per-event record written by services/TradeJournal::WriteEvent (FR-4.1, ADR-006). Append-only, no mutation."
+type: object
+additionalProperties: false
+required:
+  - timestamp
+  - schema_version
+  - mode
+  - event_type
+  - slot_id
+  - magic
+  - symbol
+  - signal_context
+  - indicator_snapshot
+  - portfolio_summary
+  - triggering_function
+
+properties:
+  timestamp:
+    type: string
+    format: date-time
+    description: "Broker server time (EET, GMT+2 winter / GMT+3 summer DST per C-10), millisecond precision, ISO-8601 with Z suffix"
+    examples: ["2026-03-15T14:23:45.123Z"]
+
+  schema_version:
+    type: integer
+    const: 1
+    description: "Bump for breaking schema changes per ADR-006 versioning policy"
+
+  mode:
+    type: string
+    enum: [live, tester]
+    description: "MT5 runtime mode at write time; MQLInfoInteger(MQL_TESTER) determines"
+
+  event_type:
+    type: string
+    enum: [entry, exit, modify, reject, halt, halt_stable, pending_force_clear, exit_inferred, discovered]
+    description: |
+      - entry: order opened successfully (FR-4.1)
+      - exit: position closed successfully (FR-4.1)
+      - modify: SL/TP adjusted on existing position
+      - reject: broker rejected OrderSend / PositionClose (FR-4.1 reject case)
+      - halt: EA entered HALTED state (ADR-010); halt_reason field populated
+      - halt_stable: HALTED + portfolio.count == 0 (AC-7.7.4, ADR-010)
+      - pending_force_clear: M/T/Q-Pending hard timeout fired (ADR-008)
+      - exit_inferred: PortfolioState reconcile detected ticket gone without exit event (recovery from MT5 crash mid-close)
+      - discovered: PortfolioState detected new ticket EA didn't open (foreign EA or recovery scenario)
+
+  slot_id:
+    type: string
+    enum: [C, D, F, J, H, K, G, G2, GO, M, L, LX, Q, R, I, P, T, S, B, BR, BI, system]
+    description: "Slot ID per BR-1.1 (21 slots; Slot U deleted per OQ-8); 'system' for halt/halt_stable events"
+
+  magic:
+    type: integer
+    minimum: 0
+    maximum: 220
+    description: "Order magic per BR-1.1 (200..219; 220 unused after Slot U deletion); 0 for system events"
+
+  ticket_id:
+    type: [integer, "null"]
+    description: "MT5 position/order ticket; null for system events or pre-broker reject"
+
+  symbol:
+    type: string
+    enum: [EURUSD]
+    description: "Symbol per C-3 (EURUSD only Phase 1); whitelist enforced FR-1.2"
+
+  order_type:
+    type: [string, "null"]
+    enum: [buy, sell, null]
+    description: "Direction; null for system / pending_force_clear events"
+
+  lot:
+    type: [number, "null"]
+    minimum: 0
+    description: "Final lot after RiskManager.ClampLot per BR-4.1/4.2/4.3; null for system events"
+
+  price:
+    type: [number, "null"]
+    description: "Fill price (entry) or close price (exit); null for system events"
+
+  sl:
+    type: [number, "null"]
+    description: "Stop loss price; non-zero for all entry events except legacy/recovery (FR-3.3 BI inherits from B parent per ADR-009)"
+
+  tp:
+    type: [number, "null"]
+    description: "Take profit price; may be 0 (slot uses implicit exit logic per BR-5.1)"
+
+  comment:
+    type: [string, "null"]
+    maxLength: 32
+    description: "Order comment with slot prefix (BR-1.2 disambig for shared-magic slots: 'C,...', 'G2,...', 'BI,...', 'LX,...', 'D,...')"
+
+  signal_context:
+    type: string
+    description: |
+      Semicolon-separated key=value pairs of which rule(s) passed in slot.Evaluate.
+      Examples:
+        "WPRWaveSignal=Yes;CheckIchiBarForC=true;ForcePeak3=ascending"
+        "sl_inherit=B_parent_<ticket>;sl_distance_pip=120" (BI per ADR-009)
+        "halt_reason=circuit_breaker_pingpong" (halt event)
+        "pending_age_bars=151;machine=M-Pending" (pending_force_clear event per ADR-008)
+
+  indicator_snapshot:
+    type: object
+    description: |
+      Subset of MarketContext fields relevant to slot's signal context.
+      Schema mirrors MarketContext fields per ADR-004 / marketcontext-snapshot-schema.yaml.
+      Field set varies per slot; reader must tolerate missing keys.
+    additionalProperties:
+      type: number
+    examples:
+      - ichi_h4_cloud_high: 1.0890
+        ichi_h4_cloud_low: 1.0860
+        force_h4_0: 12.3
+        force_h4_1: 9.8
+        adx_h4: 28.5
+
+  portfolio_summary:
+    type: object
+    additionalProperties: false
+    required: [total_lots, total_floating_pl, equity, balance, slot_counts]
+    properties:
+      total_lots:
+        type: number
+        minimum: 0
+      total_floating_pl:
+        type: number
+        description: "Sum of all open position floating P/L at write time"
+      equity:
+        type: number
+        minimum: 0
+      balance:
+        type: number
+        minimum: 0
+      slot_counts:
+        type: object
+        description: "Map of slot_id → active position count"
+        additionalProperties:
+          type: integer
+          minimum: 0
+
+  triggering_function:
+    type: string
+    description: |
+      Name of function that initiated the event, for retrospective audit (FR-3.4 type bug detection).
+      Examples:
+        "BusinessLogic_C", "ExtraTakeProfit_J" (note: per BR-7.2 G4 fix, MUST iterate MagicJ),
+        "OrderGroupStartWorkflow", "OrderGroupStartWorkflow2", "ForceCutloss",
+        "EOverload", "COverload", "GOverload",
+        "CircuitBreakerOrder", "PendingMachine_M_ForceClear" (ADR-008)
+
+  parent_ticket_id:
+    type: [integer, "null"]
+    description: "For pyramid slots (BI, I, LX, J), parent ticket ID; null for non-pyramid; ADR-009 BI populates B parent ticket"
+
+  halt_reason:
+    type: [string, "null"]
+    enum: [circuit_breaker_pingpong, handle_invalid_runtime, equity_floor_phase2, null]
+    description: "Populated only on event_type=halt; ADR-010 trigger sources"
+
+  pending_age_bars:
+    type: [integer, "null"]
+    description: "Populated only on event_type=pending_force_clear; H4 bars elapsed since pending_started_bar (ADR-008)"
+
+# Reader notes:
+# - Per ADR-006 anti-spam, Logger emits Warn on slow-write; warn message in MT5 Experts log,
+#   not in this journal (journal records only successful writes; failures logged separately)
+# - Field order in serialized JSON not guaranteed; readers must use object-style parsing
+# - Unknown fields: per ADR-006 forward-compat, readers MUST ignore (do not error)

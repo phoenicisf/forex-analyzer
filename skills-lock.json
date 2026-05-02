@@ -6,6 +6,11 @@
       "sourceType": "github",
       "skillPath": ".claude/skills/mt5-log-reader/SKILL.md",
       "computedHash": "307f13648eb698e37fa52372c2f30c6df519b67aaa40dfbc38576a01a6558d28"
+    },
+    "mql-developer": {
+      "source": "thomaspraun/mql-developer",
+      "sourceType": "github",
+      "computedHash": "81320224b55925599526af771ceeef6c0cc0ee7f7bc3c99c01d8c73e42f01545"
     }
   }
 }

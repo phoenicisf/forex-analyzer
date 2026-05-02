@@ -1,0 +1,339 @@
+# CSlotBase Abstract Slot Contract (intra-process method contract)
+#
+# PhoenicisNex local-only EA — JSON Schema-style contract for the slot abstraction defined
+# in `domain/CSlotBase.mqh` (ADR-002). NOT a network/HTTP API; PhoenicisNex has zero
+# network surface (NFR-7.2 + C-12). All 21 derived slot classes (Slot_C ... Slot_BI)
+# implement these 6 methods; orchestrator iterates via virtual dispatch without
+# slot-specific knowledge.
+#
+# Format: JSON Schema 2020-12 (consistent with sibling specs:
+# trade-journal-schema.yaml, state-persistence-schema.yaml, marketcontext-snapshot-schema.yaml)
+
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://phoenicisnex.local/schema/slot-abstraction-contract/v1"
+title: "PhoenicisNex CSlotBase Abstract Slot Contract"
+description: |
+  Behavior contract for `domain/CSlotBase` and its 21 derived classes (FR-2.5, ADR-002).
+  Each `method` below is an MQL5 method on `CSlotBase*` invoked through the orchestrator
+  via virtual dispatch. There are no HTTP endpoints, no request bodies, no response codes.
+
+type: object
+additionalProperties: false
+required:
+  - schema_version
+  - methods
+  - constructor_injection
+  - enforcement_mechanism
+
+properties:
+  schema_version:
+    type: integer
+    const: 1
+
+  derived_slot_ids:
+    type: array
+    description: "21 derived slot classes that must implement this contract"
+    items:
+      type: string
+      enum: [C, D, F, J, H, K, G, G2, GO, M, L, LX, Q, R, I, P, T, S, B, BR, BI]
+
+  methods:
+    type: object
+    description: "6-method behavior contract — every derived class must override all 6"
+    additionalProperties: false
+    required: [Magic, SlotId, Evaluate, ManageExits, DependsOn, PendingState]
+    properties:
+      Magic:
+        $ref: "#/$defs/MethodSignature_Magic"
+      SlotId:
+        $ref: "#/$defs/MethodSignature_SlotId"
+      Evaluate:
+        $ref: "#/$defs/MethodSignature_Evaluate"
+      ManageExits:
+        $ref: "#/$defs/MethodSignature_ManageExits"
+      DependsOn:
+        $ref: "#/$defs/MethodSignature_DependsOn"
+      PendingState:
+        $ref: "#/$defs/MethodSignature_PendingState"
+
+  constructor_injection:
+    $ref: "#/$defs/ConstructorInjection"
+
+  enforcement_mechanism:
+    $ref: "#/$defs/EnforcementMechanism"
+
+$defs:
+  MethodSignature_Magic:
+    type: object
+    additionalProperties: false
+    required: [signature, returns, summary]
+    properties:
+      signature:
+        type: string
+        const: "int Magic() const"
+      returns:
+        type: object
+        properties:
+          type: { const: integer }
+          minimum: { const: 200 }
+          maximum: { const: 220 }
+          description:
+            const: |
+              Slot's magic number per BR-1.1. Shared-magic slots (G/G2, B/BI, C/D, L/LX)
+              return same value as their pair; disambiguation via comment prefix (BR-1.2)
+      side_effects:
+        const: "none — pure getter"
+      summary:
+        const: "Returns slot's magic number per BR-1.1"
+
+  MethodSignature_SlotId:
+    type: object
+    additionalProperties: false
+    required: [signature, returns, summary]
+    properties:
+      signature:
+        type: string
+        const: "string SlotId() const"
+      returns:
+        type: object
+        properties:
+          type: { const: string }
+          description:
+            const: |
+              Slot's string ID (e.g., 'C', 'G2', 'BI'). Used for journal record `slot_id`
+              field; disambiguates shared-magic slots
+      side_effects:
+        const: "none — pure getter"
+      summary:
+        const: "Returns slot's string ID"
+
+  MethodSignature_Evaluate:
+    type: object
+    additionalProperties: false
+    required: [signature, parameters, returns, side_effects, summary, behavior_steps]
+    properties:
+      signature:
+        type: string
+        const: "void Evaluate(const MarketContext &ctx, PortfolioState &port)"
+      parameters:
+        type: object
+        properties:
+          ctx:
+            type: object
+            properties:
+              passing: { const: "const reference" }
+              schema_ref: { const: "marketcontext-snapshot-schema.yaml" }
+              note: { const: "ADR-004 immutable per-tick snapshot — slot ห้าม mutate" }
+          port:
+            type: object
+            properties:
+              passing: { const: "mutable reference" }
+              schema_ref: { const: "state-persistence-schema.yaml#/definitions/SlotState" }
+              note: { const: "ADR-005 — slot may write in-memory hint after OrderSend ack" }
+      returns:
+        const: "void; side effects ผ่าน injected services"
+      side_effects:
+        type: array
+        items: { type: string }
+        description: "Permitted side-effect channels"
+        examples:
+          - ["TradeJournal.WriteEvent (entry/reject)", "Logger.Info / Logger.Error", "MT5 OrderSend (broker)", "PortfolioState in-memory hint update"]
+      summary:
+        const: "Run entry pass for this slot (FR-2.3 entry pipeline)"
+      invocation_rule:
+        const: "Called per tick by Orchestrator after PortfolioState.Refresh(); only invoked if EAState == RUNNING (HALTED skips per ADR-010)"
+      behavior_steps:
+        type: array
+        items: { type: string }
+        description: "Documented step order — TD locks impl per CodeWiki §3"
+        examples:
+          - ["1. Check pending state — if PENDING, delegate to F4 sub-flow",
+             "2. Check time gates / ban cooldown (BR-3.4)",
+             "3. Read indicator AND chain from MarketContext (per CodeWiki §3 slot-specific)",
+             "4. Check dependency (e.g., J needs C/D active per BR-2.1)",
+             "5. Compute lot via RiskManager",
+             "6. Compute SL/TP (BI per ADR-009; others per BR-5.1)",
+             "7. Submit OrderSend via MT5; on ack, write journal entry + Logger.Info",
+             "8. Update PortfolioState in-memory hint; full reconcile happens next tick"]
+
+  MethodSignature_ManageExits:
+    type: object
+    additionalProperties: false
+    required: [signature, parameters, returns, side_effects, summary, behavior_steps]
+    properties:
+      signature:
+        type: string
+        const: "void ManageExits(PortfolioState &port)"
+      parameters:
+        type: object
+        properties:
+          port:
+            type: object
+            properties:
+              passing: { const: "mutable reference" }
+              schema_ref: { const: "state-persistence-schema.yaml#/definitions/SlotState" }
+      returns:
+        const: "void; side effects ผ่าน injected services + possible CrossSlotCoordinator hook"
+      side_effects:
+        type: array
+        items: { type: string }
+        examples:
+          - ["TradeJournal.WriteEvent (exit/close_reject)", "Logger.Info / Logger.Error", "MT5 PositionClose", "CrossSlotCoordinator.TriggerGOverload (G post-exit hook)", "CrossSlotCoordinator.EvaluateBR_OrphanExit (B post-exit hook)"]
+      summary:
+        const: "Run exit pass for this slot (FR-2.3 exit pipeline)"
+      invocation_rule:
+        const: "Called per tick by Orchestrator BEFORE Evaluate (BR-2.2 exit-before-entry); runs in BOTH RUNNING and HALTED states (ADR-010)"
+      behavior_steps:
+        type: array
+        items: { type: string }
+        examples:
+          - ["1. Get all open positions matching slot's magic from PortfolioState",
+             "2. Filter by comment prefix if shared-magic (BR-1.2 via CommentParser helper)",
+             "3. ⚠️ Slot_J: iterate MagicJ (=206) — NOT MagicF — per BR-7.2 G4 fix",
+             "4. For each ticket: check exit conditions per CodeWiki §4.2 / BR-5.1",
+             "5. On exit: PositionClose via MT5; journal exit event; Logger.Info",
+             "6. Trigger post-exit hooks per BR-2.1 (G→GOverload, B→BR/BI evaluate)"]
+
+  MethodSignature_DependsOn:
+    type: object
+    additionalProperties: false
+    required: [signature, parameters, returns, summary]
+    properties:
+      signature:
+        type: string
+        const: "int DependsOn(int &out_magics[])"
+      parameters:
+        type: object
+        properties:
+          out_magics:
+            type: object
+            properties:
+              passing: { const: "mutable array reference" }
+              type: { const: "int[]" }
+              note: { const: "Slot fills with magic numbers it depends on (BR-2.1)" }
+      returns:
+        type: object
+        properties:
+          type: { const: integer }
+          description: { const: "Number of dependencies written to out_magics[]" }
+      side_effects:
+        const: "writes to out_magics[] only; no other side effect"
+      summary:
+        const: "Returns list of magic numbers slot depends on (BR-2.1)"
+      invocation_rule:
+        const: "Used by SlotRegistry::ValidateTopo() at OnInit to assert evaluation order matches BR-2.2"
+      examples:
+        type: array
+        items: { type: string }
+        examples:
+          - ["Slot_J.DependsOn() → [200] (depends on CD pool)",
+             "Slot_BI.DependsOn() → [214] (depends on B parent)",
+             "Slot_C.DependsOn() → [] (no peer slot deps; depends on data only)"]
+
+  MethodSignature_PendingState:
+    type: object
+    additionalProperties: false
+    required: [signature, returns, summary]
+    properties:
+      signature:
+        type: string
+        const: "EPendingState PendingState() const"
+      returns:
+        type: object
+        properties:
+          type: { const: string }
+          enum: { const: [IDLE, PENDING, EXECUTED] }
+          description: { const: "Current pending state per BR-6.x" }
+      side_effects:
+        const: "none — pure getter; backed by SlotState.pending_state field (persisted via StatePersistence)"
+      summary:
+        const: "Returns current pending state"
+      invocation_rule:
+        const: "Used by Slot.Evaluate() at step 1 to branch into pending sub-flow (F4)"
+
+  ConstructorInjection:
+    type: object
+    additionalProperties: false
+    required: [discipline_rule, injected_dependencies]
+    description: |
+      Slot constructors receive injected service pointers from the composition root
+      (Orchestrator). ADR-002 forbids global singleton lookup; slot ห้าม `new CXyzService()`.
+    properties:
+      discipline_rule:
+        type: string
+        const: "Constructor injection enforced by composition root (Orchestrator). TD Phase 1D may add/reorder dependencies; ADR-002 invariant = constructor-injected"
+      injected_dependencies:
+        type: object
+        additionalProperties: false
+        required:
+          - indicator_service
+          - risk_manager
+          - trade_journal
+          - logger
+          - state_persistence
+          - portfolio_state
+          - pending_machine_registry
+        properties:
+          indicator_service:
+            type: string
+            const: "ADR-003 — read-only access to indicator buffers + 300-bar cache"
+          risk_manager:
+            type: string
+            const: "BR-4.1/4.2/4.3 lot calc + cap + floor"
+          trade_journal:
+            type: string
+            const: "ADR-006 — WriteEvent for entry/exit/modify/reject"
+          logger:
+            type: string
+            const: "ADR-011 — tagged severity logger"
+          state_persistence:
+            type: string
+            const: "ADR-007 — read on OnInit, write end-of-tick"
+          portfolio_state:
+            type: string
+            const: "ADR-005 — O(1) GetByMagic for self + dependency peers"
+          pending_machine_registry:
+            type: string
+            const: "Per ADR-008 force-clear + BR-6.x state machines"
+
+  EnforcementMechanism:
+    type: object
+    additionalProperties: false
+    required: [problem, mechanism_layers]
+    description: |
+      MQL5 ไม่มี `=0` pure virtual — override discipline ต้อง enforce ผ่าน 2 mechanism layers
+      (boot-time + runtime). คน implement ลืม override → loud failure ไม่ใช่ silent no-op
+    properties:
+      problem:
+        type: string
+        const: "MQL5 compiler ไม่ enforce pure-virtual override; base CSlotBase virtual method ที่ derived ไม่ override → silent no-op (Evaluate skip signal check; ManageExits skip exit logic) → orphan positions"
+      mechanism_layers:
+        type: array
+        description: "Concrete enforcement (per ADR-002 § Decision)"
+        items:
+          type: object
+          properties:
+            layer:
+              type: string
+              enum: [boot_time, runtime, compile_time]
+            mechanism:
+              type: string
+            details:
+              type: string
+        examples:
+          - layer: boot_time
+            mechanism: "SlotRegistry::ValidateTopo() asserts sentinel return"
+            details: "หลัง RegisterAll() ทุก slot — call slot.Magic() + slot.SlotId(); if returns sentinel (Magic == -1, SlotId == \"\") → INIT_FAILED (NFR-3.2 fail-fast); base class default returns these sentinels"
+          - layer: runtime
+            mechanism: "Base virtual method body = Logger.Error + ExpertRemove"
+            details: "CSlotBase::Evaluate / ManageExits / DependsOn / PendingState default body = `Logger::Error(\"CSlotBase\", \"missing_override\", magic, method_name); ExpertRemove();` — guaranteed loud at runtime ถ้า derived ลืม override"
+          - layer: compile_time
+            mechanism: "static_assert (limited MQL5 support)"
+            details: "MQL5 ไม่รองรับ `=0` pure virtual; compile-time enforcement ไม่ feasible — rely on layers อื่น"
+
+# Notes for TD Phase 1D:
+# - CSlotBase methods Evaluate / ManageExits use `void` return; side effects ผ่าน injected services
+# - Constructor injection enforced by composition root (Orchestrator); slot ห้าม `new CXyzService()`
+# - SlotRegistry::RegisterAll() literal order = topo-sort lock per BR-2.2; reviewer enforces
+# - SlotRegistry::ValidateTopo() = boot-time enforcement layer (ตรวจ sentinel + topo dep order)
+# - IMPL-018 (CSlotBase contract task in 08-product-breakdown.md) = ต้อง implement EnforcementMechanism layers ครบ
