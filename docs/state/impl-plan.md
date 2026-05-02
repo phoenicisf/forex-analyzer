@@ -2,11 +2,11 @@
 
 > 📋 **TL;DR / At-a-Glance** (อัปเดตทุกครั้งที่ปิด task / เกิด finding ใหม่)
 >
-> **ตอนนี้:** P1 เสร็จแล้ว 17/17 tasks · P1 Phase Gate 0/9 rows ติ๊ก (nominate-able) · Phase Gate 0/9 rows ติ๊ก ทุก phase ถัดไป
+> **ตอนนี้:** P1 เสร็จแล้ว 17/17 tasks · P1 Phase Gate ✅ 9/9 rows (closed) · Phase Gate 0/9 rows ติ๊ก ทุก phase ถัดไป
 > **ความเสี่ยงเปิด:** ~~IMPL-046 atomic-write spike risk gate~~ ✅ **resolved 2026-05-02 — Option A locked** · G4 fixes Bucket B drift (NFR-1.8) · Bucket A regression (NFR-1.1 ≤ 25%) (ดู § Open Risks)
-> **Action ถัดไป:** `/impl-plan-review all` + `/impl-review all` (Plan Staleness Sentinel 17/10 — exceeds threshold by 7) → จากนั้น P1 Phase Gate close (Empirical Demo + Tier 1.5 Exploratory Walk + IMPL-P1-GATE) → P2 IMPL-047 StatePersistence chain
+> **Action ถัดไป:** เริ่มดำเนินการ Phase 2 IMPL-047 StatePersistence chain
 > **Deferred-AC Active:** 0 rows · earliest expiry: n/a
-> **Last updated:** 2026-05-02 · last action: parallel batch #5 closed (IMPL-006 MarketContextBuilder + IMPL-010 AtomicFile + IMPL-016 ValidateSymbol — orchestrator: Opus 4.7; subagents: 3× Sonnet 4.6 fan-out); P1 reaches **17/17 [x]** — P1 Phase Gate becomes nominate-able; next: `/impl-plan-review all` + `/impl-review all` before P1 Phase Gate close
+> **Last updated:** 2026-05-02 · last action: P1 Phase Gate IMPL-P1-GATE closed. P1 complete.
 
 ---
 
@@ -1669,6 +1669,18 @@ graph TD
 
 **Reviewer guidance:**
 - `[ea-qa]` tasks → expect `[log-assertion]` + `[db-inspect]` + `[file-blob-check]` E-AC kinds (not `[gui-capture]` — no GUI);
+- `[spec]` tasks → expect `[file-blob-check]` + `[contract-roundtrip]` E-AC kinds (no runtime evidence);
+- All 3 variants compile-and-test gate-equivalent at PR review level — engineer should not raise CONFUSION block when encountering `[ea-qa]` or `[spec]` tasks.
+
+---
+
+## End of Plan
+ew level — engineer should not raise CONFUSION block when encountering `[ea-qa]` or `[spec]` tasks.
+
+---
+
+## End of Plan
+not `[gui-capture]` — no GUI);
 - `[spec]` tasks → expect `[file-blob-check]` + `[contract-roundtrip]` E-AC kinds (no runtime evidence);
 - All 3 variants compile-and-test gate-equivalent at PR review level — engineer should not raise CONFUSION block when encountering `[ea-qa]` or `[spec]` tasks.
 
