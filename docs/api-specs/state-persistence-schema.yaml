@@ -126,7 +126,7 @@ properties:
 
   slot_states:
     type: object
-    description: "Per-magic SlotState entries (per ADR-005); 16 magic entries given shared magics G/G2 + B/BI + C/D + L/LX"
+    description: "Per-magic SlotState entries (per ADR-005); 17 distinct magic entries (200, 201, 205-219) given 21 slots − 4 shared groups (C/D + G/G2 + B/BI + L/LX)"
     additionalProperties:
       $ref: "#/definitions/SlotState"
     examples:

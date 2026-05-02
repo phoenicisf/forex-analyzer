@@ -343,7 +343,7 @@ Per-slot persisted fields (added to SlotState struct):
 
 | Risk | Owner | Mitigation |
 |------|-------|------------|
-| ⚠️ A1 — `CHashMap` perf at ~16 keys per OnTick frequency | TD spike Phase 1D | Measure; fallback = sparse array if CHashMap > 100 µs/lookup |
+| ⚠️ A1 — `CHashMap` perf at ~17 keys per OnTick frequency (per ADR-005 magic pool count) | TD spike Phase 1D | Measure; fallback = sparse array if CHashMap > 100 µs/lookup |
 | ⚠️ A2 — MT5 sandbox `FileMove` atomic guarantee | TD spike Phase 1D | If fail → ADR-007 Option B double-buffered swap |
 | ⚠️ A3 — ADR-008 pending force-clear thresholds appropriate | QA Phase 3T | Validate via regression; tune via input if needed |
 | ⚠️ A4 — JSON-Lines write latency p95 ≤ 10 ms in MT5 sandbox + Windows AV | TD spike + QA | Measure; degrade-warn-but-continue safety net in place |

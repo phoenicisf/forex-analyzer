@@ -1,0 +1,9 @@
+# /red-team
+
+Run security audit (OWASP + STRIDE) on codebase and generate a Red Team findings report.
+
+**Argument:** `<target-service e.g. services/api/ or services/web/ or "all">`
+
+Follow the workflow defined in `.agents/workflows/red-team.md`.
+
+Input: $ARGUMENTS

@@ -64,7 +64,7 @@ class CSlotBase { ...; SlotState m_state; };
 
 **Shared-magic handling (BR-1.1):**
 - G/G2 share `MagicG` (=208), B/BI share `MagicB` (=214), C/D share `MagicCD` (=200), L/LX share `MagicL` (=211)
-- `g_portfolio` มี 1 entry ต่อ magic (= 16 entries รวม, ไม่ใช่ 21) — ทุก position ของ shared magic นับรวมใน entry เดียว
+- `g_portfolio` มี 1 entry ต่อ magic (= **17 entries** รวม, ไม่ใช่ 21) — ทุก position ของ shared magic นับรวมใน entry เดียว. Pool: 200, 201, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219 (= 21 slots − 4 shared groups (C/D + G/G2 + B/BI + L/LX))
 - Slot ที่ต้องแยก position ของตัวเองออกจาก sibling (G2 vs G, BI vs B) อ่าน `SlotState.ticket_ids[]` แล้ว filter ผ่าน position comment prefix (BR-1.2 "G,..." vs "G2,...") — ใช้ helper `PortfolioState::GetTicketsForSlot(int magic, string slot_prefix)`
 - Trade journal record (FR-4.1) ใช้ `slot_id` field (ของ caller slot) แยก disambiguation ที่ record level ไม่ใช่ portfolio level
 

@@ -96,7 +96,7 @@ PhoenicisNex ออกแบบเป็น **modular monolith intra-process** �
 
 | BA BR-ID | Rule | SD location |
 |----------|------|-------------|
-| BR-1.1 | Magic Number Pool (16 magic, 21 slots, shared G/G2 + B/BI + C/D + L/LX) | `domain/EnumTypes::MagicByEnum()` constants |
+| BR-1.1 | Magic Number Pool (**17 magic**, 21 slots, shared groups: C/D + G/G2 + B/BI + L/LX merge 4 groups; pool: 200, 201, 205-219; per ADR-005) | `domain/EnumTypes::MagicByEnum()` constants |
 | BR-1.2 | Magic-via-comment disambiguation | `helpers/CommentParser` + per-slot `BuildComment()` |
 | BR-2.1 | Dependency Edge Table | `CSlotBase::DependsOn()` per-slot return value |
 | BR-2.2 | Topo-sort invariant | `core/SlotRegistry::RegisterAll()` literal order + `ValidateTopo()` |

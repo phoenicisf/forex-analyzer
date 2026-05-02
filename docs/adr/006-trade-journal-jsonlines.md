@@ -58,7 +58,7 @@ MQL5/Files/PhoenicisNex/
 - Path: `<MT5 data>/MQL5/Files/PhoenicisNex/journal/{live|tester}/{filename}.jsonl`
 - File mode: open with `FILE_WRITE | FILE_READ | FILE_TXT | FILE_ANSI | FILE_SHARE_READ` flags; seek to end; append; flush
 - Open strategy: keep file handle open across ticks (open ใน OnInit, close ใน OnDeinit) — avoid `FileOpen/FileClose` overhead per tick (~1-2ms each)
-- Rotation check: ที่จุดเริ่ม `TradeJournal::WriteEvent()` — ถ้า month เปลี่ยน → close handle + rename + open new file
+- Rotation check: ที่จุดเริ่ม `TradeJournal::WriteEvent()` — ถ้า month เปลี่ยน → close handle + open new monthly-named file. **No rename** เพราะแต่ละเดือนมี dedicated filename (`journal-YYYYMM.jsonl`) อยู่แล้ว — old file พร้อม archived as-is. (Aligned with TD-04 § 6.3 + SD `04 § 8` per Claim 01.14)
 - One JSON object per line ตาม JSON-Lines spec (https://jsonlines.org/)
 - Schema: ดู `docs/api-specs/trade-journal-schema.yaml` (lock ใน Phase 1B; TD เพิ่ม field ห้าม remove/rename)
 

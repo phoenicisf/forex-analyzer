@@ -507,7 +507,7 @@ sequenceDiagram
 
     TJ->>TJ: RotateIfNeeded() — month boundary check (live mode only)
     alt rotation needed
-        TJ->>FS: FileClose(old) + FileMove(old, archive) + FileOpen(new)
+        TJ->>FS: FileClose(old) + FileOpen(new monthly-named) — no rename per ADR-006/Claim 01.14
     end
 
     TJ->>FS: FileWriteString(handle, line)

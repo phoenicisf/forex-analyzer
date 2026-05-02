@@ -172,8 +172,8 @@ properties:
 
   halt_reason:
     type: [string, "null"]
-    enum: [circuit_breaker_pingpong, handle_invalid_runtime, equity_floor_phase2, null]
-    description: "Populated only on event_type=halt; ADR-010 trigger sources"
+    enum: [circuit_breaker_pingpong, handle_invalid_runtime, equity_floor_phase2, journal_write_fail_sustained, null]
+    description: "Populated only on event_type=halt; ADR-010 trigger sources. journal_write_fail_sustained = ADR-006 RPO contract escalation (consecutive_write_failures ≥ 10)"
 
   pending_age_bars:
     type: [integer, "null"]
