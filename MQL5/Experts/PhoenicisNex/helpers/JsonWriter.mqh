@@ -57,8 +57,9 @@ private:
      }
 
    //+----------------------------------------------------------------+
-   //| EscapeString — apply 5-char escape contract (§6.C.1)           |
+   //| EscapeString — apply 5-char + control-char escape (§6.C.1)     |
    //| Order is critical: backslash first to avoid double-escaping.   |
+   //| RFC 8259 §7: ALL U+0000..U+001F must be escaped (Finding 01.9).|
    //+----------------------------------------------------------------+
    string            EscapeString(string raw) const
      {
@@ -72,7 +73,22 @@ private:
       StringReplace(raw, "\r", "\\r");
       // 5. Tab
       StringReplace(raw, "\t", "\\t");
-      return raw;
+
+      // 6. Remaining control chars 0x00..0x08, 0x0B..0x0C, 0x0E..0x1F
+      //    must be \uXXXX escaped (RFC 8259 §7). 0x09/0x0A/0x0D are already
+      //    handled above (raw bytes were replaced with their 2-char form;
+      //    iteration sees only the literal `\`+`t/n/r` post-replace).
+      string out = "";
+      int n = StringLen(raw);
+      for(int i = 0; i < n; i++)
+        {
+         ushort ch = StringGetCharacter(raw, i);
+         if(ch < 0x20)
+            out += StringFormat("\\u%04x", ch);
+         else
+            out += ShortToString(ch);
+        }
+      return out;
      }
 
 public:
@@ -104,7 +120,7 @@ public:
    void              WriteString(string key, string value)
      {
       AppendComma();
-      m_buffer += "\"" + key + "\":\"" + EscapeString(value) + "\"";
+      m_buffer += "\"" + EscapeString(key) + "\":\"" + EscapeString(value) + "\"";
      }
 
    //+----------------------------------------------------------------+
@@ -114,7 +130,7 @@ public:
    void              WriteInt(string key, long value)
      {
       AppendComma();
-      m_buffer += "\"" + key + "\":" + IntegerToString(value);
+      m_buffer += "\"" + EscapeString(key) + "\":" + IntegerToString(value);
      }
 
    //+----------------------------------------------------------------+
@@ -132,7 +148,7 @@ public:
    void              WriteDouble(string key, double value, int digits)
      {
       AppendComma();
-      m_buffer += "\"" + key + "\":" + DoubleToString(value, digits);
+      m_buffer += "\"" + EscapeString(key) + "\":" + DoubleToString(value, digits);
      }
 
    //+----------------------------------------------------------------+
@@ -141,7 +157,7 @@ public:
    void              WriteBool(string key, bool value)
      {
       AppendComma();
-      m_buffer += "\"" + key + "\":" + (value ? "true" : "false");
+      m_buffer += "\"" + EscapeString(key) + "\":" + (value ? "true" : "false");
      }
 
    //+----------------------------------------------------------------+
@@ -150,7 +166,7 @@ public:
    void              WriteNull(string key)
      {
       AppendComma();
-      m_buffer += "\"" + key + "\":null";
+      m_buffer += "\"" + EscapeString(key) + "\":null";
      }
 
    //+----------------------------------------------------------------+
@@ -161,30 +177,33 @@ public:
    void              WriteRaw(string key, string raw_json)
      {
       AppendComma();
-      m_buffer += "\"" + key + "\":" + raw_json;
+      m_buffer += "\"" + EscapeString(key) + "\":" + raw_json;
      }
 
    //+----------------------------------------------------------------+
    //| WriteDateTime — emit "key":"<iso_string>"                      |
    //| Preferred: caller passes pre-formatted ISO-8601 string          |
    //|   (e.g. "2026-05-02T14:23:45.123Z" per ADR-006/schema).        |
-   //| Epoch fallback: if iso_string is "" the raw (long) epoch is     |
-   //|   emitted as a number (no quotes) — clearly marked in output.  |
+   //| Epoch fallback: if iso_string is "", synthesize a minimal       |
+   //|   ISO-8601 string ("YYYY-MM-DDTHH:MM:SSZ") from epoch_fallback  |
+   //|   — schema-compliant string (Finding 01.11). Previous behaviour |
+   //|   emitted a bare integer which violates trade-journal-schema.   |
    //| Note: helpers/Timestamp.mqh (IMPL-042 owner) provides           |
    //|   FormatTimestampWithMs(datetime,ulong) as the canonical path.  |
    //+----------------------------------------------------------------+
    void              WriteDateTime(string key, string iso_string, datetime epoch_fallback = 0)
      {
-      if(StringLen(iso_string) > 0)
+      string s = iso_string;
+      if(StringLen(s) == 0)
         {
-         // Use pre-formatted ISO-8601 string (recommended path)
-         WriteString(key, iso_string);
+         // Synthesize minimal ISO-8601 from epoch (no millisecond precision —
+         // canonical formatter Timestamp.mqh owns the .mmmZ form per §6.D).
+         MqlDateTime dt;
+         TimeToStruct(epoch_fallback, dt);
+         s = StringFormat("%04d-%02d-%02dT%02d:%02d:%02dZ",
+                          dt.year, dt.mon, dt.day, dt.hour, dt.min, dt.sec);
         }
-      else
-        {
-         // Epoch fallback — emit as integer (jq can still parse; marks missing formatter)
-         WriteInt(key, (long)epoch_fallback);
-        }
+      WriteString(key, s);
      }
 
    //+----------------------------------------------------------------+
@@ -360,11 +379,48 @@ public:
          fail_msg = "entry_time WriteDateTime ISO path not found";
         }
 
-      // 11. Verify WriteDateTime epoch fallback emits integer
-      if(all_pass && StringFind(json, "\"stale_fallback\":1746187425") < 0)
+      // 11. Verify WriteDateTime epoch fallback emits synthesized ISO-8601
+      //     string (Finding 01.11) — recompute expected from same epoch.
+      MqlDateTime dt_exp;
+      TimeToStruct((datetime)1746187425, dt_exp);
+      string expected_fallback = StringFormat(
+            "\"stale_fallback\":\"%04d-%02d-%02dT%02d:%02d:%02dZ\"",
+            dt_exp.year, dt_exp.mon, dt_exp.day,
+            dt_exp.hour, dt_exp.min, dt_exp.sec);
+      if(all_pass && StringFind(json, expected_fallback) < 0)
         {
          all_pass = false;
-         fail_msg = "stale_fallback WriteDateTime epoch fallback not found";
+         fail_msg = "stale_fallback WriteDateTime ISO synth not found; expected="
+                    + expected_fallback;
+        }
+
+      // 13. Verify control-char escape (Finding 01.9): U+0001 → ""
+      if(all_pass)
+        {
+         CJsonWriter wctl;
+         wctl.Begin();
+         string ctl_in = "x" + ShortToString((ushort)0x01) + "y";
+         wctl.WriteString("ctl", ctl_in);
+         wctl.End();
+         if(StringFind(wctl.ToString(), "\"ctl\":\"x\\u0001y\"") < 0)
+           {
+            all_pass = false;
+            fail_msg = "control-char escape failed; got: " + wctl.ToString();
+           }
+        }
+
+      // 14. Verify key escape (Finding 01.10): key with quote/backslash escapes
+      if(all_pass)
+        {
+         CJsonWriter wk;
+         wk.Begin();
+         wk.WriteString("a\"b\\c", "v");
+         wk.End();
+         if(StringFind(wk.ToString(), "\"a\\\"b\\\\c\":\"v\"") < 0)
+           {
+            all_pass = false;
+            fail_msg = "key escape failed; got: " + wk.ToString();
+           }
         }
 
       // 12. Verify BuildJsonLine appends exactly one newline
