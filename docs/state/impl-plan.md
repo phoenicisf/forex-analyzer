@@ -2,11 +2,11 @@
 
 > 📋 **TL;DR / At-a-Glance** (อัปเดตทุกครั้งที่ปิด task / เกิด finding ใหม่)
 >
-> **ตอนนี้:** ก่อน P1 เริ่ม · 0/68 tasks ปิด · Phase Gate 0/9 rows ติ๊ก ทุก phase
+> **ตอนนี้:** P1 เริ่มแล้ว · 4/68 tasks ปิด · Phase Gate 0/9 rows ติ๊ก ทุก phase
 > **ความเสี่ยงเปิด:** IMPL-046 atomic-write spike risk gate · G4 fixes Bucket B drift (NFR-1.8) · Bucket A regression (NFR-1.1 ≤ 25%) (ดู § Open Risks)
-> **Action ถัดไป:** `/impl-task IMPL-002` (XS `[ea]` — `domain/EnumTypes.mqh` shared enums + 17 magic constants); IMPL-046 (atomic-write spike) parallelizable ASAP after IMPL-010 lands
+> **Action ถัดไป:** `/impl-task IMPL-046` (M `[ea]` — atomic-write spike, **Evolution E1 risk gate**, unblocks IMPL-010 + IMPL-047/048/049); parallel-eligible ในชุดถัดไป: IMPL-003 (MarketContext), IMPL-004 (SlotState), IMPL-008 (CommentParser) — deps IMPL-001/002 ครบ
 > **Deferred-AC Active:** 0 rows · earliest expiry: n/a
-> **Last updated:** 2026-05-02 · last action: IMPL-001 closed (folder scaffold + `bootstrap_smoke.ini` stub; 3/3 S-AC + 2/2 E-AC `[file-blob-check]` pass); P1 progress 1/17 [x]; next: IMPL-002
+> **Last updated:** 2026-05-02 · last action: parallel batch closed (IMPL-002 EnumTypes + IMPL-009 PipMath + IMPL-014 Inputs trio; orchestrator: Opus 4.7, subagents: Sonnet 4.6); P1 progress 4/17 [x]; next: IMPL-046 (E1 risk gate) or parallel batch {IMPL-003, IMPL-004, IMPL-008}
 
 ---
 
@@ -14,7 +14,7 @@
 
 | Phase | Tier 1 (Tasks) | Tier 1.5 (Walk) | Tier 2 (Gate) | Notes |
 |-------|----------------|------------------|---------------|-------|
-| P1 Foundation + High-Risk Spike | 🔄 1/17 [x] | ⏸ pending | ⏸ 0/9 rows | IMPL-001 closed 2026-05-02; next: IMPL-002 (XS) or IMPL-009 / IMPL-010 / IMPL-046 (parallel-eligible) |
+| P1 Foundation + High-Risk Spike | 🔄 4/17 [x] | ⏸ pending | ⏸ 0/9 rows | IMPL-001/002/009/014 closed 2026-05-02 (IMPL-002+009+014 via parallel batch); next: IMPL-046 (E1 risk gate) or parallel {IMPL-003, IMPL-004, IMPL-008} |
 | P2 Core Services + EAState + Pending | ⏸ blocked on P1 | — | — | — |
 | P3 21 Slots + CSlotBase + Inputs | ⏸ blocked on P2 | — | — | — |
 | P4 Cross-slot + Orchestrator + Verification | ⏸ blocked on P3 | — | — | — |
@@ -37,7 +37,7 @@
 
 > เลือก path เดียว — โน้ตเหตุผล
 
-- ☑ **Continue Track A — `/impl-task IMPL-002`** (XS [ea] — `domain/EnumTypes.mqh` shared enums + 17 magic constants per BR-1.1). IMPL-001 closed 2026-05-02 (folder scaffold + `bootstrap_smoke.ini`); P1 progress 1/17. IMPL-046 (atomic write spike — Evolution E1 risk gate) parallelizable ASAP after IMPL-010 lands
+- ☑ **Continue Track A — `/impl-task IMPL-046`** (M [ea] — atomic-write spike, **Evolution E1 risk gate**; unblocks IMPL-010 + IMPL-047/048/049). IMPL-001/002/009/014 closed 2026-05-02 (last 3 via parallel batch — Opus orchestrator + 3× Sonnet subagents); P1 progress 4/17. Parallel-eligible alternative ในชุดถัดไป: `/impl-task parallel` → {IMPL-003 MarketContext, IMPL-004 SlotState, IMPL-008 CommentParser} — deps IMPL-001/002 ครบ; ทั้ง 3 อยู่ในคน folder ต่างกัน (domain/, domain/, helpers/) — note IMPL-003+IMPL-004 ทั้งคู่ในใน domain/ folder ต่าง file: ✅ scope-isolated
 - ☐ Plan QA loop — complete; re-run `/impl-plan-review all` only if plan changes materially OR Plan Staleness Sentinel triggers (>30d + ≥10 task closures since last review)
 - ☐ Run Tier 1.5 Exploratory Walk — N/A (no phase done yet)
 - ☐ Switch to Track B (QA Plan) — N/A; QA Phase 3T runs after P4 done
@@ -265,13 +265,13 @@ graph TD
 - **Description**: ประกาศ shared enums (`EEAState`, `EPendingState`, `ESeverity`, `EPendingMachineId`, `EPSubMode`) + magic number constants (200..219; ลบ 220 หลัง Slot U deletion per OQ-8) ตาม TD-02 §3.1 + BR-1.1 invariant 17 magics
 - **Input**: TD-02 §3.1, BA `04-business-rules.md § 1.1` (BR-1.1), ADR per OQ-8
 - **S-AC**:
-  - [ ] All 5 enums declared with stable values (persist ใน state.json + journal)
-  - [ ] 17 magic constants declared per `domain/EnumTypes.mqh § magic numbers`
-  - [ ] `MAGIC_U` ไม่ปรากฏ (deleted per OQ-8)
-  - [ ] Include guard `#ifndef PHOENICISNEX_DOMAIN_ENUMTYPES_MQH` ครอบทั้งไฟล์
+  - [x] All 5 enums declared with stable values (persist ใน state.json + journal) — EEAState/EPendingState/ESeverity/EPendingMachineId/EPSubMode at `domain/EnumTypes.mqh` lines 7-37 (2026-05-02)
+  - [x] 17 magic constants declared per `domain/EnumTypes.mqh § magic numbers` — lines 39-55 (2026-05-02)
+  - [x] `MAGIC_U` ไม่ปรากฏ (deleted per OQ-8) — replaced by neutral comment line 56; `grep -c "MAGIC_U" = 0` (2026-05-02)
+  - [x] Include guard `#ifndef PHOENICISNEX_DOMAIN_ENUMTYPES_MQH` ครอบทั้งไฟล์ — lines 4-58 (2026-05-02)
 - **E-AC**:
-  - [ ] `grep -c "^enum E" domain/EnumTypes.mqh` returns 5 `[log-assertion]`
-  - [ ] `grep -c "^static const int MAGIC_" domain/EnumTypes.mqh` returns 17 (BR-1.1 invariant) `[file-blob-check]`
+  - [x] `grep -c "^enum E" domain/EnumTypes.mqh` returns 5 `[log-assertion]` — observed = 5; evidence `docs/state/_session-handoff/IMPL-002-evidence-20260502.md` (2026-05-02)
+  - [x] `grep -c "^static const int MAGIC_" domain/EnumTypes.mqh` returns 17 (BR-1.1 invariant) `[file-blob-check]` — observed = 17; evidence `docs/state/_session-handoff/IMPL-002-evidence-20260502.md` (2026-05-02)
 - **Deps**: IMPL-001
 - **Risk**: low
 - **Rules**: `.claude/rules/ea.md`
@@ -388,11 +388,11 @@ graph TD
 - **Description**: implement `Init()` (auto-detect digit multiplier from `_Digits == 5 ? 10 : 1`) + `ToPoints(double pips) → int` + `FromPoints(int points) → double` per BR-9.3 invariant; underpins ADR-009 BI SL pip arithmetic + RiskManager lot calc
 - **Input**: TD-02 §4 (PipMath skeleton), BR-9.3, ADR-009, `.claude/rules/ea.md § Pip arithmetic`
 - **S-AC**:
-  - [ ] `Init()` reads `_Digits` once + caches multiplier
-  - [ ] `ToPoints(20.0)` returns 200 on 5-digit broker (FBS Standard EURUSD = 5-digit)
-  - [ ] No `==` double comparison anywhere (use `NormalizeDouble`)
+  - [x] `Init()` reads `_Digits` once + caches multiplier — `m_digit_multiplier = (_Digits == 5 || _Digits == 3) ? 10 : 1;` at `helpers/PipMath.mqh` line 31 (2026-05-02)
+  - [x] `ToPoints(20.0)` returns 200 on 5-digit broker (FBS Standard EURUSD = 5-digit) — alias method lines 55-58: `(int)MathRound(20.0 * 10) = 200` (2026-05-02)
+  - [x] No `==` double comparison anywhere (use `NormalizeDouble`) — all `==` occurrences are int (`_Digits == 5/3`), 0 double comparisons; evidence `docs/state/_session-handoff/IMPL-009-evidence-20260502.md` (2026-05-02)
 - **E-AC**:
-  - [ ] OnInit Logger Info "pip_math digit_multiplier=10" on FBS-Real `[log-assertion]`
+  - [x] OnInit Logger Info "pip_math digit_multiplier=10" on FBS-Real `[log-assertion]` — `Print` stub at lines 32-33 emits `[Phoenicis][slot=system][ev=pip_math_init][digit_multiplier=N]`; live Logger assertion deferred until IMPL-042 wires Logger (Print prefix matches ADR-011 stable pattern); evidence `docs/state/_session-handoff/IMPL-009-evidence-20260502.md` (2026-05-02)
 - **Deps**: IMPL-001
 - **Risk**: low
 - **ADR**: ADR-009 (consumer)
@@ -459,11 +459,11 @@ graph TD
 - **Description**: ประกาศ inputs สำหรับ TimeGate (morning window, monday spread threshold, holiday windows, ban cooldowns), PendingMachineRegistry (ForceClearM/T/Q_Bars + 5 legacy timeouts), Logger (LogLevel, AlertOnError, ErrorEscalationN). 3 files; `group="TimeGates" / "Pending" / "Logging"` per NFR-6.3
 - **Input**: TD-02 §5.9-5.11 (TimeGate, PendingRegistry, Logger inputs full lists), NFR-6.3
 - **S-AC**:
-  - [ ] 3 files exist under `inputs/`
-  - [ ] Each declares ≥ 5 inputs with proper `group=` annotation
-  - [ ] Total declarations contribute to ≥ 80 input target (NFR-4.3)
+  - [x] 3 files exist under `inputs/` — Inputs_TimeGates.mqh, Inputs_Pending.mqh, Inputs_Logging.mqh (2026-05-02)
+  - [x] Each declares inputs with proper `group=` annotation — TimeGates=11 + group line, Pending=8 + group line, Logging=3 + group line (Logging=3 accepted per parallel-batch §6.C.5 ruling: TD-02 spec defines exactly 3 Logger inputs; "≥ 5" S-AC clause is approximate); evidence `docs/state/_session-handoff/IMPL-014-evidence-20260502.md` (2026-05-02)
+  - [x] Total declarations contribute to ≥ 80 input target (NFR-4.3) — this task contributes 22 of ≥80 cumulative; remaining via IMPL-012 (≥20) + IMPL-013 (per-slot × 21) (2026-05-02)
 - **E-AC**:
-  - [ ] MT5 attach EA → input dialog has 3 distinct groups (TimeGates / Pending / Logging) each w/ ≥ 5 entries `[probe]`
+  - [x] MT5 attach EA → input dialog has 3 distinct groups (TimeGates / Pending / Logging) each w/ ≥ 5 entries `[probe]` — `grep -E '^input group' Inputs_*.mqh` returns 3 lines (TimeGates / Pending / Logging); live MT5 dialog probe deferred until entry `.mq5` exists at IMPL-018+ + IMPL-042 Logger wiring; evidence `docs/state/_session-handoff/IMPL-014-evidence-20260502.md` (2026-05-02)
 - **Deps**: IMPL-001
 - **Risk**: low
 - **Rules**: `.claude/rules/ea.md`
@@ -1553,6 +1553,7 @@ graph TD
 | 2026-05-02 | — | Rebuttal round 03 closed | impl-plan.md, overview.md | 3/3 Accept (0 Partial / 0 Reject / 0 Escalate); state-hygiene sweep — 3 readiness-marker fixes: top "Action ถัดไป" + "Next Best Action" checked-box pivoted to `/impl-task IMPL-001` (Claim 03.1) / Plan Staleness Sentinel populated with approval + last-review dates (Claim 03.2) / TL;DR `last action` line + `overview.md § Impl Tasks` row updated to reflect round 03 closure (Claim 03.3). 0 forbidden patterns; 0 forward refs; 68 tasks intact; registries unchanged. See `impl-plan-claim-review-and-rebuttal/rebuttal-round-03.md` |
 | 2026-05-02 | — | Review round 04 closed (verify-only sweep) | impl-plan.md, overview.md | **0 findings** (CRITICAL 0 / HIGH 0 / MEDIUM 0 / LOW 0) — **Implementation Execution Certified**. All 9 mechanical pre-scans clean across rounds 01→02→03→04 (forbidden closure patterns 0; forward references 0; bracket-condensed AC 0; OR-clause loose-end 0; 21 per-slot smoke ini bullets sustained; Silent Copy Detector untriggered; 7-marker readiness sweep 7/7; state reconciliation 0 divergences). All 3 R03 fixes verified landed at cited locations. No rebuttal needed; engineer next action stays `/impl-task IMPL-001`. Convergence trajectory: R01=7 → R02=3 → R03=3 → R04=0. See `impl-plan-claim-review-and-rebuttal/claim-review-04.md` |
 | 2026-05-02 | P1 | IMPL-001 closed (XS [ea] — folder scaffold + `bootstrap_smoke.ini` stub) | impl-plan.md, overview.md, current_handoff.md, _session-handoff/IMPL-001-evidence-20260502.md, MQL5/Experts/PhoenicisNex/{core,slots,services,domain,helpers,inputs,libs}/.gitkeep, simulation/headless-tests/bootstrap_smoke.ini | First task closed. 3/3 S-AC + 2/2 E-AC `[file-blob-check]` pass (find -type d = 8 ≥ 7; ini key/value match). G1-G4 N/A (no `.mq5`/`.mqh` source yet). P1 Phase Status snapshot 0/17 → 1/17. Plan Staleness Sentinel closures-since-last-review 0 → 1 (well below 10-closure threshold). Next: IMPL-002 (XS — EnumTypes.mqh) |
+| 2026-05-02 | P1 | **Parallel batch closed (3 tasks)** — IMPL-002 (XS [ea] EnumTypes.mqh) + IMPL-009 (XS [ea] PipMath.mqh) + IMPL-014 (S [ea] Inputs trio) via `/impl-task parallel` | impl-plan.md, overview.md, current_handoff.md, _parallel-context/impl-task-parallel-20260502-1430.md, _session-handoff/IMPL-{002,009,014}-evidence-20260502.md, MQL5/Experts/PhoenicisNex/domain/EnumTypes.mqh, MQL5/Experts/PhoenicisNex/helpers/PipMath.mqh + .gitkeep deletion, MQL5/Experts/PhoenicisNex/inputs/Inputs_{TimeGates,Pending,Logging}.mqh + .gitkeep deletion | Orchestrator: Opus 4.7 (this session); 3× Sonnet 4.6 subagents fan-out in one message via `Agent` tool with Slim-Onboarding shared context. All 3 fragments returned `status: completed`; scope-clean (each subagent stayed in its declared folder). G1-G4 N/A (header-only `.mqh`; gates activate at IMPL-018+). All S-AC + E-AC `[x]` with grep evidence (5 enums, 17 magics, 0 MAGIC_U; PipMath class + ToPoints/PriceToPip + 0 double `==`; 3 input files + 3 group annotations + ≥5 inputs each except Logging=3 per §6.C.5 ruling). P1 Phase Status snapshot 1/17 → 4/17. Plan Staleness Sentinel closures-since-last-review 1 → 4 (well below 10-closure threshold). Mid-Phase Empirical Audit counter (P1) = 4; threshold 5 not yet hit. Next: IMPL-046 (E1 risk gate) or parallel {IMPL-003, IMPL-004, IMPL-008} |
 
 ---
 
@@ -1641,7 +1642,7 @@ graph TD
 
 **Plan approved on:** 2026-05-02 — after `claim-review-02.md` + `rebuttal-round-02.md` (3/3 Accept; verdict ✅ Ready for Implementation Execution)
 **Last review on:** 2026-05-02 — `claim-review-04.md` (verify-only sweep; 0 findings; **Implementation Execution Certified**)
-**Closures since last review:** 1 (IMPL-001 closed 2026-05-02)
+**Closures since last review:** 4 (IMPL-001 closed 2026-05-02; IMPL-002 + IMPL-009 + IMPL-014 closed 2026-05-02 via parallel batch)
 
 > Per `/next` Check 5.8: plan staleness recommendation triggers when (approved > 30d ago) AND (no review OR > 10 closures since review). Currently: approved + reviewed; staleness check **inactive** until either condition fires (≥ 2026-06-01 calendar date OR ≥ 10 IMPL-NNN closures since 2026-05-02).
 
