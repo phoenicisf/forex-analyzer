@@ -4,23 +4,23 @@
 
 ## Last completed action
 
-**IMPL-P1-GATE — P1 Phase Gate Closure closed 2026-05-02**
-- Created Phase 1 exploratory walk artifact (`2026-05-02-phase1-exploratory-walk.md`).
-- Created Phase 1 empirical evidence synthesis (`2026-05-02-phase1-evidence.md`).
-- Confirmed zero `[ERROR]` logs during headless bootstrap smoke test.
-- Ticked off all 9 Phase Gate rows in `impl-plan.md`.
-- Updated `overview.md` to indicate Phase 1 is fully complete and P2 is unblocked.
+**IMPL-047 — StatePersistence Save/Load closed 2026-05-03** (commit `f9c2321`)
+- Created `services/StatePersistence.mqh`: full `CStatePersistence` class (35-field JSON, ADR-007 Option A atomic save, GV mirror sync, TryRecoverFromGV).
+- Wired `Logger._SyncThrottle` bridge → `CStatePersistence::IncrementLoggerThrottle` (deferred body pattern resolves circular dependency).
+- Fixed 3 pre-existing compile errors in `PortfolioState.mqh` / `SlotState.mqh` (struct→class, switch int literals, const qualifier).
+- Created `spike/Spike_StatePersistence.mq5` (5-check E-AC spike) + `simulation/headless-tests/state_persistence_smoke.ini`.
+- G1: 0 errors 0 warnings (FBS MetaTrader 5ph MetaEditor64).
+- G3/G4: `verdict=ALL_PASS pass=5 fail=0` — all E-AC checks green.
+- Ticked all IMPL-047 S-ACs + E-ACs in `impl-plan.md`. Evidence at `_session-handoff/IMPL-047-evidence-20260503.md`.
 
 ## State of the Workspace
 
-- **Phase:** Implementation (P2 - Core Services)
-- **Active Task:** None
+- **Phase:** Implementation (P2 — Core Services)
+- **Active Task:** None (IMPL-047 closed; IMPL-048 up next)
 - **Dependencies Blocked:** None
-- **Pending Code Reviews:** Round 01 code review and plan review completed cleanly. Next review round should occur post-IMPL-018+ (entry .mq5 land) to unblock empirical verification.
+- **Pending Code Reviews:** Next review round post-IMPL-018+ (entry .mq5).
 
 ## Next Steps
 
-1. Execute **IMPL-047 (StatePersistence chain)**, which begins P2.
-2. Monitor QA Plan creation (Track B) if any agent capacity is available, though it is primarily scheduled after P4.
-
-**Pre-Phase-Gate recommendation (Resolved):** The `impl-plan-review` and `impl-review` were completed with zero blocking findings, leading directly to the successful closure of the P1 Gate.
+1. Execute **IMPL-048** — lock `docs/api-specs/state-persistence-schema.yaml` v1 (S task; E1b in E1a→E1b chain). Confirms 35-field schema layout for downstream consumers.
+2. Continue P2 chain: IMPL-049 (PendingMachineRegistry XL), IMPL-050 (TimeGate), etc.
