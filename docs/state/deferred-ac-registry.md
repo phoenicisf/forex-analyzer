@@ -12,7 +12,7 @@
 
 | Phase | Task | E-AC text | Evidence-kind | Deferred reason | Owner | Opened | Expires | Risk if missed |
 |-------|------|-----------|---------------|-----------------|-------|--------|---------|----------------|
-| _empty — registry initialized 2026-05-02_ | | | | | | | | |
+| P2 | IMPL-043 | Stub `FileWriteString` to fail 10 times → Logger Error `[ev=journal_halt][reason=write_fail_sustained]` + EAState transitions HALTED `[log-assertion]` | log-assertion | `EAState::Halt("journal_write_fail_sustained")` caller wiring requires IMPL-052 (EAState) + IMPL-018 (Orchestrator) — not yet implemented; `ShouldHaltSustained()` structurally verified pass (consecutive=0 after 200 clean writes in G3) | Kritsana | 2026-05-03 | 2026-05-17 | Journal sustained-write-failure halt never fires; EA continues writing to broken journal silently exceeding RPO |
 
 ---
 

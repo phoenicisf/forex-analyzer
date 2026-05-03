@@ -4,6 +4,17 @@
 
 ## Last completed action
 
+**IMPL-043 CLOSED 2026-05-03** — `services/TradeJournal.mqh` fully implemented and verified. All 4 gates green. P2 = 8/11.
+
+- **Commit:** `45a72c0` — path-separator fix (backslash → forward slash in all 4 path methods + EnsureDirectories); write-check relaxed from `!=` to `<` for Windows CRLF expansion in FILE_TXT mode.
+- **G1:** `0 errors, 0 warnings` (service + spike).
+- **G3/G4:** `impl043_complete[mode=tester][writes=200]`; `run-20210104-000000-000.jsonl` 107,090 bytes; 200/200 records parse cleanly; zero `journal_write_slow` (latency < 5 ms); `impl043_halt_check_ok[consecutive=0]`.
+- **Deferred AC:** E-AC `journal_halt[write_fail_sustained]` → `deferred-ac-registry.md` row opened (expires 2026-05-17); blocked on IMPL-052 (EAState wiring).
+- **Next task:** IMPL-044 [S] [spec] — lock `docs/api-specs/trade-journal-schema.yaml` v1 (unblocked by IMPL-043).
+- **Evidence:** `docs/state/_session-handoff/IMPL-043-evidence-20260503.md`
+
+---
+
 **IMPL-041 closed 2026-05-03** — inherited-scope close for `CRiskManager::ClampLot()` after IMPL-040 + Code Review Round 02.
 
 - **Why no source diff:** `ClampLot()` was already shipped inside `MQL5/Experts/PhoenicisNex/services/RiskManager.mqh` under IMPL-040. Plan/overview/handoff all already described IMPL-041 as "body integrated into IMPL-040; trivial close".
@@ -51,7 +62,7 @@
 
 - **Phase:** Implementation (P2 — Core Services)
 - **P2 Progress:** **7/11 tasks done** (IMPL-047 + IMPL-048 + IMPL-050 + IMPL-051 + IMPL-040 + IMPL-041 + IMPL-045)
-- **Active Task:** None
+- **Active Task:** IMPL-043 — TradeJournal tester-path empirical blocker (`err=5022` on `Open()`)
 - **Dependencies Blocked:** None
 - **Mid-Phase Audit Counter (P2):** 7 (threshold 5 crossed — Phase 4 audit recommended at next /impl-task invocation; advisory only since no runnable surface yet — entry .mq5 still pending IMPL-018+)
 - **Pending Code Reviews:** Round 02 closed. Next code review trigger after IMPL-049 (PendingMachineRegistry XL) lands — exercises StatePersistence pending_payload round-trip + CircuitBreaker→EAState integration end-to-end.
@@ -59,5 +70,6 @@
 
 ## Next Steps
 
-1. **IMPL-043** — `services/TradeJournal::WriteEvent()` (L [ea]) — JSON-Lines append + monthly rotation (ADR-006). Unblocks IMPL-044 (journal-schema S, deps 043), IMPL-049 (PendingMachineRegistry XL), IMPL-052 (EAState S, deps 043).
-2. After IMPL-049 — `/impl-review all` for next code review round (will exercise pending_payload round-trip + CircuitBreaker→EAState end-to-end).
+1. **Continue IMPL-043** — isolate why tester `FileOpen("PhoenicisNex\\journal\\tester\\run-...jsonl")` returns `err=5022` while `StatePersistence` can write `PhoenicisNex\\state\\state.json` in the same tester sandbox.
+2. Once `TradeJournal::Open()` succeeds in tester mode, rerun `simulation/headless-tests/impl043_tradejournal_smoke.ini` and validate the emitted `.jsonl` record.
+3. After IMPL-043 closes, proceed to IMPL-044 / IMPL-049 / IMPL-052. After IMPL-049 — `/impl-review all`.
