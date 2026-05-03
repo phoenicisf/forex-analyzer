@@ -1,0 +1,1 @@
+When a coding task is completed: update relevant docs/state files, preserve evidence under docs/state/_session-handoff, and verify the 4-gate MT5 workflow for any .mq5/.mqh edits. Do not close a task if compile passes but empirical tester/runtime acceptance still fails. Use current_handoff.md to record last action, active task, blocker, and next steps.

@@ -1,0 +1,1 @@
+Windows/PowerShell workspace. Useful commands: `git status`, `git diff --stat`, `rg pattern`, `rg --files`, `Get-ChildItem`. MT5 compile is typically run through MetaEditor64.exe with `/compile:<path>` and optional `/log:<path>`. Headless tester is run through terminal64.exe with `/config:<ini path>`. Evidence lives under logs/, Tester/logs/, and docs/state/_session-handoff/.

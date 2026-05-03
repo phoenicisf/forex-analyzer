@@ -1,0 +1,1 @@
+PhoenicisNex is a MetaTrader 5 Expert Advisor for single-instrument retail Forex trading on EURUSD H4. It is a modular-monolith MQL5 codebase with layers core, slots, services, domain, and helpers. Storage is file-based via state.json, journal JSONL files, and MT5 GlobalVariables. Development is governed by CLAUDE.md and ANDM Full Track conventions.
