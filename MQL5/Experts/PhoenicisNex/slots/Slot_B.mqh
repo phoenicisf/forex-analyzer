@@ -224,55 +224,37 @@ public:
 
    //--- 4. ManageExits() — exit pass; runs in BOTH RUNNING and HALTED
    //    per ADR-010. Exit condition: profit >= InpBTpProfitPips.
-   //    Hosts BR-trigger + BI pyramid hooks (BOTH stubbed to IMPL-053+).
+   //    Hosts BR-trigger (post-close) + BI pyramid hooks (stubbed IMPL-053+).
+   //    Uses canonical PortfolioState.GetTicketsForSlot + PositionSelectByTicket
+   //    pattern (Slot_BR canonical) per ADR-005 + ADR-012. Open positions are
+   //    accessed via Position* APIs — Order* APIs would walk the pending-order
+   //    list and miss market positions entirely.
    virtual void      ManageExits(CPortfolioState &port) override
      {
       if(!InpEnableSlotB)
          return;
 
-      //--- Iterate open orders for magic MAGIC_B, comment prefix "B,"
-      for(int i = OrdersTotal() - 1; i >= 0; i--)
+      //--- Retrieve B tickets (shared magic MAGIC_B=214 with BI; "B," prefix
+      //    excludes BI per shared-magic disambig contract — GetTicketsForSlot
+      //    StringFind("BI,...", "B,") returns -1, so BI tickets do not leak).
+      ulong tickets[];
+      int n = port.GetTicketsForSlot(MAGIC_B, "B,", tickets);
+      if(n <= 0) return;
+
+      for(int i = 0; i < n; i++)
         {
-         ulong ticket = OrderGetTicket(i);
-         if(ticket == 0)
-            continue;
-         if(OrderGetInteger(ORDER_MAGIC) != MAGIC_B)
-            continue;
+         ulong ticket = tickets[i];
+         if(!PositionSelectByTicket(ticket)) continue;
 
-         //--- Comment-prefix filter: only "B," orders (not "BI," from IMPL-039)
-         //    StringFind("BI,...", "B,") returns -1 (mismatch index 1).
-         string order_comment = OrderGetString(ORDER_COMMENT);
-         if(StringFind(order_comment, "B,") != 0)
-            continue;
-         // Defensive: explicitly exclude any "BI," that might slip the index check
-         if(StringFind(order_comment, "BI,") == 0)
-            continue;
-
-         //--- Get current profit in pips
-         double open_price  = OrderGetDouble(ORDER_PRICE_OPEN);
-         double current_bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-         double current_ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-         ENUM_ORDER_TYPE otype = (ENUM_ORDER_TYPE)OrderGetInteger(ORDER_TYPE);
-
-         double price_diff = 0.0;
-         if(otype == ORDER_TYPE_BUY)
-            price_diff = current_bid - open_price;
-         else if(otype == ORDER_TYPE_SELL)
-            price_diff = open_price - current_ask;
-
+         ENUM_POSITION_TYPE pos_type   = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+         double             open_price = PositionGetDouble(POSITION_PRICE_OPEN);
+         double             cur_price  = (pos_type == POSITION_TYPE_BUY)
+                                         ? SymbolInfoDouble(_Symbol, SYMBOL_BID)
+                                         : SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+         double price_diff = (pos_type == POSITION_TYPE_BUY)
+                             ? (cur_price - open_price)
+                             : (open_price - cur_price);
          double profit_pips = _PriceDiffToPips(price_diff);
-
-         //--- BR-trigger hook (BR-2.2 orphan exit-only spawn)
-         //    CodeWiki §3.18 — BusinessLogic_BR called from inside
-         //    ExtraTakeProfit_B when a B order closes. Real wiring lands
-         //    at IMPL-053 CrossSlotCoordinator; gated `false` keeps G1
-         //    compile clean and intent visible per Slot_G precedent.
-         //    Pre-close trigger: emit hook before OrderClose returns.
-         if(m_xslot != NULL && false /*IMPL-053 — BR-2.2 orphan exit*/)
-           {
-            // m_xslot.TriggerBR(MAGIC_BR, otype, OrderGetDouble(ORDER_VOLUME_CURRENT),
-            //                   profit_pips, "S" /*br_mode placeholder*/);
-           }
 
          //--- BI pyramid hook (CodeWiki §3.19 — BI shares MAGIC_B)
          //    BI force-close on B parent gone is owned by IMPL-039 BI's
@@ -285,11 +267,18 @@ public:
 
          if(m_logger != NULL)
             m_logger.Info("Slot_B", "exit_profit_gate", Magic(),
-                          StringFormat("ticket=%llu profit_pips=%.1f comment=%s",
-                                       ticket, profit_pips, order_comment));
+                          StringFormat("ticket=%I64u profit_pips=%.1f",
+                                       ticket, profit_pips));
 
-         //--- Close order via RiskManager (CTrade wired at IMPL-053+)
-         //    Log intent only until wiring complete (same pattern as Evaluate).
+         //--- Phase-1 stub: m_risk.CloseOrder(ticket) wires at IMPL-053+
+         //    Post-close BR-trigger hook (BR-2.2 orphan exit-only spawn);
+         //    fires AFTER OrderClose returns per CodeWiki §3.18 contract.
+         //    Gated `false` keeps G1 compile clean per Slot_G precedent.
+         if(m_xslot != NULL && false /*IMPL-053 — BR-2.2 orphan exit; fires AFTER close*/)
+           {
+            // m_xslot.TriggerBR(MAGIC_BR, pos_type, PositionGetDouble(POSITION_VOLUME),
+            //                   profit_pips, "S" /*br_mode placeholder*/);
+           }
         }
      }
 

@@ -169,36 +169,35 @@ public:
 
    //--- 4. ManageExits() — exit pass; runs in BOTH RUNNING and HALTED
    //    per ADR-010. Exit condition: profit >= InpLTpProfitPips.
+   //    Uses canonical PortfolioState.GetTicketsForSlot + PositionSelectByTicket
+   //    pattern (Slot_BR canonical) per ADR-005 + ADR-012. Open positions are
+   //    accessed via Position* APIs — Order* APIs would walk the pending-order
+   //    list and miss market positions entirely.
    virtual void      ManageExits(CPortfolioState &port) override
      {
       if(!InpEnableSlotL)
          return;
 
-      //--- Iterate open orders for magic MAGIC_L, comment prefix "L,"
-      for(int i = OrdersTotal() - 1; i >= 0; i--)
+      //--- Retrieve L tickets (shared magic MAGIC_L=211 with LX; "L," prefix
+      //    excludes LX per shared-magic disambig — GetTicketsForSlot returns
+      //    only "L,..." comment matches, not "LX,...").
+      ulong tickets[];
+      int n = port.GetTicketsForSlot(MAGIC_L, "L,", tickets);
+      if(n <= 0) return;
+
+      for(int i = 0; i < n; i++)
         {
-         ulong ticket = OrderGetTicket(i);
-         if(ticket == 0)
-            continue;
-         if(OrderGetInteger(ORDER_MAGIC) != MAGIC_L)
-            continue;
+         ulong ticket = tickets[i];
+         if(!PositionSelectByTicket(ticket)) continue;
 
-         //--- Comment-prefix filter: only "L," orders (not "LX," from IMPL-031)
-         string order_comment = OrderGetString(ORDER_COMMENT);
-         if(StringFind(order_comment, "L,") != 0)
-            continue;
-
-         //--- Get current profit in pips
-         double open_price  = OrderGetDouble(ORDER_PRICE_OPEN);
-         double current_bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-         double current_ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-         ENUM_ORDER_TYPE otype = (ENUM_ORDER_TYPE)OrderGetInteger(ORDER_TYPE);
-
-         double price_diff = 0.0;
-         if(otype == ORDER_TYPE_BUY)
-            price_diff = current_bid - open_price;
-         else if(otype == ORDER_TYPE_SELL)
-            price_diff = open_price - current_ask;
+         ENUM_POSITION_TYPE pos_type   = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+         double             open_price = PositionGetDouble(POSITION_PRICE_OPEN);
+         double             cur_price  = (pos_type == POSITION_TYPE_BUY)
+                                         ? SymbolInfoDouble(_Symbol, SYMBOL_BID)
+                                         : SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+         double price_diff = (pos_type == POSITION_TYPE_BUY)
+                             ? (cur_price - open_price)
+                             : (open_price - cur_price);
 
          int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
          double point_mult = (digits == 3 || digits == 5) ? 10.0 : 1.0;
@@ -210,8 +209,8 @@ public:
 
          if(m_logger != NULL)
             m_logger.Info("Slot_L", "exit_profit_gate", Magic(),
-                          StringFormat("ticket=%llu profit_pips=%.1f comment=%s",
-                                       ticket, profit_pips, order_comment));
+                          StringFormat("ticket=%I64u profit_pips=%.1f",
+                                       ticket, profit_pips));
 
          //--- Close order via RiskManager (CTrade wired at IMPL-053+)
          //    Log intent only until wiring complete (same pattern as Evaluate).
