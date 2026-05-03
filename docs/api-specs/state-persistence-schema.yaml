@@ -29,6 +29,7 @@ properties:
   schema_version:
     type: integer
     const: 1
+    description: "Schema version lock — MUST equal 1 for Phase 1. `const: 1` enforces exact match (no default needed; any value ≠ 1 is invalid). Bump to 2 only via Lifecycle Plan rule 2 (new required field) or rule 3/4 (rename/remove)."
 
   last_save_timestamp:
     type: string
@@ -293,6 +294,26 @@ definitions:
         items:
           type: number
         description: "Per-ticket max profit pip for trailing logic per BR-5.2 (G/GO/M/S)"
+
+## Lifecycle Plan
+# Per 07-future-evolution.md § 3.2 Hyrum's law mitigation — consumers MUST NOT depend on
+# undocumented field order or presence of optional fields not listed in `required`.
+#
+# Rules (verbatim):
+#   1. Add field (new optional)  = no version bump; readers ignore unknown
+#   2. Add field (new required)  = bump major (schema_version: 2); migrator required
+#   3. Rename field              = bump major; emit deprecated alias for ≥1 minor
+#   4. Remove field              = bump major; deprecation banner ≥1 minor first
+#
+# Current version: 1 (Phase 1 Foundation — locked)
+# Next version trigger: any rule 2/3/4 action above; ADR required before bump.
+
+## Option A Lock Note
+# IMPL-046 atomic-write spike confirmed Option A (write temp .tmp → fsync → rename) as the
+# active strategy for state.json persistence (ADR-007 Option A).
+# Option B (in-place write with backup) layout is NOT added to this schema — it would only be
+# needed if the Option A spike had failed and Option B fallback was activated per TD-02 §4.4.
+# Since Option A is locked, no Option B variant section will be added.
 
 # Reader notes:
 # - StatePersistence.Load() handles missing fields gracefully — defaults match EA fresh boot
