@@ -331,26 +331,15 @@ void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
            }
          else
            {
-            string  comment    = "PI,MA,E,1,SL";
-            string  dir_str    = parent_isBuy ? "BUY" : "SELL";
-            ENUM_ORDER_TYPE ot = parent_isBuy ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
-
-            MqlTradeRequest req = {};
-            MqlTradeResult  res = {};
-            req.action       = TRADE_ACTION_DEAL;
-            req.symbol       = _Symbol;
-            req.volume       = lot;
-            req.type         = ot;
-            req.price        = _NormalizeBrokerPrice(price);
-            req.sl           = sl_price;
-            req.tp           = 0.0;        // managed in ManageExits
-            req.comment      = comment;
-            req.magic        = MAGIC_P;
-            req.type_filling = ORDER_FILLING_FOK;
-
+            //--- Phase-1 stub: log-intent only — actual OrderSend deferred to
+            //    IMPL-053+ Orchestrator/RiskManager wiring per Slot_BI/Slot_R
+            //    precedent. (review-round-07 Finding 07.4)
+            string comment = "PI,MA,E,1,SL";
+            string dir_str = parent_isBuy ? "BUY" : "SELL";
             m_logger.Info("SlotP", "entry_signal_pyramid", MAGIC_P,
                           StringFormat("sub_mode=E dir=%s lot=%.2f sl_pips=%.1f "
-                                       "price=%.5f sl=%.5f comment=%s parent_open=%.5f",
+                                       "price=%.5f sl=%.5f comment=%s parent_open=%.5f "
+                                       "(Phase-1 stub: OrderSend deferred to IMPL-053+)",
                                        dir_str, lot, sl_pips, price, sl_price,
                                        comment, parent_open));
            }
@@ -377,62 +366,56 @@ void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       double diff_sl_pip = _ComputeDiffSlPip(ctx);
       double band_ratio  = ctx.bb_h4.bb_ratio;
 
-      //--- Encode direction in payload alongside sub-mode + diff_sl + band_ratio.
-      //    PMR's _BuildPPayload owns sub_mode/diff_sl/band_ratio fields; we add
-      //    "dir" via direct EnterPending so PSUB_N initial state is preserved.
-      string dir = buyBase ? "BUY" : "SELL";
-      string mode_str = "N";
-      string payload  = StringFormat(
-         "{\"sub_mode\":\"%s\",\"diff_sl\":%.2f,\"band_ratio\":%.2f,\"dir\":\"%s\"}",
-         mode_str, diff_sl_pip, band_ratio, dir);
-
-      m_pending.EnterPending(PM_P, payload, ctx.bar_index_h4);
+      //--- Direction encoded via signed diff_sl (BUY ≥ 0, SELL < 0) per
+      //    state-persistence-schema.yaml § PendingMachineState_PVariant
+      //    diff_sl sign convention. Stays within canonical 3-field payload.
+      //    (review-round-07 Finding 07.1 Option A + 07.2 EnterPPending helper)
+      double signed_diff_sl = buyBase ? diff_sl_pip : -diff_sl_pip;
+      m_pending.EnterPPending(PSUB_N, signed_diff_sl, band_ratio, ctx.bar_index_h4);
 
       m_logger.Info("SlotP", "pending_entered", MAGIC_P,
                     StringFormat("dir=%s sub_mode=N diff_sl_pip=%.1f band_ratio=%.1f bar=%d",
-                                 dir, diff_sl_pip, band_ratio, ctx.bar_index_h4));
+                                 (buyBase ? "BUY" : "SELL"),
+                                 diff_sl_pip, band_ratio, ctx.bar_index_h4));
       return;
      }
 
    //--- Phase B: PENDING — resolve sub-mode if N, then check trigger
    if(st == PENDING_STATE_PENDING)
      {
-      string    payload   = m_pending.GetPayload(PM_P);
-      bool      isBuy     = (StringFind(payload, "\"dir\":\"BUY\"") >= 0);
-      EPSubMode sub       = m_pending.GetPSubMode();
-      double    diff_sl   = m_pending.GetPDiffSL();
-      double    band_rat  = m_pending.GetPBandRatio();
+      EPSubMode sub          = m_pending.GetPSubMode();
+      double    signed_ds    = m_pending.GetPDiffSL();
+      double    diff_sl_abs  = MathAbs(signed_ds);
+      bool      isBuy        = (signed_ds >= 0.0);
+      double    band_rat     = m_pending.GetPBandRatio();
 
       //--- Sub-mode resolution (lock-once): N → PX or PH
       if(sub == PSUB_N || sub == PSUB_NONE)
         {
-         EPSubMode resolved = _ResolvePSubMode(ctx, diff_sl);
-         string mode_str  = (resolved == PSUB_PX) ? "PX" : "PH";
-         string dir       = isBuy ? "BUY" : "SELL";
-         string new_pl = StringFormat(
-            "{\"sub_mode\":\"%s\",\"diff_sl\":%.2f,\"band_ratio\":%.2f,\"dir\":\"%s\"}",
-            mode_str, diff_sl, band_rat, dir);
+         EPSubMode resolved = _ResolvePSubMode(ctx, diff_sl_abs);
+         string mode_str    = (resolved == PSUB_PX) ? "PX" : "PH";
 
-         //--- Re-enter pending with locked sub-mode (preserves bar_index via
-         //    EnterPending overwrite — PMR resets pending_started_bar but
-         //    legacy timeout window is the slot's tolerance for retest, so
-         //    fresh timer on lock is acceptable per `04 § 4.4` lock semantics).
-         m_pending.EnterPending(PM_P, new_pl, ctx.bar_index_h4);
+         //--- Mutate payload only — must NOT reset pending_started_bar:
+         //    BR-6.4 70-bar legacy timeout window keeps ticking from the
+         //    original IDLE→PENDING bar. Sub-mode lock is an internal
+         //    payload mutation, not a timeout-relevant transition.
+         //    (review-round-07 Finding 07.3 + canonical helper per 07.2)
+         m_pending.OverwritePPayload(resolved, signed_ds, band_rat);
          sub = resolved;
 
          m_logger.Info("SlotP", "submode_locked", MAGIC_P,
                        StringFormat("sub_mode=%s diff_sl_pip=%.1f band_ratio=%.1f",
-                                    mode_str, diff_sl, band_rat));
+                                    mode_str, diff_sl_abs, band_rat));
          //--- Continue this tick to evaluate trigger with new sub-mode.
         }
 
       //--- Trigger gate
       if(!_IsPTriggerValid(ctx, isBuy)) return;
 
-      //--- Compute SL distance: PX uses diff_sl from payload (snapshot at IDLE);
+      //--- Compute SL distance: PX uses |diff_sl| from payload (snapshot at IDLE);
       //    PH uses input floor (default conservative).
       double pip_size = _PipSize();
-      double sl_pips  = (sub == PSUB_PX) ? diff_sl : InpPSlPipsFloor;
+      double sl_pips  = (sub == PSUB_PX) ? diff_sl_abs : InpPSlPipsFloor;
       if(sl_pips < InpPSlPipsFloor) sl_pips = InpPSlPipsFloor;   // floor guard
 
       double balance = AccountInfoDouble(ACCOUNT_BALANCE);
@@ -452,27 +435,16 @@ void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       string sub_str = (sub == PSUB_PX) ? "PX" : "PH";
       string comment = StringFormat("P,MA,%s,1,SL", sub_str);
 
-      ENUM_ORDER_TYPE ot = isBuy ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
-      MqlTradeRequest req = {};
-      MqlTradeResult  res = {};
-      req.action       = TRADE_ACTION_DEAL;
-      req.symbol       = _Symbol;
-      req.volume       = lot;
-      req.type         = ot;
-      req.price        = _NormalizeBrokerPrice(price);
-      req.sl           = sl_price;
-      req.tp           = 0.0;
-      req.comment      = comment;
-      req.magic        = MAGIC_P;
-      req.type_filling = ORDER_FILLING_FOK;
-
+      //--- Phase-1 stub: log-intent only — actual OrderSend deferred to
+      //    IMPL-053+ Orchestrator/RiskManager wiring per Slot_BI/Slot_R
+      //    precedent. (review-round-07 Finding 07.4)
       m_logger.Info("SlotP", "entry_signal", MAGIC_P,
                     StringFormat("sub_mode=%s dir=%s lot=%.2f sl_pips=%.1f "
-                                 "price=%.5f sl=%.5f comment=%s",
+                                 "price=%.5f sl=%.5f comment=%s "
+                                 "(Phase-1 stub: OrderSend deferred to IMPL-053+)",
                                  sub_str, (isBuy ? "BUY" : "SELL"), lot, sl_pips,
                                  price, sl_price, comment));
 
-      //--- Phase-1 stub: actual broker OrderSend deferred to Orchestrator (IMPL-053+).
       m_pending.TransitionExecuted(PM_P);
      }
 
@@ -491,18 +463,25 @@ void CSlotP::ManageExits(CPortfolioState &port)
   {
    if(m_logger == NULL) return;
 
-   //--- Iterate union of "P," + "PI," tickets via two GetTicketsForSlot calls.
-   //    "P," call returns both (StringFind precedent — "PI," startsWith "P,"
-   //    only at offset 0 char ',' vs 'I' so "P," prefix-match excludes "PI,"
-   //    actually NO — startsWith "P," means comment[0..2]=="P,"; "PI,..." has
-   //    comment[1]='I' ≠ ',' so it does NOT match. We use both calls below.)
+   //--- "P," and "PI," need separate GetTicketsForSlot calls — startsWith
+   //    semantic excludes "PI," from "P," prefix-match (comment[1]='I'≠',').
    ulong tickets_p[];
    int n_p = port.GetTicketsForSlot(MAGIC_P, "P,", tickets_p);
    ulong tickets_pi[];
    int n_pi = port.GetTicketsForSlot(MAGIC_P, "PI,", tickets_pi);
 
+   //--- Loud failure on degenerate symbol metric — exit pass aborted while
+   //    open positions remain unmanaged is a halt-class condition per NFR-5.1.
+   //    (review-round-07 Finding 07.5)
    double pip_size = _PipSize();
-   if(pip_size <= 0.0) return;
+   if(pip_size <= 0.0)
+     {
+      m_logger.Error("SlotP", "degenerate_pip_size", MAGIC_P,
+                     StringFormat("_PipSize() returned %.10f — exit pass aborted; "
+                                  "symbol metric corrupt (NFR-5.1 surfacing)", pip_size));
+      Alert("[PhoenicisNex] Slot_P degenerate _PipSize() — exit pass aborted");
+      return;
+     }
 
    //--- Process "P," tickets (PX/PH primary entries)
    for(int i = 0; i < n_p; i++)
@@ -511,10 +490,6 @@ void CSlotP::ManageExits(CPortfolioState &port)
       if(!PositionSelectByTicket(ticket)) continue;
 
       string c = PositionGetString(POSITION_COMMENT);
-      //--- Skip "PI," — handled in pi loop below (defensive — startsWith should
-      //    already exclude, but Slot_BI precedent shows broker comment may be
-      //    truncated/overridden so check explicitly).
-      if(StringFind(c, "PI,") == 0) continue;
 
       ENUM_POSITION_TYPE pos_type   = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
       double             open_price = PositionGetDouble(POSITION_PRICE_OPEN);

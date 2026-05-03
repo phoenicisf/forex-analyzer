@@ -457,6 +457,22 @@ public:
       EnterPending(PM_P, payload, current_bar);
      }
 
+   //--- Helper for slots: mutate P-Pending payload only (sub-mode lock /
+   //    field update) WITHOUT resetting `pending_started_bar`. BR-6.4
+   //    70-bar legacy timeout window must keep ticking from original
+   //    IDLE→PENDING bar — sub-mode resolution (N→PX/PH) is an internal
+   //    payload mutation, not a timeout-relevant transition.
+   //    (review-round-07 Finding 07.3)
+   void              OverwritePPayload(EPSubMode mode, double diff_sl, double band_ratio)
+     {
+      string payload = _BuildPPayload(mode, diff_sl, band_ratio);
+      m_machines[PM_P].pending_payload = payload;     // pending_started_bar unchanged
+      if(m_logger != NULL)
+         m_logger.Info("pending", "payload_overwrite", 0,
+                       StringFormat("machine=P sub_mode=%s",
+                                    _PSubModeToStr(mode)));
+     }
+
    //--- State round-trip primitives (full integration in sub-pass (d)).
    //    LoadFromState pulls all 8 entries from CStatePersistence accessors;
    //    SaveToState pushes back. Defensive — NULL m_state is no-op so callers

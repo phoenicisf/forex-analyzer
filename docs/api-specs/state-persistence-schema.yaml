@@ -231,7 +231,11 @@ definitions:
               ⚠️ A7 risk: E/N semantic ต้อง confirm กับ CodeWiki §2.5 ตอน TD Phase 1D (IMPL-034)
           diff_sl:
             type: [number, "null"]
-            description: "SL distance pip ที่ snapshot ตอน enter pending; ใช้ branch decision PX/PH (< 200 → PH) + ใช้ตอน execute pending"
+            description: |
+              SL distance pip ที่ snapshot ตอน enter pending; ใช้ branch decision PX/PH (< 200 → PH) + ใช้ตอน execute pending.
+              **Sign convention (Slot_P only):** BUY ≥ 0, SELL < 0 — absolute value carries the pip distance, sign carries direction.
+              Slot_P uses `MathAbs(diff_sl)` for threshold comparisons + `(diff_sl >= 0.0)` for direction.
+              Rationale: avoids inventing a non-schema `dir` field while staying within `PendingMachineState_PVariant` contract (review-round-07 Finding 07.1 Option A).
           band_ratio:
             type: [number, "null"]
             description: "CalculateBollingerRatio(bid, BBTop, BBBot) ผลลัพธ์ใน [0..100]; ใช้ band-gating rule (PX requires > 75 ตอน diff_sl ≥ 250) + PH TP threshold calc"
