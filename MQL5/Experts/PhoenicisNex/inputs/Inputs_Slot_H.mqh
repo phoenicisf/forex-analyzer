@@ -8,7 +8,7 @@
 #define PHOENICISNEX_INPUTS_SLOT_H_MQH
 
 input group "Slot H"
-input bool   InpHEnabled            = true;   // Enable/disable Slot H
+input bool   InpEnableSlotH         = true;   // Enable Slot H (Fractal + Ichimoku Distance)
 input int    InpHMaxOrders          = 2;      // BR-1.1 max concurrent H orders
 input int    InpHFractalLookback    = 3;      // Bars to look back for fractal alignment
 input double InpHIchimokuMaxPips    = 35.0;   // Max Ichimoku cloud distance (pips) — CodeWiki §3.4 :2776

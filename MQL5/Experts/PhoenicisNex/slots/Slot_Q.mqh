@@ -206,11 +206,9 @@ void CSlotQ::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       bool triggerOk = isBuy ? _IsQBuyTrigger(ctx) : _IsQSellTrigger(ctx);
       if(!triggerOk) return;
 
-      //--- Compute SL
-      double point      = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-      double pip_factor = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS) == 5 ? 10.0 : 1.0;
-      double pip_size   = point * pip_factor;
-      double sl_pips    = InpQSlPipsFloor;
+      //--- Pip size via base-class helper (Round-06 06.1)
+      double pip_size = _PipSize();
+      double sl_pips  = InpQSlPipsFloor;
 
       //--- Compute lot
       double balance = AccountInfoDouble(ACCOUNT_BALANCE);
@@ -225,13 +223,9 @@ void CSlotQ::Evaluate(const MarketContext &ctx, CPortfolioState &port)
 
       //--- Compute SL + TP prices
       double price    = isBuy ? ctx.ask : ctx.bid;
-      double sl_price = 0.0;
-      if(isBuy)
-         sl_price = NormalizeDouble(ctx.ask - sl_pips * pip_size,
-                                    (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS));
-      else
-         sl_price = NormalizeDouble(ctx.bid + sl_pips * pip_size,
-                                    (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS));
+      double sl_price = isBuy
+                        ? _NormalizeBrokerPrice(ctx.ask - sl_pips * pip_size)
+                        : _NormalizeBrokerPrice(ctx.bid + sl_pips * pip_size);
 
       //--- Comment: "Q,MA,N,1,SL" per CodeWiki §3.Q format
       string comment = "Q,MA,N,1,SL";
@@ -249,8 +243,7 @@ void CSlotQ::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       req.symbol       = _Symbol;
       req.volume       = lot;
       req.type         = order_type;
-      req.price        = NormalizeDouble(price,
-                                         (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS));
+      req.price        = _NormalizeBrokerPrice(price);
       req.sl           = sl_price;
       req.tp           = 0.0;    // TP = 0; profit gate managed in ManageExits
       req.comment      = comment;
@@ -288,9 +281,8 @@ void CSlotQ::ManageExits(CPortfolioState &port)
    int n = port.GetTicketsForSlot(MAGIC_Q, "Q,", tickets);
    if(n <= 0) return;
 
-   double point      = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   double pip_factor = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS) == 5 ? 10.0 : 1.0;
-   double pip_size   = point * pip_factor;
+   //--- Pip size via base-class helper (Round-06 06.1)
+   double pip_size = _PipSize();
 
    for(int i = 0; i < n; i++)
      {

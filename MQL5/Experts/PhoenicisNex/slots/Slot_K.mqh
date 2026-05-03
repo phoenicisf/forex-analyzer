@@ -50,13 +50,8 @@ private:
    //    Compared against iTime(_Symbol, PERIOD_D1, 0) on each Evaluate tick.
    datetime          m_last_order_d1_time;
 
-   //--- Pip-to-price conversion helper (handles 4-digit vs 5-digit broker)
-   double            _PipsToPrice(double pips) const
-     {
-      int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
-      double point_mult = (digits == 3 || digits == 5) ? 10.0 : 1.0;
-      return pips * _Point * point_mult;
-     }
+   //--- Round-06 06.1: pip arithmetic via CSlotBase helpers
+   //    `_PipsToPrice(pips)` inherited from base.
 
    //--- Force crossover detection (CodeWiki §3.5 entry condition 3)
    //    isFICrossUp = (F[1]>0.5 && F[2]>0 && F[3]<-0.2) || (F[1]>1 && F[2]<-0.2)
@@ -154,11 +149,13 @@ public:
       if(lot <= 0.0)
          return;
 
-      //--- Build order parameters
+      //--- Build order parameters (Round-06 06.3: sl_price normalized)
       ENUM_ORDER_TYPE  order_type = buy_signal ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
       double           price      = buy_signal ? ctx.ask : ctx.bid;
       double           sl_dist    = _PipsToPrice(InpKSlPips);
-      double           sl_price   = buy_signal ? (price - sl_dist) : (price + sl_dist);
+      double           sl_price   = buy_signal
+                                    ? _NormalizeBrokerPrice(price - sl_dist)
+                                    : _NormalizeBrokerPrice(price + sl_dist);
       string           comment    = "K,layer,1";
 
       //--- Submit order via RiskManager (which wraps CTrade per ea.md)
@@ -205,9 +202,7 @@ public:
                              ? (cur_price - open_price)
                              : (open_price - cur_price);
 
-         int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
-         double point_mult = (digits == 3 || digits == 5) ? 10.0 : 1.0;
-         double profit_pips = price_diff / (_Point * point_mult);
+         double profit_pips = price_diff / _PipSize();
 
          //--- Exit condition 1: profit >= 20 pip gate
          if(profit_pips < InpKTpProfitPips)

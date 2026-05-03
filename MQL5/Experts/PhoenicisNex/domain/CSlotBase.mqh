@@ -37,6 +37,7 @@
 #include "MarketContext.mqh"
 #include "SlotState.mqh"
 #include "../services/Logger.mqh"   // scoped exception — see header note (ADR-002 layer 2)
+#include "../helpers/PipMath.mqh"   // ea.md mandate: pip arithmetic via CPipMath (Round-06 06.1)
 
 //--- Forward declarations for the 7 services held only as opaque pointers
 //    in the base. Derived slots #include the full headers as needed.
@@ -61,11 +62,23 @@ protected:
    CPendingMachineRegistry  *m_pending;
    CCrossSlotCoordinator    *m_xslot;
 
+   //--- Round-06 06.1: pip-arithmetic helper (ea.md mandate). Composition
+   //    Root (IMPL-053+) calls SetPipMath(); when NULL the protected
+   //    helpers fall back to inline 5/3-digit detection (single fallback
+   //    site eliminates the 19-way drift Finding 06.1 reported).
+   CPipMath                 *m_pip;
+
 public:
                      CSlotBase()
       : m_indicators(NULL), m_risk(NULL), m_journal(NULL), m_logger(NULL),
-        m_state(NULL), m_portfolio(NULL), m_pending(NULL), m_xslot(NULL) {}
+        m_state(NULL), m_portfolio(NULL), m_pending(NULL), m_xslot(NULL),
+        m_pip(NULL) {}
    virtual          ~CSlotBase() {}
+
+   //--- Round-06 06.1 — separate setter (does NOT change Init() arity to
+   //    avoid breaking 4 spike harnesses). Composition Root invokes
+   //    SetPipMath() right after Init() per ea.md mandate.
+   void              SetPipMath(CPipMath *pip) { m_pip = pip; }
 
    //--- Composition Root injection (called by CSlotRegistry::RegisterAll
    //    per ADR-002 — slot ห้าม resolve services เอง). Pointers may be
@@ -127,6 +140,48 @@ public:
    //    PENDING_STATE_IDLE because most slots do not use the pending
    //    sub-flow; slots that DO (C/D/F/J/R/P/M/T/Q) override.
    virtual EPendingState PendingState() const { return PENDING_STATE_IDLE; }
+
+protected:
+   //--- Round-06 06.1 — pip helpers shared by 19 derived slots. When
+   //    m_pip is wired (IMPL-053+ Composition Root) the helpers route
+   //    through CPipMath; otherwise a SINGLE fallback site implements
+   //    the canonical 5/3-digit detection (matches CPipMath::Init at
+   //    helpers/PipMath.mqh:31). Slots ห้าม re-derive this expression.
+
+   //--- Returns price delta for 1 pip (5-digit broker → 0.00010).
+   double            _PipSize() const
+     {
+      if(m_pip != NULL)
+         return m_pip.PipToPrice(1.0);
+      // Fallback (single site): canonical rule — see CPipMath::Init.
+      return _Point * (_Digits == 5 || _Digits == 3 ? 10.0 : 1.0);
+     }
+
+   //--- Convert pip count to signed price delta.
+   double            _PipsToPrice(double pips) const
+     {
+      if(m_pip != NULL)
+         return m_pip.PipToPrice(pips);
+      return pips * _Point * (_Digits == 5 || _Digits == 3 ? 10.0 : 1.0);
+     }
+
+   //--- Convert price difference to pip count (always positive — caller
+   //    handles sign by direction).
+   double            _PriceToPips(double price_diff) const
+     {
+      if(m_pip != NULL)
+         return m_pip.PriceToPip(price_diff);
+      return MathAbs(price_diff) / (_Point * (_Digits == 5 || _Digits == 3 ? 10.0 : 1.0));
+     }
+
+   //--- Round-06 06.3 — broker-bound price normalization (NormalizeDouble
+   //    against current symbol's _Digits). Wraps every sl_price / tp_price
+   //    that flows into RiskManager → CTrade::PositionOpen (broker rejects
+   //    sub-tick precision with TRADE_RETCODE_INVALID_STOPS = 10016).
+   double            _NormalizeBrokerPrice(double price) const
+     {
+      return NormalizeDouble(price, _Digits);
+     }
   };
 
 #endif // PHOENICISNEX_DOMAIN_CSLOTBASE_MQH

@@ -168,9 +168,8 @@ void CSlotF::ManageExits(CPortfolioState &port)
    int n = port.GetTicketsForSlot(MAGIC_F, "F,", tickets);
    if(n <= 0) return;
 
-   double point      = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   double pip_factor = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS) == 5 ? 10.0 : 1.0;
-   double pip_size   = point * pip_factor;
+   //--- Pip size via base-class helper (Round-06 06.1)
+   double pip_size = _PipSize();
 
    for(int i = 0; i < n; i++)
      {

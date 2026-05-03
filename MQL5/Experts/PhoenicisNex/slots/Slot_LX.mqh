@@ -61,21 +61,8 @@
 class CSlotLX : public CSlotBase
   {
 private:
-   //--- Pip-to-price conversion helper (handles 4-digit vs 5-digit broker)
-   double            _PipsToPrice(double pips) const
-     {
-      int    digits     = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
-      double point_mult = (digits == 3 || digits == 5) ? 10.0 : 1.0;
-      return pips * _Point * point_mult;
-     }
-
-   //--- Pip size in price units
-   double            _PipSize() const
-     {
-      int    digits     = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
-      double point_mult = (digits == 3 || digits == 5) ? 10.0 : 1.0;
-      return _Point * point_mult;
-     }
+   //--- Round-06 06.1: pip arithmetic via CSlotBase helpers
+   //    `_PipsToPrice(pips)` and `_PipSize()` inherited from base.
 
    //--- Check whether LX already has active pyramid orders
    //    Uses "LX," prefix — will NOT count parent L orders ("L,")

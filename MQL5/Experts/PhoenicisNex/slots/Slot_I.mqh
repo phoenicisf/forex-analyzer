@@ -195,9 +195,8 @@ bool CSlotI::_IsFibRetraceReady(const MarketContext &ctx,
    double range_span = range_high - range_low;
    double point      = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
 
-   //--- Require at least 10 pips of range to be meaningful
-   double pip_factor = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS) == 5 ? 10.0 : 1.0;
-   if(range_span < 10.0 * point * pip_factor) return false;
+   //--- Require at least 10 pips of range to be meaningful (Round-06 06.1)
+   if(range_span < _PipsToPrice(10.0)) return false;
 
    if(g_dir == POSITION_TYPE_BUY)
      {
@@ -246,10 +245,8 @@ void CSlotI::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //--- Condition 4: Fibonacci retracement at InpIFibLevel of N-bar range
    if(!_IsFibRetraceReady(ctx, g_dir)) return;
 
-   //--- Compute pip utilities
-   double point      = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   double pip_factor = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS) == 5 ? 10.0 : 1.0;
-   double pip_size   = point * pip_factor;
+   //--- Pip size via base-class helper (Round-06 06.1)
+   double pip_size = _PipSize();
 
    //--- SL: use InpISlPips as floor (Fibonacci-based SL; shorter horizon)
    double sl_pips = InpISlPips;
@@ -265,16 +262,12 @@ void CSlotI::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       return;
      }
 
-   //--- Compute prices
-   int    digits   = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
+   //--- Compute prices (broker-bound — base-class _NormalizeBrokerPrice)
    bool   isBuy    = (g_dir == POSITION_TYPE_BUY);
    double price    = isBuy ? ctx.ask : ctx.bid;
-   double sl_price = 0.0;
-
-   if(isBuy)
-      sl_price = NormalizeDouble(ctx.ask - sl_pips * pip_size, digits);
-   else
-      sl_price = NormalizeDouble(ctx.bid + sl_pips * pip_size, digits);
+   double sl_price = isBuy
+                     ? _NormalizeBrokerPrice(ctx.ask - sl_pips * pip_size)
+                     : _NormalizeBrokerPrice(ctx.bid + sl_pips * pip_size);
 
    //--- Comment: "I,fib,1" per CodeWiki §3.I "I,..." pattern
    string comment = "I,fib,1";
@@ -314,9 +307,8 @@ void CSlotI::ManageExits(CPortfolioState &port)
    int n = port.GetTicketsForSlot(MAGIC_I, "I,", tickets);
    if(n <= 0) return;
 
-   double point      = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   double pip_factor = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS) == 5 ? 10.0 : 1.0;
-   double pip_size   = point * pip_factor;
+   //--- Pip size via base-class helper (Round-06 06.1)
+   double pip_size = _PipSize();
 
    for(int i = 0; i < n; i++)
      {

@@ -71,14 +71,8 @@
 class CSlotS : public CSlotBase
   {
 private:
-   //--- Pip-to-price conversion helper (handles 4-digit vs 5-digit broker)
-   //    Mirrors Slot_L pattern per implementation directive
-   double            _PipsToPrice(double pips) const
-     {
-      int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
-      double point_mult = (digits == 3 || digits == 5) ? 10.0 : 1.0;
-      return pips * _Point * point_mult;
-     }
+   //--- Round-06 06.1: pip arithmetic via CSlotBase helpers
+   //    `_PipsToPrice(pips)` inherited from base.
 
    //--- Check if BOTH L and K parent slots have no active orders
    //    "Post-close" proxy: both parents inactive = L/K window closed
@@ -276,9 +270,8 @@ void CSlotS::ManageExits(CPortfolioState &port)
    int n = port.GetTicketsForSlot(MAGIC_S, "S,", tickets);
    if(n <= 0) return;
 
-   double point      = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   double pip_factor = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS) == 5 ? 10.0 : 1.0;
-   double pip_size   = point * pip_factor;
+   //--- Pip size via base-class helper (Round-06 06.1)
+   double pip_size = _PipSize();
 
    for(int i = 0; i < n; i++)
      {

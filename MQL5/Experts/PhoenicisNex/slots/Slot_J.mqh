@@ -178,9 +178,10 @@ void CSlotJ::ManageExits(CPortfolioState &port)
    int n = port.GetTicketsForSlot(MAGIC_J, "J,", tickets);   // G4 fix BR-7.2
    if(n <= 0) return;
 
-   double point      = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   double pip_factor = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS) == 5 ? 10.0 : 1.0;
-   double pip_size   = point * pip_factor;
+   //--- Pip size via base-class helper (Round-06 06.1) — also fixes the
+   //    3-digit JPY drift the reviewer flagged: this site previously
+   //    used `==5 ? 10:1` and dropped the 3-digit branch.
+   double pip_size = _PipSize();
 
    for(int i = 0; i < n; i++)
      {

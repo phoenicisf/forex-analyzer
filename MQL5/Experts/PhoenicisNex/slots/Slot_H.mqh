@@ -111,7 +111,8 @@ bool CSlotH::_HasFractalSell(const MarketContext &ctx) const
 //+------------------------------------------------------------------+
 bool CSlotH::_IchimokuDistanceOk(const MarketContext &ctx, bool is_buy) const
   {
-   double pip_size = _Point * (_Digits == 5 || _Digits == 3 ? 10.0 : 1.0);
+   //--- Pip size via base-class helper (Round-06 06.1)
+   double pip_size = _PipSize();
    if(pip_size <= 0.0) return false;
 
    double cloud_ref = is_buy ? ctx.ichi_h4.cloud_low : ctx.ichi_h4.cloud_high;
@@ -146,7 +147,8 @@ int CSlotH::_CountHOrders(CPortfolioState &port) const
 void CSlotH::_TryExit(ulong ticket, double open_price, datetime open_time,
                       ENUM_POSITION_TYPE pos_type)
   {
-   double pip_size = _Point * (_Digits == 5 || _Digits == 3 ? 10.0 : 1.0);
+   //--- Pip size via base-class helper (Round-06 06.1)
+   double pip_size = _PipSize();
    if(pip_size <= 0.0) return;
 
    double current_price = (pos_type == POSITION_TYPE_BUY) ? SymbolInfoDouble(_Symbol, SYMBOL_BID)
@@ -175,7 +177,7 @@ void CSlotH::_TryExit(ulong ticket, double open_price, datetime open_time,
 //+------------------------------------------------------------------+
 void CSlotH::ManageExits(CPortfolioState &port)
   {
-   if(!InpHEnabled) return;
+   if(!InpEnableSlotH) return;
 
    //--- Retrieve H tickets (own magic MAGIC_H=205, comment prefix "H,")
    ulong tickets[];
@@ -201,7 +203,7 @@ void CSlotH::ManageExits(CPortfolioState &port)
 //+------------------------------------------------------------------+
 void CSlotH::Evaluate(const MarketContext &ctx, CPortfolioState &port)
   {
-   if(!InpHEnabled) return;
+   if(!InpEnableSlotH) return;
 
    //--- Condition 1: max orders guard
    if(_CountHOrders(port) >= InpHMaxOrders) return;
@@ -242,11 +244,15 @@ void CSlotH::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    ENUM_ORDER_TYPE order_type = is_buy ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
    string comment_str = "H,fractal,1";
 
-   double pip_size = _Point * (_Digits == 5 || _Digits == 3 ? 10.0 : 1.0);
+   //--- Pip size via base-class helper (Round-06 06.1).
+   //    sl_price wrapped with _NormalizeBrokerPrice (Round-06 06.3) — broker
+   //    rejects sub-tick precision with TRADE_RETCODE_INVALID_STOPS (10016).
+   double pip_size = _PipSize();
    double price    = is_buy ? SymbolInfoDouble(_Symbol, SYMBOL_ASK)
                             : SymbolInfoDouble(_Symbol, SYMBOL_BID);
-   double sl_price = is_buy ? (price - InpHSlPips * pip_size)
-                            : (price + InpHSlPips * pip_size);
+   double sl_price = is_buy
+                     ? _NormalizeBrokerPrice(price - InpHSlPips * pip_size)
+                     : _NormalizeBrokerPrice(price + InpHSlPips * pip_size);
 
    if(m_logger != NULL)
       m_logger.Info("Slot_H", is_buy ? "entry_buy" : "entry_sell", MAGIC_H,

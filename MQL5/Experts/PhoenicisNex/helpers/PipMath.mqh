@@ -71,10 +71,10 @@ public:
                                          double parent_open,
                                          double parent_sl) const
      {
-      // Suppress unused-parameter warnings (MQL5 strict mode)
-      (void)bi_entry;
-      (void)bi_dir;
-      (void)parent_open;
+      // Suppress unused-parameter warnings (MQL5 strict mode) —
+      // self-assign idiom, mirrors SlotRegistry::RegisterAll stub
+      // (Round-06 06.1: MQL5 rejects C-style `(void)x;` casts).
+      bi_entry = bi_entry; bi_dir = bi_dir; parent_open = parent_open;
 
       Print("[Phoenicis][slot=system][ev=inherit_sl_stub] ADR-009 stub — returns parent_sl unchanged");
       return parent_sl;

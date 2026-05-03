@@ -243,10 +243,8 @@ void CSlotG::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    if(buySignal  && stoch_k >= InpGStochOversold)  return;
    if(sellSignal && stoch_k <= InpGStochOverbought) return;
 
-   //--- Compute SL: max(cloud-edge distance, Fibonacci floor)
-   double point        = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   double pip_factor   = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS) == 5 ? 10.0 : 1.0;
-   double pip_size     = point * pip_factor;
+   //--- Pip size via base-class helper (Round-06 06.1)
+   double pip_size = _PipSize();
 
    double cloud_edge_pips = 0.0;
    if(buySignal)
@@ -266,18 +264,11 @@ void CSlotG::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       return;
      }
 
-   //--- Compute SL price
-   double sl_price = 0.0;
+   //--- Compute SL price (broker-bound — base-class _NormalizeBrokerPrice)
    double tp_price = 0.0;  // TP = 0 (profit-gate exit managed in ManageExits)
-
-   if(buySignal)
-     {
-      sl_price = NormalizeDouble(ctx.ask - sl_pips * pip_size, (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS));
-     }
-   else
-     {
-      sl_price = NormalizeDouble(ctx.bid + sl_pips * pip_size, (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS));
-     }
+   double sl_price = buySignal
+                     ? _NormalizeBrokerPrice(ctx.ask - sl_pips * pip_size)
+                     : _NormalizeBrokerPrice(ctx.bid + sl_pips * pip_size);
 
    //--- Comment: "G,F1,N,1,SL" per CodeWiki §3.6
    string comment = "G,F1,N,1,SL";
@@ -294,7 +285,7 @@ void CSlotG::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    req.symbol       = _Symbol;
    req.volume       = lot;
    req.type         = order_type;
-   req.price        = NormalizeDouble(price, (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS));
+   req.price        = _NormalizeBrokerPrice(price);
    req.sl           = sl_price;
    req.tp           = tp_price;
    req.comment      = comment;
@@ -341,9 +332,8 @@ void CSlotG::ManageExits(CPortfolioState &port)
    int n = port.GetTicketsForSlot(MAGIC_G, "G,", tickets);
    if(n <= 0) return;
 
-   double point      = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   double pip_factor = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS) == 5 ? 10.0 : 1.0;
-   double pip_size   = point * pip_factor;
+   //--- Pip size via base-class helper (Round-06 06.1)
+   double pip_size = _PipSize();
 
    for(int i = 0; i < n; i++)
      {

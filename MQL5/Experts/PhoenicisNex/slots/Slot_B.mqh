@@ -62,20 +62,12 @@
 class CSlotB : public CSlotBase
   {
 private:
-   //--- Pip-to-price conversion helper (handles 4-digit vs 5-digit broker)
-   double            _PipsToPrice(double pips) const
-     {
-      int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
-      double point_mult = (digits == 3 || digits == 5) ? 10.0 : 1.0;
-      return pips * _Point * point_mult;
-     }
-
-   //--- Price difference in pips (handles 4-digit vs 5-digit broker)
+   //--- Round-06 06.1: pip arithmetic via CSlotBase helpers
+   //    `_PipsToPrice(pips)` inherited from base (returns pips * pip_size).
+   //    Local signed helper for ManageExits price-diff conversion.
    double            _PriceDiffToPips(double price_diff) const
      {
-      int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
-      double point_mult = (digits == 3 || digits == 5) ? 10.0 : 1.0;
-      return price_diff / (_Point * point_mult);
+      return price_diff / _PipSize();
      }
 
    //--- Count open B orders via PortfolioState comment-prefix filter
@@ -203,12 +195,14 @@ public:
       if(lot <= 0.0)
          return;
 
-      //--- Build order parameters
+      //--- Build order parameters (Round-06 06.3: sl_price normalized)
       bool             buy_signal = (direction == +1);
       ENUM_ORDER_TYPE  order_type = buy_signal ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
       double           price      = buy_signal ? ctx.ask : ctx.bid;
       double           sl_dist    = _PipsToPrice(InpBSlPips);
-      double           sl_price   = buy_signal ? (price - sl_dist) : (price + sl_dist);
+      double           sl_price   = buy_signal
+                                    ? _NormalizeBrokerPrice(price - sl_dist)
+                                    : _NormalizeBrokerPrice(price + sl_dist);
       string           comment    = "B,anti,1";
 
       //--- Submit order via RiskManager (which wraps CTrade per ea.md)

@@ -53,20 +53,12 @@
 class CSlotBR : public CSlotBase
   {
 private:
-   //--- Pip-to-price conversion helper (handles 4-digit vs 5-digit broker)
-   double            _PipsToPrice(double pips) const
-     {
-      int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
-      double point_mult = (digits == 3 || digits == 5) ? 10.0 : 1.0;
-      return pips * _Point * point_mult;
-     }
-
-   //--- Price difference in pips
+   //--- Round-06 06.1: pip arithmetic via CSlotBase helpers
+   //    `_PipsToPrice(pips)` inherited from base (returns pips * pip_size).
+   //    Local signed helper for ManageExits price-diff conversion.
    double            _PriceDiffToPips(double price_diff) const
      {
-      int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
-      double point_mult = (digits == 3 || digits == 5) ? 10.0 : 1.0;
-      return price_diff / (_Point * point_mult);
+      return price_diff / _PipSize();
      }
 
    //--- Count open BR orders via PortfolioState comment-prefix filter

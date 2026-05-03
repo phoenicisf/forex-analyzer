@@ -196,10 +196,8 @@ void CSlotG2::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    if(sellSignal) priceOk = _IsPriceBelowCloud(ctx);
    if(!priceOk) return;
 
-   //--- Compute SL: max(cloud-edge distance, InpG2SlPipsFloor)
-   double point      = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   double pip_factor = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS) == 5 ? 10.0 : 1.0;
-   double pip_size   = point * pip_factor;
+   //--- Pip size via base-class helper (Round-06 06.1)
+   double pip_size = _PipSize();
 
    double cloud_edge_pips = 0.0;
    if(buySignal)
@@ -220,15 +218,11 @@ void CSlotG2::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       return;
      }
 
-   //--- Compute SL price (TP = 0; profit-gate exit in ManageExits)
-   int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
-   double sl_price = 0.0;
+   //--- Compute SL price (broker-bound — base-class _NormalizeBrokerPrice)
    double tp_price = 0.0;
-
-   if(buySignal)
-      sl_price = NormalizeDouble(ctx.ask - sl_pips * pip_size, digits);
-   else
-      sl_price = NormalizeDouble(ctx.bid + sl_pips * pip_size, digits);
+   double sl_price = buySignal
+                     ? _NormalizeBrokerPrice(ctx.ask - sl_pips * pip_size)
+                     : _NormalizeBrokerPrice(ctx.bid + sl_pips * pip_size);
 
    //--- Comment: "G2,F1,N,1,SL" per CodeWiki §3.G2 — disambig from "G,"
    string comment = "G2,F1,N,1,SL";
@@ -244,7 +238,7 @@ void CSlotG2::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    req.symbol       = _Symbol;
    req.volume       = lot;
    req.type         = order_type;
-   req.price        = NormalizeDouble(price, digits);
+   req.price        = _NormalizeBrokerPrice(price);
    req.sl           = sl_price;
    req.tp           = tp_price;
    req.comment      = comment;
@@ -281,9 +275,8 @@ void CSlotG2::ManageExits(CPortfolioState &port)
    int n = port.GetTicketsForSlot(MAGIC_G, "G2,", tickets);
    if(n <= 0) return;
 
-   double point      = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   double pip_factor = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS) == 5 ? 10.0 : 1.0;
-   double pip_size   = point * pip_factor;
+   //--- Pip size via base-class helper (Round-06 06.1)
+   double pip_size = _PipSize();
 
    for(int i = 0; i < n; i++)
      {
