@@ -71,11 +71,12 @@ private:
 
    //--- Count open BR orders via PortfolioState comment-prefix filter
    //    MAGIC_BR=215 is own (not shared); "BR," prefix is unambiguous.
-   bool              _HasActiveBROrder(CPortfolioState &port) const
+   //    Returns int (count) so the caller can compare against InpBRMaxOrders;
+   //    a bool collapse would silently cap at 1 regardless of operator input.
+   int               _CountBROrders(CPortfolioState &port) const
      {
       ulong tickets[];
-      int n = port.GetTicketsForSlot(MAGIC_BR, "BR,", tickets);
-      return n > 0;
+      return port.GetTicketsForSlot(MAGIC_BR, "BR,", tickets);
      }
 
 public:
@@ -134,7 +135,7 @@ void CSlotBR::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    if(m_logger == NULL) return;
 
    //--- Own-active guard: max InpBRMaxOrders BR orders simultaneously
-   if(_HasActiveBROrder(port)) return;
+   if(_CountBROrders(port) >= InpBRMaxOrders) return;
 
    //--- Phase 1 stub: no entry signal in main topo — TriggerBR activates at IMPL-053
    //    Observable milestone for E-AC [log-assertion] when IMPL-053 wires the sub-call:
