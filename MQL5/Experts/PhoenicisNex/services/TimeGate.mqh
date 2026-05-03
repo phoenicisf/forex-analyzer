@@ -296,8 +296,16 @@ bool CTimeGate::HolidayBlock(datetime server_now, CPortfolioState &port) const
    SlotState *cd_state = port.GetByMagic(200);
    if(cd_state == NULL)
      {
-      //--- GetByMagic logs warn for unregistered magic; treat as no positions
-      return true;   // holiday active, assume block (safe default)
+      //--- Finding 02.10 — fail-loud: CD bookkeeping missing during holiday is a
+      //    precondition violation (RegisterAll bug or pre-Init call). Default to
+      //    "no positions" (allow) per BR-3.3 spec literal — over-blocking the entire
+      //    Dec 21 - Jan 3 window would be a visible NFR-1.1 behavioral drift. Emit
+      //    Error so operator sees the wiring gap rather than silent over-block.
+      if(m_logger != NULL)
+         m_logger.Error("TimeGate", "holiday_cd_state_null", 200,
+                        "CD slot not registered during HolidayBlock check; treating as 0 "
+                        "positions (allow); fix PortfolioState.RegisterAll wiring");
+      return false;
      }
 
    int cd_total = cd_state.buy_count + cd_state.sell_count;
