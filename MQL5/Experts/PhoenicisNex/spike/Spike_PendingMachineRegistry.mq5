@@ -21,6 +21,13 @@ int OnInit()
   {
    g_logger.Init(LOG_DEBUG, false, 0);
 
+   // Run inline SelfTest — covers all S-AC + E-AC of IMPL-049 (sub-pass d).
+   if(!g_pmr.SelfTest(&g_logger))
+     {
+      Print("Spike_PendingMachineRegistry: SelfTest FAILED");
+      return INIT_FAILED;
+     }
+
    // Init with TD-02 §5.10 default (M=150 / T=80 / Q=100 + BR-6.x defaults).
    // Pass NULL for state/journal/portfolio — sub-pass (a) skeleton tolerates
    // NULL deps (no-op pathways) so the spike compiles + boots without the

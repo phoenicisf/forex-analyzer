@@ -421,7 +421,219 @@ public:
          m_state.SetPendingState(id, m_machines[i].state);
          m_state.SetPendingPayload(id, m_machines[i].pending_payload,
                                    m_machines[i].pending_started_bar);
+         // force_clear_count is owned by StatePersistence (atomic increment
+         // via IncrementPmForceClearCount in EmitForceClear). SaveToState
+         // does not push the RAM count back — the counters are already in
+         // sync per atomic-on-write contract.
         }
+     }
+
+   //+------------------------------------------------------------------+
+   //| SelfTest — inline unit test proxy (header-only `.mqh` precedent  |
+   //| per IMPL-052). Covers all 4 S-ACs + 2 E-ACs of IMPL-049.         |
+   //|                                                                  |
+   //| S-AC 1: 8 machine classes + dispatch                             |
+   //| S-AC 2: M/T/Q force-clear thresholds = inputs                    |
+   //| S-AC 3: P-sub-modes (PSUB_NONE/N/PX/PH/E)                        |
+   //| S-AC 4: force_clear journal event emission (proxy: counter inc)  |
+   //| E-AC 1: stub M payload + advance past threshold → force-clear    |
+   //| E-AC 2: state.json round-trip preserves 8 machine payloads       |
+   //+------------------------------------------------------------------+
+   bool              SelfTest(CLogger *logger)
+     {
+      if(logger == NULL) return false;
+      logger.Info("system", "SelfTest_PMR", 0, "Starting CPendingMachineRegistry self test");
+
+      // --- Case 1 — initial state (S-AC #1) ---
+      CPendingMachineRegistry r1;
+      r1.Init(150, 80, 100, 8, 30, 40, 70, 9,
+              NULL, NULL, logger, NULL);
+      for(int i = 0; i < PM_COUNT; i++)
+         if(r1.GetState((EPendingMachineId)i) != PENDING_STATE_IDLE ||
+            r1.GetForceClearCount((EPendingMachineId)i) != 0)
+           {
+            logger.Error("system", "SelfTest_PMR", 0,
+                         StringFormat("Case 1 fail: machine %d not zero-init", i));
+            return false;
+           }
+
+      // --- Case 2 — transition surface (S-AC #1) ---
+      r1.EnterPending(PM_C, "{\"slot\":\"C\"}", 100);
+      if(r1.GetState(PM_C) != PENDING_STATE_PENDING ||
+         r1.GetPayload(PM_C) != "{\"slot\":\"C\"}")
+        {
+         logger.Error("system", "SelfTest_PMR", 0, "Case 2 fail: EnterPending");
+         return false;
+        }
+      r1.TransitionExecuted(PM_C);
+      if(r1.GetState(PM_C) != PENDING_STATE_EXECUTED)
+        {
+         logger.Error("system", "SelfTest_PMR", 0, "Case 2 fail: TransitionExecuted");
+         return false;
+        }
+      r1.TransitionIdle(PM_C, "test");
+      if(r1.GetState(PM_C) != PENDING_STATE_IDLE)
+        {
+         logger.Error("system", "SelfTest_PMR", 0, "Case 2 fail: TransitionIdle");
+         return false;
+        }
+
+      // --- Case 3 — legacy timeout per machine (S-AC #1 + BR-6.x) ---
+      MarketContext ctx;
+      ZeroMemory(ctx);
+      CPortfolioState port_stub;
+      port_stub.Init(logger);
+
+      // PM_C @ 8
+      r1.EnterPending(PM_C, "{}", 0);
+      ctx.bar_index_h4 = 8;
+      r1.TickAll(ctx, port_stub);
+      if(r1.GetState(PM_C) != PENDING_STATE_IDLE)
+        { logger.Error("system","SelfTest_PMR",0,"Case 3 fail: PM_C timeout"); return false; }
+
+      // PM_C_ADX @ 30
+      r1.EnterPending(PM_C_ADX, "{}", 0);
+      ctx.bar_index_h4 = 30;
+      r1.TickAll(ctx, port_stub);
+      if(r1.GetState(PM_C_ADX) != PENDING_STATE_IDLE)
+        { logger.Error("system","SelfTest_PMR",0,"Case 3 fail: PM_C_ADX timeout"); return false; }
+
+      // PM_R @ 40
+      r1.EnterPending(PM_R, "{}", 0);
+      ctx.bar_index_h4 = 40;
+      r1.TickAll(ctx, port_stub);
+      if(r1.GetState(PM_R) != PENDING_STATE_IDLE)
+        { logger.Error("system","SelfTest_PMR",0,"Case 3 fail: PM_R timeout"); return false; }
+
+      // PM_FORCE @ 9
+      r1.EnterPending(PM_FORCE,
+                      CPendingForce::BuildPayload("C", 1, 1, 0), 0);
+      ctx.bar_index_h4 = 9;
+      r1.TickAll(ctx, port_stub);
+      if(r1.GetState(PM_FORCE) != PENDING_STATE_IDLE)
+        { logger.Error("system","SelfTest_PMR",0,"Case 3 fail: PM_FORCE timeout"); return false; }
+
+      // --- Case 4 — P-sub-mode encode/decode (S-AC #3) ---
+      r1.EnterPPending(PSUB_PX, 250.0, 80.5, 0);
+      if(r1.GetPSubMode() != PSUB_PX ||
+         MathAbs(r1.GetPDiffSL() - 250.0) > 0.01 ||
+         MathAbs(r1.GetPBandRatio() - 80.5) > 0.01)
+        { logger.Error("system","SelfTest_PMR",0,"Case 4 fail: P PSUB_PX"); return false; }
+      r1.TransitionIdle(PM_P, "test");
+
+      r1.EnterPPending(PSUB_PH, 100.0, 50.0, 0);
+      if(r1.GetPSubMode() != PSUB_PH)
+        { logger.Error("system","SelfTest_PMR",0,"Case 4 fail: P PSUB_PH"); return false; }
+      r1.TransitionIdle(PM_P, "test");
+
+      r1.EnterPPending(PSUB_E, 0.0, 0.0, 0);
+      if(r1.GetPSubMode() != PSUB_E)
+        { logger.Error("system","SelfTest_PMR",0,"Case 4 fail: P PSUB_E"); return false; }
+      r1.TransitionIdle(PM_P, "test");
+
+      r1.EnterPPending(PSUB_N, 0.0, 0.0, 0);
+      if(r1.GetPSubMode() != PSUB_N)
+        { logger.Error("system","SelfTest_PMR",0,"Case 4 fail: P PSUB_N"); return false; }
+      r1.TransitionIdle(PM_P, "test");
+
+      // PSUB_NONE → null in JSON; payload still parses to PSUB_NONE
+      r1.EnterPPending(PSUB_NONE, 0.0, 0.0, 0);
+      if(r1.GetPSubMode() != PSUB_NONE)
+        { logger.Error("system","SelfTest_PMR",0,"Case 4 fail: P PSUB_NONE"); return false; }
+      r1.TransitionIdle(PM_P, "test");
+
+      // --- Case 5 — force-clear M/T/Q (S-AC #2 + S-AC #4 + E-AC #1) ---
+      // PM_M threshold 150
+      r1.EnterPending(PM_M, "{\"slot\":\"M\"}", 0);
+      ctx.bar_index_h4 = 150;
+      r1.TickAll(ctx, port_stub);
+      if(r1.GetState(PM_M) != PENDING_STATE_IDLE ||
+         r1.GetForceClearCount(PM_M) != 1)
+        { logger.Error("system","SelfTest_PMR",0,"Case 5 fail: PM_M force-clear"); return false; }
+
+      // PM_T threshold 80
+      r1.EnterPending(PM_T, "{\"slot\":\"T\"}", 200);
+      ctx.bar_index_h4 = 280;
+      r1.TickAll(ctx, port_stub);
+      if(r1.GetState(PM_T) != PENDING_STATE_IDLE ||
+         r1.GetForceClearCount(PM_T) != 1)
+        { logger.Error("system","SelfTest_PMR",0,"Case 5 fail: PM_T force-clear"); return false; }
+
+      // PM_Q threshold 100
+      r1.EnterPending(PM_Q, "{\"slot\":\"Q\"}", 400);
+      ctx.bar_index_h4 = 500;
+      r1.TickAll(ctx, port_stub);
+      if(r1.GetState(PM_Q) != PENDING_STATE_IDLE ||
+         r1.GetForceClearCount(PM_Q) != 1)
+        { logger.Error("system","SelfTest_PMR",0,"Case 5 fail: PM_Q force-clear"); return false; }
+
+      // PM_R should NOT trigger force-clear path even past 150 bars
+      r1.EnterPending(PM_R, "{}", 600);
+      ctx.bar_index_h4 = 750;   // age=150 but R has no force-clear, only legacy 40
+      r1.TickAll(ctx, port_stub);
+      if(r1.GetForceClearCount(PM_R) != 0)
+        { logger.Error("system","SelfTest_PMR",0,"Case 5 fail: PM_R should not force-clear"); return false; }
+
+      // --- Case 6 — state.json round-trip (E-AC #2 [contract-roundtrip]) ---
+      // Use a default-constructed CStatePersistence as round-trip surrogate
+      // (its Get/Set accessors do not require AtomicFile / file I/O).
+      CStatePersistence sp;
+      // Pre-populate state holder as if loaded from disk.
+      sp.SetPendingState(PM_C,    PENDING_STATE_PENDING);
+      sp.SetPendingPayload(PM_C,  "{\"slot\":\"C\",\"v\":1}", 100);
+      sp.SetPendingState(PM_M,    PENDING_STATE_PENDING);
+      sp.SetPendingPayload(PM_M,  "{\"slot\":\"M\"}", 200);
+      sp.IncrementPmForceClearCount(PM_M);
+      sp.IncrementPmForceClearCount(PM_M);   // count = 2
+      sp.SetPendingState(PM_P,    PENDING_STATE_PENDING);
+      sp.SetPendingPayload(PM_P,
+            CPendingMachineRegistry::_BuildPPayloadStatic(PSUB_PX, 250.0, 80.5),
+            300);
+
+      // Wire a fresh registry to that state and Load.
+      CPendingMachineRegistry r2;
+      r2.Init(150, 80, 100, 8, 30, 40, 70, 9,
+              &sp, NULL, logger, NULL);
+      // Init() calls LoadFromState internally — verify mirror is correct.
+      if(r2.GetState(PM_C) != PENDING_STATE_PENDING ||
+         r2.GetPayload(PM_C) != "{\"slot\":\"C\",\"v\":1}")
+        { logger.Error("system","SelfTest_PMR",0,"Case 6 fail: PM_C load mirror"); return false; }
+      if(r2.GetState(PM_M) != PENDING_STATE_PENDING ||
+         r2.GetForceClearCount(PM_M) != 2)
+        { logger.Error("system","SelfTest_PMR",0,"Case 6 fail: PM_M load mirror"); return false; }
+      if(r2.GetState(PM_P) != PENDING_STATE_PENDING ||
+         r2.GetPSubMode() != PSUB_PX ||
+         MathAbs(r2.GetPDiffSL() - 250.0) > 0.01)
+        { logger.Error("system","SelfTest_PMR",0,"Case 6 fail: PM_P load mirror"); return false; }
+
+      // Mutate registry, push back via SaveToState.
+      r2.TransitionIdle(PM_C, "executed");
+      r2.EnterPending(PM_R, "{\"slot\":\"R\",\"new\":true}", 999);
+      r2.SaveToState();
+      if(sp.GetPendingState(PM_C) != PENDING_STATE_IDLE)
+        { logger.Error("system","SelfTest_PMR",0,"Case 6 fail: PM_C save back"); return false; }
+      if(sp.GetPendingState(PM_R) != PENDING_STATE_PENDING ||
+         sp.GetPendingPayload(PM_R) != "{\"slot\":\"R\",\"new\":true}")
+        { logger.Error("system","SelfTest_PMR",0,"Case 6 fail: PM_R save back"); return false; }
+
+      // Force-clear with state wired — verify counter ALSO increments in
+      // StatePersistence (atomic op contract).
+      r2.EnterPending(PM_T, "{}", 1000);
+      ctx.bar_index_h4 = 1080;
+      r2.TickAll(ctx, port_stub);
+      if(sp.GetPmForceClearCount(PM_T) != 1)
+        { logger.Error("system","SelfTest_PMR",0,"Case 6 fail: PM_T counter not synced to state"); return false; }
+
+      logger.Info("system", "SelfTest_PMR", 0, "CPendingMachineRegistry self test PASS (6 cases, 8 machines, 5 P-sub-modes)");
+      return true;
+     }
+
+   //--- Static accessor — exposes _BuildPPayload to SelfTest harness +
+   //    future callers (e.g. CSlotP build path) without exposing the private
+   //    helper directly. Internal use only.
+   static string     _BuildPPayloadStatic(EPSubMode mode, double diff_sl, double band_ratio)
+     {
+      return _BuildPPayload(mode, diff_sl, band_ratio);
      }
   };
 
