@@ -2,8 +2,8 @@
 #
 # PhoenicisNex local-only EA — no HTTP API; this is intra-process contract used by
 # `services/TradeJournal::WriteEvent()` (ADR-006) and any external reader (Python/jq script).
-# Lock at SD Phase 1B; TD Phase 1D may add fields but ห้าม remove/rename without
-# bumping `schema_version`.
+# Lock at SD Phase 1B; TD Phase 1D MAY add optional fields but MUST NOT remove/rename without
+# bumping `schema_version`. **Final-locked v1 — IMPL-044 (2026-05-03).**
 #
 # Format: JSON-Lines (one JSON object per line, newline-delimited)
 # Path: MQL5/Files/PhoenicisNex/journal/{live|tester}/<filename>.jsonl
@@ -24,6 +24,10 @@ required:
   - slot_id
   - magic
   - symbol
+  - ticket_id
+  - order_type
+  - lot
+  - price
   - signal_context
   - indicator_snapshot
   - portfolio_summary
@@ -40,11 +44,13 @@ properties:
     type: integer
     const: 1
     description: "Bump for breaking schema changes per ADR-006 versioning policy"
+    examples: [1]
 
   mode:
     type: string
     enum: [live, tester]
     description: "MT5 runtime mode at write time; MQLInfoInteger(MQL_TESTER) determines"
+    examples: ["live", "tester"]
 
   event_type:
     type: string
@@ -59,40 +65,48 @@ properties:
       - pending_force_clear: M/T/Q-Pending hard timeout fired (ADR-008)
       - exit_inferred: PortfolioState reconcile detected ticket gone without exit event (recovery from MT5 crash mid-close)
       - discovered: PortfolioState detected new ticket EA didn't open (foreign EA or recovery scenario)
+    examples: ["entry", "exit", "halt"]
 
   slot_id:
     type: string
     enum: [C, D, F, J, H, K, G, G2, GO, M, L, LX, Q, R, I, P, T, S, B, BR, BI, system]
     description: "Slot ID per BR-1.1 (21 slots; Slot U deleted per OQ-8); 'system' for halt/halt_stable events"
+    examples: ["C", "B", "system"]
 
   magic:
     type: integer
     minimum: 0
     maximum: 220
     description: "Order magic per BR-1.1 (200..219; 220 unused after Slot U deletion); 0 for system events"
+    examples: [200, 215, 0]
 
   ticket_id:
     type: [integer, "null"]
     description: "MT5 position/order ticket; null for system events or pre-broker reject"
+    examples: [123456789, null]
 
   symbol:
     type: string
     enum: [EURUSD]
     description: "Symbol per C-3 (EURUSD only Phase 1); whitelist enforced FR-1.2"
+    examples: ["EURUSD"]
 
   order_type:
     type: [string, "null"]
     enum: [buy, sell, null]
     description: "Direction; null for system / pending_force_clear events"
+    examples: ["buy", "sell", null]
 
   lot:
     type: [number, "null"]
     minimum: 0
     description: "Final lot after RiskManager.ClampLot per BR-4.1/4.2/4.3; null for system events"
+    examples: [0.05, null]
 
   price:
     type: [number, "null"]
     description: "Fill price (entry) or close price (exit); null for system events"
+    examples: [1.0875, null]
 
   sl:
     type: [number, "null"]
@@ -184,3 +198,28 @@ properties:
 #   not in this journal (journal records only successful writes; failures logged separately)
 # - Field order in serialized JSON not guaranteed; readers must use object-style parsing
 # - Unknown fields: per ADR-006 forward-compat, readers MUST ignore (do not error)
+
+## Lifecycle Plan
+# (SD-07 § 3.1 — Hyrum's Law mitigation; all field changes must follow these rules)
+#
+# ADD field (non-breaking):
+#   - Add to `properties` with nullable/optional type; do NOT add to `required` until all writers updated
+#   - schema_version stays at 1
+#   - Announce in ADR-006 § Revisit-when log
+#
+# RENAME field (breaking):
+#   - Bump schema_version const (1 → 2) + update $id suffix to .../v2
+#   - Keep old field in `properties` during transition window (minimum 3 months)
+#   - Announce in ADR-006 + update CTradeJournal::BuildRecord + all downstream readers
+#
+# REMOVE field (breaking):
+#   - Same as rename — bump schema_version + 3-month transition window
+#
+# CHANGE type or constraint (breaking):
+#   - Bump schema_version
+#
+# CONSUMER rule: readers MUST tolerate unknown fields (do NOT fail on unrecognized keys)
+# WRITER rule:   writers MUST include all 15 required fields; 6 optional fields MAY be omitted
+#                when genuinely absent (e.g. sl/tp on system events, halt_reason on non-halt)
+#
+# schema_version 1 locked 2026-05-03 by IMPL-044 — do not edit without bumping version
