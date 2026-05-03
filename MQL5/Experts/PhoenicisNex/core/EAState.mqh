@@ -7,6 +7,7 @@
 #define PHOENICISNEX_CORE_EASTATE_MQH
 
 #include "../domain/EnumTypes.mqh"
+#include "../domain/IHaltSink.mqh"
 #include "../services/TradeJournal.mqh"
 #include "../services/Logger.mqh"
 
@@ -15,7 +16,7 @@
 //| Responsibility: Encapsulate EEAState transitions                 |
 //| (RUNNING -> HALTED -> HALTED_STABLE) + Halt() side-effects       |
 //+------------------------------------------------------------------+
-class CEAState
+class CEAState : public IHaltSink
   {
 private:
    EEAState        m_state;
@@ -53,11 +54,7 @@ public:
       if(m_journal != NULL)
         {
          JournalEvent ev;
-         ZeroMemory(ev);
-         ev.timestamp_seconds = TimeCurrent();
-         ev.timestamp_microseconds = GetMicrosecondCount();
-         ev.event_type = "halt";
-         ev.halt_reason = reason;
+         BuildHaltEvent(ev, "halt", reason, "CEAState::Halt", StringFormat("halt_reason=%s", reason));
          m_journal.WriteEvent(ev);
         }
 
@@ -66,6 +63,29 @@ public:
          // No throttle per ADR-011 line 60
          m_logger.ErrorBypassThrottle("system", "halt", 0, reason);
         }
+     }
+
+   //+------------------------------------------------------------------+
+   //| BuildHaltEvent — populate JournalEvent for halt/halt_stable      |
+   //| Extracted (Finding 03.8) so SelfTest can verify schema-required  |
+   //| fields are populated without needing a mock CTradeJournal.       |
+   //+------------------------------------------------------------------+
+   void              BuildHaltEvent(JournalEvent &ev,
+                                    string event_type,
+                                    string reason,
+                                    string triggering_function,
+                                    string signal_context) const
+     {
+      ZeroMemory(ev);
+      ev.timestamp_seconds      = TimeCurrent();
+      ev.timestamp_microseconds = GetMicrosecondCount();
+      ev.event_type             = event_type;
+      ev.slot_id                = "system";          // schema § slot_id description
+      ev.magic                  = 0;                  // schema: "0 for system events"
+      ev.symbol                 = _Symbol;            // schema enum [EURUSD] per C-3 / FR-1.2
+      ev.halt_reason            = reason;
+      ev.signal_context         = signal_context;
+      ev.triggering_function    = triggering_function;
      }
 
    //+------------------------------------------------------------------+
@@ -81,11 +101,9 @@ public:
          if(m_journal != NULL)
            {
             JournalEvent ev;
-            ZeroMemory(ev);
-            ev.timestamp_seconds = TimeCurrent();
-            ev.timestamp_microseconds = GetMicrosecondCount();
-            ev.event_type = "halt_stable";
-            ev.halt_reason = m_halt_reason;
+            BuildHaltEvent(ev, "halt_stable", m_halt_reason,
+                           "CEAState::TryTransitionToStable",
+                           "all_positions_closed");
             m_journal.WriteEvent(ev);
            }
 
@@ -213,6 +231,34 @@ public:
       if(ea4.GetState() != EA_STATE_HALTED)
         {
          logger.Error("system", "SelfTest_EAState", 0, "RestoreFromState demote to HALTED failed");
+         return false;
+        }
+
+      // Halt-event payload integrity (Finding 03.8 → 03.2 verification):
+      // exercise BuildHaltEvent directly so we can assert each schema-required
+      // field is populated without needing a mock CTradeJournal.
+      JournalEvent he;
+      ea2.BuildHaltEvent(he, "halt", "test_reason", "CEAState::Halt", "halt_reason=test_reason");
+      if(he.event_type != "halt" ||
+         he.slot_id != "system" ||
+         he.symbol != _Symbol ||
+         he.halt_reason != "test_reason" ||
+         StringLen(he.triggering_function) == 0 ||
+         StringLen(he.signal_context) == 0)
+        {
+         logger.Error("system", "SelfTest_EAState", 0,
+                      "BuildHaltEvent missed required schema fields (Finding 03.2)");
+         return false;
+        }
+
+      JournalEvent hse;
+      ea2.BuildHaltEvent(hse, "halt_stable", "old", "CEAState::TryTransitionToStable", "all_positions_closed");
+      if(hse.event_type != "halt_stable" ||
+         hse.slot_id != "system" ||
+         hse.symbol != _Symbol)
+        {
+         logger.Error("system", "SelfTest_EAState", 0,
+                      "BuildHaltEvent halt_stable variant missed required fields");
          return false;
         }
 

@@ -155,6 +155,7 @@ public:
    string            GetPendingPayload(EPendingMachineId id) const;
    void              SetPendingPayload(EPendingMachineId id, string payload,
                                        int started_bar);
+   int               GetPmStartedBar(EPendingMachineId id) const;
    EPendingState     GetPendingState(EPendingMachineId id) const;
    void              SetPendingState(EPendingMachineId id, EPendingState state);
    int               GetPmForceClearCount(EPendingMachineId id) const;
@@ -320,6 +321,12 @@ void CStatePersistence::SetPendingPayload(EPendingMachineId id, string payload,
    if(idx < 0 || idx >= PM_COUNT) return;
    m_pm_payload[idx]     = payload;
    m_pm_started_bar[idx] = started_bar;
+  }
+
+int CStatePersistence::GetPmStartedBar(EPendingMachineId id) const
+  {
+   int idx = (int)id;
+   return (idx >= 0 && idx < PM_COUNT) ? m_pm_started_bar[idx] : 0;
   }
 
 EPendingState CStatePersistence::GetPendingState(EPendingMachineId id) const

@@ -81,16 +81,67 @@ private:
    //--- Minimal local JSON field extractors (string + int). Scoped private
    //    to CPendingForce — distinct from CStatePersistence::_Extract* which
    //    are class-private. Duplication is intentional to keep PendingForce
-   //    self-contained and avoid coupling helpers across services.
+   //    self-contained and avoid coupling helpers across services. Mirrors
+   //    Round 02.5 escape-aware terminator + unescape in StatePersistence
+   //    (Finding 03.7) so future schema extensions with quoted slot codes
+   //    or escape sequences in the origin field do not silently truncate.
    static string     _ExtractStr(const string content, const string field)
      {
       string needle = "\"" + field + "\":\"";
-      int p = StringFind(content, needle);
-      if(p < 0) return "";
-      p += StringLen(needle);
-      int q = StringFind(content, "\"", p);
-      if(q < 0) return "";
-      return StringSubstr(content, p, q - p);
+      int pos = StringFind(content, needle);
+      if(pos < 0) return "";
+      int start = pos + StringLen(needle);
+      int n     = StringLen(content);
+
+      //--- Escape-aware terminator scan: closing '"' must NOT be preceded
+      //    by an odd number of backslashes (matches StatePersistence._ExtractStr).
+      int end = -1;
+      for(int i = start; i < n; i++)
+        {
+         if(StringGetCharacter(content, i) != '"') continue;
+         int bs = 0;
+         int k  = i - 1;
+         while(k >= start && StringGetCharacter(content, k) == '\\') { bs++; k--; }
+         if((bs & 1) == 0) { end = i; break; }
+        }
+      if(end < 0 || end <= start) return "";
+
+      string raw = StringSubstr(content, start, end - start);
+
+      //--- Unescape: \" \\ \n \r \t \uXXXX (mirrors StatePersistence._ExtractStr)
+      string out  = "";
+      int    rlen = StringLen(raw);
+      for(int i = 0; i < rlen; i++)
+        {
+         ushort c = StringGetCharacter(raw, i);
+         if(c == '\\' && i + 1 < rlen)
+           {
+            ushort nx = StringGetCharacter(raw, i + 1);
+            if(nx == '"')  { out += "\"";                i++; continue; }
+            if(nx == '\\') { out += "\\";                i++; continue; }
+            if(nx == 'n')  { out += ShortToString(0x0A); i++; continue; }
+            if(nx == 'r')  { out += ShortToString(0x0D); i++; continue; }
+            if(nx == 't')  { out += ShortToString(0x09); i++; continue; }
+            if(nx == 'u' && i + 5 < rlen)
+              {
+               int code = 0;
+               bool ok  = true;
+               for(int h = 0; h < 4; h++)
+                 {
+                  ushort hc = StringGetCharacter(raw, i + 2 + h);
+                  int dig;
+                  if(hc >= '0' && hc <= '9')      dig = hc - '0';
+                  else if(hc >= 'a' && hc <= 'f') dig = hc - 'a' + 10;
+                  else if(hc >= 'A' && hc <= 'F') dig = hc - 'A' + 10;
+                  else { ok = false; break; }
+                  code = (code << 4) | dig;
+                 }
+               if(ok) { out += ShortToString((ushort)code); i += 5; continue; }
+              }
+           }
+         out += ShortToString(c);
+        }
+      return out;
      }
 
    static long       _ExtractInt(const string content, const string field)
@@ -143,9 +194,10 @@ private:
    CLogger           *m_logger;
    CPortfolioState   *m_portfolio;
 
-   //--- Sub-pass (b)/(c) bodies.
-   void              TickMachine(EPendingMachineId id, const MarketContext &ctx,
-                                 CPortfolioState &port);
+   //--- Sub-pass (b)/(c) bodies. Finding 03.11: PortfolioState is held via
+   //    m_portfolio (Init-injected); per-tick port arg removed from
+   //    TickMachine / TickAll signatures since no caller dereferences it.
+   void              TickMachine(EPendingMachineId id, const MarketContext &ctx);
    bool              ExceededLegacyTimeout(EPendingMachineId id, int age) const;
    bool              ShouldForceClear(EPendingMachineId id, int current_bar) const;
    void              EmitForceClear(EPendingMachineId id, int age_bars);
@@ -247,6 +299,20 @@ private:
       return "?";
      }
 
+   //--- Resolve pending-machine id to its broker magic (Finding 03.3).
+   //    Only M / T / Q have first-class magics; others return 0 (caller is
+   //    EmitForceClear which only operates on M/T/Q anyway).
+   int               _IdToMagic(EPendingMachineId id) const
+     {
+      switch(id)
+        {
+         case PM_M: return MAGIC_M;
+         case PM_T: return MAGIC_T;
+         case PM_Q: return MAGIC_Q;
+         default:   return 0;
+        }
+     }
+
 public:
                      CPendingMachineRegistry()
       : m_threshold_m_bars(150),
@@ -302,11 +368,14 @@ public:
      }
 
    //--- TickAll — Orchestrator OnTick step 8 (per TD-02 §9.4 line 1530).
-   //    Iterates all 8 machines; per-machine bodies stubbed in (a), filled in (b)/(c).
-   void              TickAll(const MarketContext &ctx, CPortfolioState &port)
+   //    Iterates all 8 machines; per-machine bodies stubbed in (a), filled
+   //    in (b)/(c). Finding 03.11: port arg dropped — registry-side logic
+   //    is purely time-based and reads m_portfolio when slot-driven hooks
+   //    arrive in P3.
+   void              TickAll(const MarketContext &ctx)
      {
       for(int i = 0; i < PM_COUNT; i++)
-         TickMachine((EPendingMachineId)i, ctx, port);
+         TickMachine((EPendingMachineId)i, ctx);
      }
 
    //--- Slot read accessors (called from Slot_X.mqh PendingState() override)
@@ -402,13 +471,12 @@ public:
          m_machines[i].state               = m_state.GetPendingState(id);
          m_machines[i].pending_payload     = m_state.GetPendingPayload(id);
          m_machines[i].force_clear_count   = m_state.GetPmForceClearCount(id);
-         // pending_started_bar lives only in RAM during a session; state.json
-         // round-trips via SetPendingPayload (started_bar arg). On cold boot
-         // the timer effectively resets — acceptable per ADR-008 (timeouts are
-         // soft: legacy timeout fires on next tick after restart, force-clear
-         // requires multi-bar age which a fresh RAM start delays by at most
-         // one full threshold window).
-         m_machines[i].pending_started_bar = 0;
+         // Finding 03.4 fix: started_bar IS persisted in state.json
+         // (SetPendingPayload writes it via _BuildPmJson); restoring 0 here
+         // made age = current_bar - 0 → instant force-clear / legacy-timeout
+         // on every cold restart. Now load the persisted bar so the timer
+         // resumes correctly per ADR-008 soft-timeout semantics.
+         m_machines[i].pending_started_bar = m_state.GetPmStartedBar(id);
         }
      }
 
@@ -481,27 +549,25 @@ public:
       // --- Case 3 — legacy timeout per machine (S-AC #1 + BR-6.x) ---
       MarketContext ctx;
       ZeroMemory(ctx);
-      CPortfolioState port_stub;
-      port_stub.Init(logger);
 
       // PM_C @ 8
       r1.EnterPending(PM_C, "{}", 0);
       ctx.bar_index_h4 = 8;
-      r1.TickAll(ctx, port_stub);
+      r1.TickAll(ctx);
       if(r1.GetState(PM_C) != PENDING_STATE_IDLE)
         { logger.Error("system","SelfTest_PMR",0,"Case 3 fail: PM_C timeout"); return false; }
 
       // PM_C_ADX @ 30
       r1.EnterPending(PM_C_ADX, "{}", 0);
       ctx.bar_index_h4 = 30;
-      r1.TickAll(ctx, port_stub);
+      r1.TickAll(ctx);
       if(r1.GetState(PM_C_ADX) != PENDING_STATE_IDLE)
         { logger.Error("system","SelfTest_PMR",0,"Case 3 fail: PM_C_ADX timeout"); return false; }
 
       // PM_R @ 40
       r1.EnterPending(PM_R, "{}", 0);
       ctx.bar_index_h4 = 40;
-      r1.TickAll(ctx, port_stub);
+      r1.TickAll(ctx);
       if(r1.GetState(PM_R) != PENDING_STATE_IDLE)
         { logger.Error("system","SelfTest_PMR",0,"Case 3 fail: PM_R timeout"); return false; }
 
@@ -509,7 +575,7 @@ public:
       r1.EnterPending(PM_FORCE,
                       CPendingForce::BuildPayload("C", 1, 1, 0), 0);
       ctx.bar_index_h4 = 9;
-      r1.TickAll(ctx, port_stub);
+      r1.TickAll(ctx);
       if(r1.GetState(PM_FORCE) != PENDING_STATE_IDLE)
         { logger.Error("system","SelfTest_PMR",0,"Case 3 fail: PM_FORCE timeout"); return false; }
 
@@ -546,7 +612,7 @@ public:
       // PM_M threshold 150
       r1.EnterPending(PM_M, "{\"slot\":\"M\"}", 0);
       ctx.bar_index_h4 = 150;
-      r1.TickAll(ctx, port_stub);
+      r1.TickAll(ctx);
       if(r1.GetState(PM_M) != PENDING_STATE_IDLE ||
          r1.GetForceClearCount(PM_M) != 1)
         { logger.Error("system","SelfTest_PMR",0,"Case 5 fail: PM_M force-clear"); return false; }
@@ -554,7 +620,7 @@ public:
       // PM_T threshold 80
       r1.EnterPending(PM_T, "{\"slot\":\"T\"}", 200);
       ctx.bar_index_h4 = 280;
-      r1.TickAll(ctx, port_stub);
+      r1.TickAll(ctx);
       if(r1.GetState(PM_T) != PENDING_STATE_IDLE ||
          r1.GetForceClearCount(PM_T) != 1)
         { logger.Error("system","SelfTest_PMR",0,"Case 5 fail: PM_T force-clear"); return false; }
@@ -562,7 +628,7 @@ public:
       // PM_Q threshold 100
       r1.EnterPending(PM_Q, "{\"slot\":\"Q\"}", 400);
       ctx.bar_index_h4 = 500;
-      r1.TickAll(ctx, port_stub);
+      r1.TickAll(ctx);
       if(r1.GetState(PM_Q) != PENDING_STATE_IDLE ||
          r1.GetForceClearCount(PM_Q) != 1)
         { logger.Error("system","SelfTest_PMR",0,"Case 5 fail: PM_Q force-clear"); return false; }
@@ -570,7 +636,7 @@ public:
       // PM_R should NOT trigger force-clear path even past 150 bars
       r1.EnterPending(PM_R, "{}", 600);
       ctx.bar_index_h4 = 750;   // age=150 but R has no force-clear, only legacy 40
-      r1.TickAll(ctx, port_stub);
+      r1.TickAll(ctx);
       if(r1.GetForceClearCount(PM_R) != 0)
         { logger.Error("system","SelfTest_PMR",0,"Case 5 fail: PM_R should not force-clear"); return false; }
 
@@ -620,11 +686,37 @@ public:
       // StatePersistence (atomic op contract).
       r2.EnterPending(PM_T, "{}", 1000);
       ctx.bar_index_h4 = 1080;
-      r2.TickAll(ctx, port_stub);
+      r2.TickAll(ctx);
       if(sp.GetPmForceClearCount(PM_T) != 1)
         { logger.Error("system","SelfTest_PMR",0,"Case 6 fail: PM_T counter not synced to state"); return false; }
 
-      logger.Info("system", "SelfTest_PMR", 0, "CPendingMachineRegistry self test PASS (6 cases, 8 machines, 5 P-sub-modes)");
+      // --- Case 7 — cold-restart restores started_bar (Finding 03.4 fix) ---
+      // Persist PM_M as PENDING with started_bar=2000; spin up a fresh
+      // registry → at bar 2050 (age=50 < 150) it must remain PENDING; at
+      // bar 2151 (age=151 ≥ 150) it must force-clear exactly once.
+      // Pre-fix bug: started_bar was reset to 0 → age = 2050 → instant
+      // force-clear on every cold restart.
+      CStatePersistence sp2;
+      sp2.SetPendingState(PM_M,   PENDING_STATE_PENDING);
+      sp2.SetPendingPayload(PM_M, "{\"slot\":\"M\"}", 2000);
+
+      CPendingMachineRegistry r3;
+      r3.Init(150, 80, 100, 8, 30, 40, 70, 9,
+              &sp2, NULL, logger, NULL);
+
+      ctx.bar_index_h4 = 2050;
+      r3.TickAll(ctx);
+      if(r3.GetState(PM_M) != PENDING_STATE_PENDING ||
+         r3.GetForceClearCount(PM_M) != 0)
+        { logger.Error("system","SelfTest_PMR",0,"Case 7 fail: PM_M force-cleared too early after cold restart"); return false; }
+
+      ctx.bar_index_h4 = 2151;
+      r3.TickAll(ctx);
+      if(r3.GetState(PM_M) != PENDING_STATE_IDLE ||
+         r3.GetForceClearCount(PM_M) != 1)
+        { logger.Error("system","SelfTest_PMR",0,"Case 7 fail: PM_M did not force-clear at threshold after cold restart"); return false; }
+
+      logger.Info("system", "SelfTest_PMR", 0, "CPendingMachineRegistry self test PASS (7 cases, 8 machines, 5 P-sub-modes)");
       return true;
      }
 
@@ -645,12 +737,8 @@ public:
 //| C-equivalent path in (b).                                        |
 //+------------------------------------------------------------------+
 void CPendingMachineRegistry::TickMachine(EPendingMachineId id,
-                                          const MarketContext &ctx,
-                                          CPortfolioState &port)
+                                          const MarketContext &ctx)
   {
-   // Touch port to keep signature aligned with TD-02 §5.10 — slot-driven
-   // trigger evaluation calls TransitionExecuted() directly on its own
-   // signal; registry side is purely time-based.
    if(id < 0 || id >= PM_COUNT) return;
    if(m_machines[id].state != PENDING_STATE_PENDING) return;
 
@@ -684,11 +772,6 @@ void CPendingMachineRegistry::TickMachine(EPendingMachineId id,
       TransitionIdle(id, "force_clear");
       return;
      }
-
-   // No-op for PortfolioState in current passes — kept in signature for
-   // future per-machine logic that needs portfolio inspection (e.g. PM_FORCE
-   // payload routing in P3 slot integration).
-   if(port.GetByMagic(0) == NULL && id == PM_COUNT) return;
   }
 
 //+------------------------------------------------------------------+
@@ -746,16 +829,21 @@ void CPendingMachineRegistry::EmitForceClear(EPendingMachineId id, int age_bars)
 
    string code = _IdToCode(id);
 
-   // Journal event (ADR-008 + trade-journal-schema event_type=force_clear).
+   // Journal event (ADR-008 + trade-journal-schema event_type=pending_force_clear).
+   // Findings 03.1/03.2/03.3: literal must match schema enum verbatim and all
+   // schema-required fields must be populated (ZeroMemory leaves them empty).
    if(m_journal != NULL)
      {
       JournalEvent ev;
       ZeroMemory(ev);
       ev.timestamp_seconds      = TimeCurrent();
       ev.timestamp_microseconds = GetMicrosecondCount();
-      ev.event_type             = "force_clear";
+      ev.event_type             = "pending_force_clear";
       ev.slot_id                = code;
+      ev.magic                  = _IdToMagic(id);
+      ev.symbol                 = _Symbol;
       ev.pending_age_bars       = age_bars;
+      ev.triggering_function    = StringFormat("PendingMachine_%s_ForceClear", code);
       ev.signal_context         = StringFormat("machine=%s reason=age_exceeded count=%d",
                                                code, m_machines[id].force_clear_count);
       m_journal.WriteEvent(ev);

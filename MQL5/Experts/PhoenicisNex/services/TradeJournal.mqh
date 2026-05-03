@@ -9,6 +9,7 @@
 #include "PortfolioState.mqh"
 #include "Logger.mqh"
 #include "StatePersistence.mqh"
+#include "../domain/IHaltSink.mqh"
 #include "../helpers/JsonWriter.mqh"
 #include "../helpers/Timestamp.mqh"
 
@@ -69,6 +70,7 @@ private:
    CPortfolioState       *m_portfolio;
    CLogger               *m_logger;
    CStatePersistence     *m_state;
+   IHaltSink             *m_halt_sink;       // ADR-006 RPO escalation (Finding 03.6)
 
 public:
                         CTradeJournal()
@@ -82,7 +84,8 @@ public:
         m_ctx_builder(NULL),
         m_portfolio(NULL),
         m_logger(NULL),
-        m_state(NULL)
+        m_state(NULL),
+        m_halt_sink(NULL)
      {
       ArrayInitialize(m_overshoot_window, 0);
      }
@@ -91,6 +94,11 @@ public:
                              CPortfolioState *port,
                              CLogger *logger,
                              CStatePersistence *state);
+
+   //--- Phase-2 setter — Orchestrator wires CEAState (or any IHaltSink)
+   //    after both services exist (IMPL-018+ Composition Root). NULL-safe:
+   //    HandleWriteFailure simply skips escalation if sink not yet wired.
+   void                 SetHaltSink(IHaltSink *sink) { m_halt_sink = sink; }
 
    bool                 Open();
    void                 WriteEvent(const JournalEvent &ev);
@@ -132,6 +140,8 @@ void CTradeJournal::Init(CMarketContextBuilder *cb,
    m_portfolio            = port;
    m_logger               = logger;
    m_state                = state;
+   // m_halt_sink intentionally NOT reset here — Orchestrator may call
+   // SetHaltSink() before or after Init(); both orderings must work.
    m_handle               = INVALID_HANDLE;
    m_is_tester            = (bool)MQLInfoInteger(MQL_TESTER);
    m_current_month        = 0;
@@ -322,7 +332,15 @@ void CTradeJournal::BuildRecord(const JournalEvent &ev, string &out_json)
   }
 
 //+------------------------------------------------------------------+
-//| BuildIndicatorSnapshotSubset — valid empty object for scaffold   |
+//| BuildIndicatorSnapshotSubset — schema-valid empty object stub    |
+//|                                                                  |
+//| Finding 03.5: real subset extraction requires IMPL-018+ Orchestrator|
+//| to cache the per-tick MarketContext snapshot and inject it here  |
+//| (CMarketContextBuilder::Build returns by value per ADR-004).     |
+//| Tracked in docs/state/deferred-ac-registry.md row IMPL-043 /     |
+//| indicator_snapshot. Returns "{}" — schema-valid empty object,    |
+//| no JSON parse error, but FR-3.4 forensic context absent until    |
+//| wired.                                                            |
 //+------------------------------------------------------------------+
 string CTradeJournal::BuildIndicatorSnapshotSubset(string slot_id)
   {
@@ -390,6 +408,14 @@ void CTradeJournal::HandleWriteFailure(string reason)
       m_state.IncrementJournalFailures();
    if(m_logger != NULL)
       m_logger.Error("system", "journal_write_fail", 0, reason);
+
+   //--- ADR-006 RPO escalation (Finding 03.6): self-halt at threshold.
+   //    Idempotent on the EAState side; the == check prevents re-firing
+   //    every subsequent failure once the threshold has been crossed.
+   if(m_consecutive_failures == JOURNAL_HALT_THRESHOLD && m_halt_sink != NULL)
+     {
+      m_halt_sink.Halt("journal_write_fail_sustained");
+     }
   }
 
 void CTradeJournal::ResetConsecutiveOnSuccess()
@@ -404,11 +430,21 @@ void CTradeJournal::TrackLatency(ulong elapsed_us)
    m_overshoot_window[m_overshoot_idx] = elapsed_us;
    m_overshoot_idx = (m_overshoot_idx + 1) % JOURNAL_OVERSHOOT_WINDOW;
 
-   ulong elapsed_ms = elapsed_us / 1000;
-   if(elapsed_ms > JOURNAL_WARN_LATENCY_MS && m_logger != NULL)
+   //--- NFR-2.2 = p99 within 5 ms over a 10-write window. Finding 03.10:
+   //    proxy p99 by counting overshoots in the ring; warn only when ≥2/10
+   //    (>10% tail) so a single transient overshoot (antivirus scan, disk
+   //    cache flush) does not flood the Logger.
+   ulong threshold_us = (ulong)JOURNAL_WARN_LATENCY_MS * 1000;
+   int overshoot_count = 0;
+   for(int i = 0; i < JOURNAL_OVERSHOOT_WINDOW; i++)
+      if(m_overshoot_window[i] > threshold_us)
+         overshoot_count++;
+
+   if(overshoot_count >= 2 && m_logger != NULL)
       m_logger.Warn("system", "journal_write_slow", 0,
-                    StringFormat("path=%s elapsed_ms=%llu threshold_ms=%d",
-                                 m_active_path, elapsed_ms, JOURNAL_WARN_LATENCY_MS));
+                    StringFormat("path=%s overshoots=%d/%d latest_ms=%llu threshold_ms=%d",
+                                 m_active_path, overshoot_count, JOURNAL_OVERSHOOT_WINDOW,
+                                 elapsed_us / 1000, JOURNAL_WARN_LATENCY_MS));
   }
 
 //+------------------------------------------------------------------+
