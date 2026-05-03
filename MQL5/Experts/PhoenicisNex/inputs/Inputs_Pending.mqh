@@ -6,6 +6,7 @@
 #define PHOENICISNEX_INPUTS_PENDING_MQH
 
 input group "Pending"
+input int InpForceClearC_Bars  = 100;  // ADR-008 force-clear C-Pending (H4 bars)
 input int InpForceClearM_Bars  = 150;  // ADR-008 — force-clear threshold for slot M pending (H4 bars)
 input int InpForceClearT_Bars  = 80;   // ADR-008 — force-clear threshold for slot T pending (H4 bars)
 input int InpForceClearQ_Bars  = 100;  // ADR-008 — force-clear threshold for slot Q pending (H4 bars)
