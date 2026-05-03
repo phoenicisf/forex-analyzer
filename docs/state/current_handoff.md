@@ -4,6 +4,19 @@
 
 ## Last completed action
 
+**IMPL-018 CLOSED 2026-05-03** — `domain/CSlotBase.mqh` + `core/SlotRegistry.mqh` + `spike/Spike_CSlotBase.mq5`. First P3 task per Phase Gate Override (Path A); Evolution E2 compile prereq satisfied — IMPL-019..039 (21 slot classes) unblocked.
+
+- **Files (NEW):** `MQL5/Experts/PhoenicisNex/domain/CSlotBase.mqh`, `MQL5/Experts/PhoenicisNex/core/SlotRegistry.mqh`, `MQL5/Experts/PhoenicisNex/spike/Spike_CSlotBase.mq5`
+- **G1:** `Result: 0 errors, 0 warnings, 605 ms` (Spike_CSlotBase); regression check 4/4 sibling spikes clean (PMR 1495 / SP 1331 / EAState 879 / TJ 1288 ms unchanged)
+- **ADR-002 enforcement:** Layer 1 (boot-time sentinel detected by `CSlotRegistry::ValidateTopo`) + Layer 2 (runtime `Logger.Error + ExpertRemove` in base virtual bodies)
+- **SelfTest:** 6 cases pass (empty registry / bad-Magic / good-pair / empty-SlotId / null-Add / PendingState default)
+- **Schema-roundtrip:** 6 methods (Magic/SlotId/Evaluate/ManageExits/DependsOn/PendingState) match `slot-abstraction-contract.yaml § methods` 1:1
+- **Spec deviation:** `ValidateTopo` + `ValidateDependencyOrder` non-const (MQL5 error 279 — calling non-const `DependsOn` through pointer field from const context); harmless per single OnInit invocation pattern
+- **Scoped include exception:** `domain/CSlotBase.mqh` #includes `services/Logger.mqh` for inline layer-2 body — only domain/* file with a services/* include; documented inline as ADR-002-required exception
+- **Next suggested task:** IMPL-019 (M [ea] Slot_C — CD chain root, foundational P3 task)
+
+---
+
 **Path A elected 2026-05-03 — Phase Gate Override logged; P3 starting** — operator (Kritsana) signed off on Path A per `_session-handoff/2026-05-03-phase2-gate-nomination.md § Recommendation`. Override row + closure condition codified in `impl-plan.md § Phase Gate Override Log`. P2 Gate retroactively closes once IMPL-053+ Orchestrator skeleton lands + `simulation/headless-tests/p2_services_smoke.ini` walk evidence produced + 5 Active P2 deferred-AC rows drained.
 
 - **Override scope:** P3 IMPL-018 + IMPL-053..058 Orchestrator chain only
