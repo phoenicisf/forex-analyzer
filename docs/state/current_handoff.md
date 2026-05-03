@@ -4,6 +4,28 @@
 
 ## Last completed action
 
+**IMPL-034 CLOSED 2026-05-04 — Slot_P ⚠️ A7 risk: P-Pending sub-modes PSUB_NONE/N/PX/PH/E per `04 § 4.4` (lock-once semantic)** — single-task `/impl-task IMPL-034` orchestrator (Opus 4.7) Phase 2C 7-step decomposition. L-size MVP: P-Pending lifecycle with sub-mode resolution branch + pyramid extension path bypassing PMR. **All 21 P3 slots + 21/21 per-slot input files now complete** at slot layer.
+
+- **Files (NEW × 4):**
+  - `MQL5/Experts/PhoenicisNex/slots/Slot_P.mqh` — CSlotP : CSlotBase; sub-mode resolution (`_ResolvePSubMode` lock-once N→PX/PH); pyramid E path bypasses PMR (parent profit gate ≥ 30 pip); comment-prefix disambig "P," vs "PI," (Slot_BI line 89-95 precedent); `_TpPipsForSubMode` parses comment 3rd CSV field.
+  - `MQL5/Experts/PhoenicisNex/inputs/Inputs_Slot_P.mqh` — 11 inputs (group="Slot P"): InpEnableSlotP / InpPMaxOrders=1 / InpPBaseLot=20.0 / InpPSlPipsFloor=80.0 / InpPAdxMin=18.0 / InpPForcePxGate=0.1 / InpPDiffSlPxThreshold=200.0 / InpPTpPipsPx=7.0 / InpPTpPipsPh=15.0 / InpPTpPipsE=25.0 / InpPPyramidGatePips=30.0.
+  - `MQL5/Experts/PhoenicisNex/spike/Spike_Slot_P.mq5` — G1 compile + 6 SelfTest cases (Magic=218/SlotId="P"/DependsOn=0/PendingState=IDLE/range/id_nonempty).
+  - `simulation/headless-tests/slot_P_smoke.ini` — standard headless [Tester] block (Visual=0, ShutdownTerminal=1, EURUSD H4 Model=4 60-day window 2021.01.01→2021.03.02).
+- **Files modified:** `docs/state/impl-plan.md` (TL;DR + IMPL-034 closure block with all 6 S-AC `[x]` + Phase Status row 21→22/23 + Mid-Phase Audit Log row + Plan Staleness Sentinel = 2 closures + Action ถัดไป + Last updated), `docs/state/overview.md` (Impl Tasks row prefix), `docs/state/deferred-ac-registry.md` (1 new IMPL-034 Active P3 row expiry 2026-05-18), `docs/state/_session-handoff/IMPL-034-evidence-20260504.md` (NEW — G1 evidence + sub-mode coverage table + A7 deferred items).
+- **G1 ✅ orchestrator-side recompile** (Bash MetaEditor64): Spike_Slot_P 0err/0warn/435 ms.
+- **Sibling regression (4/4 clean):** Spike_Slot_R 0/0/405 ms · Spike_Slot_M 0/0/420 ms · Spike_Slot_BI 0/0/424 ms · Spike_Slot_LX 0/0/407 ms.
+- **Sub-mode lifecycle structural verification:** IDLE→base BB+ADX signal→`EnterPending(payload sub_mode=N)`; PENDING+sub_mode=N→`_ResolvePSubMode` locks PSUB_PX (`|f1|>InpPForcePxGate AND diff_sl_pip≥InpPDiffSlPxThreshold`) or PSUB_PH default; PENDING+sub_mode∈{PX,PH}+`_IsPTriggerValid`→OrderSend "P,MA,PX|PH,1,SL"+TransitionExecuted. Pyramid E path direct OrderSend "PI,MA,E,1,SL" when own primary P active + parent profit ≥ 30 pip (Slot_LX/Slot_BI precedent). Legacy timeout `InpLegacyPBars=70` BR-6.4 owned by PMR.TickAll Orchestrator step 8.
+- **A7 risk advanced filters deferred to P4 IMPL-062:** Hull MA structure entry filter / recent-bar trigger lookback ≤ 8 bars / band gating extremes (`_diffSL ≥ 250 AND band_ratio > 75`) / per-extension Fibonacci pyramid lot calc per CodeWiki §3.14.
+- **All 6 S-AC `[x]`.** 1 E-AC deferred — smoke 60-day backtest with sub-mode trigger reflected in `state.json § pending_machines.P.sub_mode` `[db-inspect]` + `[log-assertion]` — block on IMPL-053+ Orchestrator + RiskManager OrderSend + 60-day Tester run; **registered to `deferred-ac-registry.md` Active table** expiry 2026-05-18.
+- **Newly unblocked:** IMPL-013 formal rolling-close mark (21/21 input files complete with `Inputs_Slot_P.mqh`).
+- **Mid-Phase Audit P3 counter** = 22 (threshold 5 crossed many times; advisory only until IMPL-053+ runnable surface). **Plan Staleness Sentinel = 2 closures since R06 review** (well below 10-closure threshold).
+- **Commit:** `<pending this commit>` `[feat:ea] IMPL-034 Slot_P - P-Pending sub-modes (PSUB_NONE/N/PX/PH/E per 04 § 4.4)`
+- **Next suggested task:** **IMPL-013 formal rolling-close** (mark all 21 per-slot input AC `[x]` since file set complete) **OR** `/impl-review all` (R07 trigger — adversarial sweep on full P3 slot surface incl Slot_P sub-mode lifecycle + Slot_BI G4 vs ADR-009) **OR** begin P3 Phase Gate path (Tier 1.5 walk requires IMPL-053+ Orchestrator chain first).
+
+---
+
+## Prior actions (kept for continuity)
+
 **IMPL-039 CLOSED 2026-05-04 — Slot_BI ⚠️ G4 critical SL inheritance fix per ADR-009 (Bucket B drift NFR-1.8)** — single-task `/impl-task IMPL-039` orchestrator (Opus 4.7) Phase 2C 7-step decomposition. L-size MVP: pyramid child of Slot B sharing MAGIC_B=214 with G4 SL inheritance contract restored.
 
 - **Files (NEW × 5):**
