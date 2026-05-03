@@ -4,6 +4,20 @@
 
 ## Last completed action
 
+**Code Review Round 03 + Fix Round 03 CLOSED 2026-05-03** — `docs/code-review/review-round-03.md` audited P2 closure delta (IMPL-043 TradeJournal + IMPL-044 schema + IMPL-049 PMR XL + IMPL-052 EAState; ~1,476 LOC); 11 findings (CRITICAL 2 / HIGH 4 / MEDIUM 3 / LOW 2). `/impl-review-fix review-round-03.md` accepted **11/11** (0 reject, 0 partial).
+
+- **Report:** `docs/code-review/fix-round-03.md`
+- **Files touched:** `core/EAState.mqh`, `services/PendingMachineRegistry.mqh`, `services/StatePersistence.mqh`, `services/TradeJournal.mqh`, `domain/IHaltSink.mqh` (NEW), `docs/state/deferred-ac-registry.md`
+- **G1 compile:** 4/4 spikes 0err/0warn (PMR 1495 ms / StatePersistence 1331 ms / EAState 879 ms / TradeJournal 1288 ms)
+- **Bundles:**
+  - **G1 schema-contract** (03.1+03.2+03.3+03.4+03.6) — `event_type="pending_force_clear"`; populate halt + force_clear required fields (`slot_id`, `magic`, `symbol`, `triggering_function`); `GetPmStartedBar` getter + LoadFromState recovery; `IHaltSink` interface + TradeJournal self-halt at `JOURNAL_HALT_THRESHOLD`
+  - **G2 indicator_snapshot** (03.5) — Deferred-AC promotion (IMPL-018+ Orchestrator must cache MarketContext snapshot before subset extraction is feasible per ADR-004)
+  - **G3 quality** (03.7+03.8+03.9) — CPendingForce escape-aware `_ExtractStr` (mirrors Round-02.5); EAState extracted `BuildHaltEvent` + 2 SelfTest assertions; promote IMPL-052/049 boot-cold E-ACs to Deferred-AC registry
+  - **G4 polish** (03.10+03.11) — journal latency p99 ratio (warn ≥2/10 overshoots, not every overshoot); drop dead `port` arg from `TickMachine`/`TickAll` + dead branch
+- **SelfTest deltas:** PMR Case 7 verifies post-fix-03.4 cold-restart `started_bar` recovery (PM_M persisted `started_bar=2000` → at bar 2050 still PENDING, at bar 2151 force-clear); EAState `BuildHaltEvent("halt"/"halt_stable")` verified to populate slot_id/symbol/halt_reason/triggering_function/signal_context
+
+---
+
 **IMPL-044 CLOSED 2026-05-03** — `docs/api-specs/trade-journal-schema.yaml` v1 final-locked. P2 = 9/11.
 
 - **Commit:** `f45fefd` — required list expanded 11→15 (ticket_id+order_type+lot+price promoted); `examples:` added to all 15 required fields; `## Lifecycle Plan` section added per SD-07 § 3.1.
