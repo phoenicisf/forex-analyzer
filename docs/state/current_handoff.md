@@ -4,6 +4,13 @@
 
 ## Last completed action
 
+**Path A elected 2026-05-03 — Phase Gate Override logged; P3 starting** — operator (Kritsana) signed off on Path A per `_session-handoff/2026-05-03-phase2-gate-nomination.md § Recommendation`. Override row + closure condition codified in `impl-plan.md § Phase Gate Override Log`. P2 Gate retroactively closes once IMPL-053+ Orchestrator skeleton lands + `simulation/headless-tests/p2_services_smoke.ini` walk evidence produced + 5 Active P2 deferred-AC rows drained.
+
+- **Override scope:** P3 IMPL-018 + IMPL-053..058 Orchestrator chain only
+- **Next action:** `/impl-task IMPL-018` (M [ea] — `domain/CSlotBase.mqh` abstract + 2-layer override enforcement per ADR-002 — Evolution E2 compile prereq)
+
+---
+
 **P2 Phase Gate NOMINATED 2026-05-03 — IMPL-049 closure attestation produced** — engineer-side row-by-row assessment: **5/9 rows Ready** (Structural / Code review / NFR provisional / Rollback / Docs) · **4/9 rows Blocked** (Empirical Demo / Tier 1.5 Walk / Live-stack — all need entry `PhoenicisNex.mq5` from IMPL-018+; Deferred-AC drain — 5 Active P2 rows blocked on IMPL-018+).
 
 - **Nomination doc:** `docs/state/_session-handoff/2026-05-03-phase2-gate-nomination.md`
