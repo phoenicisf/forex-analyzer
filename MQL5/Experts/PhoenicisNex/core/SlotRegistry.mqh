@@ -103,10 +103,12 @@ public:
 
    void              Init(CLogger *lg)
      {
+      //--- Safe re-init: route through ReleaseAll so heap-allocated slots
+      //    are deleted when m_owns_slots == true. A bare reset (m_count=0
+      //    + NULL the array) would leak 21 CSlotBase derivatives on the
+      //    OnInit re-entry path (CleanupPartialInit per TD-02 §7.4.1).
+      ReleaseAll();
       m_logger = lg;
-      m_count = 0;
-      for(int i = 0; i < PHOENICISNEX_SLOT_CAPACITY; i++)
-         m_slots[i] = NULL;
      }
 
    //--- Test harness accessor — flip ownership before adding stack-
