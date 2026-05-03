@@ -14,7 +14,6 @@
 #include "../domain/EnumTypes.mqh"
 #include "../domain/MarketContext.mqh"
 #include "Logger.mqh"
-#include "PortfolioState.mqh"
 #include "StatePersistence.mqh"
 #include "TradeJournal.mqh"
 
@@ -192,11 +191,11 @@ private:
    CStatePersistence *m_state;
    CTradeJournal     *m_journal;
    CLogger           *m_logger;
-   CPortfolioState   *m_portfolio;
 
-   //--- Sub-pass (b)/(c) bodies. Finding 03.11: PortfolioState is held via
-   //    m_portfolio (Init-injected); per-tick port arg removed from
-   //    TickMachine / TickAll signatures since no caller dereferences it.
+   //--- Sub-pass (b)/(c) bodies. Findings 03.11 + 04.7: registry-side logic
+   //    is purely time-based per ADR-008 + BR-6.x; PortfolioState is not
+   //    held as a member. If P3 slot-driven hooks need portfolio inspection,
+   //    re-introduce as a constructor arg + private member at that time.
    void              TickMachine(EPendingMachineId id, const MarketContext &ctx);
    bool              ExceededLegacyTimeout(EPendingMachineId id, int age) const;
    bool              ShouldForceClear(EPendingMachineId id, int current_bar) const;
@@ -323,7 +322,7 @@ public:
         m_legacy_r_bars(40),
         m_legacy_p_bars(70),
         m_legacy_force_bars(9),
-        m_state(NULL), m_journal(NULL), m_logger(NULL), m_portfolio(NULL)
+        m_state(NULL), m_journal(NULL), m_logger(NULL)
      {
       for(int i = 0; i < PM_COUNT; i++)
         {
@@ -334,9 +333,11 @@ public:
         }
      }
 
-   //--- Init — 13-arg form per TD-02 §5.10 (8 thresholds/timeouts + 4 deps).
-   //    Called by Orchestrator Composition Root after StatePersistence + Journal
-   //    + Logger + PortfolioState are themselves initialised (DI step ~13).
+   //--- Init — 12-arg form per TD-02 §5.10 (8 thresholds/timeouts + 3 deps).
+   //    Findings 03.11 + 04.7: PortfolioState dependency dropped — registry
+   //    logic is purely time-based and reads no portfolio state today.
+   //    Called by Orchestrator Composition Root after StatePersistence +
+   //    Journal + Logger are themselves initialised (DI step ~13).
    void              Init(int threshold_m_bars,
                           int threshold_t_bars,
                           int threshold_q_bars,
@@ -347,8 +348,7 @@ public:
                           int legacy_force_bars,
                           CStatePersistence *state,
                           CTradeJournal *journal,
-                          CLogger *logger,
-                          CPortfolioState *port)
+                          CLogger *logger)
      {
       m_threshold_m_bars   = threshold_m_bars;
       m_threshold_t_bars   = threshold_t_bars;
@@ -361,7 +361,6 @@ public:
       m_state              = state;
       m_journal            = journal;
       m_logger             = logger;
-      m_portfolio          = port;
 
       // Pull warm cache from state.json (sub-pass (a) skeleton — full body in (d))
       LoadFromState();
@@ -369,9 +368,9 @@ public:
 
    //--- TickAll — Orchestrator OnTick step 8 (per TD-02 §9.4 line 1530).
    //    Iterates all 8 machines; per-machine bodies stubbed in (a), filled
-   //    in (b)/(c). Finding 03.11: port arg dropped — registry-side logic
-   //    is purely time-based and reads m_portfolio when slot-driven hooks
-   //    arrive in P3.
+   //    in (b)/(c). Findings 03.11 + 04.7: port arg dropped — registry-side
+   //    logic is purely time-based; portfolio dep will be re-introduced
+   //    only when P3 slot-driven hooks need it.
    void              TickAll(const MarketContext &ctx)
      {
       for(int i = 0; i < PM_COUNT; i++)
@@ -515,7 +514,7 @@ public:
       // --- Case 1 — initial state (S-AC #1) ---
       CPendingMachineRegistry r1;
       r1.Init(150, 80, 100, 8, 30, 40, 70, 9,
-              NULL, NULL, logger, NULL);
+              NULL, NULL, logger);
       for(int i = 0; i < PM_COUNT; i++)
          if(r1.GetState((EPendingMachineId)i) != PENDING_STATE_IDLE ||
             r1.GetForceClearCount((EPendingMachineId)i) != 0)
@@ -659,7 +658,7 @@ public:
       // Wire a fresh registry to that state and Load.
       CPendingMachineRegistry r2;
       r2.Init(150, 80, 100, 8, 30, 40, 70, 9,
-              &sp, NULL, logger, NULL);
+              &sp, NULL, logger);
       // Init() calls LoadFromState internally — verify mirror is correct.
       if(r2.GetState(PM_C) != PENDING_STATE_PENDING ||
          r2.GetPayload(PM_C) != "{\"slot\":\"C\",\"v\":1}")
@@ -689,28 +688,61 @@ public:
       r2.TickAll(ctx);
       if(sp.GetPmForceClearCount(PM_T) != 1)
         { logger.Error("system","SelfTest_PMR",0,"Case 6 fail: PM_T counter not synced to state"); return false; }
+      // Finding 04.4: with state wired, RAM mirror MUST equal persisted value
+      // after EmitForceClear (state-first ordering contract).
+      if(r2.GetForceClearCount(PM_T) != sp.GetPmForceClearCount(PM_T))
+        { logger.Error("system","SelfTest_PMR",0,"Case 6 fail: PM_T RAM/state asymmetry (Finding 04.4)"); return false; }
 
       // --- Case 7 — cold-restart restores started_bar (Finding 03.4 fix) ---
-      // Persist PM_M as PENDING with started_bar=2000; spin up a fresh
-      // registry → at bar 2050 (age=50 < 150) it must remain PENDING; at
-      // bar 2151 (age=151 ≥ 150) it must force-clear exactly once.
-      // Pre-fix bug: started_bar was reset to 0 → age = 2050 → instant
-      // force-clear on every cold restart.
+      // Finding 04.8: extended to cover all 3 force-clear machines (PM_M=150,
+      // PM_T=80, PM_Q=100). Pre-fix bug applied to ALL three; thin coverage
+      // (M-only) was fragile to a future PM_T/PM_Q-specific regression.
+      // Persist each as PENDING with started_bar=2000; spin up one fresh
+      // registry → just-below-threshold tick must hold PENDING; at-threshold
+      // tick must force-clear exactly once.
       CStatePersistence sp2;
       sp2.SetPendingState(PM_M,   PENDING_STATE_PENDING);
       sp2.SetPendingPayload(PM_M, "{\"slot\":\"M\"}", 2000);
+      sp2.SetPendingState(PM_T,   PENDING_STATE_PENDING);
+      sp2.SetPendingPayload(PM_T, "{\"slot\":\"T\"}", 2000);
+      sp2.SetPendingState(PM_Q,   PENDING_STATE_PENDING);
+      sp2.SetPendingPayload(PM_Q, "{\"slot\":\"Q\"}", 2000);
 
       CPendingMachineRegistry r3;
       r3.Init(150, 80, 100, 8, 30, 40, 70, 9,
-              &sp2, NULL, logger, NULL);
+              &sp2, NULL, logger);
 
-      ctx.bar_index_h4 = 2050;
+      // PM_T threshold = 80 → 2079 below, 2080 at-boundary
+      ctx.bar_index_h4 = 2079;
+      r3.TickAll(ctx);
+      if(r3.GetState(PM_T) != PENDING_STATE_PENDING ||
+         r3.GetForceClearCount(PM_T) != 0)
+        { logger.Error("system","SelfTest_PMR",0,"Case 7 fail: PM_T force-cleared too early after cold restart"); return false; }
+      ctx.bar_index_h4 = 2080;
+      r3.TickAll(ctx);
+      if(r3.GetState(PM_T) != PENDING_STATE_IDLE ||
+         r3.GetForceClearCount(PM_T) != 1)
+        { logger.Error("system","SelfTest_PMR",0,"Case 7 fail: PM_T did not force-clear at threshold after cold restart"); return false; }
+
+      // PM_Q threshold = 100 → 2099 below, 2100 at-boundary
+      ctx.bar_index_h4 = 2099;
+      r3.TickAll(ctx);
+      if(r3.GetState(PM_Q) != PENDING_STATE_PENDING ||
+         r3.GetForceClearCount(PM_Q) != 0)
+        { logger.Error("system","SelfTest_PMR",0,"Case 7 fail: PM_Q force-cleared too early after cold restart"); return false; }
+      ctx.bar_index_h4 = 2100;
+      r3.TickAll(ctx);
+      if(r3.GetState(PM_Q) != PENDING_STATE_IDLE ||
+         r3.GetForceClearCount(PM_Q) != 1)
+        { logger.Error("system","SelfTest_PMR",0,"Case 7 fail: PM_Q did not force-clear at threshold after cold restart"); return false; }
+
+      // PM_M threshold = 150 → 2149 below, 2150 at-boundary
+      ctx.bar_index_h4 = 2149;
       r3.TickAll(ctx);
       if(r3.GetState(PM_M) != PENDING_STATE_PENDING ||
          r3.GetForceClearCount(PM_M) != 0)
         { logger.Error("system","SelfTest_PMR",0,"Case 7 fail: PM_M force-cleared too early after cold restart"); return false; }
-
-      ctx.bar_index_h4 = 2151;
+      ctx.bar_index_h4 = 2150;
       r3.TickAll(ctx);
       if(r3.GetState(PM_M) != PENDING_STATE_IDLE ||
          r3.GetForceClearCount(PM_M) != 1)
@@ -822,10 +854,21 @@ void CPendingMachineRegistry::EmitForceClear(EPendingMachineId id, int age_bars)
   {
    if(id != PM_M && id != PM_T && id != PM_Q) return;
 
-   // Counter increment — RAM cache + StatePersistence atomic op.
-   m_machines[id].force_clear_count++;
+   //--- Finding 04.4: increment persisted side first, then mirror into RAM
+   //    from the persisted value. Prevents RAM-vs-disk drift when (a) state
+   //    is NULL (RAM bumps but persisted unchanged → next LoadFromState
+   //    silently rewinds) and (b) future Save() flush fails between ticks
+   //    (RAM ahead of disk on crash). When state is NULL we fall back to
+   //    in-RAM increment so unit tests / spike-without-state still work.
    if(m_state != NULL)
+     {
       m_state.IncrementPmForceClearCount(id);
+      m_machines[id].force_clear_count = m_state.GetPmForceClearCount(id);
+     }
+   else
+     {
+      m_machines[id].force_clear_count++;
+     }
 
    string code = _IdToCode(id);
 

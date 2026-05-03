@@ -29,12 +29,12 @@ int OnInit()
      }
 
    // Init with TD-02 §5.10 default (M=150 / T=80 / Q=100 + BR-6.x defaults).
-   // Pass NULL for state/journal/portfolio — sub-pass (a) skeleton tolerates
-   // NULL deps (no-op pathways) so the spike compiles + boots without the
-   // full DI chain ของ Orchestrator.
+   // Pass NULL for state/journal — sub-pass (a) skeleton tolerates NULL deps
+   // (no-op pathways) so the spike compiles + boots without the full DI
+   // chain ของ Orchestrator. Finding 04.7: portfolio arg dropped.
    g_pmr.Init(150, 80, 100,
               8, 30, 40, 70, 9,
-              NULL, NULL, &g_logger, NULL);
+              NULL, NULL, &g_logger);
 
    // Exercise transition surface.
    g_pmr.EnterPending(PM_C, "{\"slot\":\"C\"}", 100);
@@ -78,9 +78,7 @@ int OnInit()
    MarketContext ctx;
    ZeroMemory(ctx);
    ctx.bar_index_h4 = 100;
-   CPortfolioState empty_port;
-   empty_port.Init(&g_logger);
-   g_pmr.TickAll(ctx, empty_port);
+   g_pmr.TickAll(ctx);
 
    // === Sub-pass (b) — legacy timeout enforcement =====================
 
@@ -88,14 +86,14 @@ int OnInit()
    // should transition IDLE (age=8 ≥ 8).
    g_pmr.EnterPending(PM_C, "{\"slot\":\"C\"}", 100);
    ctx.bar_index_h4 = 107;
-   g_pmr.TickAll(ctx, empty_port);
+   g_pmr.TickAll(ctx);
    if(g_pmr.GetState(PM_C) != PENDING_STATE_PENDING)
      {
       Print("Spike_PMR: PM_C should still be PENDING at age=7");
       return INIT_FAILED;
      }
    ctx.bar_index_h4 = 108;
-   g_pmr.TickAll(ctx, empty_port);
+   g_pmr.TickAll(ctx);
    if(g_pmr.GetState(PM_C) != PENDING_STATE_IDLE)
      {
       Print("Spike_PMR: PM_C should be IDLE after age=8 timeout");
@@ -105,7 +103,7 @@ int OnInit()
    // PM_R legacy timeout = 40 bars.
    g_pmr.EnterPending(PM_R, "{\"slot\":\"R\"}", 200);
    ctx.bar_index_h4 = 240;
-   g_pmr.TickAll(ctx, empty_port);
+   g_pmr.TickAll(ctx);
    if(g_pmr.GetState(PM_R) != PENDING_STATE_IDLE)
      {
       Print("Spike_PMR: PM_R should be IDLE after age=40 timeout");
@@ -135,7 +133,7 @@ int OnInit()
       return INIT_FAILED;
      }
    ctx.bar_index_h4 = 370;
-   g_pmr.TickAll(ctx, empty_port);
+   g_pmr.TickAll(ctx);
    if(g_pmr.GetState(PM_P) != PENDING_STATE_IDLE)
      {
       Print("Spike_PMR: PM_P should be IDLE after age=70 timeout");
@@ -145,7 +143,7 @@ int OnInit()
    // PM_C_ADX legacy timeout = 30 bars.
    g_pmr.EnterPending(PM_C_ADX, "{\"slot\":\"C_ADX\"}", 400);
    ctx.bar_index_h4 = 430;
-   g_pmr.TickAll(ctx, empty_port);
+   g_pmr.TickAll(ctx);
    if(g_pmr.GetState(PM_C_ADX) != PENDING_STATE_IDLE)
      {
       Print("Spike_PMR: PM_C_ADX should be IDLE after age=30 timeout");
@@ -157,7 +155,7 @@ int OnInit()
                       CPendingForce::BuildPayload("C", 99, 1, 500),
                       500);
    ctx.bar_index_h4 = 509;
-   g_pmr.TickAll(ctx, empty_port);
+   g_pmr.TickAll(ctx);
    if(g_pmr.GetState(PM_FORCE) != PENDING_STATE_IDLE)
      {
       Print("Spike_PMR: PM_FORCE should be IDLE after age=9 timeout");
@@ -175,7 +173,7 @@ int OnInit()
    // PM_M threshold = 150. Age=149 still PENDING; age=150 → IDLE + count++.
    g_pmr.EnterPending(PM_M, "{\"slot\":\"M\"}", 1000);
    ctx.bar_index_h4 = 1149;
-   g_pmr.TickAll(ctx, empty_port);
+   g_pmr.TickAll(ctx);
    if(g_pmr.GetState(PM_M) != PENDING_STATE_PENDING)
      {
       Print("Spike_PMR: PM_M should still be PENDING at age=149");
@@ -187,7 +185,7 @@ int OnInit()
       return INIT_FAILED;
      }
    ctx.bar_index_h4 = 1150;
-   g_pmr.TickAll(ctx, empty_port);
+   g_pmr.TickAll(ctx);
    if(g_pmr.GetState(PM_M) != PENDING_STATE_IDLE)
      {
       Print("Spike_PMR: PM_M should be IDLE after force-clear at age=150");
@@ -203,7 +201,7 @@ int OnInit()
    // PM_T threshold = 80.
    g_pmr.EnterPending(PM_T, "{\"slot\":\"T\"}", 2000);
    ctx.bar_index_h4 = 2080;
-   g_pmr.TickAll(ctx, empty_port);
+   g_pmr.TickAll(ctx);
    if(g_pmr.GetState(PM_T) != PENDING_STATE_IDLE ||
       g_pmr.GetForceClearCount(PM_T) != 1)
      {
@@ -214,7 +212,7 @@ int OnInit()
    // PM_Q threshold = 100.
    g_pmr.EnterPending(PM_Q, "{\"slot\":\"Q\"}", 3000);
    ctx.bar_index_h4 = 3100;
-   g_pmr.TickAll(ctx, empty_port);
+   g_pmr.TickAll(ctx);
    if(g_pmr.GetState(PM_Q) != PENDING_STATE_IDLE ||
       g_pmr.GetForceClearCount(PM_Q) != 1)
      {
@@ -227,7 +225,7 @@ int OnInit()
    // past M-threshold; force_clear_count must remain 0.
    g_pmr.EnterPending(PM_C, "{\"slot\":\"C\"}", 4000);
    ctx.bar_index_h4 = 4007;   // before C legacy timeout (8) so PENDING
-   g_pmr.TickAll(ctx, empty_port);
+   g_pmr.TickAll(ctx);
    if(g_pmr.GetForceClearCount(PM_C) != 0)
      {
       Print("Spike_PMR: PM_C should not have force_clear_count > 0");

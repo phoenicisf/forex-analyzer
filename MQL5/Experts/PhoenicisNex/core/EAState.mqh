@@ -234,11 +234,17 @@ public:
          return false;
         }
 
-      // Halt-event payload integrity (Finding 03.8 → 03.2 verification):
-      // exercise BuildHaltEvent directly so we can assert each schema-required
-      // field is populated without needing a mock CTradeJournal.
+      // Halt-event payload integrity (Finding 03.2 → 04.2 verification — pure-of-state helper):
+      // BuildHaltEvent is `const` and populates JournalEvent from args alone, NOT from
+      // this->m_state / this->m_halt_reason. Use fresh instances per assertion block
+      // so the test doesn't couple to any prior ea2/ea3 mutation, and so a future
+      // refactor that reads `m_halt_reason` inside BuildHaltEvent surfaces as a
+      // failure rather than a silent pass. End-to-end Halt() emit-path coverage
+      // (mock journal sink) deferred per Finding 03.8 + 04.2.
+      CEAState ea_he;
+      ea_he.Init(NULL, NULL);
       JournalEvent he;
-      ea2.BuildHaltEvent(he, "halt", "test_reason", "CEAState::Halt", "halt_reason=test_reason");
+      ea_he.BuildHaltEvent(he, "halt", "test_reason", "CEAState::Halt", "halt_reason=test_reason");
       if(he.event_type != "halt" ||
          he.slot_id != "system" ||
          he.symbol != _Symbol ||
@@ -251,8 +257,10 @@ public:
          return false;
         }
 
+      CEAState ea_hse;
+      ea_hse.Init(NULL, NULL);
       JournalEvent hse;
-      ea2.BuildHaltEvent(hse, "halt_stable", "old", "CEAState::TryTransitionToStable", "all_positions_closed");
+      ea_hse.BuildHaltEvent(hse, "halt_stable", "old", "CEAState::TryTransitionToStable", "all_positions_closed");
       if(hse.event_type != "halt_stable" ||
          hse.slot_id != "system" ||
          hse.symbol != _Symbol)

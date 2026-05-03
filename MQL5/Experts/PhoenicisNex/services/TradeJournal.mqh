@@ -311,8 +311,23 @@ void CTradeJournal::BuildRecord(const JournalEvent &ev, string &out_json)
       w.WriteDouble("tp", ev.tp, _Digits);
    else
       w.WriteNull("tp");
+   //--- Finding 04.5: schema `comment` has maxLength: 32 (per
+   //    trade-journal-schema.yaml). Clamp at the writer boundary rather than
+   //    trust upstream slot caller; emit a Warn with original length so any
+   //    truncation remains forensically visible (IMPL-068 QA).
    if(StringLen(ev.comment) > 0)
-      w.WriteString("comment", ev.comment);
+     {
+      string c = ev.comment;
+      if(StringLen(c) > 32)
+        {
+         if(m_logger != NULL)
+            m_logger.Warn("system", "journal_comment_truncated", 0,
+                          StringFormat("orig_len=%d slot=%s ticket=%I64u",
+                                       StringLen(c), ev.slot_id, ev.ticket_id));
+         c = StringSubstr(c, 0, 32);
+        }
+      w.WriteString("comment", c);
+     }
    else
       w.WriteNull("comment");
    if(ev.parent_ticket_id != 0)
@@ -323,7 +338,10 @@ void CTradeJournal::BuildRecord(const JournalEvent &ev, string &out_json)
       w.WriteString("halt_reason", ev.halt_reason);
    else
       w.WriteNull("halt_reason");
-   if(ev.pending_age_bars > 0)
+   //--- Finding 04.6: gate by event_type (consistent with lot/price/sl/tp
+   //    sibling gates) rather than value. Lets readers disambiguate
+   //    "absent" (null) from "explicitly age=0" (legitimate at boundary).
+   if(ev.event_type == "pending_force_clear")
       w.WriteInt("pending_age_bars", ev.pending_age_bars);
    else
       w.WriteNull("pending_age_bars");
@@ -409,10 +427,12 @@ void CTradeJournal::HandleWriteFailure(string reason)
    if(m_logger != NULL)
       m_logger.Error("system", "journal_write_fail", 0, reason);
 
-   //--- ADR-006 RPO escalation (Finding 03.6): self-halt at threshold.
-   //    Idempotent on the EAState side; the == check prevents re-firing
-   //    every subsequent failure once the threshold has been crossed.
-   if(m_consecutive_failures == JOURNAL_HALT_THRESHOLD && m_halt_sink != NULL)
+   //--- ADR-006 RPO escalation (Finding 03.6 + 04.3): self-halt when counter
+   //    REACHES OR EXCEEDS threshold. Idempotency is owned by CEAState::Halt
+   //    (state-machine guards re-fire); using >= here protects against batch
+   //    increments and warm-restart counter recovery scenarios per ADR-006
+   //    "≥10 consecutive failures" contract literal.
+   if(m_consecutive_failures >= JOURNAL_HALT_THRESHOLD && m_halt_sink != NULL)
      {
       m_halt_sink.Halt("journal_write_fail_sustained");
      }
