@@ -4,6 +4,25 @@
 
 ## Last completed action
 
+**IMPL-022 CLOSED 2026-05-03 — Slot_J ⚠️ G4 critical fix BR-7.2 (Bucket B drift NFR-1.8)** — single-task `/impl-task IMPL-022` orchestrator (Opus 4.7) path; M-size MVP CD-follower scaffold + G4 critical fix surface in ManageExits.
+
+- **Files (NEW × 4):**
+  - `MQL5/Experts/PhoenicisNex/slots/Slot_J.mqh` — CSlotJ : CSlotBase; MAGIC_J=206; comment "J,"; DependsOn=[MAGIC_CD]; PendingState=IDLE; Evaluate sub-call early-return; **ManageExits = G4 fix BR-7.2 SURFACE** (3 explicit `// G4 fix BR-7.2 — was MAGIC_F` comments at GetByMagic + GetTicketsForSlot + log message sites).
+  - `MQL5/Experts/PhoenicisNex/inputs/Inputs_Slot_J.mqh` — InpEnableSlotJ + InpJMaxOrders=1 + InpJSlPipsFloor=50.0 + InpJTpProfitPips=40.0; group="Slot J".
+  - `MQL5/Experts/PhoenicisNex/spike/Spike_Slot_J.mq5` — 6 SelfTest cases (Magic/SlotId/DependsOn/PendingState/range/non-empty); pattern mirrors Spike_Slot_F.
+  - `simulation/headless-tests/slot_J_smoke.ini` — standard headless [Tester] block (Visual=0, ShutdownTerminal=1, EURUSD H4 Model=4 60-day window).
+- **Files modified:** `docs/state/impl-plan.md` (TL;DR + IMPL-022 closure block with all 6 S-AC `[x]` + Phase Status row 17→18/23 + Mid-Phase Audit Log row + Plan Staleness Sentinel 43→46), `docs/state/overview.md` (Impl Tasks row), `docs/state/deferred-ac-registry.md` (2 new Active P3 rows for IMPL-022 — smoke fixture E-AC + g4-fix-attestation.md authoring; expiry 2026-05-17), `docs/state/_session-handoff/IMPL-022-evidence-20260503.md` (G1 evidence + G4 fix structural verification).
+- **G1 ✅ orchestrator-side recompile** (PowerShell Start-Process MetaEditor64): Spike_Slot_J 0err/0warn/534 ms (log on disk: `MQL5\Experts\PhoenicisNex\spike\Spike_Slot_J.log` — note current MetaEditor64 build emits `.log` not `.compile.log`).
+- **Sibling regression:** Spike_Slot_F 0err/0warn/460 ms unchanged (CD chain unaffected).
+- **G4 fix BR-7.2 structural verification:** `m_portfolio.GetByMagic(MAGIC_J)` confirmed in ManageExits (line ~189 of Slot_J.mqh) with adjacent `// G4 fix BR-7.2 — was MAGIC_F` comment; `port.GetTicketsForSlot(MAGIC_J, "J,", tickets)` confirmed (line ~196) with same fix marker; log message at exit gate carries `"(G4 fix BR-7.2)"` suffix for journal forensic. Bucket B classification (intentional behavioral change vs PhoenicisN2.10 baseline) noted in commit `d386ea6` body — NFR-1.8 budget separate from Bucket A NFR-1.1; regression sign-off at IMPL-063 (P4 G4-fixes-on full backtest).
+- **All 6 S-AC `[x]`.** 2 E-AC deferred to IMPL-053+ Orchestrator + g4-fix-attestation.md authoring (registered to deferred-ac-registry.md Active table; expiry 2026-05-17).
+- **Newly unblocked:** none — Slot_J has no downstream P3 deps.
+- **Mid-Phase Audit P3 counter** = 18 (threshold 5 crossed many times; advisory only until IMPL-053+ runnable surface). **Plan Staleness Sentinel @ 46 closures since last review** — STRONGLY recommend `/impl-plan-review all` + `/impl-review all` BEFORE next batch, especially before IMPL-039 BI SL fix (the second G4 fix per ADR-009).
+- **Commit:** `d386ea6` `[feat:ea] IMPL-022 Slot_J — CD-follower + ⚠️ G4 fix BR-7.2 (Bucket B)`.
+- **Next suggested task:** **`/impl-plan-review all` + `/impl-review all` first** (Sentinel @ 46), then IMPL-037 (L Slot_B — kicks off B/BR/BI chain) **OR** IMPL-034 (L Slot_P — A7 risk).
+
+---
+
 **P3 Parallel batch #10 CLOSED 2026-05-03 — IMPL-027 (Slot_GO) + IMPL-028 (Slot_I) + IMPL-031 (Slot_LX)** — 3× Sonnet 4.6 subagents fan-out via `/impl-task parallel`; orchestrator-side independent G1 verification + sibling regression all clean.
 
 - **Files (NEW × 12):**
