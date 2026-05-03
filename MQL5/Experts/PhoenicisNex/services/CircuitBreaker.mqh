@@ -8,25 +8,23 @@
 //|  • Ring buffer CloseEvent m_buffer[16] (TD-02 §5.8 skeleton)    |
 //|  • RecordOpen / RecordClose write (magic, direction, time)       |
 //|  • CheckPingPong returns true on first (magic,dir) pair where    |
-//|    two events occur within 3000 s (BR-3.6 threshold)            |
-//|  • Near-miss (3000, 5000] s → Logger.Warn (no halt)             |
+//|    two events occur within 3 s (BR-3.6 = 3000 ms = 3 s)         |
+//|  • Near-miss (3 s, 5 s] → Logger.Warn (no halt)                 |
 //|  • Does NOT call EAState::Halt() — EAState lands at IMPL-052;   |
 //|    emits Logger.ErrorBypassThrottle + returns true; Orchestrator |
 //|    (IMPL-053) wires the actual EAState::SetHalted(reason) call.  |
 //|    (per ADR-010 + shared-context §6 pre-loaded quotes)           |
 //|                                                                  |
-//| datetime precision note:                                         |
+//| datetime precision note (Finding 02.2 + 02.9 — 2026-05-03):     |
 //|  MQL5 datetime is seconds-precision (Unix epoch, 32-bit on       |
-//|  older builds; 64-bit from MT5 Build ≥ 2361). The "ms" suffix   |
-//|  in the skeleton parameter name (now_ms) is shorthand inherited  |
-//|  from the TD-02 §5.8 spec — actual storage is seconds floor.    |
-//|  Sub-second resolution would require storing GetMicrosecondCount |
-//|  in a separate ulong field per event. For H4 EA operation the    |
-//|  seconds floor is pragmatic: open/close events on the same or    |
-//|  adjacent tick are separated by 0-1 s; 3000 s = 50-minute window |
-//|  which is well above inter-tick noise. Upgrade path: add         |
-//|  ulong micros field to CloseEvent and replace datetime compare   |
-//|  with micros compare when sub-second is required.                |
+//|  older builds; 64-bit from MT5 Build ≥ 2361). BR-3.6 spec quotes |
+//|  3000 ms = 3 s; we store seconds floor and threshold at 3 s so   |
+//|  the spec letter is honored under datetime granularity. Pairs    |
+//|  with delta ∈ {0, 1, 2, 3} s halt; (3, 5] s warn (near-miss);   |
+//|  > 5 s ignored. Sub-second precision is not required at H4 EA    |
+//|  cadence (inter-tick noise ≈ 1 s). Upgrade path (IMPL-053+ if    |
+//|  needed): add `ulong close_time_us` field via GetMicrosecondCount|
+//|  + bump constants to micros (3 000 000 / 5 000 000).             |
 //+------------------------------------------------------------------+
 #ifndef PHOENICISNEX_SERVICES_CIRCUITBREAKER_MQH
 #define PHOENICISNEX_SERVICES_CIRCUITBREAKER_MQH
@@ -49,7 +47,7 @@ private:
      {
       int      magic;          // slot magic number (200..219)
       int      direction;      // ORDER_TYPE_BUY=0 / ORDER_TYPE_SELL=1
-      datetime close_time_ms;  // seconds-precision (see datetime note above)
+      datetime close_time_s;   // seconds-precision (see datetime note above; Finding 02.9 rename)
      };
 
    CloseEvent        m_buffer[16];  // ring buffer (TD-02 §5.8)
@@ -58,16 +56,16 @@ private:
 
    CLogger          *m_logger;      // injected logger (Composition Root)
 
-   //--- Threshold constants (BR-3.6)
-   static const int  PING_PONG_THRESHOLD_S = 3000;    // ping-pong halt threshold (seconds)
-   static const int  NEAR_MISS_THRESHOLD_S = 5000;    // near-miss warn threshold (seconds)
+   //--- Threshold constants (BR-3.6: 3000 ms = 3 s; near-miss = 5 s — Finding 02.2)
+   static const int  PING_PONG_THRESHOLD_S = 3;    // ping-pong halt threshold (seconds; BR-3.6 = 3000 ms)
+   static const int  NEAR_MISS_THRESHOLD_S = 5;    // near-miss warn threshold (seconds)
 
    //--- Private helpers
    bool              _IsRingFull()   const { return m_count >= 16; }
    int               _LogicalSize()  const { return m_count < 16 ? m_count : 16; }
 
    //--- Internal write — shared by RecordOpen + RecordClose
-   void              _WriteEvent(int magic, int direction, datetime now_ms);
+   void              _WriteEvent(int magic, int direction, datetime now_s);
 
 public:
    //--- Default constructor — zero-init ring buffer
@@ -75,9 +73,9 @@ public:
      {
       for(int i = 0; i < 16; i++)
         {
-         m_buffer[i].magic         = 0;
-         m_buffer[i].direction     = 0;
-         m_buffer[i].close_time_ms = 0;
+         m_buffer[i].magic        = 0;
+         m_buffer[i].direction    = 0;
+         m_buffer[i].close_time_s = 0;
         }
      }
 
@@ -88,13 +86,13 @@ public:
    //    Returns true if Orchestrator MUST call EAState::SetHalted (IMPL-052).
    //    CPortfolioState& parameter reserved for future context enrichment
    //    (e.g. per-slot position count in log message); currently unused.
-   bool              CheckPingPong(CPortfolioState &port, datetime now_ms);
+   bool              CheckPingPong(CPortfolioState &port, datetime now_s);
 
    //--- Called by slot post-OrderSend ack to record open events (TD-02 §5.8)
-   void              RecordOpen(int magic, int direction, datetime now_ms);
+   void              RecordOpen(int magic, int direction, datetime now_s);
 
    //--- Called by slot post-OrderClose ack to record close events (TD-02 §5.8)
-   void              RecordClose(int magic, int direction, datetime now_ms);
+   void              RecordClose(int magic, int direction, datetime now_s);
 
    //--- Inline SelfTest — exercises CheckPingPong with stubbed events.
    //    Precedent: JsonWriter::SelfTest, IndicatorService::SelfTest.
@@ -120,11 +118,11 @@ void CCircuitBreaker::Init(CLogger *logger)
 //+------------------------------------------------------------------+
 //| _WriteEvent — write one event into the ring buffer               |
 //+------------------------------------------------------------------+
-void CCircuitBreaker::_WriteEvent(int magic, int direction, datetime now_ms)
+void CCircuitBreaker::_WriteEvent(int magic, int direction, datetime now_s)
   {
-   m_buffer[m_idx].magic         = magic;
-   m_buffer[m_idx].direction     = direction;
-   m_buffer[m_idx].close_time_ms = now_ms;
+   m_buffer[m_idx].magic        = magic;
+   m_buffer[m_idx].direction    = direction;
+   m_buffer[m_idx].close_time_s = now_s;
    m_idx = (m_idx + 1) % 16;   // wrap-around
    if(m_count < 16)
       m_count++;
@@ -133,25 +131,25 @@ void CCircuitBreaker::_WriteEvent(int magic, int direction, datetime now_ms)
 //+------------------------------------------------------------------+
 //| RecordOpen — record an order-open event                          |
 //+------------------------------------------------------------------+
-void CCircuitBreaker::RecordOpen(int magic, int direction, datetime now_ms)
+void CCircuitBreaker::RecordOpen(int magic, int direction, datetime now_s)
   {
-   _WriteEvent(magic, direction, now_ms);
+   _WriteEvent(magic, direction, now_s);
    if(m_logger != NULL)
       m_logger.Debug("CircuitBreaker", "record_open", magic,
                      "dir=" + IntegerToString(direction) +
-                     " t=" + IntegerToString((int)now_ms));
+                     " t=" + IntegerToString((int)now_s));
   }
 
 //+------------------------------------------------------------------+
 //| RecordClose — record an order-close event                        |
 //+------------------------------------------------------------------+
-void CCircuitBreaker::RecordClose(int magic, int direction, datetime now_ms)
+void CCircuitBreaker::RecordClose(int magic, int direction, datetime now_s)
   {
-   _WriteEvent(magic, direction, now_ms);
+   _WriteEvent(magic, direction, now_s);
    if(m_logger != NULL)
       m_logger.Debug("CircuitBreaker", "record_close", magic,
                      "dir=" + IntegerToString(direction) +
-                     " t=" + IntegerToString((int)now_ms));
+                     " t=" + IntegerToString((int)now_s));
   }
 
 //+------------------------------------------------------------------+
@@ -160,9 +158,9 @@ void CCircuitBreaker::RecordClose(int magic, int direction, datetime now_ms)
 //| Algorithm:                                                        |
 //|   For each pair of events in the buffer sharing the same         |
 //|   (magic, direction), compute |t2 - t1|.                         |
-//|   If delta ≤ PING_PONG_THRESHOLD_S (3000 s = BR-3.6):           |
+//|   If delta ≤ PING_PONG_THRESHOLD_S (3 s = BR-3.6 3000 ms):      |
 //|     → emit ErrorBypassThrottle + return true (Orchestrator halts)|
-//|   Elif delta ≤ NEAR_MISS_THRESHOLD_S (5000 s):                   |
+//|   Elif delta ≤ NEAR_MISS_THRESHOLD_S (5 s):                      |
 //|     → emit Warn (no halt; near-miss visibility)                  |
 //|                                                                  |
 //| NOTE: Does NOT call EAState::Halt() — EAState class lands at     |
@@ -170,7 +168,7 @@ void CCircuitBreaker::RecordClose(int magic, int direction, datetime now_ms)
 //| returns true; Orchestrator (IMPL-053) wires SetHalted() call.    |
 //| (per ADR-010 + shared-context §6 constraint)                     |
 //+------------------------------------------------------------------+
-bool CCircuitBreaker::CheckPingPong(CPortfolioState &port, datetime now_ms)
+bool CCircuitBreaker::CheckPingPong(CPortfolioState &port, datetime now_s)
   {
    int sz = _LogicalSize();
    if(sz < 2)
@@ -190,7 +188,7 @@ bool CCircuitBreaker::CheckPingPong(CPortfolioState &port, datetime now_ms)
 
          // Compute time delta (absolute value; order in ring may not be chronological
          // after wrap-around, so use abs to be safe)
-         long delta = (long)m_buffer[i].close_time_ms - (long)m_buffer[j].close_time_ms;
+         long delta = (long)m_buffer[i].close_time_s - (long)m_buffer[j].close_time_s;
          if(delta < 0)
             delta = -delta;
 
@@ -237,18 +235,19 @@ bool CCircuitBreaker::CheckPingPong(CPortfolioState &port, datetime now_ms)
 //+------------------------------------------------------------------+
 //| SelfTest — inline stub-driven verification                       |
 //|                                                                  |
-//| Test cases:                                                       |
-//|  A) 3 close events 1500 s apart, same (magic=200, dir=0) →       |
-//|     CheckPingPong must return true (delta=1500 ≤ 3000 threshold) |
-//|  B) 2 close events 4000 s apart, same (magic=201, dir=1) →       |
-//|     CheckPingPong must return false (near-miss warn only)         |
-//|  C) 2 close events 6000 s apart, same (magic=202, dir=0) →       |
-//|     CheckPingPong must return false (no trigger, no near-miss)    |
+//| Test cases (BR-3.6 threshold = 3 s; near-miss = 5 s):            |
+//|  A) 3 close events 1 s apart, same (magic=200, dir=0) →          |
+//|     CheckPingPong must return true (delta=1 ≤ 3 threshold)       |
+//|  B) 2 close events 4 s apart, same (magic=201, dir=1) →          |
+//|     CheckPingPong must return false (near-miss zone 3<delta≤5)   |
+//|  C) 2 close events 6 s apart, same (magic=202, dir=0) →          |
+//|     CheckPingPong must return false (no trigger, no near-miss)   |
+//|  D) 2 events different magics — no ping-pong (no pair match)     |
 //|                                                                  |
-//| Pseudo-trace:                                                     |
-//|  Reset → RecordClose(200,0,T0) → RecordClose(200,0,T0+1500)      |
-//|   → RecordClose(200,0,T0+3000) → CheckPingPong                   |
-//|   Pair (0,1): delta=1500 ≤ 3000 → should return true            |
+//| Pseudo-trace (Case A):                                            |
+//|  Reset → RecordClose(200,0,T0) → RecordClose(200,0,T0+1)         |
+//|   → RecordClose(200,0,T0+2) → CheckPingPong                      |
+//|   Pair (0,1): delta=1 ≤ 3 → should return true                  |
 //|                                                                  |
 //| Returns true = all assertions passed.                             |
 //| Prerequisite: Init must be called before SelfTest.               |
@@ -265,62 +264,62 @@ bool CCircuitBreaker::SelfTest()
       saved_buffer[i] = m_buffer[i];
 
    // Helper lambda equivalent — inline reset
-#define CB_SELFTEST_RESET() { m_idx=0; m_count=0; for(int _r=0;_r<16;_r++){m_buffer[_r].magic=0;m_buffer[_r].direction=0;m_buffer[_r].close_time_ms=0;} }
+#define CB_SELFTEST_RESET() { m_idx=0; m_count=0; for(int _r=0;_r<16;_r++){m_buffer[_r].magic=0;m_buffer[_r].direction=0;m_buffer[_r].close_time_s=0;} }
 
    // Stub CPortfolioState — CheckPingPong accepts ref but does not call any method on it yet
    // (current impl uses it only as a passthrough per TD-02 §5.8 + shared-context §4 task 3 note)
    CPortfolioState stub_port;
 
    //--------------------------------------------------------------------
-   // Case A: 3 close events 1500 s apart, same (magic=200, dir=0) → true
+   // Case A: 3 close events 1 s apart, same (magic=200, dir=0) → true
    //--------------------------------------------------------------------
    CB_SELFTEST_RESET();
    datetime t0 = (datetime)1000000;   // arbitrary base epoch
    RecordClose(200, 0, t0);
-   RecordClose(200, 0, t0 + 1500);
-   RecordClose(200, 0, t0 + 3000);
+   RecordClose(200, 0, t0 + 1);
+   RecordClose(200, 0, t0 + 2);
 
-   bool result_a = CheckPingPong(stub_port, t0 + 3001);
+   bool result_a = CheckPingPong(stub_port, t0 + 3);
    if(!result_a)
      {
       Print("[CircuitBreaker][SelfTest][FAIL] Case A:"
-            " expected true (1500 s gap ≤ 3000 threshold), got false");
+            " expected true (1 s gap ≤ 3 s threshold), got false");
       all_pass = false;
      }
    else
       Print("[CircuitBreaker][SelfTest][PASS] Case A: ping-pong detected as expected");
 
    //--------------------------------------------------------------------
-   // Case B: 2 close events 4000 s apart, same (magic=201, dir=1) → false
+   // Case B: 2 close events 4 s apart, same (magic=201, dir=1) → false
    //         (near-miss warn emitted; no halt)
    //--------------------------------------------------------------------
    CB_SELFTEST_RESET();
    RecordClose(201, 1, t0);
-   RecordClose(201, 1, t0 + 4000);
+   RecordClose(201, 1, t0 + 4);
 
-   bool result_b = CheckPingPong(stub_port, t0 + 4001);
+   bool result_b = CheckPingPong(stub_port, t0 + 5);
    if(result_b)
      {
       Print("[CircuitBreaker][SelfTest][FAIL] Case B:"
-            " expected false (4000 s gap in near-miss zone), got true");
+            " expected false (4 s gap in near-miss zone 3<d≤5), got true");
       all_pass = false;
      }
    else
       Print("[CircuitBreaker][SelfTest][PASS] Case B: near-miss no-halt as expected");
 
    //--------------------------------------------------------------------
-   // Case C: 2 close events 6000 s apart, same (magic=202, dir=0) → false
+   // Case C: 2 close events 6 s apart, same (magic=202, dir=0) → false
    //         (no trigger; no near-miss)
    //--------------------------------------------------------------------
    CB_SELFTEST_RESET();
    RecordClose(202, 0, t0);
-   RecordClose(202, 0, t0 + 6000);
+   RecordClose(202, 0, t0 + 6);
 
-   bool result_c = CheckPingPong(stub_port, t0 + 6001);
+   bool result_c = CheckPingPong(stub_port, t0 + 7);
    if(result_c)
      {
       Print("[CircuitBreaker][SelfTest][FAIL] Case C:"
-            " expected false (6000 s gap > both thresholds), got true");
+            " expected false (6 s gap > both thresholds), got true");
       all_pass = false;
      }
    else
@@ -331,9 +330,9 @@ bool CCircuitBreaker::SelfTest()
    //--------------------------------------------------------------------
    CB_SELFTEST_RESET();
    RecordClose(200, 0, t0);
-   RecordClose(201, 0, t0 + 100);   // different magic, close in time — must NOT trigger
+   RecordClose(201, 0, t0 + 1);   // different magic, close in time — must NOT trigger
 
-   bool result_d = CheckPingPong(stub_port, t0 + 101);
+   bool result_d = CheckPingPong(stub_port, t0 + 2);
    if(result_d)
      {
       Print("[CircuitBreaker][SelfTest][FAIL] Case D:"

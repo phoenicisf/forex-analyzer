@@ -96,6 +96,10 @@ private:
    double            _ExtractDbl(const string content, const string field) const;
    bool              _ExtractBool(const string content, const string field) const;
    string            _ExtractSubObj(const string content, const string field) const;
+   //--- Opaque value extractor: returns literal JSON value text for object/array/null/bool/number/string.
+   //    Used for pending_payload (ADR-008) where Save emits raw JSON via WriteRaw and Load must round-trip
+   //    the exact value (Finding 02.1 — string-only _ExtractStr would fail on object/null forms).
+   string            _ExtractRawValue(const string content, const string field) const;
 
 public:
    //--- Constructor — zero-init
@@ -619,7 +623,10 @@ bool CStatePersistence::ParseAndApply(string content,
          m_pm_state[i]             = _StrToPendingState(_ExtractStr(mc_json, "state"));
          m_pm_started_bar[i]       = (int)_ExtractInt(mc_json, "pending_started_bar");
          m_pm_force_clear_count[i] = (int)_ExtractInt(mc_json, "force_clear_count");
-         m_pm_payload[i]           = _ExtractStr(mc_json, "pending_payload");
+         //--- pending_payload is opaque JSON (object|null|string) per ADR-008 — use raw extractor
+         //    (Finding 02.1 — _ExtractStr's "key":" pattern would never match raw object/null forms)
+         string raw_pp = _ExtractRawValue(mc_json, "pending_payload");
+         m_pm_payload[i]           = (raw_pp == "null" || StringLen(raw_pp) == 0) ? "" : raw_pp;
         }
      }
 
@@ -806,6 +813,88 @@ string CStatePersistence::_ExtractSubObj(const string content,
       else if(ch == '}') { depth--; if(depth == 0) return StringSubstr(content, obj_start, i - obj_start + 1); }
      }
    return "{}";
+  }
+
+//+------------------------------------------------------------------+
+//| _ExtractRawValue — return literal JSON value text after "field": |
+//|                                                                  |
+//| Handles all JSON value kinds (RFC 8259 §3):                      |
+//|   • object  {...}  — depth-tracked, string-aware (Finding 02.1)  |
+//|   • array   [...]  — depth-tracked, string-aware                 |
+//|   • string  "..."  — escape-aware terminator                     |
+//|   • null / true / false / number — read until value terminator   |
+//|     (',' / '}' / ']' / whitespace)                              |
+//|                                                                  |
+//| Used for opaque-payload fields (pending_payload per ADR-008).    |
+//| Returns "" if field missing; otherwise the raw value text exactly|
+//| as it appears (caller checks for "null" literal).                |
+//+------------------------------------------------------------------+
+string CStatePersistence::_ExtractRawValue(const string content,
+                                           const string field) const
+  {
+   string search = "\"" + field + "\":";
+   int pos = StringFind(content, search);
+   if(pos < 0) return "";
+   int start = pos + StringLen(search);
+   int n = StringLen(content);
+   //--- skip whitespace
+   while(start < n && StringGetCharacter(content, start) == ' ') start++;
+   if(start >= n) return "";
+   ushort first = StringGetCharacter(content, start);
+
+   //--- Object {...} or Array [...] — depth-track matching close, ignore quotes inside strings
+   if(first == '{' || first == '[')
+     {
+      ushort open_ch  = first;
+      ushort close_ch = (first == '{') ? (ushort)'}' : (ushort)']';
+      int depth = 0;
+      bool in_str = false;
+      bool esc = false;
+      for(int i = start; i < n; i++)
+        {
+         ushort c = StringGetCharacter(content, i);
+         if(in_str)
+           {
+            if(esc)            { esc = false; continue; }
+            if(c == '\\')      { esc = true; continue; }
+            if(c == '"')       { in_str = false; }
+            continue;
+           }
+         if(c == '"')          { in_str = true; continue; }
+         if(c == open_ch)      depth++;
+         else if(c == close_ch)
+           {
+            depth--;
+            if(depth == 0)
+               return StringSubstr(content, start, i - start + 1);
+           }
+        }
+      return "";
+     }
+
+   //--- String "..." — backslash-aware terminator
+   if(first == '"')
+     {
+      for(int i = start + 1; i < n; i++)
+        {
+         ushort c = StringGetCharacter(content, i);
+         if(c == '\\') { i++; continue; }   // skip escaped char
+         if(c == '"')  return StringSubstr(content, start, i - start + 1);
+        }
+      return "";
+     }
+
+   //--- null / true / false / number — read until value terminator
+   int end = start;
+   while(end < n)
+     {
+      ushort c = StringGetCharacter(content, end);
+      if(c == ',' || c == '}' || c == ']' ||
+         c == ' ' || c == '\n' || c == '\r' || c == '\t')
+         break;
+      end++;
+     }
+   return StringSubstr(content, start, end - start);
   }
 
 //+------------------------------------------------------------------+
