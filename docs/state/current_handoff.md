@@ -4,13 +4,22 @@
 
 ## Last completed action
 
+**IMPL-044 CLOSED 2026-05-03** — `docs/api-specs/trade-journal-schema.yaml` v1 final-locked. P2 = 9/11.
+
+- **Commit:** `f45fefd` — required list expanded 11→15 (ticket_id+order_type+lot+price promoted); `examples:` added to all 15 required fields; `## Lifecycle Plan` section added per SD-07 § 3.1.
+- **E-AC #1:** `required list length = 15` (PowerShell Select-String count) ✅
+- **E-AC #2:** sample record ConvertFrom-Json + 15-field presence check → PASS ✅
+- **S-AC:** all 3 [x] — fields documented, `const: 1` lock, Lifecycle Plan added.
+- **Evidence:** `docs/state/_session-handoff/IMPL-044-evidence-20260503.md`
+
+---
+
 **IMPL-043 CLOSED 2026-05-03** — `services/TradeJournal.mqh` fully implemented and verified. All 4 gates green. P2 = 8/11.
 
 - **Commit:** `45a72c0` — path-separator fix (backslash → forward slash in all 4 path methods + EnsureDirectories); write-check relaxed from `!=` to `<` for Windows CRLF expansion in FILE_TXT mode.
 - **G1:** `0 errors, 0 warnings` (service + spike).
 - **G3/G4:** `impl043_complete[mode=tester][writes=200]`; `run-20210104-000000-000.jsonl` 107,090 bytes; 200/200 records parse cleanly; zero `journal_write_slow` (latency < 5 ms); `impl043_halt_check_ok[consecutive=0]`.
 - **Deferred AC:** E-AC `journal_halt[write_fail_sustained]` → `deferred-ac-registry.md` row opened (expires 2026-05-17); blocked on IMPL-052 (EAState wiring).
-- **Next task:** IMPL-044 [S] [spec] — lock `docs/api-specs/trade-journal-schema.yaml` v1 (unblocked by IMPL-043).
 - **Evidence:** `docs/state/_session-handoff/IMPL-043-evidence-20260503.md`
 
 ---
@@ -61,15 +70,15 @@
 ## State of the Workspace
 
 - **Phase:** Implementation (P2 — Core Services)
-- **P2 Progress:** **7/11 tasks done** (IMPL-047 + IMPL-048 + IMPL-050 + IMPL-051 + IMPL-040 + IMPL-041 + IMPL-045)
-- **Active Task:** IMPL-043 — TradeJournal tester-path empirical blocker (`err=5022` on `Open()`)
-- **Dependencies Blocked:** None
-- **Mid-Phase Audit Counter (P2):** 7 (threshold 5 crossed — Phase 4 audit recommended at next /impl-task invocation; advisory only since no runnable surface yet — entry .mq5 still pending IMPL-018+)
-- **Pending Code Reviews:** Round 02 closed. Next code review trigger after IMPL-049 (PendingMachineRegistry XL) lands — exercises StatePersistence pending_payload round-trip + CircuitBreaker→EAState integration end-to-end.
+- **P2 Progress:** **9/11 tasks done** (IMPL-047 + IMPL-048 + IMPL-050 + IMPL-051 + IMPL-040 + IMPL-041 + IMPL-045 + IMPL-043 + IMPL-044)
+- **Active Task:** None — IMPL-044 just closed. Next: IMPL-049 (XL PendingMachineRegistry) or IMPL-052 (S EAState, deps IMPL-043 ✅)
+- **Dependencies Blocked:** None — IMPL-043 closed; IMPL-049 + IMPL-052 both unblocked
+- **Mid-Phase Audit Counter (P2):** 9 (threshold 5 crossed — advisory only; no runnable surface until IMPL-018+ entry wiring; precedent from parallel batch #7 holds)
+- **Pending Code Reviews:** Round 02 closed. Next code review trigger after IMPL-049 (PendingMachineRegistry XL) lands.
 - **Open follow-ups:** PortfolioState.OnTradeTransaction handler (populate `last_open_lot` per Finding 02.3 fix contract) — lands at IMPL-053+ wiring.
 
 ## Next Steps
 
-1. **Continue IMPL-043** — isolate why tester `FileOpen("PhoenicisNex\\journal\\tester\\run-...jsonl")` returns `err=5022` while `StatePersistence` can write `PhoenicisNex\\state\\state.json` in the same tester sandbox.
-2. Once `TradeJournal::Open()` succeeds in tester mode, rerun `simulation/headless-tests/impl043_tradejournal_smoke.ini` and validate the emitted `.jsonl` record.
-3. After IMPL-043 closes, proceed to IMPL-044 / IMPL-049 / IMPL-052. After IMPL-049 — `/impl-review all`.
+1. **IMPL-052** [S] [ea] — `EAState` halt-wiring (unblocked by IMPL-043 ✅; wires `journal_halt` deferred AC from deferred-ac-registry row IMPL-043).
+2. **IMPL-049** [XL] [ea] — `PendingMachineRegistry` (unblocked by IMPL-043 ✅; largest remaining P2 task).
+3. After IMPL-049 closes — `/impl-review all` code review trigger for IMPL-043+044+049+052 batch.
