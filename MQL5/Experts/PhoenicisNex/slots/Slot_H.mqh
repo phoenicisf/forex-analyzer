@@ -27,7 +27,6 @@
 #include "../services/RiskManager.mqh"
 #include "../services/PortfolioState.mqh"
 #include "../services/Logger.mqh"
-#include <Trade\Trade.mqh>
 
 //+------------------------------------------------------------------+
 //| CSlotH — Slot H (Fractal + Ichimoku Distance)                    |
@@ -43,15 +42,14 @@ class CSlotH : public CSlotBase
 private:
    //--- Per-instance state (cooldown tracking)
    int               m_last_bar_entered;   // H4 bar_index when last entry was placed
-   CTrade            m_trade_exec;         // CTrade wrapper — wraps OrderSend per ea.md
 
    //--- Private helpers
    bool              _HasFractalBuy(const MarketContext &ctx) const;
    bool              _HasFractalSell(const MarketContext &ctx) const;
    bool              _IchimokuDistanceOk(const MarketContext &ctx, bool is_buy) const;
-   int               _CountHOrders() const;
+   int               _CountHOrders(CPortfolioState &port) const;
    void              _TryExit(ulong ticket, double open_price, datetime open_time,
-                              ENUM_ORDER_TYPE order_type);
+                              ENUM_POSITION_TYPE pos_type);
 
 public:
    //--- Constructor — zero-init private state
@@ -126,40 +124,35 @@ bool CSlotH::_IchimokuDistanceOk(const MarketContext &ctx, bool is_buy) const
 //+------------------------------------------------------------------+
 //| _CountHOrders — count open positions tagged with "H," comment    |
 //| CodeWiki §3.4 condition 1: max 2 H orders                        |
+//| Uses canonical PortfolioState.GetTicketsForSlot per ADR-005 +    |
+//| ADR-012 (slot data goes through the central choke point).        |
 //+------------------------------------------------------------------+
-int CSlotH::_CountHOrders() const
+int CSlotH::_CountHOrders(CPortfolioState &port) const
   {
-   int count = 0;
-   for(int i = 0; i < PositionsTotal(); i++)
-     {
-      ulong ticket = PositionGetTicket(i);
-      if(ticket == 0) continue;
-      if(PositionGetInteger(POSITION_MAGIC) == MAGIC_H)
-        {
-         string cmt = PositionGetString(POSITION_COMMENT);
-         if(StringFind(cmt, "H,") == 0)
-            count++;
-        }
-     }
-   return count;
+   ulong tickets[];
+   return port.GetTicketsForSlot(MAGIC_H, "H,", tickets);
   }
 
 //+------------------------------------------------------------------+
-//| _TryExit — evaluate and close a single H position if exit cond   |
+//| _TryExit — evaluate exit conditions on a single H position       |
 //| Exit criteria (M-size MVP):                                       |
 //|   - Profit ≥ InpHTpMinPips (30 pip gate)                         |
 //|   - OR order age > InpHMaxAgeBars H4 bars (8-bar age gate)        |
+//|                                                                   |
+//| Phase-1 stub: log-intent only — actual close goes through         |
+//| RiskManager wrapper at IMPL-053+ (ea.md: ALL CTrade calls via     |
+//| RiskManager). Pattern mirrors 17 sibling slots (Slot_BR canonical)|
 //+------------------------------------------------------------------+
 void CSlotH::_TryExit(ulong ticket, double open_price, datetime open_time,
-                      ENUM_ORDER_TYPE order_type)
+                      ENUM_POSITION_TYPE pos_type)
   {
    double pip_size = _Point * (_Digits == 5 || _Digits == 3 ? 10.0 : 1.0);
    if(pip_size <= 0.0) return;
 
-   double current_price = (order_type == ORDER_TYPE_BUY) ? SymbolInfoDouble(_Symbol, SYMBOL_BID)
-                                                         : SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-   double profit_pips = (order_type == ORDER_TYPE_BUY) ? (current_price - open_price) / pip_size
-                                                       : (open_price - current_price) / pip_size;
+   double current_price = (pos_type == POSITION_TYPE_BUY) ? SymbolInfoDouble(_Symbol, SYMBOL_BID)
+                                                          : SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   double profit_pips = (pos_type == POSITION_TYPE_BUY) ? (current_price - open_price) / pip_size
+                                                        : (open_price - current_price) / pip_size;
 
    //--- Check bar-age gate: use iBarShift to compute how many H4 bars have passed
    int age_bars = iBarShift(_Symbol, PERIOD_H4, open_time, false);
@@ -167,43 +160,38 @@ void CSlotH::_TryExit(ulong ticket, double open_price, datetime open_time,
    bool should_exit = (profit_pips >= InpHTpMinPips) || (age_bars > InpHMaxAgeBars);
    if(!should_exit) return;
 
-   //--- Close via CTrade member (m_trade_exec — ea.md: slots ห้าม instantiate CTrade ตรง)
-   if(!m_trade_exec.PositionClose(ticket))
-     {
-      if(m_logger != NULL)
-         m_logger.Warn("Slot_H", "exit_fail", MAGIC_H,
-                       StringFormat("ticket=%llu profit_pips=%.1f age=%d",
-                                    ticket, profit_pips, age_bars));
-     }
-   else
-     {
-      if(m_logger != NULL)
-         m_logger.Info("Slot_H", "exit_ok", MAGIC_H,
-                       StringFormat("ticket=%llu profit_pips=%.1f age=%d",
-                                    ticket, profit_pips, age_bars));
-     }
+   //--- Phase-1 stub: log intent — m_risk.CloseOrder(ticket) wires at IMPL-053+
+   //    Observable milestone for E-AC [log-assertion] when wired.
+   if(m_logger != NULL)
+      m_logger.Info("Slot_H", "exit_profit_gate", MAGIC_H,
+                    StringFormat("ticket=%I64u profit_pips=%.1f age=%d",
+                                 ticket, profit_pips, age_bars));
   }
 
 //+------------------------------------------------------------------+
 //| ManageExits — exit pass (BR-2.2: runs before Evaluate)           |
+//| Uses canonical PortfolioState.GetTicketsForSlot per ADR-005 +    |
+//| ADR-012 (slot data goes through the central choke point).        |
 //+------------------------------------------------------------------+
 void CSlotH::ManageExits(CPortfolioState &port)
   {
-   //--- Iterate all open positions with MAGIC_H + "H," comment prefix
-   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   if(!InpHEnabled) return;
+
+   //--- Retrieve H tickets (own magic MAGIC_H=205, comment prefix "H,")
+   ulong tickets[];
+   int n = port.GetTicketsForSlot(MAGIC_H, "H,", tickets);
+   if(n <= 0) return;
+
+   for(int i = 0; i < n; i++)
      {
-      ulong ticket = PositionGetTicket(i);
-      if(ticket == 0) continue;
-      if(PositionGetInteger(POSITION_MAGIC) != MAGIC_H) continue;
+      ulong ticket = tickets[i];
+      if(!PositionSelectByTicket(ticket)) continue;
 
-      string cmt = PositionGetString(POSITION_COMMENT);
-      if(StringFind(cmt, "H,") != 0) continue;
+      double             open_price = PositionGetDouble(POSITION_PRICE_OPEN);
+      datetime           open_time  = (datetime)PositionGetInteger(POSITION_TIME);
+      ENUM_POSITION_TYPE pos_type   = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
 
-      double     open_price = PositionGetDouble(POSITION_PRICE_OPEN);
-      datetime   open_time  = (datetime)PositionGetInteger(POSITION_TIME);
-      ENUM_ORDER_TYPE otype = (ENUM_ORDER_TYPE)PositionGetInteger(POSITION_TYPE);
-
-      _TryExit(ticket, open_price, open_time, otype);
+      _TryExit(ticket, open_price, open_time, pos_type);
      }
   }
 
@@ -216,7 +204,7 @@ void CSlotH::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    if(!InpHEnabled) return;
 
    //--- Condition 1: max orders guard
-   if(_CountHOrders() >= InpHMaxOrders) return;
+   if(_CountHOrders(port) >= InpHMaxOrders) return;
 
    //--- Condition 2: same-bar cooldown (no double entry on same H4 bar)
    if(ctx.bar_index_h4 == m_last_bar_entered) return;
@@ -246,33 +234,29 @@ void CSlotH::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       return;
      }
 
-   //--- Submit order via CTrade member (not base m_risk CTrade — ea.md: ห้าม instantiate CTrade ตรง)
+   //--- Submit order via RiskManager wrapper (ea.md: ALL CTrade calls
+   //    through RiskManager — slots ห้าม instantiate CTrade ตรง).
+   //    Phase-1 stub: log intent only; m_risk.OpenOrderH(...) wires at IMPL-053+.
+   //    SL is computed (not naked 0) so when wiring lands the stop-loss is
+   //    threaded into OrderSend; mirrors 17 sibling slots (e.g. Slot_B sl_price).
    ENUM_ORDER_TYPE order_type = is_buy ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
    string comment_str = "H,fractal,1";
 
-   bool sent = false;
-   if(order_type == ORDER_TYPE_BUY)
-      sent = m_trade_exec.Buy(lot, _Symbol, 0.0, 0.0, 0.0, comment_str);
-   else
-      sent = m_trade_exec.Sell(lot, _Symbol, 0.0, 0.0, 0.0, comment_str);
+   double pip_size = _Point * (_Digits == 5 || _Digits == 3 ? 10.0 : 1.0);
+   double price    = is_buy ? SymbolInfoDouble(_Symbol, SYMBOL_ASK)
+                            : SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double sl_price = is_buy ? (price - InpHSlPips * pip_size)
+                            : (price + InpHSlPips * pip_size);
 
-   if(sent)
-     {
-      m_last_bar_entered = ctx.bar_index_h4;
-      if(m_logger != NULL)
-         m_logger.Info("Slot_H", "entry_ok", MAGIC_H,
-                       StringFormat("dir=%s lot=%.2f bar=%d comment=%s",
-                                    is_buy ? "BUY" : "SELL",
-                                    lot, ctx.bar_index_h4, comment_str));
-     }
-   else
-     {
-      if(m_logger != NULL)
-         m_logger.Warn("Slot_H", "entry_fail", MAGIC_H,
-                       StringFormat("dir=%s lot=%.2f retcode=%d",
-                                    is_buy ? "BUY" : "SELL",
-                                    lot, m_trade_exec.ResultRetcode()));
-     }
+   if(m_logger != NULL)
+      m_logger.Info("Slot_H", is_buy ? "entry_buy" : "entry_sell", MAGIC_H,
+                    StringFormat("lot=%.2f price=%.5f sl=%.5f bar=%d comment=%s",
+                                 lot, price, sl_price, ctx.bar_index_h4, comment_str));
+
+   //--- Update cooldown bar — prevents re-entry on same H4 bar even when
+   //    OrderSend wiring lands and the actual broker call may fail. Same
+   //    semantic as updating m_last_order_d1_time after intent log in Slot_K.
+   m_last_bar_entered = ctx.bar_index_h4;
   }
 
 #endif // PHOENICISNEX_SLOTS_SLOT_H_MQH
