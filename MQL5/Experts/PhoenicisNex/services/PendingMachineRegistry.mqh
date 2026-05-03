@@ -143,11 +143,92 @@ private:
    CLogger           *m_logger;
    CPortfolioState   *m_portfolio;
 
-   //--- Sub-pass (b)/(c) bodies — stub here, return without action.
+   //--- Sub-pass (b)/(c) bodies.
    void              TickMachine(EPendingMachineId id, const MarketContext &ctx,
                                  CPortfolioState &port);
+   bool              ExceededLegacyTimeout(EPendingMachineId id, int age) const;
    bool              ShouldForceClear(EPendingMachineId id, int current_bar) const;
    void              EmitForceClear(EPendingMachineId id, int age_bars);
+
+   //--- P-Pending payload (de)serialization helpers — sibling to CPendingForce
+   //    but inlined here because the payload schema is owned by registry.
+   static string     _PSubModeToStr(EPSubMode mode)
+     {
+      switch(mode)
+        {
+         case PSUB_PX: return "PX";
+         case PSUB_PH: return "PH";
+         case PSUB_E:  return "E";
+         case PSUB_N:  return "N";
+         default:      return "";    // PSUB_NONE → null in JSON
+        }
+     }
+
+   static EPSubMode  _StrToPSubMode(string s)
+     {
+      if(s == "PX") return PSUB_PX;
+      if(s == "PH") return PSUB_PH;
+      if(s == "E")  return PSUB_E;
+      if(s == "N")  return PSUB_N;
+      return PSUB_NONE;
+     }
+
+   static string     _BuildPPayload(EPSubMode mode, double diff_sl, double band_ratio)
+     {
+      string out = "{";
+      string mode_str = _PSubModeToStr(mode);
+      if(StringLen(mode_str) > 0)
+         out += "\"sub_mode\":\"" + mode_str + "\",";
+      else
+         out += "\"sub_mode\":null,";
+      out += "\"diff_sl\":"   + DoubleToString(diff_sl, 2)   + ",";
+      out += "\"band_ratio\":" + DoubleToString(band_ratio, 2);
+      out += "}";
+      return out;
+     }
+
+   static EPSubMode  _ParsePSubMode(string payload)
+     {
+      if(StringLen(payload) == 0) return PSUB_NONE;
+      string needle = "\"sub_mode\":";
+      int p = StringFind(payload, needle);
+      if(p < 0) return PSUB_NONE;
+      p += StringLen(needle);
+      if(p < StringLen(payload) && StringGetCharacter(payload, p) == '\"')
+        {
+         int q = StringFind(payload, "\"", p + 1);
+         if(q < 0) return PSUB_NONE;
+         return _StrToPSubMode(StringSubstr(payload, p + 1, q - p - 1));
+        }
+      return PSUB_NONE;   // null, malformed, or absent
+     }
+
+   static double     _ParsePDouble(string payload, string field)
+     {
+      if(StringLen(payload) == 0) return 0.0;
+      string needle = "\"" + field + "\":";
+      int p = StringFind(payload, needle);
+      if(p < 0) return 0.0;
+      p += StringLen(needle);
+      // Skip whitespace
+      while(p < StringLen(payload) &&
+            (StringGetCharacter(payload, p) == ' ' ||
+             StringGetCharacter(payload, p) == '\t'))
+         p++;
+      int q = p;
+      ushort ch;
+      while(q < StringLen(payload))
+        {
+         ch = StringGetCharacter(payload, q);
+         if((ch >= '0' && ch <= '9') || ch == '.' || ch == '-' || ch == '+' ||
+            ch == 'e' || ch == 'E')
+            q++;
+         else
+            break;
+        }
+      if(q == p) return 0.0;
+      return (double)StringToDouble(StringSubstr(payload, p, q - p));
+     }
 
    //--- Stable string id for log/journal events (matches BR-6.x slot codes).
    string            _IdToCode(EPendingMachineId id) const
@@ -279,6 +360,35 @@ public:
                        StringFormat("machine=%s reason=%s", _IdToCode(id), reason));
      }
 
+   //--- P-Pending sub-mode accessors (BR-6.4 + Claim 02.10 + state-schema
+   //    PendingMachineState_PVariant). Slot_P encodes sub_mode + diff_sl +
+   //    band_ratio when entering pending; ManageExits reads sub_mode to pick
+   //    PX/PH/E branch on execution. Payload is the canonical form per
+   //    state-persistence-schema.yaml § PendingMachineState_PVariant.
+   EPSubMode         GetPSubMode() const
+     {
+      return _ParsePSubMode(m_machines[PM_P].pending_payload);
+     }
+
+   double            GetPDiffSL() const
+     {
+      return _ParsePDouble(m_machines[PM_P].pending_payload, "diff_sl");
+     }
+
+   double            GetPBandRatio() const
+     {
+      return _ParsePDouble(m_machines[PM_P].pending_payload, "band_ratio");
+     }
+
+   //--- Helper for slots: build the canonical P-Pending payload + transition
+   //    PM_P to PENDING in one step.
+   void              EnterPPending(EPSubMode mode, double diff_sl, double band_ratio,
+                                   int current_bar)
+     {
+      string payload = _BuildPPayload(mode, diff_sl, band_ratio);
+      EnterPending(PM_P, payload, current_bar);
+     }
+
    //--- State round-trip primitives (full integration in sub-pass (d)).
    //    LoadFromState pulls all 8 entries from CStatePersistence accessors;
    //    SaveToState pushes back. Defensive — NULL m_state is no-op so callers
@@ -326,11 +436,65 @@ void CPendingMachineRegistry::TickMachine(EPendingMachineId id,
                                           const MarketContext &ctx,
                                           CPortfolioState &port)
   {
-   // Skeleton no-op — bodies land in (b)/(c).
+   // Touch port to keep signature aligned with TD-02 §5.10 — slot-driven
+   // trigger evaluation calls TransitionExecuted() directly on its own
+   // signal; registry side is purely time-based.
    if(id < 0 || id >= PM_COUNT) return;
    if(m_machines[id].state != PENDING_STATE_PENDING) return;
-   // Touch ctx + port to keep signature stable across sub-passes.
-   if(ctx.bar_index_h4 < 0 && port.GetByMagic(0) == NULL) return;
+
+   int age = ctx.bar_index_h4 - m_machines[id].pending_started_bar;
+   if(age < 0) age = 0;   // bar index reset / cold-restart guard
+
+   // Legacy timeout enforcement (BR-6.1..6.4 + BR-6.8) — applies to
+   // PM_C / PM_C_ADX / PM_R / PM_P / PM_FORCE. M/T/Q have no legacy
+   // timeout; only ADR-008 force-clear (sub-pass (c)).
+   if(ExceededLegacyTimeout(id, age))
+     {
+      string reason = "legacy_timeout";
+      if(id == PM_P)
+        {
+         // Surface sub-mode in transition reason so journal trail captures
+         // PSUB_N (transient) vs PSUB_PX/PH/E (resolved) at expiry. Helps
+         // post-mortem on stuck P-Pending pattern (A7 risk per `03 § 7`).
+         EPSubMode mode = GetPSubMode();
+         if(mode != PSUB_NONE)
+            reason = StringFormat("legacy_timeout_p_sub_mode_%s",
+                                  _PSubModeToStr(mode));
+        }
+      TransitionIdle(id, reason);
+      return;
+     }
+
+   // Force-clear (M/T/Q only) — sub-pass (c).
+   if(ShouldForceClear(id, ctx.bar_index_h4))
+     {
+      EmitForceClear(id, age);
+      TransitionIdle(id, "force_clear");
+      return;
+     }
+
+   // No-op for PortfolioState in current passes — kept in signature for
+   // future per-machine logic that needs portfolio inspection (e.g. PM_FORCE
+   // payload routing in P3 slot integration).
+   if(port.GetByMagic(0) == NULL && id == PM_COUNT) return;
+  }
+
+//+------------------------------------------------------------------+
+//| ExceededLegacyTimeout — per-machine timeout check (BR-6.1..6.8)  |
+//+------------------------------------------------------------------+
+bool CPendingMachineRegistry::ExceededLegacyTimeout(EPendingMachineId id,
+                                                    int age) const
+  {
+   if(age < 0) return false;
+   switch(id)
+     {
+      case PM_C:     return age >= m_legacy_c_bars;       // BR-6.1
+      case PM_C_ADX: return age >= m_legacy_c_adx_bars;   // BR-6.2
+      case PM_R:     return age >= m_legacy_r_bars;       // BR-6.3
+      case PM_P:     return age >= m_legacy_p_bars;       // BR-6.4
+      case PM_FORCE: return age >= m_legacy_force_bars;   // BR-6.8
+      default:       return false;                          // M/T/Q — force-clear only
+     }
   }
 
 //+------------------------------------------------------------------+

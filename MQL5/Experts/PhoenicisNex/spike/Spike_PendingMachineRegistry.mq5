@@ -67,7 +67,7 @@ int OnInit()
       return INIT_FAILED;
      }
 
-   // Exercise TickAll dispatch (no-op bodies in sub-pass (a)).
+   // Exercise TickAll dispatch.
    MarketContext ctx;
    ZeroMemory(ctx);
    ctx.bar_index_h4 = 100;
@@ -75,7 +75,95 @@ int OnInit()
    empty_port.Init(&g_logger);
    g_pmr.TickAll(ctx, empty_port);
 
-   Print("Spike_PendingMachineRegistry: sub-pass (a) skeleton OK");
+   // === Sub-pass (b) — legacy timeout enforcement =====================
+
+   // PM_C legacy timeout = 8 bars. Enter at bar 100; tick at bar 108
+   // should transition IDLE (age=8 ≥ 8).
+   g_pmr.EnterPending(PM_C, "{\"slot\":\"C\"}", 100);
+   ctx.bar_index_h4 = 107;
+   g_pmr.TickAll(ctx, empty_port);
+   if(g_pmr.GetState(PM_C) != PENDING_STATE_PENDING)
+     {
+      Print("Spike_PMR: PM_C should still be PENDING at age=7");
+      return INIT_FAILED;
+     }
+   ctx.bar_index_h4 = 108;
+   g_pmr.TickAll(ctx, empty_port);
+   if(g_pmr.GetState(PM_C) != PENDING_STATE_IDLE)
+     {
+      Print("Spike_PMR: PM_C should be IDLE after age=8 timeout");
+      return INIT_FAILED;
+     }
+
+   // PM_R legacy timeout = 40 bars.
+   g_pmr.EnterPending(PM_R, "{\"slot\":\"R\"}", 200);
+   ctx.bar_index_h4 = 240;
+   g_pmr.TickAll(ctx, empty_port);
+   if(g_pmr.GetState(PM_R) != PENDING_STATE_IDLE)
+     {
+      Print("Spike_PMR: PM_R should be IDLE after age=40 timeout");
+      return INIT_FAILED;
+     }
+
+   // PM_P with sub-mode PX — verify accessor + timeout reason includes mode.
+   g_pmr.EnterPPending(PSUB_PX, 250.0, 80.5, 300);
+   if(g_pmr.GetState(PM_P) != PENDING_STATE_PENDING)
+     {
+      Print("Spike_PMR: PM_P should be PENDING after EnterPPending");
+      return INIT_FAILED;
+     }
+   if(g_pmr.GetPSubMode() != PSUB_PX)
+     {
+      Print("Spike_PMR: GetPSubMode should return PSUB_PX");
+      return INIT_FAILED;
+     }
+   if(MathAbs(g_pmr.GetPDiffSL() - 250.0) > 0.01)
+     {
+      PrintFormat("Spike_PMR: GetPDiffSL=%.2f expected 250.0", g_pmr.GetPDiffSL());
+      return INIT_FAILED;
+     }
+   if(MathAbs(g_pmr.GetPBandRatio() - 80.5) > 0.01)
+     {
+      PrintFormat("Spike_PMR: GetPBandRatio=%.2f expected 80.5", g_pmr.GetPBandRatio());
+      return INIT_FAILED;
+     }
+   ctx.bar_index_h4 = 370;
+   g_pmr.TickAll(ctx, empty_port);
+   if(g_pmr.GetState(PM_P) != PENDING_STATE_IDLE)
+     {
+      Print("Spike_PMR: PM_P should be IDLE after age=70 timeout");
+      return INIT_FAILED;
+     }
+
+   // PM_C_ADX legacy timeout = 30 bars.
+   g_pmr.EnterPending(PM_C_ADX, "{\"slot\":\"C_ADX\"}", 400);
+   ctx.bar_index_h4 = 430;
+   g_pmr.TickAll(ctx, empty_port);
+   if(g_pmr.GetState(PM_C_ADX) != PENDING_STATE_IDLE)
+     {
+      Print("Spike_PMR: PM_C_ADX should be IDLE after age=30 timeout");
+      return INIT_FAILED;
+     }
+
+   // PM_FORCE legacy timeout = 9 bars.
+   g_pmr.EnterPending(PM_FORCE,
+                      CPendingForce::BuildPayload("C", 99, 1, 500),
+                      500);
+   ctx.bar_index_h4 = 509;
+   g_pmr.TickAll(ctx, empty_port);
+   if(g_pmr.GetState(PM_FORCE) != PENDING_STATE_IDLE)
+     {
+      Print("Spike_PMR: PM_FORCE should be IDLE after age=9 timeout");
+      return INIT_FAILED;
+     }
+
+   // PM_M / PM_T / PM_Q have NO legacy timeout — should still be IDLE
+   // (untouched from initial state) after running long ticks.
+   if(g_pmr.GetState(PM_M) != PENDING_STATE_IDLE) { Print("PM_M not IDLE"); return INIT_FAILED; }
+   if(g_pmr.GetState(PM_T) != PENDING_STATE_IDLE) { Print("PM_T not IDLE"); return INIT_FAILED; }
+   if(g_pmr.GetState(PM_Q) != PENDING_STATE_IDLE) { Print("PM_Q not IDLE"); return INIT_FAILED; }
+
+   Print("Spike_PendingMachineRegistry: sub-pass (a)+(b) OK");
    return INIT_SUCCEEDED;
   }
 
