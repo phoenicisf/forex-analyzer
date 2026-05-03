@@ -4,6 +4,24 @@
 
 ## Last completed action
 
+**P3 Parallel batch #10 CLOSED 2026-05-03 — IMPL-027 (Slot_GO) + IMPL-028 (Slot_I) + IMPL-031 (Slot_LX)** — 3× Sonnet 4.6 subagents fan-out via `/impl-task parallel`; orchestrator-side independent G1 verification + sibling regression all clean.
+
+- **Files (NEW × 12):**
+  - `MQL5/Experts/PhoenicisNex/slots/{Slot_GO,Slot_I,Slot_LX}.mqh`
+  - `MQL5/Experts/PhoenicisNex/inputs/{Inputs_Slot_GO,Inputs_Slot_I,Inputs_Slot_LX}.mqh`
+  - `MQL5/Experts/PhoenicisNex/spike/{Spike_Slot_GO,Spike_Slot_I,Spike_Slot_LX}.mq5`
+  - `simulation/headless-tests/{slot_GO_smoke,slot_I_smoke,slot_LX_smoke}.ini`
+- **Files modified:** `docs/state/impl-plan.md` (TL;DR + 3 task closures + Mid-Phase Audit Log row + Phase Status row), `docs/state/overview.md` (Impl Tasks row), `docs/state/deferred-ac-registry.md` (3 new Active P3 rows expiry 2026-05-17), `docs/state/_parallel-context/impl-task-parallel-20260503-1853.md` (shared context).
+- **G1 (orchestrator-side recompile, 2026-05-03 18:53):** Spike_Slot_GO 0err/0warn/532ms · Spike_Slot_I 0/0/440ms · Spike_Slot_LX 0/0/445ms.
+- **Sibling regression:** Spike_Slot_G 0/0/463ms (unchanged from batch #9 baseline 490ms — within compile-time noise).
+- **MVP scope:** GO = post-exit hook scaffold (Evaluate early-return — sub-call only; ManageExits 40-pip profit gate mirroring Slot_G2; CrossSlotCoordinator BR-8.4 stub guarded `false /*IMPL-053*/`); I = G-parasite Fibonacci (parasite gate `port.GetTicketsForSlot(MAGIC_G,"G,",...) > 0` + own-no-active + direction inheritance from first G ticket + Fibonacci retrace via iHigh/iLow lookback InpILookbackBars=20 InpIFibLevel=0.5; **DependsOn returns 1 with deps[0]=MAGIC_G** — only slot in batch with topology dep; Case 3 of SelfTest validates this); LX = shared-magic pyramid on parent L (parent profitability gate via `GetTicketsForSlot(MAGIC_L,"L,",...)` then `PositionSelectByTicket` profit_pips >= InpLXPyramidGatePips=30; own-no-active via `GetTicketsForSlot(MAGIC_L,"LX,",...)`; CommentParser disambig "LX," vs "L," mirrors G2 vs G shared-magic precedent; lighter inputs vs L — BaseLot 15.0 / TpProfitPips 25.0).
+- **All 14 S-AC `[x]`** (GO=4 / I=5 / LX=5 — see impl-plan.md per-task closure rows). 3 E-AC smoke deferred to IMPL-053+ Orchestrator wiring → registered to `deferred-ac-registry.md` Active table (uniform expiry 2026-05-17).
+- **Newly unblocked:** none (no slots depend on GO/I/LX directly).
+- **Mid-Phase Audit P3 counter** = 10 (threshold 5 crossed twice; advisory until IMPL-053+ runnable surface). Plan Staleness Sentinel closures-since-last-review = 10 (threshold reached — recommend `/impl-plan-review all` + `/impl-review all` after next batch or before IMPL-019 CD chain start).
+- **Next suggested task:** IMPL-019 (M [ea] Slot_C — CD chain root) **OR** parallel batch #11 candidates {IMPL-032 Slot_Q + IMPL-033 Slot_R + IMPL-035 Slot_T} (all M-size with PMR pending integrations, file-isolated, deps PMR ✅) **OR** IMPL-037 (L Slot_B — kicks off B/BR/BI chain).
+
+---
+
 **P3 Parallel batch #9 CLOSED 2026-05-03 — IMPL-026 (Slot_G2) + IMPL-029 (Slot_M) + IMPL-030 (Slot_L)** — 3× Sonnet 4.6 subagents fan-out via `/impl-task parallel`; orchestrator-side independent G1 verification + 3-spike sibling regression all clean.
 
 - **Files (NEW × 12):**
