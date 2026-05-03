@@ -160,28 +160,20 @@ void CSlotJ::Evaluate(const MarketContext &ctx, CPortfolioState &port)
 //|   This rewrite restores the contract by iterating MAGIC_J (=206).|
 //|                                                                   |
 //| Exit logic (MVP):                                                 |
-//|   1. Read SlotState via m_portfolio.GetByMagic(MAGIC_J)           |
-//|      (G4 fix marker — was MAGIC_F)                                |
-//|   2. Iterate J tickets via GetTicketsForSlot(MAGIC_J, "J,")       |
-//|   3. Compute unrealized profit in pips                            |
-//|   4. Profit gate ≥ InpJTpProfitPips (40 pip default) → close      |
+//|   1. Iterate J tickets via GetTicketsForSlot(MAGIC_J, "J,")       |
+//|      (G4 fix marker — was MAGIC_F (=201) in original)             |
+//|   2. Compute unrealized profit in pips                            |
+//|   3. Profit gate ≥ InpJTpProfitPips (40 pip default) → close      |
 //+------------------------------------------------------------------+
 void CSlotJ::ManageExits(CPortfolioState &port)
   {
+   if(!InpEnableSlotJ) return;
    if(m_logger == NULL) return;
 
    //--- ⚠️ G4 fix BR-7.2 — iterate MAGIC_J (was MAGIC_F bug in PhoenicisN2.10).
-   //    GetByMagic(MAGIC_J) returns SlotState for J; NULL is tolerated (warns
-   //    via PortfolioState if magic unregistered, per ADR-005 contract).
-   SlotState *j_state = port.GetByMagic(MAGIC_J);   // G4 fix BR-7.2 — was MAGIC_F
-   if(j_state == NULL)
-     {
-      //--- SlotState not registered yet (pre-Orchestrator wiring); benign in
-      //    Phase 1 MVP — fall through to direct ticket iteration.
-     }
-
-   //--- Retrieve J tickets (own magic MAGIC_J=206, comment prefix "J,")
-   //    ⚠️ G4 fix BR-7.2 — was MAGIC_F (=201) which never matched J tickets
+   //    Retrieve J tickets via PortfolioState (own magic MAGIC_J=206, comment
+   //    prefix "J,"). The original bug iterated MAGIC_F (=201) which never
+   //    matched J tickets, so no take-profit gate was ever evaluated for J.
    ulong tickets[];
    int n = port.GetTicketsForSlot(MAGIC_J, "J,", tickets);   // G4 fix BR-7.2
    if(n <= 0) return;
