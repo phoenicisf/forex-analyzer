@@ -29,6 +29,9 @@ private:
    double            m_current_dd_pct;
    CStatePersistence *m_state;
    CLogger           *m_logger;
+   //--- One-shot guard against per-tick log flood when m_state is NULL (Finding 02.4).
+   //    Set true on first NULL-state Update; reset to false when state restored.
+   bool              m_state_null_logged;
 
 public:
    //--- Constructor — zero-init; Init() must be called before any method
@@ -38,7 +41,8 @@ public:
         m_worst_dd_at(0),
         m_current_dd_pct(0.0),
         m_state(NULL),
-        m_logger(NULL)
+        m_logger(NULL),
+        m_state_null_logged(false)
      {}
 
    //--- Init — wire deps + prime members from persisted state (warm restart)
@@ -79,6 +83,7 @@ void CPortfolioMonitor::Init(CStatePersistence *state, CLogger *logger)
    m_current_dd_pct         = 0.0;
    m_state                  = NULL;
    m_logger                 = NULL;
+   m_state_null_logged      = false;   // Finding 02.4 — reset one-shot guard on re-Init
 
    //--- NULL-guard logger first (must Print if logger itself is null)
    if(logger == NULL)
@@ -114,8 +119,10 @@ void CPortfolioMonitor::Init(CStatePersistence *state, CLogger *logger)
 //| Update — incremental DD tracking; called end-of-tick             |
 //|                                                                  |
 //| Logic (per TD-02 §5.12 + shared-context §6.8):                  |
-//|  1. NULL-guard m_state — Error log + early return (monitor-only; |
-//|     do NOT halt per OQ-6 / S-AC #3)                             |
+//|  1. NULL-guard m_state — one-shot ErrorBypassThrottle + in-memory|
+//|     update (monitor-only — do NOT halt per OQ-6 / S-AC #3).      |
+//|     Anti-spam: subsequent NULL-state Updates suppress log to     |
+//|     prevent per-tick flood (Finding 02.4 + ADR-011 anti-spam).   |
 //|  2. High-water-mark update when equity rises                     |
 //|  3. Compute current DD% (guard divide-by-zero)                  |
 //|  4. New worst-DD trigger (strictly greater) — persist + log Info |
@@ -124,12 +131,23 @@ void CPortfolioMonitor::Init(CStatePersistence *state, CLogger *logger)
 void CPortfolioMonitor::Update(double current_equity, datetime now)
   {
    //--- Step 1: NULL-guard state (monitor-only — do NOT halt per OQ-6)
+   //    Anti-spam: log only on first NULL-state Update per Init session;
+   //    flag clears when state is restored (line below — Step 1b).
    if(m_state == NULL)
      {
-      if(m_logger != NULL)
-         m_logger.Error("PortfolioMonitor", "update_state_null", 0,
-                        "m_state is NULL in Update — DD values not persisted");
+      if(!m_state_null_logged && m_logger != NULL)
+        {
+         m_logger.ErrorBypassThrottle("PortfolioMonitor", "update_state_null", 0,
+                                      "m_state is NULL in Update — DD values not "
+                                      "persisted; this msg suppressed for rest of session");
+         m_state_null_logged = true;
+        }
       //--- In-memory update proceeds so accessors remain readable
+     }
+   else if(m_state_null_logged)
+     {
+      //--- Step 1b: state restored mid-session — clear one-shot guard for next outage
+      m_state_null_logged = false;
      }
 
    //--- Step 2: High-water-mark update
