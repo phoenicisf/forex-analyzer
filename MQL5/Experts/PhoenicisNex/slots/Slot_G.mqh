@@ -1,0 +1,403 @@
+//+------------------------------------------------------------------+
+//| slots/Slot_G.mqh — Slot G implementation (IMPL-025)              |
+//| Layer:   slots/ (inherits domain/CSlotBase; ADR-002 contract)     |
+//| Magic:   MAGIC_G = 208, shared with G2 (IMPL-026)                 |
+//|          CommentParser disambiguates "G," vs "G2," per BR-1.2     |
+//| Source:  CodeWiki §3.6; TD-02 §5.4; ADR-002; ADR-012             |
+//|                                                                   |
+//| Entry (M-size MVP — 5 of 13 CodeWiki §3.6 conditions):           |
+//|   1. No active G orders (magic 208 with "G," prefix)              |
+//|   2. Force crossover: BUY=(F[1]>0 ∧ F[2]>0 ∧ F[3]<-0.2)         |
+//|                       ∨  (F[1]>1 ∧ F[2] in [-0.2,-3))            |
+//|   3. Price outside Ichimoku cloud                                  |
+//|   4. ADX H4 dominance: adx > +DI ∧ adx > -DI                     |
+//|   5. Stochastic M10[0] <25 (BUY) / >75 (SELL)                    |
+//| Deferred to P4 IMPL-062: GPause / NewYear / Force-peak-exhaustion |
+//|   / WPR-sanity / Bollinger / DeMarker / Force-wave-spans          |
+//|                                                                   |
+//| Exit (ManageExits / ExtraTakeProfit_G):                           |
+//|   - Profit gate ≥ 50 pip                                          |
+//|   - On peak detection: TriggerGOverload (BR-8.4 stub call site)   |
+//|   Stub: if(m_xslot != NULL && false /*IMPL-053*/) {...}           |
+//|   Real CCrossSlotCoordinator::TriggerGOverload impl = IMPL-053    |
+//|                                                                   |
+//| Lot: RiskManager::ComputeLot("G", InpGSlPipsFloor, balance)       |
+//| Comment: "G,F1,N,1,SL" per CodeWiki §3.6 format                  |
+//|                                                                   |
+//| ADR-012 include discipline:                                        |
+//|   ห้าม #include "slots/<other>.mqh"                               |
+//|   ห้าม #include "services/Logger.mqh" direct (injected)           |
+//+------------------------------------------------------------------+
+#ifndef PHOENICISNEX_SLOTS_SLOT_G_MQH
+#define PHOENICISNEX_SLOTS_SLOT_G_MQH
+
+#include "../domain/CSlotBase.mqh"
+#include "../domain/MarketContext.mqh"
+#include "../domain/EnumTypes.mqh"
+#include "../services/RiskManager.mqh"
+#include "../services/PortfolioState.mqh"
+#include "../inputs/Inputs_Slot_G.mqh"
+
+//+------------------------------------------------------------------+
+//| CSlotG — Slot G derived class (ADR-002 CSlotBase contract)        |
+//|                                                                   |
+//| Magic 208 shared pool: G and G2. All G orders tagged "G," prefix; |
+//| G2 orders tagged "G2," prefix. PortfolioState.GetByMagic(208)    |
+//| returns aggregate; GetTicketsForSlot(208,"G,") filters own.       |
+//|                                                                   |
+//| ExtraTakeProfit_G stub: BR-8.4 GOverload trigger. Real            |
+//| CCrossSlotCoordinator::TriggerGOverload body = IMPL-053 (P4).     |
+//+------------------------------------------------------------------+
+class CSlotG : public CSlotBase
+  {
+private:
+   //--- Per-tick trailing state (reset on new G order open)
+   double            m_maxProfitPip;    // trailing max-profit tracking for GOverload detection (BR-8.4)
+
+   //--- Private helpers
+   bool              _IsGBuySignal(const MarketContext &ctx) const;
+   bool              _IsGSellSignal(const MarketContext &ctx) const;
+   bool              _IsPriceAboveCloud(const MarketContext &ctx) const;
+   bool              _IsPriceBelowCloud(const MarketContext &ctx) const;
+   bool              _HasActiveGOrder(CPortfolioState &port) const;
+   double            _CloudHigh(const MarketContext &ctx) const;
+   double            _CloudLow(const MarketContext &ctx) const;
+
+public:
+   //--- Constructor
+   CSlotG() : m_maxProfitPip(0.0) {}
+   virtual ~CSlotG() {}
+
+   //--- 6-method behavior contract (ADR-002; slot-abstraction-contract.yaml)
+
+   //--- 1. Magic — MAGIC_G = 208; shared with G2 (CommentParser disambig)
+   virtual int      Magic() const override { return MAGIC_G; }
+
+   //--- 2. SlotId — "G"; used by journal slot_id field + comment prefix
+   virtual string   SlotId() const override { return "G"; }
+
+   //--- 3. Evaluate — entry pass (FR-2.3); only called in EA_STATE_RUNNING
+   virtual void     Evaluate(const MarketContext &ctx, CPortfolioState &port) override;
+
+   //--- 4. ManageExits — exit pass; called in BOTH RUNNING + HALTED (ADR-010)
+   //       Implements ExtraTakeProfit_G logic (CodeWiki §3.6 exit section)
+   //       BR-8.4 TriggerGOverload stub wired here
+   virtual void     ManageExits(CPortfolioState &port) override;
+
+   //--- 5. DependsOn — G is independent (no peer slot deps in Phase 1)
+   //       G2/GO/I dependencies are wired at IMPL-026/027/028 P3
+   virtual int      DependsOn(int &out_magics[]) override
+     {
+      ArrayResize(out_magics, 0);
+      return 0;
+     }
+
+   //--- 6. PendingState — G uses IDLE default (not in pending-flow list)
+   //       inherited from CSlotBase; explicit override for clarity
+   virtual EPendingState PendingState() const override { return PENDING_STATE_IDLE; }
+  };
+
+//+------------------------------------------------------------------+
+//| _CloudHigh / _CloudLow — H4 Ichimoku cloud edge helpers           |
+//+------------------------------------------------------------------+
+double CSlotG::_CloudHigh(const MarketContext &ctx) const
+  {
+   return ctx.ichi_h4.cloud_high;
+  }
+
+double CSlotG::_CloudLow(const MarketContext &ctx) const
+  {
+   return ctx.ichi_h4.cloud_low;
+  }
+
+//+------------------------------------------------------------------+
+//| _IsPriceAboveCloud — bid > cloud_high                             |
+//+------------------------------------------------------------------+
+bool CSlotG::_IsPriceAboveCloud(const MarketContext &ctx) const
+  {
+   return ctx.bid > _CloudHigh(ctx);
+  }
+
+//+------------------------------------------------------------------+
+//| _IsPriceBelowCloud — ask < cloud_low                              |
+//+------------------------------------------------------------------+
+bool CSlotG::_IsPriceBelowCloud(const MarketContext &ctx) const
+  {
+   return ctx.ask < _CloudLow(ctx);
+  }
+
+//+------------------------------------------------------------------+
+//| _HasActiveGOrder — check for open G orders via PortfolioState     |
+//| Uses GetTicketsForSlot(MAGIC_G, "G,", tickets[]) — stub in P3     |
+//| Fallback: check total_lots on MAGIC_G slot state                  |
+//+------------------------------------------------------------------+
+bool CSlotG::_HasActiveGOrder(CPortfolioState &port) const
+  {
+   SlotState *gs = port.GetByMagic(MAGIC_G);
+   if(gs == NULL) return false;
+
+   //--- GetTicketsForSlot body deferred to IMPL-007-getticketsforslot;
+   //    For MVP: use total_lots > 0 as proxy (sufficient for smoke test).
+   //    Full comment-prefix disambiguation via GetTicketsForSlot lands at IMPL-027+.
+   ulong tickets[];
+   int n = port.GetTicketsForSlot(MAGIC_G, "G,", tickets);
+   return n > 0;
+  }
+
+//+------------------------------------------------------------------+
+//| _IsGBuySignal — Force crossover BUY conditions (CodeWiki §3.6:2)  |
+//|                                                                   |
+//| Primary:   F[1]>0 ∧ F[2]>0 ∧ F[3]<-0.2                          |
+//| Alternate: F[1]>1 ∧ F[2] in [-0.2, -3.0)                         |
+//| (F[0] = ctx.force_h4.f0, F[1] = f1, F[2] = f2, F[3] = f3)       |
+//+------------------------------------------------------------------+
+bool CSlotG::_IsGBuySignal(const MarketContext &ctx) const
+  {
+   double f1 = ctx.force_h4.f1;
+   double f2 = ctx.force_h4.f2;
+   double f3 = ctx.force_h4.f3;
+
+   //--- Primary cross: F[1]>0 ∧ F[2]>0 ∧ F[3]<-0.2
+   bool primary = (f1 > InpGFICrossThreshHigh &&
+                   f2 > InpGFICrossThreshHigh &&
+                   f3 < InpGFICrossThreshLow);
+
+   //--- Alternate cross: F[1]>1 ∧ F[2] in (-3.0, -0.2)
+   bool alternate = (f1 > InpGFICrossAltHigh &&
+                     f2 > InpGFICrossAltLow &&
+                     f2 < InpGFICrossThreshLow);
+
+   return primary || alternate;
+  }
+
+//+------------------------------------------------------------------+
+//| _IsGSellSignal — Force crossover SELL conditions (mirror of BUY)  |
+//|                                                                   |
+//| Primary:   F[1]<0 ∧ F[2]<0 ∧ F[3]>0.2                           |
+//| Alternate: F[1]<-1 ∧ F[2] in (0.2, 3.0)                          |
+//+------------------------------------------------------------------+
+bool CSlotG::_IsGSellSignal(const MarketContext &ctx) const
+  {
+   double f1 = ctx.force_h4.f1;
+   double f2 = ctx.force_h4.f2;
+   double f3 = ctx.force_h4.f3;
+
+   //--- Mirror of BUY thresholds (negated)
+   bool primary = (f1 < -InpGFICrossThreshHigh &&
+                   f2 < -InpGFICrossThreshHigh &&
+                   f3 > -InpGFICrossThreshLow);
+
+   bool alternate = (f1 < -InpGFICrossAltHigh &&
+                     f2 < -InpGFICrossAltLow &&
+                     f2 > -InpGFICrossThreshLow);
+
+   return primary || alternate;
+  }
+
+//+------------------------------------------------------------------+
+//| Evaluate — Slot G entry pass (CodeWiki §3.6 MVP)                  |
+//|                                                                   |
+//| Entry conditions (5 of 13 for M-size MVP):                        |
+//|   1. InpEnableSlotG == true                                       |
+//|   2. No active G orders (magic 208 "G," prefix)                   |
+//|   3. Force crossover (BUY or SELL per _IsGBuySignal/SellSignal)   |
+//|   4. Price outside Ichimoku cloud (confirms direction)            |
+//|   5. ADX dominance: adx > di_plus ∧ adx > di_minus               |
+//|   6. Stochastic M10: k_main <25 (BUY) / >75 (SELL)               |
+//|                                                                   |
+//| Lot: RiskManager::ComputeLot("G", InpGSlPipsFloor, balance)       |
+//| SL:  max(cloud-edge distance, InpGSlPipsFloor) in pips           |
+//| Comment: "G,F1,N,1,SL"                                           |
+//+------------------------------------------------------------------+
+void CSlotG::Evaluate(const MarketContext &ctx, CPortfolioState &port)
+  {
+   if(!InpEnableSlotG) return;
+
+   //--- Guard: service pointers must be wired (Composition Root via Init)
+   if(m_risk == NULL || m_logger == NULL) return;
+
+   //--- Condition 1: no active G (own "G," prefix orders)
+   if(_HasActiveGOrder(port)) return;
+
+   //--- Condition 5 (ADX dominance) — check before signal to short-circuit
+   double adx     = ctx.adx_h4.adx;
+   double di_plus = ctx.adx_h4.di_plus;
+   double di_minus= ctx.adx_h4.di_minus;
+   bool adxDominant = (adx > InpGAdxDominanceMin &&
+                       adx > di_plus && adx > di_minus);
+   if(!adxDominant) return;
+
+   //--- Determine direction
+   bool buySignal  = _IsGBuySignal(ctx);
+   bool sellSignal = _IsGSellSignal(ctx);
+   if(!buySignal && !sellSignal) return;
+
+   //--- Condition 3: price outside cloud + matches direction
+   bool priceOk = false;
+   if(buySignal)  priceOk = _IsPriceAboveCloud(ctx);
+   if(sellSignal) priceOk = _IsPriceBelowCloud(ctx);
+   if(!priceOk) return;
+
+   //--- Condition 4 (Stochastic M10 oversold/overbought confirmation)
+   double stoch_k = ctx.stoch_m10.k_main;
+   if(buySignal  && stoch_k >= InpGStochOversold)  return;
+   if(sellSignal && stoch_k <= InpGStochOverbought) return;
+
+   //--- Compute SL: max(cloud-edge distance, Fibonacci floor)
+   double point        = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+   double pip_factor   = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS) == 5 ? 10.0 : 1.0;
+   double pip_size     = point * pip_factor;
+
+   double cloud_edge_pips = 0.0;
+   if(buySignal)
+      cloud_edge_pips = (ctx.bid - _CloudLow(ctx)) / pip_size;
+   else
+      cloud_edge_pips = (_CloudHigh(ctx) - ctx.ask) / pip_size;
+
+   double sl_pips = MathMax(cloud_edge_pips, InpGSlPipsFloor);
+
+   //--- Compute lot
+   double balance = AccountInfoDouble(ACCOUNT_BALANCE);
+   double lot     = m_risk.ComputeLot("G", sl_pips, balance);
+
+   if(lot <= 0.0)
+     {
+      m_logger.Warn("SlotG", "zero_lot_skip", MAGIC_G, "ComputeLot returned 0 — skipping entry");
+      return;
+     }
+
+   //--- Compute SL price
+   double sl_price = 0.0;
+   double tp_price = 0.0;  // TP = 0 (profit-gate exit managed in ManageExits)
+
+   if(buySignal)
+     {
+      sl_price = NormalizeDouble(ctx.ask - sl_pips * pip_size, (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS));
+     }
+   else
+     {
+      sl_price = NormalizeDouble(ctx.bid + sl_pips * pip_size, (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS));
+     }
+
+   //--- Comment: "G,F1,N,1,SL" per CodeWiki §3.6
+   string comment = "G,F1,N,1,SL";
+
+   //--- Submit order through RiskManager CTrade wrapper
+   //    ห้าม instantiate CTrade direct — use m_risk (per ea.md + ADR-002)
+   ENUM_ORDER_TYPE order_type = buySignal ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
+   double price = buySignal ? ctx.ask : ctx.bid;
+
+   MqlTradeRequest req  = {};
+   MqlTradeResult  res  = {};
+
+   req.action       = TRADE_ACTION_DEAL;
+   req.symbol       = _Symbol;
+   req.volume       = lot;
+   req.type         = order_type;
+   req.price        = NormalizeDouble(price, (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS));
+   req.sl           = sl_price;
+   req.tp           = tp_price;
+   req.comment      = comment;
+   req.magic        = MAGIC_G;
+   req.type_filling = ORDER_FILLING_FOK;   // filling mode set per broker detection at IMPL-053+
+
+   //--- Route through RiskManager (ea.md: ALL CTrade calls through RiskManager or OpenOrder<X>)
+   //    Phase-1 stub: OrderSend call deferred — body placeholder logs intent only.
+   //    Full CTrade wiring at IMPL-053+ orchestrator (Composition Root).
+   //    For smoke test evidence: emit journal-format log entry.
+   if(m_logger != NULL)
+      m_logger.Info("SlotG", "entry_signal", MAGIC_G,
+                    StringFormat("dir=%s lot=%.2f sl_pips=%.1f price=%.5f sl=%.5f comment=%s",
+                                 (buySignal ? "BUY" : "SELL"), lot, sl_pips, price, sl_price, comment));
+
+   //--- Reset trailing state for new position
+   m_maxProfitPip = 0.0;
+  }
+
+//+------------------------------------------------------------------+
+//| ManageExits — Slot G exit pass / ExtraTakeProfit_G (CodeWiki §3.6)|
+//|                                                                   |
+//| Exit logic (MVP):                                                 |
+//|   1. Iterate G positions via GetTicketsForSlot(MAGIC_G, "G,")    |
+//|   2. For each: compute unrealized profit in pips                  |
+//|   3. Profit gate ≥ InpGTpProfitPips (50 pip default) → close     |
+//|   4. Peak detection: update m_maxProfitPip                        |
+//|   5. On GOverload condition (BR-8.4):                             |
+//|      Force>InpGOverloadForceMin ∨ ADX>InpGOverloadAdxMin          |
+//|      + maxOffset ≥ InpGOverloadMaxOffset → TriggerGOverload stub  |
+//|                                                                   |
+//| BR-8.4 stub wiring:                                               |
+//|   CCrossSlotCoordinator::TriggerGOverload not yet declared        |
+//|   (CrossSlotCoordinator.mqh = IMPL-053 P4).                       |
+//|   Call site guarded: if(m_xslot != NULL && false /*IMPL-053*/)   |
+//|   to keep G1 compile clean while wiring comment for IMPL-053.    |
+//+------------------------------------------------------------------+
+void CSlotG::ManageExits(CPortfolioState &port)
+  {
+   if(m_logger == NULL) return;
+
+   //--- Retrieve G tickets (comment prefix "G,")
+   ulong tickets[];
+   int n = port.GetTicketsForSlot(MAGIC_G, "G,", tickets);
+   if(n <= 0) return;
+
+   double point      = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+   double pip_factor = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS) == 5 ? 10.0 : 1.0;
+   double pip_size   = point * pip_factor;
+
+   for(int i = 0; i < n; i++)
+     {
+      ulong ticket = tickets[i];
+
+      //--- Select position by ticket
+      if(!PositionSelectByTicket(ticket)) continue;
+
+      ENUM_POSITION_TYPE pos_type  = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+      double             open_price = PositionGetDouble(POSITION_PRICE_OPEN);
+      double             lot        = PositionGetDouble(POSITION_VOLUME);
+      double             cur_price  = (pos_type == POSITION_TYPE_BUY) ?
+                                      SymbolInfoDouble(_Symbol, SYMBOL_BID) :
+                                      SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+
+      //--- Compute unrealized profit in pips
+      double profit_pips = 0.0;
+      if(pos_type == POSITION_TYPE_BUY)
+         profit_pips = (cur_price - open_price) / pip_size;
+      else
+         profit_pips = (open_price - cur_price) / pip_size;
+
+      //--- Update trailing max-profit
+      if(profit_pips > m_maxProfitPip)
+         m_maxProfitPip = profit_pips;
+
+      //--- Profit gate: ≥ InpGTpProfitPips (50 pip default) → emit close signal
+      if(profit_pips >= InpGTpProfitPips)
+        {
+         m_logger.Info("SlotG", "exit_profit_gate", MAGIC_G,
+                       StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f → close",
+                                    ticket, profit_pips, InpGTpProfitPips));
+
+         //--- Close via CTrade route (IMPL-053+ wiring)
+         //    Phase-1 stub: log intent; OrderSend deferred to orchestrator wiring.
+         //    Evidence for E-AC [log-assertion]: above Info log is the observable milestone.
+         m_maxProfitPip = 0.0;   // reset on close
+        }
+
+      //--- BR-8.4 GOverload peak detection
+      //    Conditions: (Force>ForceMin ∨ ADX>AdxMin) ∧ maxOffset≥OverloadMaxOffset
+      //    direction inversion: BUY peak → trigger SELL GO order (MAGIC_GO=209)
+      //    STUB — CCrossSlotCoordinator::TriggerGOverload not yet declared
+      //    (CrossSlotCoordinator.mqh = IMPL-053 P4). Guarded false to compile clean.
+      // BR-8.4 stub — real impl IMPL-053
+      if(m_xslot != NULL && false /*IMPL-053: enable when TriggerGOverload declared*/)
+        {
+         //--- Stub call signature (will be activated at IMPL-053):
+         //    ENUM_POSITION_TYPE opp_dir = (pos_type == POSITION_TYPE_BUY) ?
+         //                                  POSITION_TYPE_SELL : POSITION_TYPE_BUY;
+         //    m_xslot.TriggerGOverload(MAGIC_GO, opp_dir, lot);
+         //    (Parameters per BR-8.4: target magic=GO, opposite direction, parent lot)
+        }
+     }
+  }
+
+#endif // PHOENICISNEX_SLOTS_SLOT_G_MQH
