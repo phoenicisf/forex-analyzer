@@ -30,7 +30,8 @@
 #define PHOENICISNEX_SERVICES_CIRCUITBREAKER_MQH
 
 #include "Logger.mqh"
-#include "PortfolioState.mqh"
+//--- PortfolioState include dropped (Finding 02.7) — CheckPingPong no longer takes
+//    CPortfolioState& parameter. Re-add if future enrichment needs slot context.
 
 //+------------------------------------------------------------------+
 //| CCircuitBreaker                                                  |
@@ -84,9 +85,11 @@ public:
 
    //--- Called per tick; triggers halt-signal if ping-pong detected.
    //    Returns true if Orchestrator MUST call EAState::SetHalted (IMPL-052).
-   //    CPortfolioState& parameter reserved for future context enrichment
-   //    (e.g. per-slot position count in log message); currently unused.
-   bool              CheckPingPong(CPortfolioState &port, datetime now_s);
+   //    Operates on internal m_buffer state only — TD-02 §5.8 originally
+   //    declared (CPortfolioState&, datetime) but neither was read in body
+   //    (Finding 02.7); dropped per Code Review Dim #5 over-engineering rule.
+   //    Caller (Orchestrator IMPL-053): `if(m_breaker.CheckPingPong()) ...`
+   bool              CheckPingPong();
 
    //--- Called by slot post-OrderSend ack to record open events (TD-02 §5.8)
    void              RecordOpen(int magic, int direction, datetime now_s);
@@ -168,7 +171,7 @@ void CCircuitBreaker::RecordClose(int magic, int direction, datetime now_s)
 //| returns true; Orchestrator (IMPL-053) wires SetHalted() call.    |
 //| (per ADR-010 + shared-context §6 constraint)                     |
 //+------------------------------------------------------------------+
-bool CCircuitBreaker::CheckPingPong(CPortfolioState &port, datetime now_s)
+bool CCircuitBreaker::CheckPingPong()
   {
    int sz = _LogicalSize();
    if(sz < 2)
@@ -266,10 +269,6 @@ bool CCircuitBreaker::SelfTest()
    // Helper lambda equivalent — inline reset
 #define CB_SELFTEST_RESET() { m_idx=0; m_count=0; for(int _r=0;_r<16;_r++){m_buffer[_r].magic=0;m_buffer[_r].direction=0;m_buffer[_r].close_time_s=0;} }
 
-   // Stub CPortfolioState — CheckPingPong accepts ref but does not call any method on it yet
-   // (current impl uses it only as a passthrough per TD-02 §5.8 + shared-context §4 task 3 note)
-   CPortfolioState stub_port;
-
    //--------------------------------------------------------------------
    // Case A: 3 close events 1 s apart, same (magic=200, dir=0) → true
    //--------------------------------------------------------------------
@@ -279,7 +278,7 @@ bool CCircuitBreaker::SelfTest()
    RecordClose(200, 0, t0 + 1);
    RecordClose(200, 0, t0 + 2);
 
-   bool result_a = CheckPingPong(stub_port, t0 + 3);
+   bool result_a = CheckPingPong();
    if(!result_a)
      {
       Print("[CircuitBreaker][SelfTest][FAIL] Case A:"
@@ -297,7 +296,7 @@ bool CCircuitBreaker::SelfTest()
    RecordClose(201, 1, t0);
    RecordClose(201, 1, t0 + 4);
 
-   bool result_b = CheckPingPong(stub_port, t0 + 5);
+   bool result_b = CheckPingPong();
    if(result_b)
      {
       Print("[CircuitBreaker][SelfTest][FAIL] Case B:"
@@ -315,7 +314,7 @@ bool CCircuitBreaker::SelfTest()
    RecordClose(202, 0, t0);
    RecordClose(202, 0, t0 + 6);
 
-   bool result_c = CheckPingPong(stub_port, t0 + 7);
+   bool result_c = CheckPingPong();
    if(result_c)
      {
       Print("[CircuitBreaker][SelfTest][FAIL] Case C:"
@@ -332,7 +331,7 @@ bool CCircuitBreaker::SelfTest()
    RecordClose(200, 0, t0);
    RecordClose(201, 0, t0 + 1);   // different magic, close in time — must NOT trigger
 
-   bool result_d = CheckPingPong(stub_port, t0 + 2);
+   bool result_d = CheckPingPong();
    if(result_d)
      {
       Print("[CircuitBreaker][SelfTest][FAIL] Case D:"

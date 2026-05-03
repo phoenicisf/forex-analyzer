@@ -93,26 +93,29 @@ public:
 
 //+------------------------------------------------------------------+
 //| Init — store params + dep pointers; log init_ok on success       |
-//| Defensive: if called twice, re-zero all members first.           |
+//|                                                                  |
+//| Finding 02.6 — validate-then-mutate: the previous order zeroed   |
+//| all members BEFORE the NULL-logger guard returned, so a re-Init  |
+//| with NULL logger would wipe valid prior config (main_risk_ratio  |
+//| = 0 → ComputeLot returns 0 → ClampLot floors to 0.01 → silent    |
+//| 0.01-lot orders). Mirror BootstrapValidator (round-01 Fix 01.8): |
+//| guards before mutation; prior state preserved on validation fail.|
 //+------------------------------------------------------------------+
 void CRiskManager::Init(double main_risk_ratio,
                         double limit_max_lot_size_ratio,
                         CPortfolioState *port,
                         CLogger *logger)
   {
-   //--- Defensive re-init: reset on second call (MT5 input-change re-init)
-   m_main_risk_ratio          = 0.0;
-   m_limit_max_lot_size_ratio = 0.0;
-   m_portfolio                = NULL;
-   m_logger                   = NULL;
-
-   //--- NULL-guard logger — cannot use Logger.Error if logger itself is null
+   //--- Validate inputs FIRST — if invalid, retain prior state (no mutation)
    if(logger == NULL)
      {
-      Print("[Phoenicis][RiskManager][ev=init_warn] logger is NULL — RiskManager Init aborted");
+      Print("[Phoenicis][RiskManager][ev=init_warn] logger is NULL — RiskManager Init "
+            "aborted; prior config retained (main_risk=", DoubleToString(m_main_risk_ratio, 4),
+            " max_lot_ratio=", DoubleToString(m_limit_max_lot_size_ratio, 4), ")");
       return;
      }
 
+   //--- All inputs valid: atomic upgrade (overwrites any prior config)
    m_main_risk_ratio          = main_risk_ratio;
    m_limit_max_lot_size_ratio = limit_max_lot_size_ratio;
    m_portfolio                = port;
@@ -385,26 +388,31 @@ double CRiskManager::_ComputeLotForI()
 //|   percentTP 5  → factor 0.05                                     |
 //|   percentTP 10 → factor 0.10                                     |
 //|   percentTP 15 → factor 0.15                                     |
-//|   other         → factor 0.10 (default, log Warn)               |
+//|   other         → return 0.0 (fail-loud per Finding 02.8 / 01.7) |
 //| Result = AccountInfoDouble(ACCOUNT_BALANCE) * factor             |
 //| Note: extra_multiplier passed as percentTP value (the "percent") |
+//|                                                                  |
+//| Finding 02.8 — tolerance tightened 0.5 → 0.001 (input is integer |
+//| enum); silent 0.10 fallback removed (would mask Inputs_Slot_S    |
+//| default-set bug → 2x lot at intended 5% setting).                |
 //+------------------------------------------------------------------+
 double CRiskManager::_ComputeLotForS(double percent_tp)
   {
-   double balance = AccountInfoDouble(ACCOUNT_BALANCE);
-   double factor  = 0.10;   // default
+   double factor = 0.0;
 
-   //--- Map percentTP to factor (tolerance 0.5 for floating-point input)
-   if(MathAbs(percent_tp - 5.0)  < 0.5) factor = 0.05;
-   else if(MathAbs(percent_tp - 10.0) < 0.5) factor = 0.10;
-   else if(MathAbs(percent_tp - 15.0) < 0.5) factor = 0.15;
+   if(MathAbs(percent_tp - 5.0)  < 0.001) factor = 0.05;
+   else if(MathAbs(percent_tp - 10.0) < 0.001) factor = 0.10;
+   else if(MathAbs(percent_tp - 15.0) < 0.001) factor = 0.15;
    else
      {
       if(m_logger != NULL)
-         m_logger.Warn("RiskManager", "s_pct_tp_fallback", MAGIC_S,
-                       StringFormat("percent_tp=%.1f not in {5,10,15} — using 0.10", percent_tp));
+         m_logger.ErrorBypassThrottle("RiskManager", "s_pct_tp_invalid", MAGIC_S,
+                                      StringFormat("percent_tp=%.4f not in {5,10,15}; "
+                                                   "S lot = 0.0 (no order)", percent_tp));
+      return 0.0;
      }
 
+   double balance = AccountInfoDouble(ACCOUNT_BALANCE);
    return balance * factor;
   }
 
