@@ -4,6 +4,18 @@
 
 ## Last completed action
 
+**P2 Phase Gate NOMINATED 2026-05-03 — IMPL-049 closure attestation produced** — engineer-side row-by-row assessment: **5/9 rows Ready** (Structural / Code review / NFR provisional / Rollback / Docs) · **4/9 rows Blocked** (Empirical Demo / Tier 1.5 Walk / Live-stack — all need entry `PhoenicisNex.mq5` from IMPL-018+; Deferred-AC drain — 5 Active P2 rows blocked on IMPL-018+).
+
+- **Nomination doc:** `docs/state/_session-handoff/2026-05-03-phase2-gate-nomination.md`
+- **IMPL-049 attestation:** Tier 1 ✅ (4 sub-passes + 4 S-AC + 2 E-AC + 7 SelfTest cases incl. PM_T+PM_Q boundary post-R04); Tier 1.5 deferred per registry; Tier 2 awaiting operator
+- **Circular dep identified:** all 4 blocked rows gated by IMPL-018+, which Phase Gate Blocking blocks until P2 closes
+- **Operator decision required — 3 paths:**
+  - **Path A (recommended):** Phase Gate Override row → start P3 IMPL-018 → P2 Phase Gate closes after IMPL-018 lands and the 4 blocked items run in one sweep
+  - **Path B:** build minimal entry `.mq5` stub now (violates SD Hint Alignment — IMPL-018 = E2 CSlotBase compile prereq)
+  - **Path C:** defer + renew 5 Active rows on 2026-05-17 (silent override; Code Review Dim #11 risk)
+
+---
+
 **Code Review Round 04 + Fix Round 04 CLOSED 2026-05-03** — `docs/code-review/review-round-04.md` adversarial sweep on Round-03 fix delta + IMPL-049 surface; 8 findings (CRITICAL 1 / HIGH 2 / MEDIUM 3 / LOW 2). `/impl-review-fix review-round-04.md` accepted **8/8** (0 reject, 0 partial).
 
 - **Report:** `docs/code-review/fix-round-04.md`
