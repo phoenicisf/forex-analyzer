@@ -4,44 +4,53 @@
 
 ## Last completed action
 
-**Parallel batch #6 closed 2026-05-03** — IMPL-048 + IMPL-050 + IMPL-051 (3 tasks via `/impl-task parallel`)
+**Code Review Round 02 + Fix Round 02 closed 2026-05-03** — 10/10 findings accepted; 6 commits.
 
-- **IMPL-048** (commit `b3889de`) — `docs/api-specs/state-persistence-schema.yaml` v1 lock (Evolution E1b)
-  - Added `description:` to `schema_version` `const: 1` (lock semantics explicit)
-  - Added `## Lifecycle Plan` YAML comment block (4 Hyrum's-law rules per `07-future-evolution.md § 3.2`)
-  - Added `## Option A Lock Note` (Option B variant N/A per IMPL-046 spike)
-  - Field-count audit: 11 sub-objects, 35 required + 4 optional properties (manual yq fallback)
-- **IMPL-050** (commit `1ece5ae`) — `services/TimeGate.mqh` (BR-3.x preserve)
-  - 7 public methods mirroring TD-02 §5.9 verbatim skeleton (Init / IsMorningWakeup / IsMondaySpreadHigh / IsNewYearSeason2 / HolidayBlock / IsBanned / SetBan)
-  - Allowlist guard {C,L,M,K,G} enforced in IsBanned + SetBan per Claim 01.18 (Error log on unknown slot, no silent failure)
-  - DST handling via `TimeCurrent()` (broker EET native, FR-6.5 + NFR-7.3)
-  - State writes via `CStatePersistence::SetBanDate` (StatePersistence.mqh:358-365)
-  - Smoke ini `simulation/headless-tests/timegate_smoke.ini` covers DST-start window 2026-Mar-26..30
-- **IMPL-051** (commit `de087fe`) — `services/CircuitBreaker.mqh` (BR-3.6 + ADR-010)
-  - Ring buffer `CloseEvent m_buffer[16]` per TD-02 §5.8
-  - `CheckPingPong` scans (magic, direction) pairs within 3000s window → returns true + emits via `Logger.ErrorBypassThrottle`
-  - Near-miss (3000, 5000] → `Logger.Warn` (no halt)
-  - Halt invocation deferred to Orchestrator + IMPL-052 EAState (per ADR-010 — CircuitBreaker emits + returns true; EAState owns SetHalted)
-  - Inline `SelfTest()` validates 4 cases (1500s detect / 4000s near-miss / 6000s no-trigger / different-magics no-trigger)
+- **Review** `docs/code-review/review-round-02.md` — Adversarial Quality Engineer audit of P2 6/11 closures (5 source files / ~2,490 LOC delta). Findings: CRITICAL 2 / HIGH 3 / MEDIUM 3 / LOW 2.
+- **Fix-round** `docs/code-review/fix-round-02.md` — all 10 accepted; 0 reject; 0 partial.
 
-**G1 baseline:** 0 errors / 0 warnings on `Spike_StatePersistence.mq5` — no regression from new headers (TimeGate + CircuitBreaker not yet included by entry).
-**G2-G4:** deferred per IMPL-005/007/011 header-only precedent (PhoenicisNex.mq5 entry not yet created — lands at IMPL-053+/IMPL-018+).
+| Commit  | Bundle | Findings | Files touched |
+|---------|--------|----------|---------------|
+| `97d7c24` | G1 critical | 02.1 + 02.2 + 02.9 | StatePersistence, CircuitBreaker |
+| `6b23ddf` | G2 02.3 | parent-lot last_open_lot | SlotState (domain), PortfolioState (cascade), RiskManager (+SelfTest case 9) |
+| `214b79a` | G2 02.4 | NULL-state log throttle | PortfolioMonitor |
+| `795e63f` | G2 02.5 | _ExtractStr unescape | StatePersistence |
+| `c51f4a1` | G3 polish | 02.6 + 02.7 + 02.8 | RiskManager, CircuitBreaker |
+| `8fb5300` | G4 02.10 | HolidayBlock NULL path | TimeGate |
 
-Evidence: `_session-handoff/IMPL-{048,050,051}-evidence-20260503.md`
-Shared parallel context: `_parallel-context/impl-task-parallel-20260503-0851.md`
+**Key fixes (high-impact):**
+- **02.1 StatePersistence** — added `_ExtractRawValue` helper (RFC 8259 value extractor for opaque pending_payload — fixes silent ADR-008 round-trip loss every reboot).
+- **02.2/02.9 CircuitBreaker** — `PING_PONG_THRESHOLD_S = 3` (was 3000 → 1000× off vs BR-3.6 spec); field `close_time_ms` → `close_time_s`; SelfTest re-targeted (1/4/6 sec deltas).
+- **02.3 RiskManager** — added `last_open_lot` to SlotState; J/BI/I now read parent.last_open_lot per BR-4.1 spec literal; fail-loud (Warn + return 0) when unwired (= 0). Population deferred to PortfolioState OnTradeTransaction at IMPL-053+.
+- **02.5 StatePersistence** — `_ExtractStr` now JSON escape-aware (backslash-parity terminator + `\"`/`\\`/`\n`/`\r`/`\t`/`\uXXXX` unescape).
+
+**G1 baseline:** Spike_StatePersistence.mq5 still 0 errors / 0 warnings (no regression from `.mqh` edits since none are yet `#include`'d by entry).
+**G2-G4:** deferred per header-only `.mqh` precedent (gates activate at IMPL-018+).
+**Anti-regression grep clean:** ZigZag path `Examples\\ZigZag` preserved; `ErrorBypassThrottle` for invalid_handle preserved; `CleanupPartialInit` guards preserved.
+
+**State Reconciliation (3-file propagation):**
+- ✅ Layer 1 `impl-plan.md` — Mid-Phase Audit Log row appended for fix-round-02.
+- ✅ Layer 2 `overview.md` — Code Review row updated (Round 01 → Round 02 with full convergence note).
+- ✅ Layer 3 `current_handoff.md` (this file) — last-action + state-of-workspace updated.
+
+---
+
+**Prior action (2026-05-03):** Parallel batch #7 closed — IMPL-040 (L RiskManager.mqh) + IMPL-045 (S PortfolioMonitor.mqh). User-authorized L-in-parallel override. Both subjects of round-02 review.
+
+**Prior-prior (2026-05-03):** Parallel batch #6 closed — IMPL-048 + IMPL-050 + IMPL-051.
 
 ## State of the Workspace
 
 - **Phase:** Implementation (P2 — Core Services)
-- **P2 Progress:** 4/11 tasks done (IMPL-047 + IMPL-048 + IMPL-050 + IMPL-051)
+- **P2 Progress:** **6/11 tasks done** (IMPL-047 + IMPL-048 + IMPL-050 + IMPL-051 + IMPL-040 + IMPL-045)
 - **Active Task:** None
 - **Dependencies Blocked:** None
-- **Mid-Phase Audit Counter (P2):** 4 (threshold 5 not yet hit; next P2 closure triggers Phase 4 audit per CLAUDE.md §6)
-- **Pending Code Reviews:** Recommend `/impl-review all` after IMPL-040/043/052 land (will exercise the new services). Next code review round empirically actionable post-IMPL-018+ entry .mq5.
+- **Mid-Phase Audit Counter (P2):** 6 (threshold 5 crossed — Phase 4 audit recommended at next /impl-task invocation; advisory only since no runnable surface yet — entry .mq5 still pending IMPL-018+)
+- **Pending Code Reviews:** Round 02 closed. Next code review trigger after IMPL-049 (PendingMachineRegistry XL) lands — exercises StatePersistence pending_payload round-trip + CircuitBreaker→EAState integration end-to-end.
+- **Open follow-ups:** PortfolioState.OnTradeTransaction handler (populate `last_open_lot` per Finding 02.3 fix contract) — lands at IMPL-053+ wiring.
 
 ## Next Steps
 
-1. **IMPL-040** — `services/RiskManager::ComputeLot()` (L [ea]) — per-slot 21-formula dispatch table (BR-4.1). Serial recommended due to L size.
-2. **OR IMPL-043** — `services/TradeJournal::WriteEvent()` (L [ea]) — JSON-Lines append + monthly rotation (ADR-006). Serial.
-3. Optional 2-task parallel batch: pick one of {040, 043} + IMPL-045 (S [ea] PortfolioMonitor) — file scopes are independent.
-4. Continue P2 chain: IMPL-041 (deps 040), IMPL-044 (deps 043), IMPL-052 EAState (deps 043), IMPL-049 PendingMachineRegistry (XL — serial only).
+1. **IMPL-041** (XS — already integrated into IMPL-040; trivial close — orchestrator should treat as inherited and `[x]` in same fix-round) **OR**
+2. **IMPL-043** — `services/TradeJournal::WriteEvent()` (L [ea]) — JSON-Lines append + monthly rotation (ADR-006). Unblocks IMPL-044 (journal-schema S, deps 043), IMPL-049 (PendingMachineRegistry XL), IMPL-052 (EAState S, deps 043).
+3. After IMPL-049 — `/impl-review all` for next code review round (will exercise pending_payload round-trip + CircuitBreaker→EAState end-to-end).
