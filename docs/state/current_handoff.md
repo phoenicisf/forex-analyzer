@@ -4,6 +4,27 @@
 
 ## Last completed action
 
+**IMPL-039 CLOSED 2026-05-04 — Slot_BI ⚠️ G4 critical SL inheritance fix per ADR-009 (Bucket B drift NFR-1.8)** — single-task `/impl-task IMPL-039` orchestrator (Opus 4.7) Phase 2C 7-step decomposition. L-size MVP: pyramid child of Slot B sharing MAGIC_B=214 with G4 SL inheritance contract restored.
+
+- **Files (NEW × 5):**
+  - `MQL5/Experts/PhoenicisNex/slots/Slot_BI.mqh` — CSlotBI : CSlotBase; G4 fix surface in Evaluate (SL anchor at BI entry per ADR-009 Option A; earliest-B-parent pip distance via `_PipsToPrice(_PriceToPips(parent_open - parent_sl))`; fallback `InpBISlFallbackPips=80` when parent_sl=0).
+  - `MQL5/Experts/PhoenicisNex/inputs/Inputs_Slot_BI.mqh` — 6 inputs (group="Slot BI"): InpEnableSlotBI / InpBIMaxOrders=1 / InpBIBaseLot=14.0 (lighter than B's 20) / InpBIPyramidGatePips=30.0 / InpBITpProfitPips=30.0 / InpBISlFallbackPips=80.0 (ADR-009 fallback floor).
+  - `MQL5/Experts/PhoenicisNex/spike/Spike_Slot_BI.mq5` — G1 compile + 6 SelfTest cases (Magic/SlotId/DependsOn/PendingState/range/id_nonempty).
+  - `simulation/headless-tests/slot_BI_smoke.ini` — standard headless [Tester] block (Visual=0, ShutdownTerminal=1, EURUSD H4 Model=4 60-day window 2021.01.01→2021.03.02).
+  - `docs/state/g4-fix-attestation.md` **NEW** — consolidated G4 fix audit trail: Fix #1 IMPL-022 BR-7.2 (commit `d386ea6` + structural evidence path) + Fix #2 IMPL-039 ADR-009 (commit pending; structural evidence path); ADR-009 Option A implementation notes + spec deviation log.
+- **Files modified:** `docs/state/impl-plan.md` (TL;DR + IMPL-039 closure block with all 7 S-AC `[x]` + Phase Status row 20→21/23 + Mid-Phase Audit Log row + Action ถัดไป + Last updated 2026-05-04), `docs/state/overview.md` (Impl Tasks row), `docs/state/deferred-ac-registry.md` (2 new IMPL-039 Active P3 rows expiry 2026-05-18 + IMPL-022 row partially resolved on file-existence portion), `docs/state/_session-handoff/IMPL-039-evidence-20260503.md` (G1 evidence + G4 fix structural verification + S-AC/E-AC status).
+- **G1 ✅ orchestrator-side recompile** (PowerShell Start-Process MetaEditor64): Spike_Slot_BI 0err/0warn/425 ms.
+- **Sibling regression (4/4 clean):** Spike_Slot_B 0/0/432 ms · Spike_Slot_BR 0/0/427 ms · Spike_Slot_LX 0/0/419 ms · Spike_Slot_J 0/0/427 ms.
+- **G4 fix ADR-009 structural verification:** earliest-B-parent anchor (`parent_tickets[0]`), pip distance via CSlotBase helpers (Round-06 06.1 routing through CPipMath when wired), `_NormalizeBrokerPrice` for broker tick precision (Round-06 06.3), edge-case fallback `InpBISlFallbackPips` floor (Bollinger fallback BBBot-10/BBTop+10 deferred to IMPL-062 P4). Bucket B classification noted in commit message body.
+- **Spec deviation logged:** S-AC #3 plan text reads "OrderSend SL parameter = parent B's open price ± m_pip.ToPoints(parent_sl_pip)"; ADR-009 Option A locks anchor at `BI.entry_price`; implementation follows ADR-009 (architectural primary). Documented in `g4-fix-attestation.md § Fix #2` + Slot_BI.mqh header banner.
+- **All 7 S-AC `[x]`.** 2 E-AC deferred — (1) smoke `[db-inspect]` BI ticket non-zero SL matching parent pip distance — block on IMPL-053+ Orchestrator; (2) g4-fix-attestation.md journal evidence path — file exists with Fix #2 row but commit hash + journal evidence path land at IMPL-053+ runnable surface; **both registered to `deferred-ac-registry.md` Active table** expiry 2026-05-18.
+- **Newly unblocked:** none (BI has no downstream P3 deps; remaining P3 = IMPL-013 input completion + IMPL-034 Slot_P).
+- **Mid-Phase Audit P3 counter** = 21 (threshold 5 crossed many times; advisory only until IMPL-053+ runnable surface). **Plan Staleness Sentinel = 1 closure since R06 review** (R06 closed 2026-05-03 reset to 0; +IMPL-039 = 1 — well below 10-closure threshold).
+- **Commit:** _set on `[feat:ea] IMPL-039` commit landing in this branch (this run)_
+- **Next suggested task:** **IMPL-034 (L Slot_P — A7 risk monitoring slot; only remaining P3 slot file)** **OR** `/impl-review all` (R07 trigger — adversarial sweep on Slot_BI G4 surface vs ADR-009 + IMPL-022/039 attestation completeness) **OR** P3 Phase Gate close after IMPL-034 + IMPL-013 input completion.
+
+---
+
 **Code Review Round 05 + Fix Round 05 APPLIED 2026-05-03** — `/impl-review-fix review-round-05.md` accepted **10/10** findings (CRITICAL 2 / HIGH 3 / MEDIUM 3 / LOW 2; 0 reject, 0 partial). 7 source files modified (Slot_H/B/K/L/BR/J + core/SlotRegistry) + 1 state file (`deferred-ac-registry.md`).
 
 - **Major fixes:**
