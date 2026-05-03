@@ -20,7 +20,7 @@
 - **All 7 S-AC `[x]`.** 2 E-AC deferred — (1) smoke `[db-inspect]` BI ticket non-zero SL matching parent pip distance — block on IMPL-053+ Orchestrator; (2) g4-fix-attestation.md journal evidence path — file exists with Fix #2 row but commit hash + journal evidence path land at IMPL-053+ runnable surface; **both registered to `deferred-ac-registry.md` Active table** expiry 2026-05-18.
 - **Newly unblocked:** none (BI has no downstream P3 deps; remaining P3 = IMPL-013 input completion + IMPL-034 Slot_P).
 - **Mid-Phase Audit P3 counter** = 21 (threshold 5 crossed many times; advisory only until IMPL-053+ runnable surface). **Plan Staleness Sentinel = 1 closure since R06 review** (R06 closed 2026-05-03 reset to 0; +IMPL-039 = 1 — well below 10-closure threshold).
-- **Commit:** _set on `[feat:ea] IMPL-039` commit landing in this branch (this run)_
+- **Commit:** `bc7f558` `[feat:ea] IMPL-039 Slot_BI - G4 critical SL inheritance fix per ADR-009 (Bucket B)`
 - **Next suggested task:** **IMPL-034 (L Slot_P — A7 risk monitoring slot; only remaining P3 slot file)** **OR** `/impl-review all` (R07 trigger — adversarial sweep on Slot_BI G4 surface vs ADR-009 + IMPL-022/039 attestation completeness) **OR** P3 Phase Gate close after IMPL-034 + IMPL-013 input completion.
 
 ---

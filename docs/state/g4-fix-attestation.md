@@ -36,7 +36,7 @@
 
 | Field | Value |
 |-------|-------|
-| Commit | _set on `[feat:ea] IMPL-039` commit landing in this branch_ |
+| Commit | `bc7f558` `[feat:ea] IMPL-039 Slot_BI - G4 critical SL inheritance fix per ADR-009 (Bucket B)` |
 | Closed | 2026-05-04 |
 | Source files | `MQL5/Experts/PhoenicisNex/slots/Slot_BI.mqh` (SL inheritance per ADR-009 Option A in `Evaluate()`; explicit `// G4 fix ADR-009` markers + `(G4 fix ADR-009)` log suffix) · `MQL5/Experts/PhoenicisNex/inputs/Inputs_Slot_BI.mqh` (`InpBISlFallbackPips=80.0` for ADR-009 fallback paths) |
 | Spike artifact | `MQL5/Experts/PhoenicisNex/spike/Spike_Slot_BI.mq5` — G1 0err/0warn/425 ms; 6 SelfTest cases pass (Magic=MAGIC_B=214 / SlotId="BI" / DependsOn=0 / PendingState=IDLE / range / non-empty) |
