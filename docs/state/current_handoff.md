@@ -70,10 +70,18 @@
 ## State of the Workspace
 
 - **Phase:** Implementation (P2 — Core Services)
-- **P2 Progress:** **9/11 tasks done** (IMPL-047 + IMPL-048 + IMPL-050 + IMPL-051 + IMPL-040 + IMPL-041 + IMPL-045 + IMPL-043 + IMPL-044)
-- **Active Task:** None — IMPL-044 just closed. Next: IMPL-049 (XL PendingMachineRegistry) or IMPL-052 (S EAState, deps IMPL-043 ✅)
-- **Dependencies Blocked:** None — IMPL-043 closed; IMPL-049 + IMPL-052 both unblocked
-- **Mid-Phase Audit Counter (P2):** 9 (threshold 5 crossed — advisory only; no runnable surface until IMPL-018+ entry wiring; precedent from parallel batch #7 holds)
+- **P2 Progress:** **10/11 tasks done** (IMPL-047 + IMPL-048 + IMPL-050 + IMPL-051 + IMPL-040 + IMPL-041 + IMPL-045 + IMPL-043 + IMPL-044 + IMPL-052)
+- **Active Task:** None — IMPL-052 just closed. Next: IMPL-049 (XL PendingMachineRegistry)
+- **Dependencies Blocked:** None — IMPL-049 is unblocked
+- **Mid-Phase Audit Counter (P2):** 10 (threshold 5 crossed — advisory only; no runnable surface until IMPL-018+ entry wiring; precedent from parallel batch #7 holds)
+- **Pending Code Reviews:** Round 02 closed. Next code review trigger after IMPL-049 (PendingMachineRegistry XL) lands.
+- **Open follow-ups:** PortfolioState.OnTradeTransaction handler (populate `last_open_lot` per Finding 02.3 fix contract) — lands at IMPL-053+ wiring.
+
+## Next Steps
+
+1. **IMPL-049** [XL] [ea] — `PendingMachineRegistry` (unblocked by IMPL-043 ✅; largest remaining P2 task).
+2. After IMPL-049 closes — `/impl-review all` code review trigger for IMPL-043+044+049+052 batch.
+no runnable surface until IMPL-018+ entry wiring; precedent from parallel batch #7 holds)
 - **Pending Code Reviews:** Round 02 closed. Next code review trigger after IMPL-049 (PendingMachineRegistry XL) lands.
 - **Open follow-ups:** PortfolioState.OnTradeTransaction handler (populate `last_open_lot` per Finding 02.3 fix contract) — lands at IMPL-053+ wiring.
 
