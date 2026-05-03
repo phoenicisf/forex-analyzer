@@ -163,7 +163,72 @@ int OnInit()
    if(g_pmr.GetState(PM_T) != PENDING_STATE_IDLE) { Print("PM_T not IDLE"); return INIT_FAILED; }
    if(g_pmr.GetState(PM_Q) != PENDING_STATE_IDLE) { Print("PM_Q not IDLE"); return INIT_FAILED; }
 
-   Print("Spike_PendingMachineRegistry: sub-pass (a)+(b) OK");
+   // === Sub-pass (c) — force-clear (ADR-008) ==========================
+
+   // PM_M threshold = 150. Age=149 still PENDING; age=150 → IDLE + count++.
+   g_pmr.EnterPending(PM_M, "{\"slot\":\"M\"}", 1000);
+   ctx.bar_index_h4 = 1149;
+   g_pmr.TickAll(ctx, empty_port);
+   if(g_pmr.GetState(PM_M) != PENDING_STATE_PENDING)
+     {
+      Print("Spike_PMR: PM_M should still be PENDING at age=149");
+      return INIT_FAILED;
+     }
+   if(g_pmr.GetForceClearCount(PM_M) != 0)
+     {
+      Print("Spike_PMR: PM_M force_clear_count should be 0 pre-trigger");
+      return INIT_FAILED;
+     }
+   ctx.bar_index_h4 = 1150;
+   g_pmr.TickAll(ctx, empty_port);
+   if(g_pmr.GetState(PM_M) != PENDING_STATE_IDLE)
+     {
+      Print("Spike_PMR: PM_M should be IDLE after force-clear at age=150");
+      return INIT_FAILED;
+     }
+   if(g_pmr.GetForceClearCount(PM_M) != 1)
+     {
+      PrintFormat("Spike_PMR: PM_M force_clear_count=%d expected 1",
+                  g_pmr.GetForceClearCount(PM_M));
+      return INIT_FAILED;
+     }
+
+   // PM_T threshold = 80.
+   g_pmr.EnterPending(PM_T, "{\"slot\":\"T\"}", 2000);
+   ctx.bar_index_h4 = 2080;
+   g_pmr.TickAll(ctx, empty_port);
+   if(g_pmr.GetState(PM_T) != PENDING_STATE_IDLE ||
+      g_pmr.GetForceClearCount(PM_T) != 1)
+     {
+      Print("Spike_PMR: PM_T force-clear at age=80 failed");
+      return INIT_FAILED;
+     }
+
+   // PM_Q threshold = 100.
+   g_pmr.EnterPending(PM_Q, "{\"slot\":\"Q\"}", 3000);
+   ctx.bar_index_h4 = 3100;
+   g_pmr.TickAll(ctx, empty_port);
+   if(g_pmr.GetState(PM_Q) != PENDING_STATE_IDLE ||
+      g_pmr.GetForceClearCount(PM_Q) != 1)
+     {
+      Print("Spike_PMR: PM_Q force-clear at age=100 failed");
+      return INIT_FAILED;
+     }
+
+   // PM_C / PM_R / PM_P / PM_FORCE must NOT trigger force-clear path
+   // (they have legacy timeout only). Re-enter PM_C and advance well
+   // past M-threshold; force_clear_count must remain 0.
+   g_pmr.EnterPending(PM_C, "{\"slot\":\"C\"}", 4000);
+   ctx.bar_index_h4 = 4007;   // before C legacy timeout (8) so PENDING
+   g_pmr.TickAll(ctx, empty_port);
+   if(g_pmr.GetForceClearCount(PM_C) != 0)
+     {
+      Print("Spike_PMR: PM_C should not have force_clear_count > 0");
+      return INIT_FAILED;
+     }
+   g_pmr.TransitionIdle(PM_C, "test_cleanup");
+
+   Print("Spike_PendingMachineRegistry: sub-pass (a)+(b)+(c) OK");
    return INIT_SUCCEEDED;
   }
 

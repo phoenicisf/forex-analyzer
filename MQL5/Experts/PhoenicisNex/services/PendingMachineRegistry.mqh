@@ -498,23 +498,63 @@ bool CPendingMachineRegistry::ExceededLegacyTimeout(EPendingMachineId id,
   }
 
 //+------------------------------------------------------------------+
-//| ShouldForceClear — stub (sub-pass (c))                           |
+//| ShouldForceClear — ADR-008 force-clear policy (M/T/Q only)       |
+//| M=InpForceClearM_Bars (default 150), T=80, Q=100 H4 bars.        |
 //+------------------------------------------------------------------+
 bool CPendingMachineRegistry::ShouldForceClear(EPendingMachineId id,
                                                int current_bar) const
   {
-   if(id < 0 || id >= PM_COUNT) return false;
-   if(current_bar < 0)         return false;
-   return false;
+   if(id != PM_M && id != PM_T && id != PM_Q) return false;
+   if(m_machines[id].state != PENDING_STATE_PENDING) return false;
+
+   int age = current_bar - m_machines[id].pending_started_bar;
+   if(age < 0) return false;
+
+   switch(id)
+     {
+      case PM_M: return age >= m_threshold_m_bars;
+      case PM_T: return age >= m_threshold_t_bars;
+      case PM_Q: return age >= m_threshold_q_bars;
+      default:   return false;
+     }
   }
 
 //+------------------------------------------------------------------+
-//| EmitForceClear — stub (sub-pass (c))                             |
+//| EmitForceClear — journal event + counter increment + Logger.Warn |
+//| Schema: [ev=force_clear][machine=M/T/Q][reason=age_exceeded]     |
 //+------------------------------------------------------------------+
 void CPendingMachineRegistry::EmitForceClear(EPendingMachineId id, int age_bars)
   {
-   if(id < 0 || id >= PM_COUNT) return;
-   if(age_bars < 0)             return;
+   if(id != PM_M && id != PM_T && id != PM_Q) return;
+
+   // Counter increment — RAM cache + StatePersistence atomic op.
+   m_machines[id].force_clear_count++;
+   if(m_state != NULL)
+      m_state.IncrementPmForceClearCount(id);
+
+   string code = _IdToCode(id);
+
+   // Journal event (ADR-008 + trade-journal-schema event_type=force_clear).
+   if(m_journal != NULL)
+     {
+      JournalEvent ev;
+      ZeroMemory(ev);
+      ev.timestamp_seconds      = TimeCurrent();
+      ev.timestamp_microseconds = GetMicrosecondCount();
+      ev.event_type             = "force_clear";
+      ev.slot_id                = code;
+      ev.pending_age_bars       = age_bars;
+      ev.signal_context         = StringFormat("machine=%s reason=age_exceeded count=%d",
+                                               code, m_machines[id].force_clear_count);
+      m_journal.WriteEvent(ev);
+     }
+
+   // Tagged Logger trail (ADR-011) — Warn severity (operator-visible but
+   // non-halt; force-clear is a soft policy outcome, not an error).
+   if(m_logger != NULL)
+      m_logger.Warn("pending", "force_clear", 0,
+                    StringFormat("machine=%s age=%d count=%d",
+                                 code, age_bars, m_machines[id].force_clear_count));
   }
 
 #endif // PHOENICISNEX_SERVICES_PENDINGMACHINEREGISTRY_MQH
