@@ -231,8 +231,9 @@ public:
    //|   3. Good slot pair (proper override) → ValidateTopo true        |
    //|   4. Slot with empty SlotId → ValidateTopo false +               |
    //|      Logger Error `missing_slot_id_override`                     |
-   //|   5. Capacity overflow → Add returns false                        |
-   //|   6. PendingState() default = PENDING_STATE_IDLE                  |
+   //|   5a. NULL-guard surface → Add(NULL) returns false               |
+   //|   5b. Capacity overflow surface → 22nd Add returns false         |
+   //|   6.  PendingState() default = PENDING_STATE_IDLE                 |
    //+------------------------------------------------------------------+
    static bool       SelfTest(CLogger *logger,
                               CSlotBase *bad_slot,
@@ -307,14 +308,42 @@ bool CSlotRegistry::SelfTest(CLogger *logger,
       return false;
      }
 
-   // --- Case 5 — capacity overflow surface (Add NULL returns false)
-   CSlotRegistry r5;
-   r5.Init(logger);
-   r5.SetOwnsSlots(false);
-   if(r5.Add(NULL))
+   // --- Case 5a — NULL-guard surface (Add(NULL) returns false)
+   //     Round-06 06.4 split: this case ONLY exercises the NULL guard
+   //     branch at Add() (slot==NULL); the capacity branch is exercised
+   //     separately in Case 5b below.
+   CSlotRegistry r5a;
+   r5a.Init(logger);
+   r5a.SetOwnsSlots(false);
+   if(r5a.Add(NULL))
      {
       logger.Error("system", "SelfTest_SlotRegistry", 0,
-                   "Case 5 fail: Add(NULL) should return false");
+                   "Case 5a fail: Add(NULL) should return false");
+      return false;
+     }
+
+   // --- Case 5b — capacity overflow surface (22nd Add returns false)
+   //     Round-06 06.4: previously the comment claimed "capacity overflow"
+   //     but the body only tested NULL-guard, leaving the m_count >=
+   //     PHOENICISNEX_SLOT_CAPACITY branch at Add() uncovered. Fill the
+   //     registry to capacity using the same caller-owned good_slot_a stub,
+   //     then assert the next Add rejects.
+   CSlotRegistry r5b;
+   r5b.Init(logger);
+   r5b.SetOwnsSlots(false);
+   for(int k = 0; k < PHOENICISNEX_SLOT_CAPACITY; k++)
+     {
+      if(!r5b.Add(good_slot_a))
+        {
+         logger.Error("system", "SelfTest_SlotRegistry", 0,
+                      StringFormat("Case 5b fail: Add #%d unexpectedly rejected", k));
+         return false;
+        }
+     }
+   if(r5b.Add(good_slot_a))
+     {
+      logger.Error("system", "SelfTest_SlotRegistry", 0,
+                   "Case 5b fail: 22nd Add() should reject (capacity_exceeded)");
       return false;
      }
 
@@ -327,7 +356,7 @@ bool CSlotRegistry::SelfTest(CLogger *logger,
      }
 
    logger.Info("system", "SelfTest_SlotRegistry", 0,
-               "CSlotRegistry self test PASS (6 cases — sentinel + slot-id + capacity + pending default)");
+               "CSlotRegistry self test PASS (7 cases — sentinel + slot-id + null-guard + capacity + pending default)");
    return true;
   }
 

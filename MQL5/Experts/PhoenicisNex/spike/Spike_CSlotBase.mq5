@@ -9,8 +9,8 @@
 //|   - CSlotBase 6-method contract instantiable + sentinel returns   |
 //|   - CSlotRegistry::ValidateTopo() Layer-1 sentinel detection      |
 //|   - 4 stub slot shapes (good x2, bad-Magic, empty-SlotId)          |
-//|   - 6 SelfTest cases (empty, bad, good-pair, empty-id, overflow, |
-//|     PendingState default)                                          |
+//|   - 7 SelfTest cases (empty, bad, good-pair, empty-id, null-guard,|
+//|     capacity-overflow, PendingState default — Round-06 06.4 split)|
 //|   - Schema match: 6 method signatures vs slot-abstraction-        |
 //|     contract.yaml (verified by compile + SelfTest invocation)     |
 //+------------------------------------------------------------------+
