@@ -4,7 +4,15 @@
 
 ## Last completed action
 
-**Code Review Round 02 + Fix Round 02 closed 2026-05-03** — 10/10 findings accepted; 6 commits.
+**IMPL-041 closed 2026-05-03** — inherited-scope close for `CRiskManager::ClampLot()` after IMPL-040 + Code Review Round 02.
+
+- **Why no source diff:** `ClampLot()` was already shipped inside `MQL5/Experts/PhoenicisNex/services/RiskManager.mqh` under IMPL-040. Plan/overview/handoff all already described IMPL-041 as "body integrated into IMPL-040; trivial close".
+- **What changed in this pass:** reconciled `docs/state/impl-plan.md`, `docs/state/overview.md`, this handoff, and added `docs/state/_session-handoff/IMPL-041-evidence-20260503.md`.
+- **Inherited proof surface:** `ClampLot()` body + `clamp_applied` Warn path + `CRiskManager::SelfTest()` cases 5/6 (floor and cap checks) + IMPL-040 compile baseline. No new runtime surface exists until IMPL-018+ entry wiring.
+
+---
+
+**Prior action:** Code Review Round 02 + Fix Round 02 closed 2026-05-03 — 10/10 findings accepted; 6 commits.
 
 - **Review** `docs/code-review/review-round-02.md` — Adversarial Quality Engineer audit of P2 6/11 closures (5 source files / ~2,490 LOC delta). Findings: CRITICAL 2 / HIGH 3 / MEDIUM 3 / LOW 2.
 - **Fix-round** `docs/code-review/fix-round-02.md` — all 10 accepted; 0 reject; 0 partial.
@@ -42,15 +50,14 @@
 ## State of the Workspace
 
 - **Phase:** Implementation (P2 — Core Services)
-- **P2 Progress:** **6/11 tasks done** (IMPL-047 + IMPL-048 + IMPL-050 + IMPL-051 + IMPL-040 + IMPL-045)
+- **P2 Progress:** **7/11 tasks done** (IMPL-047 + IMPL-048 + IMPL-050 + IMPL-051 + IMPL-040 + IMPL-041 + IMPL-045)
 - **Active Task:** None
 - **Dependencies Blocked:** None
-- **Mid-Phase Audit Counter (P2):** 6 (threshold 5 crossed — Phase 4 audit recommended at next /impl-task invocation; advisory only since no runnable surface yet — entry .mq5 still pending IMPL-018+)
+- **Mid-Phase Audit Counter (P2):** 7 (threshold 5 crossed — Phase 4 audit recommended at next /impl-task invocation; advisory only since no runnable surface yet — entry .mq5 still pending IMPL-018+)
 - **Pending Code Reviews:** Round 02 closed. Next code review trigger after IMPL-049 (PendingMachineRegistry XL) lands — exercises StatePersistence pending_payload round-trip + CircuitBreaker→EAState integration end-to-end.
 - **Open follow-ups:** PortfolioState.OnTradeTransaction handler (populate `last_open_lot` per Finding 02.3 fix contract) — lands at IMPL-053+ wiring.
 
 ## Next Steps
 
-1. **IMPL-041** (XS — already integrated into IMPL-040; trivial close — orchestrator should treat as inherited and `[x]` in same fix-round) **OR**
-2. **IMPL-043** — `services/TradeJournal::WriteEvent()` (L [ea]) — JSON-Lines append + monthly rotation (ADR-006). Unblocks IMPL-044 (journal-schema S, deps 043), IMPL-049 (PendingMachineRegistry XL), IMPL-052 (EAState S, deps 043).
-3. After IMPL-049 — `/impl-review all` for next code review round (will exercise pending_payload round-trip + CircuitBreaker→EAState end-to-end).
+1. **IMPL-043** — `services/TradeJournal::WriteEvent()` (L [ea]) — JSON-Lines append + monthly rotation (ADR-006). Unblocks IMPL-044 (journal-schema S, deps 043), IMPL-049 (PendingMachineRegistry XL), IMPL-052 (EAState S, deps 043).
+2. After IMPL-049 — `/impl-review all` for next code review round (will exercise pending_payload round-trip + CircuitBreaker→EAState end-to-end).
