@@ -4,6 +4,21 @@
 
 ## Last completed action
 
+**Code Review Round 04 + Fix Round 04 CLOSED 2026-05-03** — `docs/code-review/review-round-04.md` adversarial sweep on Round-03 fix delta + IMPL-049 surface; 8 findings (CRITICAL 1 / HIGH 2 / MEDIUM 3 / LOW 2). `/impl-review-fix review-round-04.md` accepted **8/8** (0 reject, 0 partial).
+
+- **Report:** `docs/code-review/fix-round-04.md`
+- **Files touched:** `services/PendingMachineRegistry.mqh`, `services/TradeJournal.mqh`, `core/EAState.mqh`, `spike/Spike_PendingMachineRegistry.mq5`
+- **G1 compile (post-fix):** 4/4 spikes 0err/0warn (PMR 1495 ms / SP 1331 ms / EAState 879 ms / TJ 1288 ms)
+- **Bundles applied:**
+  - **G1 CRITICAL** (04.1) — spike harness 12 sites `TickAll(ctx, empty_port)` → `TickAll(ctx)` + orphan `empty_port` decl removed; corrigendum to fix-round-03 G1 evidence row noted
+  - **G2 HIGH** (04.2 + 04.3) — EAState SelfTest BuildHaltEvent uses fresh `ea_he`/`ea_hse` instances (Option A; IJournalSink Option B deferred); TradeJournal self-halt gate `==` → `>=` (ADR-006 RPO ≥10 literal alignment)
+  - **G3 MEDIUM** (04.4 + 04.5 + 04.6) — EmitForceClear state-first/RAM-mirror ordering + Case 6 sym assertion; `comment` maxLength: 32 clamp + Warn; `pending_age_bars` event-driven gate
+  - **G4 LOW** (04.7 + 04.8) — drop dead `m_portfolio` member + `port` Init param (12-arg → 11-arg) + remove `PortfolioState.mqh` include; Case 7 cold-restart extended PM_M-only → PM_M+PM_T+PM_Q at-boundary scenarios
+- **Anti-regression sweep:** TickAll `(ctx, port)` 0 hits; `m_consecutive_failures ==` 0 hits; `m_portfolio`/`empty_port` 0 hits ✅
+- **Recommendation:** Ready for next review round (Round 05) or P2 Phase Gate nomination
+
+---
+
 **Code Review Round 03 + Fix Round 03 CLOSED 2026-05-03** — `docs/code-review/review-round-03.md` audited P2 closure delta (IMPL-043 TradeJournal + IMPL-044 schema + IMPL-049 PMR XL + IMPL-052 EAState; ~1,476 LOC); 11 findings (CRITICAL 2 / HIGH 4 / MEDIUM 3 / LOW 2). `/impl-review-fix review-round-03.md` accepted **11/11** (0 reject, 0 partial).
 
 - **Report:** `docs/code-review/fix-round-03.md`
