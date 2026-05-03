@@ -4,6 +4,25 @@
 
 ## Last completed action
 
+**P3 Parallel batch #9 CLOSED 2026-05-03 — IMPL-026 (Slot_G2) + IMPL-029 (Slot_M) + IMPL-030 (Slot_L)** — 3× Sonnet 4.6 subagents fan-out via `/impl-task parallel`; orchestrator-side independent G1 verification + 3-spike sibling regression all clean.
+
+- **Files (NEW × 12):**
+  - `MQL5/Experts/PhoenicisNex/slots/{Slot_G2,Slot_M,Slot_L}.mqh`
+  - `MQL5/Experts/PhoenicisNex/inputs/{Inputs_Slot_G2,Inputs_Slot_M,Inputs_Slot_L}.mqh`
+  - `MQL5/Experts/PhoenicisNex/spike/{Spike_Slot_G2,Spike_Slot_M,Spike_Slot_L}.mq5`
+  - `simulation/headless-tests/{slot_G2_smoke,slot_M_smoke,slot_L_smoke}.ini`
+- **Files modified:** `docs/state/impl-plan.md` (TL;DR + 3 task closures + Mid-Phase Audit Log row), `docs/state/overview.md` (Impl Tasks row), `docs/state/deferred-ac-registry.md` (3 new Active P3 rows expiry 2026-05-17), `docs/state/_parallel-context/impl-task-parallel-20260503-p3batch9.md` (shared context).
+- **G1 (orchestrator-side recompile, 2026-05-03 18:40):** Spike_Slot_G2 0err/0warn/530ms; Spike_Slot_M 0/0/475ms; Spike_Slot_L 0/0/467ms.
+- **Sibling regression:** Spike_Slot_G 0/0/490ms · Spike_Slot_K 0/0/445ms · Spike_Slot_H 0/0/573ms (unchanged from batch #8 baselines).
+- **MVP scope:** G2 = 3 of N CodeWiki §3.G2 conditions (lighter wave-helper; CommentParser "G2," disambig vs "G," via GetTicketsForSlot); M = 5 of N (MACD M10 + ADX H4 + Stoch H4 + PMR EnterPending/GetState/TransitionExecuted wiring per ADR-008); L = 5 of N (no-active-L "L," disambig + ADX volatility + D1 Ichimoku trend + WPR wave + WPR threshold). Advanced filters deferred to P4 IMPL-062.
+- **Slot_M PMR pattern:** Evaluate calls `m_pending.GetState(PM_M)` + `EnterPending(PM_M, payload, bar)` + `TransitionExecuted(PM_M)`; force-clear handled by PMR.TickAll (slot does not poll). InpForceClearM_Bars NOT redeclared — Inputs_Pending.mqh owns it per ADR-008.
+- **Slot_G2 stub:** CrossSlotCoordinator BR-8.4 trigger guarded `if(m_xslot != NULL && false /*IMPL-053*/)` — same pattern as IMPL-025.
+- **All 16 S-AC `[x]`** (G2 = 4 / M = 5 / L = 4 — see impl-plan.md per-task closure rows). 3 E-AC smoke deferred to IMPL-053+ Orchestrator wiring → registered to `deferred-ac-registry.md` Active table (uniform expiry 2026-05-17).
+- **Newly unblocked:** IMPL-027 (Slot_GO depends on G ✅) · IMPL-028 (Slot_I depends on G ✅) · IMPL-031 (Slot_LX depends on L ✅).
+- **Next suggested task:** IMPL-019 (M [ea] Slot_C — CD chain root) **OR** parallel batch #10 candidates {IMPL-027 + IMPL-028 + IMPL-031} (newly unblocked, file-isolated).
+
+---
+
 **IMPL-018 CLOSED 2026-05-03** — `domain/CSlotBase.mqh` + `core/SlotRegistry.mqh` + `spike/Spike_CSlotBase.mq5`. First P3 task per Phase Gate Override (Path A); Evolution E2 compile prereq satisfied — IMPL-019..039 (21 slot classes) unblocked.
 
 - **Files (NEW):** `MQL5/Experts/PhoenicisNex/domain/CSlotBase.mqh`, `MQL5/Experts/PhoenicisNex/core/SlotRegistry.mqh`, `MQL5/Experts/PhoenicisNex/spike/Spike_CSlotBase.mq5`
