@@ -4,6 +4,25 @@
 
 ## Last completed action
 
+**IMPL-013 CLOSED 2026-05-04 — `inputs/Inputs_Slot_<X>.mqh` × 21 (formal rolling-close mark)** — single-task `/impl-task IMPL-013` orchestrator (Opus 4.7) formal AC marking. **No new code shipped** — file set rolled in incrementally with IMPL-019..039 commits per impl-plan IMPL-013 description engineer convention ("May complete as 21 sub-tasks bundled with IMPL-019..039 OR as one batch landing"). Trigger: IMPL-034 closed 2026-05-04 → `Inputs_Slot_P.mqh` shipped → 21/21 file set complete. **P3 Phase Status snapshot 22/23 → 23/23 ✅** — P3 Phase Gate now nominate-able pending IMPL-053+ Orchestrator runnable surface.
+
+- **Files modified (no new code):** `docs/state/impl-plan.md` (3 S-AC `[x]` + 1 E-AC `[x]` + 1 E-AC deferred + Closed: line + Phase Status row 22/23 → 23/23 ✅ + TL;DR + Mid-Phase Audit Log row + Action ถัดไป + Last updated), `docs/state/overview.md` (Impl Tasks row prefix), `docs/state/deferred-ac-registry.md` (1 new IMPL-013 Active P3 row expiry 2026-05-18 — live MT5 input dialog probe defers to IMPL-060 entry .mq5).
+- **File created:** `docs/state/_session-handoff/IMPL-013-evidence-20260504.md` — evidence file with §1 file count + §2 group annotation grep + §3 input declaration grep (178 total) + §4 defaults rolling verification via 21 spike harnesses + §5 AC closure summary + §6 notes + §7 next.
+- **3/3 S-AC `[x]` via filesystem grep:**
+  1. **21 input files exist + group annotations** — `ls Inputs_Slot_*.mqh` returns 21 files (B/BI/BR/C/D/F/G/G2/GO/H/I/J/K/L/LX/M/P/Q/R/S/T) + `grep -E '^input group' Inputs_Slot_*.mqh` returns 21 lines `input group "Slot <X>"` per NFR-6.3.
+  2. **Defaults match CodeWiki §3 baseline** — verified rolling via 21/21 Spike_Slot_X G1 0err/0warn (G4 fix tunables InpBIPyramidGatePips=30 / InpBISlFallbackPips=80 / InpEnableSlotJ / InpLegacyPBars=70 / InpPPyramidGatePips=30 / InpPAdxMin / InpPForcePxGate / InpPDiffSlPxThreshold / InpP{TpPxPips,TpPhPips,TpEPips} match ADR-009 + BR-7.2 + 04 § 4.4).
+  3. **Total ≥ 80 NFR-4.3** — `grep -c "^input " Inputs_Slot_*.mqh` total = **178 per-slot input declarations** (B=9, BI=7, BR=6, C=10, D=3, F=6, G=16, G2=8, GO=6, H=9, I=8, J=5, K=9, L=9, LX=7, M=10, P=12, Q=10, R=9, S=9, T=10) + 22 IMPL-012 General + ≥ 15 IMPL-014 cross-slot ≈ **215 cumulative ≫ 80 target**.
+- **1 E-AC `[x]` file-blob-check:** 178 declarations across 21 files verified via grep.
+- **1 E-AC deferred:** MT5 attach EA → 21 distinct "Slot X" group sections in input dialog `[probe]` — needs entry `PhoenicisNex.mq5` (IMPL-060) + chart attach; spike harnesses cannot exercise input-dialog rendering (Strategy Tester uses default values; live dialog only on chart attach). Registered to `deferred-ac-registry.md § Active` row IMPL-013 expires 2026-05-18.
+- **G1-G4 N/A on this rolling-close.** Per-slot G1 already verified at each IMPL-019..039 closure (21/21 0err/0warn). Aggregate compile unit only meaningful via Composition Root at IMPL-053+/IMPL-060.
+- **Mid-Phase Audit P3 counter** = 23 (advisory pending runnable surface). **Plan Staleness Sentinel = 3 closures since R06** (IMPL-039 + IMPL-034 + IMPL-013 — well below 10-closure threshold).
+- **Commit:** `<pending this commit>` `[state] IMPL-013 rolling-close - 21/21 per-slot input files marked`
+- **Next suggested task:** **`/impl-review all`** (R07 trigger — adversarial sweep on full P3 slot surface incl Slot_P sub-mode lifecycle + Slot_BI G4 surface vs ADR-009 + IMPL-022/039 attestation completeness) **OR** **`/impl-task IMPL-053`** (start P4 CrossSlotCoordinator chain — IMPL-053..058 sequential due to shared-file scope on `services/CrossSlotCoordinator.mqh`; per Open Risk R-6 mitigation, prioritize IMPL-053 RunSafePort + IMPL-059 Orchestrator + IMPL-060 entry .mq5 to unblock 35 deferred-AC rows expiring 2026-05-17/18).
+
+---
+
+## Prior action — IMPL-034 (kept for continuity)
+
 **IMPL-034 CLOSED 2026-05-04 — Slot_P ⚠️ A7 risk: P-Pending sub-modes PSUB_NONE/N/PX/PH/E per `04 § 4.4` (lock-once semantic)** — single-task `/impl-task IMPL-034` orchestrator (Opus 4.7) Phase 2C 7-step decomposition. L-size MVP: P-Pending lifecycle with sub-mode resolution branch + pyramid extension path bypassing PMR. **All 21 P3 slots + 21/21 per-slot input files now complete** at slot layer.
 
 - **Files (NEW × 4):**
