@@ -4,6 +4,29 @@
 
 ## Last completed action
 
+**Code Review Round 05 + Fix Round 05 APPLIED 2026-05-03** — `/impl-review-fix review-round-05.md` accepted **10/10** findings (CRITICAL 2 / HIGH 3 / MEDIUM 3 / LOW 2; 0 reject, 0 partial). 7 source files modified (Slot_H/B/K/L/BR/J + core/SlotRegistry) + 1 state file (`deferred-ac-registry.md`).
+
+- **Major fixes:**
+  - **05.1 CRITICAL** Slot_H stripped `CTrade m_trade_exec` member + `<Trade\Trade.mqh>` include + naked `Buy/Sell` calls; replaced with RiskManager-routed log-intent stubs + computed sl_price (mirrors 17 sibling slots; commit `01f3396`)
+  - **05.2 CRITICAL** Slot_B/K/L `ManageExits` switched from MT5 ORDER APIs (`OrdersTotal()` + `OrderGet*`) to canonical POSITION APIs (`port.GetTicketsForSlot` + `PositionSelectByTicket`) — Order* APIs walked the wrong list and would have rendered exit gates non-functional once IMPL-053 wires close (commit `b102a0c`)
+  - **05.3 HIGH** Slot_BR `_HasActiveBROrder` → `_CountBROrders` gating `>= InpBRMaxOrders` (commit `8a44ca2`)
+  - **05.4 HIGH** Slot_H `_CountHOrders` + `ManageExits` routed through PortfolioState.GetTicketsForSlot (was raw `PositionsTotal()` — third dialect collapsed; bundled in `01f3396`)
+  - **05.5 MEDIUM** Slot_J `ManageExits` gated on `InpEnableSlotJ` (canonical sibling guard); **05.6 MEDIUM** dead `j_state` read removed (G4 attestation surface tightened; 2 explicit BR-7.2 markers preserved at GetTicketsForSlot + log sites; commit `7e62dbe`)
+  - **05.7 HIGH** IMPL-023/024/025 added to `deferred-ac-registry.md` Active table (closure-discipline Dimension #11 violation resolved; commit `dca5e98`)
+  - **05.8 MEDIUM** Slot_B BR-trigger hook relocated post-profit-gate; commented body switched to Position* APIs (bundled in `b102a0c`)
+  - **05.9 LOW** Slot_H false-doc comment removed (resolved with 05.1 strip)
+  - **05.10 LOW** `CSlotRegistry::Init` routed through `ReleaseAll` to respect `m_owns_slots` (prevents heap leak on OnInit re-entry per CleanupPartialInit; commit `3266fd7`)
+- **G1 ✅** 7/7 affected spikes 0err/0warn (Slot_H 640 ms / Slot_B 468 ms / Slot_K 458 ms / Slot_L 429 ms / Slot_BR 418 ms / Slot_J 534 ms / CSlotBase 562 ms — fresh post-fix run via PowerShell Start-Process MetaEditor64).
+- **Sibling regression:** 13/13 unmodified slot spikes still 0err/0warn (Slot_C/D/F/G/G2/GO/I/LX/M/Q/R/S/T) — no cascade.
+- **Anti-regression sweep (post-fix grep):** `m_trade_exec` 0 hits; `OrdersTotal()` in slots/ 0 hits; `_HasActiveBROrder` 0 hits.
+- **Deferred-AC table:** Active rows 23 (was 20) — IMPL-023/024/025 added uniformly with expiry 2026-05-17.
+- **G2-G4** deferred per header-only `.mqh` precedent (gates activate at IMPL-053+ Composition Root; live cascade demo for B/BR/BI etc. awaits Orchestrator).
+- **Round 05 fix report:** `docs/code-review/fix-round-05.md`.
+- **Newly unblocked:** none (all fixes are in-place refactors of already-closed slot tasks; no new task readiness).
+- **Recommendation:** ready for next code review round (Round 06 — adversarial sweep on Round-05 fix delta) **OR** continue with IMPL-039 (BI SL G4 fix per ADR-009 — second G4 fix; HIGH RISK Bucket B drift) **OR** Slot_P (IMPL-034 — A7 risk monitoring slot, only remaining P3 slot).
+
+---
+
 **IMPL-022 CLOSED 2026-05-03 — Slot_J ⚠️ G4 critical fix BR-7.2 (Bucket B drift NFR-1.8)** — single-task `/impl-task IMPL-022` orchestrator (Opus 4.7) path; M-size MVP CD-follower scaffold + G4 critical fix surface in ManageExits.
 
 - **Files (NEW × 4):**
