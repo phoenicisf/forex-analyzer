@@ -9,12 +9,15 @@
 //|          Claim 02.1 (J/BI/I read parent slot via GetByMagic)     |
 //|                                                                  |
 //| Implementation note — SlotState field for parent-lot read:       |
-//|   SlotState has `total_lots` (running aggregate) and no explicit |
-//|   `last_open_lot` field in domain/SlotState.mqh as of IMPL-040. |
-//|   Parent lot is read via `total_lots` (best available field).    |
-//|   This choice is documented here; IMPL-039/053+ may introduce a |
-//|   dedicated `last_open_lot` field when broker position query     |
-//|   (Refresh) is wired — update ComputeLotForJ/BI/I at that point.|
+//|   J/BI/I read parent slot's `last_open_lot` (BR-4.1 spec literal: |
+//|   J = LastBuyLots2*0.23, I = LastGLots*..., BI = 0.236*B-last).  |
+//|   Field added by Finding 02.3 fix; populated by PortfolioState   |
+//|   OnTradeTransaction handler at IMPL-053+ wiring. Until then     |
+//|   `last_open_lot = 0.0` (RegisterAll default) → these helpers    |
+//|   emit Warn `parent_last_open_lot_unwired` + return 0.0          |
+//|   (fail-loud per round-01 Finding 01.7 philosophy — surfaces the |
+//|   unwired path instead of silently using wrong-but-plausible     |
+//|   total_lots aggregate).                                         |
 //+------------------------------------------------------------------+
 #ifndef PHOENICISNEX_SERVICES_RISKMANAGER_MQH
 #define PHOENICISNEX_SERVICES_RISKMANAGER_MQH
@@ -256,14 +259,13 @@ double CRiskManager::ClampLot(double raw_lot, string slot_id)
   }
 
 //+------------------------------------------------------------------+
-//| _ComputeLotForJ — J slot reads CD parent's total_lots (Claim 02.1)|
+//| _ComputeLotForJ — J slot reads CD parent's last_open_lot         |
 //|                                                                  |
-//| Formula: CD_parent_lot × 0.23 × extra  (CodeWiki §4.1 row J)    |
+//| Formula: CD_parent_last_open_lot × 0.23 × extra                  |
+//|   (BR-4.1 row J: "based on LastBuyLots2 × 0.23"; CodeWiki §4.1) |
 //| Parent magic: MAGIC_CD (200) per EnumTypes.mqh                   |
-//| If portfolio NULL or parent lookup returns NULL → Warn + 0.0     |
-//|                                                                  |
-//| Field choice: `total_lots` used (SlotState has no `last_open_lot`|
-//| field as of IMPL-040 — see file header Implementation note).     |
+//| Returns 0.0 + Warn on: NULL portfolio / NULL parent / unwired    |
+//| last_open_lot (= 0.0 → fail-loud per Finding 02.3 / 01.7).       |
 //+------------------------------------------------------------------+
 double CRiskManager::_ComputeLotForJ(double extra)
   {
@@ -283,18 +285,29 @@ double CRiskManager::_ComputeLotForJ(double extra)
       return 0.0;
      }
 
-   //--- total_lots is the best available field (see Implementation note in file header)
-   double parent_lot = cd.total_lots;
-   return parent_lot * 0.23 * extra;
+   //--- BR-4.1 spec literal: read LAST-opened parent lot (not total_lots aggregate).
+   //    last_open_lot populated by PortfolioState OnTradeTransaction handler at IMPL-053+;
+   //    until then = 0.0 → fail-loud rather than silent wrong-result (Finding 02.3 / 01.7).
+   if(cd.last_open_lot <= 0.0)
+     {
+      if(m_logger != NULL)
+         m_logger.Warn("RiskManager", "parent_last_open_lot_unwired", MAGIC_CD,
+                       "J: CD.last_open_lot = 0 — PortfolioState OnTradeTransaction wiring "
+                       "missing (IMPL-053+); returning 0.0 lot");
+      return 0.0;
+     }
+   return cd.last_open_lot * 0.23 * extra;
   }
 
 //+------------------------------------------------------------------+
-//| _ComputeLotForBI — BI slot reads B parent's total_lots (ADR-009) |
+//| _ComputeLotForBI — BI slot reads B parent's last_open_lot        |
 //|                                                                  |
-//| Formula: B_parent_lot × 0.236  (Fibonacci 23.6% per ADR-009)    |
+//| Formula: B_parent_last_open_lot × 0.236  (Fibonacci 23.6%, ADR-009)|
 //| Parent magic: MAGIC_B (214) per EnumTypes.mqh                    |
-//| B and BI share magic 214; reading total_lots gives combined pool. |
-//| If portfolio NULL or parent lookup returns NULL → Warn + 0.0     |
+//| B and BI share magic 214; pool's last_open_lot is the most-recent|
+//| open across the (B, BI) pair — appropriate for child sizing.     |
+//| Returns 0.0 + Warn on: NULL portfolio / NULL parent / unwired    |
+//| last_open_lot (Finding 02.3 / 01.7 fail-loud).                   |
 //+------------------------------------------------------------------+
 double CRiskManager::_ComputeLotForBI()
   {
@@ -314,17 +327,27 @@ double CRiskManager::_ComputeLotForBI()
       return 0.0;
      }
 
-   double parent_lot = b.total_lots;
-   return parent_lot * 0.236;   // ADR-009: Fibonacci 23.6%
+   if(b.last_open_lot <= 0.0)
+     {
+      if(m_logger != NULL)
+         m_logger.Warn("RiskManager", "parent_last_open_lot_unwired", MAGIC_B,
+                       "BI: B.last_open_lot = 0 — PortfolioState OnTradeTransaction wiring "
+                       "missing (IMPL-053+); returning 0.0 lot");
+      return 0.0;
+     }
+   return b.last_open_lot * 0.236;   // ADR-009: Fibonacci 23.6% of B-last
   }
 
 //+------------------------------------------------------------------+
-//| _ComputeLotForI — I slot reads G parent's total_lots (Claim 02.1)|
+//| _ComputeLotForI — I slot reads G parent's last_open_lot          |
 //|                                                                  |
-//| Formula: G_parent_lot × Fibonacci_factor                         |
-//| Fibonacci scale for I per CodeWiki §4.1: factor = 0.382         |
+//| Formula: G_parent_last_open_lot × 0.382                          |
+//|   (BR-4.1 row I: "LastGLots × (1 + 0.618 × rangePct)";           |
+//|    Phase-1 simplification = 0.382 fixed — rangePct factor lands  |
+//|    at IMPL-053+ when range telemetry is wired)                   |
 //| Parent magic: MAGIC_G (208) per EnumTypes.mqh                    |
-//| If portfolio NULL or parent lookup returns NULL → Warn + 0.0     |
+//| Returns 0.0 + Warn on: NULL portfolio / NULL parent / unwired    |
+//| last_open_lot (Finding 02.3 fail-loud).                          |
 //+------------------------------------------------------------------+
 double CRiskManager::_ComputeLotForI()
   {
@@ -344,8 +367,15 @@ double CRiskManager::_ComputeLotForI()
       return 0.0;
      }
 
-   double parent_lot = g.total_lots;
-   return parent_lot * 0.382;   // Fibonacci 38.2% of G parent (CodeWiki §4.1 row I)
+   if(g.last_open_lot <= 0.0)
+     {
+      if(m_logger != NULL)
+         m_logger.Warn("RiskManager", "parent_last_open_lot_unwired", MAGIC_G,
+                       "I: G.last_open_lot = 0 — PortfolioState OnTradeTransaction wiring "
+                       "missing (IMPL-053+); returning 0.0 lot");
+      return 0.0;
+     }
+   return g.last_open_lot * 0.382;   // Fibonacci 38.2% of G-last (BR-4.1 row I phase-1)
   }
 
 //+------------------------------------------------------------------+
@@ -563,7 +593,70 @@ bool CRiskManager::SelfTest()
         }
    }
 
-   Print("[Phoenicis][RiskManager][ev=risk_manager_self_test][result=pass] 8 cases passed");
+   //--- Case 9: Stub portfolio with last_open_lot — Finding 02.3 spec verification
+   //    Stub CD with total_lots=0.30 (3 positions × 0.10 aggregate) + last_open_lot=0.10
+   //    Expected J = last_open_lot × 0.23 × extra = 0.10 × 0.23 × 1.0 = 0.023
+   //    (NOT total_lots-based 0.30 × 0.23 = 0.069 — that was the pre-fix bug)
+   case_num = 9;
+   {
+      CPortfolioState stub_port;
+      stub_port.RegisterAll();   // pre-populates 17 SlotState* with last_open_lot=0.0
+      SlotState *cd = stub_port.GetByMagic(MAGIC_CD);
+      if(cd == NULL)
+        {
+         Print(StringFormat("[Phoenicis][RiskManager][ev=risk_manager_self_test][result=fail][case=%d] "
+                            "stub CD lookup returned NULL", case_num));
+         return false;
+        }
+      cd.total_lots    = 0.30;   // simulate 3 open positions in aggregate
+      cd.last_open_lot = 0.10;   // last-opened position size
+
+      //--- Wire stub portfolio to RM
+      rm.m_portfolio = &stub_port;
+
+      double got = rm._ComputeLotForJ(1.0);
+      double expected = 0.10 * 0.23 * 1.0;   // = 0.023 — last_open_lot, NOT total_lots
+      if(MathAbs(got - expected) >= TOLERANCE)
+        {
+         Print(StringFormat("[Phoenicis][RiskManager][ev=risk_manager_self_test][result=fail][case=%d] "
+                            "J formula: expected %.6f (last-open) got %.6f", case_num, expected, got));
+         rm.m_portfolio = NULL;
+         return false;
+        }
+
+      //--- Also verify BI: B.last_open_lot=0.10 → BI = 0.10 × 0.236 = 0.0236
+      SlotState *b = stub_port.GetByMagic(MAGIC_B);
+      if(b != NULL)
+        {
+         b.total_lots    = 0.50;   // simulate 5-position aggregate
+         b.last_open_lot = 0.10;
+         double got_bi = rm._ComputeLotForBI();
+         double exp_bi = 0.10 * 0.236;
+         if(MathAbs(got_bi - exp_bi) >= TOLERANCE)
+           {
+            Print(StringFormat("[Phoenicis][RiskManager][ev=risk_manager_self_test][result=fail][case=%d] "
+                               "BI formula: expected %.6f got %.6f", case_num, exp_bi, got_bi));
+            rm.m_portfolio = NULL;
+            return false;
+           }
+        }
+
+      //--- Unwired path: reset CD.last_open_lot to 0 → J must return 0.0 (fail-loud)
+      cd.last_open_lot = 0.0;
+      double got_unwired = rm._ComputeLotForJ(1.0);
+      if(MathAbs(got_unwired) >= TOLERANCE)
+        {
+         Print(StringFormat("[Phoenicis][RiskManager][ev=risk_manager_self_test][result=fail][case=%d] "
+                            "J unwired-path: expected 0.0 got %.6f", case_num, got_unwired));
+         rm.m_portfolio = NULL;
+         return false;
+        }
+
+      //--- Cleanup: detach stub before stub_port destructor frees its SlotState*
+      rm.m_portfolio = NULL;
+   }
+
+   Print("[Phoenicis][RiskManager][ev=risk_manager_self_test][result=pass] 9 cases passed");
    return true;
   }
 

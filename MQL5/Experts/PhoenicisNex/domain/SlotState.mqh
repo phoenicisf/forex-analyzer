@@ -32,7 +32,12 @@ public:
    string        slot_ids[];              // ["C","D"] shared; single entry otherwise
    int           buy_count;
    int           sell_count;
-   double        total_lots;
+   double        total_lots;              // running aggregate of all open positions in slot pool
+   double        last_open_lot;           // lot size of MOST-RECENTLY-OPENED position (BR-4.1 J/I/BI parent-lot
+                                          // formula: J = LastBuyLots2*0.23, I = LastGLots*..., BI = 0.236*B-last).
+                                          // Populated by PortfolioState OnTradeTransaction handler at IMPL-053+.
+                                          // Default 0.0 — RiskManager._ComputeLotForJ/BI/I emit Warn + return 0
+                                          // when this is 0 (Finding 02.3 fail-loud — surfaces unwired path).
    double        total_profit;            // floating P/L
    datetime      last_open_date;
    ulong         ticket_ids[];            // active position tickets

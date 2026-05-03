@@ -161,11 +161,12 @@ void CPortfolioState::RegisterAll()
       SlotState *s = new SlotState;
 
       // Set magic (denormalized for O(1) reverse lookup)
-      s.magic       = magic;
-      s.buy_count   = 0;
-      s.sell_count  = 0;
-      s.total_lots  = 0.0;
-      s.total_profit = 0.0;
+      s.magic         = magic;
+      s.buy_count     = 0;
+      s.sell_count    = 0;
+      s.total_lots    = 0.0;
+      s.last_open_lot = 0.0;   // Finding 02.3 — populated by OnTradeTransaction at IMPL-053+
+      s.total_profit  = 0.0;
       s.last_open_date = 0;
       s.pending_state  = PENDING_STATE_IDLE;
       s.pending_payload = "";
@@ -289,10 +290,11 @@ void CPortfolioState::Refresh()
       SlotState *s = NULL;
       if(m_map.TryGetValue(m_magic_list[i], s) && s != NULL)
         {
-         s.buy_count   = 0;
-         s.sell_count  = 0;
-         s.total_lots  = 0.0;
-         s.total_profit = 0.0;
+         s.buy_count     = 0;
+         s.sell_count    = 0;
+         s.total_lots    = 0.0;
+         s.last_open_lot = 0.0;   // Finding 02.3 — reset; re-populated by step 2 broker loop
+         s.total_profit  = 0.0;
          ArrayResize(s.ticket_ids, 0);
          ArrayResize(s.ticket_max_profit_pip, 0);
         }
@@ -311,8 +313,12 @@ void CPortfolioState::Refresh()
    //      ENUM_POSITION_TYPE ptype = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
    //      if(ptype == POSITION_TYPE_BUY) s.buy_count++;
    //      else s.sell_count++;
-   //      s.total_lots   += PositionGetDouble(POSITION_VOLUME);
+   //      double vol = PositionGetDouble(POSITION_VOLUME);
+   //      datetime open_t = (datetime)PositionGetInteger(POSITION_TIME);
+   //      s.total_lots   += vol;
    //      s.total_profit += PositionGetDouble(POSITION_PROFIT);
+   //      // Finding 02.3 — last_open_lot = lot of latest-opened position in pool
+   //      if(open_t >= s.last_open_date) { s.last_open_date = open_t; s.last_open_lot = vol; }
    //      int n = ArraySize(s.ticket_ids);
    //      ArrayResize(s.ticket_ids, n + 1);
    //      s.ticket_ids[n] = ticket;
