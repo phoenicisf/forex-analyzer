@@ -707,8 +707,19 @@ EPendingState CStatePersistence::_StrToPendingState(string s) const
   }
 
 //+------------------------------------------------------------------+
-//| _ExtractStr — find "field":"value" → return value string         |
-//| Returns "" if field missing or null                              |
+//| _ExtractStr — find "field":"value" → return unescaped value      |
+//| Returns "" if field missing or null.                             |
+//|                                                                  |
+//| Finding 02.5 — JSON escape contract:                             |
+//|  Save side (helpers/JsonWriter.mqh::EscapeString) writes RFC 8259 |
+//|  §7-compliant escapes: \" \\ \n \r \t \uXXXX. The naive          |
+//|  StringFind(content, "\"", start) terminator misinterprets escaped|
+//|  '\"' as the closing quote → halt_reason / pending_payload string|
+//|  values truncated mid-content + downstream parser reads garbage. |
+//|                                                                  |
+//| Fix: backslash-aware terminator scan (count preceding backslashes |
+//| — even = real terminator, odd = escaped). Then unescape the raw  |
+//| substring before returning.                                       |
 //+------------------------------------------------------------------+
 string CStatePersistence::_ExtractStr(const string content,
                                       const string field) const
@@ -717,9 +728,63 @@ string CStatePersistence::_ExtractStr(const string content,
    int pos = StringFind(content, search);
    if(pos < 0) return "";
    int start = pos + StringLen(search);
-   int end   = StringFind(content, "\"", start);
-   if(end <= start) return "";
-   return StringSubstr(content, start, end - start);
+   int n = StringLen(content);
+
+   //--- Find closing '"' that is NOT preceded by an odd number of backslashes
+   int end = -1;
+   for(int i = start; i < n; i++)
+     {
+      if(StringGetCharacter(content, i) != '"') continue;
+      int bs = 0;
+      int k  = i - 1;
+      while(k >= start && StringGetCharacter(content, k) == '\\') { bs++; k--; }
+      if((bs & 1) == 0) { end = i; break; }   // even backslashes → real terminator
+     }
+   if(end < 0 || end <= start) return "";
+
+   string raw = StringSubstr(content, start, end - start);
+
+   //--- Unescape: \" → " · \\ → \ · \n → 0x0A · \r → 0x0D · \t → 0x09 · \uXXXX → char
+   string out  = "";
+   int    rlen = StringLen(raw);
+   for(int i = 0; i < rlen; i++)
+     {
+      ushort c = StringGetCharacter(raw, i);
+      if(c == '\\' && i + 1 < rlen)
+        {
+         ushort nx = StringGetCharacter(raw, i + 1);
+         if(nx == '"')  { out += "\"";          i++; continue; }
+         if(nx == '\\') { out += "\\";          i++; continue; }
+         if(nx == 'n')  { out += ShortToString(0x0A); i++; continue; }
+         if(nx == 'r')  { out += ShortToString(0x0D); i++; continue; }
+         if(nx == 't')  { out += ShortToString(0x09); i++; continue; }
+         if(nx == 'u' && i + 5 < rlen)
+           {
+            //--- Parse 4-hex-digit unicode escape
+            int code = 0;
+            bool ok  = true;
+            for(int h = 0; h < 4; h++)
+              {
+               ushort hc = StringGetCharacter(raw, i + 2 + h);
+               int dig;
+               if(hc >= '0' && hc <= '9')      dig = hc - '0';
+               else if(hc >= 'a' && hc <= 'f') dig = hc - 'a' + 10;
+               else if(hc >= 'A' && hc <= 'F') dig = hc - 'A' + 10;
+               else { ok = false; break; }
+               code = (code << 4) | dig;
+              }
+            if(ok)
+              {
+               out += ShortToString((ushort)code);
+               i += 5;
+               continue;
+              }
+           }
+         //--- Unknown escape: emit literal '\' then re-loop on next char
+        }
+      out += ShortToString(c);
+     }
+   return out;
   }
 
 //+------------------------------------------------------------------+
