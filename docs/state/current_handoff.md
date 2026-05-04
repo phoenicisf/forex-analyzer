@@ -32,6 +32,7 @@
 - **Newly unblocked:** IMPL-054 (M RunOrderGroup2 BR-8.2 Ichimoku double-bounce — last remaining sibling cross-slot method on `CrossSlotCoordinator.mqh`); IMPL-057/058 still gated on prereqs
 - **P4 Phase Status snapshot 2/11 → 3/11.** Mid-Phase Audit P4 counter = 3; threshold 5 not crossed. **Plan Staleness Sentinel = 6 closures since R06** (still below 10-closure threshold)
 - **Next suggested task:** **`/impl-task IMPL-054`** (M RunOrderGroup2 BR-8.2 Ichimoku double-bounce — last sibling on CrossSlotCoordinator.mqh; completes the cross-slot bulk-cleanup quartet at coordinator level before IMPL-058 wire-up). After IMPL-054 → IMPL-058 (S HALTED enable matrix wire-up; depends on IMPL-053..057 chain — gating on IMPL-057 which depends on IMPL-058 itself; per Open Risk R-6 mitigation, may need to defer IMPL-057 to post-IMPL-059 if circular dep blocks). Code Review trigger R09: after IMPL-054/058 chain complete (5 P4 tasks total) for adversarial sweep on cross-slot surface
+- **Commit:** `c4f58d3` `[feat:ea] IMPL-056 CrossSlotCoordinator::ExtraCheckFunction2 - BR-8.5 CD demote`
 - See `docs/state/_session-handoff/IMPL-056-evidence-20260504.md` for full evidence
 
 ---
