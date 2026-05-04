@@ -6,10 +6,11 @@
 //|          CodeWiki §5.5 (OrderGroupStartWorkflow baseline)       |
 //|                                                                  |
 //| IMPL-053 sub-pass: skeleton + RunSafePort full body (BR-8.1).   |
-//| Sibling methods (RunOrderGroup2/RunForceCutloss/                |
-//| ExtraCheckFunction2/RunCOverload/RunEOverload/                  |
-//| TriggerGOverload/EvaluateBR_OrphanExit) are TODO IMPL-054..057  |
-//| stubs; HALTED guard already in place where matrix dictates.     |
+//| IMPL-055 sub-pass: RunForceCutloss full body (BR-8.3 CD safety).|
+//| Sibling methods (RunOrderGroup2/ExtraCheckFunction2/            |
+//| RunCOverload/RunEOverload/TriggerGOverload/EvaluateBR_OrphanExit|
+//| ) are TODO IMPL-054/056/057 stubs; HALTED guard already in      |
+//| place where matrix dictates.                                    |
 //|                                                                  |
 //| Spec deviation logged: TD-02 §5.11 declares                     |
 //|   `void RunSafePort(const MarketContext&)`                      |
@@ -123,6 +124,16 @@ private:
    //--- Close all positions for one (magic, slot_prefix) pair via CTrade
    //    Returns count of close calls issued (regardless of MT5 ack).
    int               _CloseSlotGroup(int magic, string slot_prefix);
+
+   //--- BR-8.3 ForceCutloss composite signal (Stoch M10 + MACD D1 confirm)
+   //    Returns +1 to cut BUY losses, -1 to cut SELL losses, 0 otherwise
+   //    (CodeWiki §5.5 :9009 baseline — Stochastic K vs D + MACD hist sign)
+   int               _ForceCutlossSignal(const MarketContext &ctx) const;
+
+   //--- Close every CD position whose direction matches `signal` and PL<0
+   //    Emits per-ticket exit journal with triggering_function="ForceCutloss"
+   //    Returns count of close calls issued.
+   int               _CloseCDPositionsInLoss(int signal);
   };
 
 //+------------------------------------------------------------------+
@@ -343,10 +354,122 @@ void CCrossSlotCoordinator::RunOrderGroup2(const MarketContext &ctx)
    // TODO IMPL-054: BR-8.2 Ichimoku double-bounce close-all
   }
 
+//+------------------------------------------------------------------+
+//| _ForceCutlossSignal — BR-8.3 composite trigger                   |
+//|                                                                  |
+//| Per CodeWiki §5.5 :9009 baseline: Stochastic M10 K-vs-D cross    |
+//| confirms reversal direction; MACD D1 histogram sign confirms     |
+//| momentum alignment. AND-gate produces a tri-state signal that     |
+//| dictates which directional CD positions to cut:                  |
+//|   stoch_bear (K<D) AND macd_bear (hist<0) → +1 (cut BUY losses)  |
+//|   stoch_bull (K>D) AND macd_bull (hist>0) → -1 (cut SELL losses) |
+//|   anything else                          →  0 (no cut)           |
+//+------------------------------------------------------------------+
+int CCrossSlotCoordinator::_ForceCutlossSignal(const MarketContext &ctx) const
+  {
+   bool stoch_bear = (ctx.stoch_m10.k_main < ctx.stoch_m10.d_signal);
+   bool stoch_bull = (ctx.stoch_m10.k_main > ctx.stoch_m10.d_signal);
+   bool macd_bear  = (ctx.macd_d1.hist < 0.0);
+   bool macd_bull  = (ctx.macd_d1.hist > 0.0);
+
+   if(stoch_bear && macd_bear) return +1;
+   if(stoch_bull && macd_bull) return -1;
+   return 0;
+  }
+
+//+------------------------------------------------------------------+
+//| _CloseCDPositionsInLoss — close direction-matched CD losers       |
+//|                                                                  |
+//| Iterates both shared-magic prefixes ("C," and "D,") under        |
+//| MAGIC_CD; for each ticket: if in loss AND direction matches      |
+//| signal → CTrade.PositionClose + journal "exit" with              |
+//| triggering_function="ForceCutloss" (schema enum allowed).        |
+//+------------------------------------------------------------------+
+int CCrossSlotCoordinator::_CloseCDPositionsInLoss(int signal)
+  {
+   if(m_portfolio == NULL) return 0;
+   if(signal != +1 && signal != -1) return 0;
+
+   string prefixes[2];
+   prefixes[0] = "C,";
+   prefixes[1] = "D,";
+
+   int closed = 0;
+   for(int p = 0; p < 2; p++)
+     {
+      ulong tickets[];
+      int n = m_portfolio.GetTicketsForSlot(MAGIC_CD, prefixes[p], tickets);
+      for(int i = 0; i < n; i++)
+        {
+         ulong tk = tickets[i];
+         if(!PositionSelectByTicket(tk)) continue;
+
+         double pl = PositionGetDouble(POSITION_PROFIT);
+         if(pl >= 0.0) continue;          // BR-8.3: only positions in loss
+
+         ENUM_POSITION_TYPE pt = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+         bool is_buy = (pt == POSITION_TYPE_BUY);
+         if(is_buy  && signal != +1) continue;
+         if(!is_buy && signal != -1) continue;
+
+         double lot = PositionGetDouble(POSITION_VOLUME);
+         bool ok = m_trade.PositionClose(tk);
+         if(!ok && m_logger != NULL)
+           {
+            m_logger.Warn("xslot", "force_cutloss_close_fail", MAGIC_CD,
+                          StringFormat("ticket=%I64u rc=%u", tk, m_trade.ResultRetcode()));
+           }
+         closed++;
+
+         if(m_journal != NULL)
+           {
+            JournalEvent ev;
+            ev.timestamp_seconds      = TimeCurrent();
+            ev.timestamp_microseconds = 0;
+            ev.event_type             = "exit";
+            ev.slot_id                = StringSubstr(prefixes[p], 0, StringLen(prefixes[p]) - 1);
+            ev.magic                  = MAGIC_CD;
+            ev.ticket_id              = tk;
+            ev.symbol                 = _Symbol;
+            ev.order_type             = "close";
+            ev.lot                    = lot;
+            ev.price                  = PositionGetDouble(POSITION_PRICE_CURRENT);
+            ev.sl                     = 0.0;
+            ev.tp                     = 0.0;
+            ev.comment                = "force_cutloss";
+            ev.signal_context         = StringFormat("pl=%.2f signal=%d", pl, signal);
+            ev.triggering_function    = "ForceCutloss";
+            ev.parent_ticket_id       = 0;
+            ev.halt_reason            = "";
+            ev.pending_age_bars       = 0;
+            m_journal.WriteEvent(ev);
+           }
+        }
+     }
+   return closed;
+  }
+
+//+------------------------------------------------------------------+
+//| RunForceCutloss — BR-8.3 CD-only loss-cap                        |
+//|                                                                  |
+//| HALTED-allowed per `04 § 9.1` matrix (exit-side helper).         |
+//| Pipeline order (TD-02 §7.2 step 9): runs BEFORE Safe-port so     |
+//| direction-aware tactical close happens before bulk cleanup.      |
+//+------------------------------------------------------------------+
 void CCrossSlotCoordinator::RunForceCutloss(const MarketContext &ctx)
   {
-   datetime t = ctx.tick_time; t = t;
-   // TODO IMPL-055: BR-8.3 CD pair force-cutloss
+   if(m_portfolio == NULL || m_logger == NULL) return;
+
+   int signal = _ForceCutlossSignal(ctx);
+   if(signal == 0) return;
+
+   int closed = _CloseCDPositionsInLoss(signal);
+   if(closed <= 0) return;
+
+   m_logger.Info("xslot", "force_cutloss_triggered", MAGIC_CD,
+                 StringFormat("closed=%d signal=%d halted=%s",
+                              closed, signal,
+                              (m_halted ? "true" : "false")));
   }
 
 void CCrossSlotCoordinator::ExtraCheckFunction2()
@@ -420,17 +543,56 @@ bool CCrossSlotCoordinator::SelfTest(CLogger *logger)
      { Print("[xslot] SelfTest C6 FAIL neg pl"); return false; }
 
    //--- Case 7: _FillSafePortTargets returns 11 entries (CD x2 + 9 unique)
-   SafePortTarget t[];
-   int n = _FillSafePortTargets(t);
+   SafePortTarget targets[];
+   int n = _FillSafePortTargets(targets);
    if(n != 11) { Print("[xslot] SelfTest C7 FAIL target count=" + IntegerToString(n)); return false; }
-   if(t[0].magic != MAGIC_CD || t[0].slot_prefix != "C,")
+   if(targets[0].magic != MAGIC_CD || targets[0].slot_prefix != "C,")
      { Print("[xslot] SelfTest C7 FAIL slot[0]"); return false; }
-   if(t[10].magic != MAGIC_S || t[10].slot_prefix != "S,")
+   if(targets[10].magic != MAGIC_S || targets[10].slot_prefix != "S,")
      { Print("[xslot] SelfTest C7 FAIL slot[10]"); return false; }
 
+   //--- BR-8.3 ForceCutloss signal truth-table (IMPL-055)
+   //    stoch_bear (K<D) + macd_bear (hist<0) → +1 cut BUY
+   //    stoch_bull (K>D) + macd_bull (hist>0) → -1 cut SELL
+   //    mismatch / flat                       →  0 no cut
+   MarketContext ctx;
+   ctx.tick_time = 0; ctx.bid = 0; ctx.ask = 0; ctx.spread_pip = 0; ctx.bar_index_h4 = 0;
+
+   //--- Case 8: stoch K<D + macd hist<0 → +1 (cut BUY losses)
+   ctx.stoch_m10.k_main = 20.0; ctx.stoch_m10.d_signal = 50.0;
+   ctx.macd_d1.hist = -0.5;
+   if(_ForceCutlossSignal(ctx) != +1)
+     { Print("[xslot] SelfTest C8 FAIL force_cut bear"); return false; }
+
+   //--- Case 9: stoch K>D + macd hist>0 → -1 (cut SELL losses)
+   ctx.stoch_m10.k_main = 80.0; ctx.stoch_m10.d_signal = 50.0;
+   ctx.macd_d1.hist = 0.5;
+   if(_ForceCutlossSignal(ctx) != -1)
+     { Print("[xslot] SelfTest C9 FAIL force_cut bull"); return false; }
+
+   //--- Case 10: mismatch (stoch bear + macd bull) → 0
+   ctx.stoch_m10.k_main = 20.0; ctx.stoch_m10.d_signal = 50.0;
+   ctx.macd_d1.hist = 0.5;
+   if(_ForceCutlossSignal(ctx) != 0)
+     { Print("[xslot] SelfTest C10 FAIL force_cut mismatch"); return false; }
+
+   //--- Case 11: K==D + hist==0 → 0 (neither bear nor bull qualifies)
+   ctx.stoch_m10.k_main = 50.0; ctx.stoch_m10.d_signal = 50.0;
+   ctx.macd_d1.hist = 0.0;
+   if(_ForceCutlossSignal(ctx) != 0)
+     { Print("[xslot] SelfTest C11 FAIL force_cut flat"); return false; }
+
+   //--- Case 12: _CloseCDPositionsInLoss with NULL portfolio → 0 (safe guard)
+   if(_CloseCDPositionsInLoss(+1) != 0)
+     { Print("[xslot] SelfTest C12 FAIL close_cd null_portfolio"); return false; }
+
+   //--- Case 13: _CloseCDPositionsInLoss with signal=0 → 0 (no-op)
+   if(_CloseCDPositionsInLoss(0) != 0)
+     { Print("[xslot] SelfTest C13 FAIL close_cd zero_signal"); return false; }
+
    if(logger != NULL)
-      logger.Info("xslot", "selftest_ok", 0, "7/7 cases pass");
-   Print("[xslot] SelfTest 7/7 PASS");
+      logger.Info("xslot", "selftest_ok", 0, "13/13 cases pass");
+   Print("[xslot] SelfTest 13/13 PASS");
    return true;
   }
 

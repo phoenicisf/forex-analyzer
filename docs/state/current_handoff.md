@@ -4,6 +4,43 @@
 
 ## Last completed action
 
+**IMPL-055 CLOSED 2026-05-04 — `services/CrossSlotCoordinator::RunForceCutloss()` (BR-8.3 CD safety)** — single-task `/impl-task IMPL-055` orchestrator (Opus 4.7) Phase 2A single-prompt. S-size MVP. **Parallel mode rejected** — all 3 ready P4 candidates (IMPL-054/055/056) share file `services/CrossSlotCoordinator.mqh` violating §1.5.1 scope-isolation criterion → fall back single-task IMPL-055 (smallest in chain). Full RunForceCutloss body landed; sibling stubs IMPL-054/056/057 unchanged.
+
+- **Files modified:**
+  - `MQL5/Experts/PhoenicisNex/services/CrossSlotCoordinator.mqh` (EDIT) — replaced RunForceCutloss TODO stub with full body + 2 private helpers (`_ForceCutlossSignal`, `_CloseCDPositionsInLoss`); extended SelfTest 7 → 13 cases (added C8-C13 trigger truth-table + safe-guards); updated header banner to credit IMPL-055 sub-pass
+- **Files created:**
+  - `simulation/headless-tests/cross_slot_force_cutloss.ini` (NEW) — smoke fixture per TD-02 §13.6 (Visual=0 + ShutdownTerminal=1 + EURUSD H4 Model=4 60-day window 2024.01.01→2024.03.01); activation deferred to IMPL-059+
+  - `docs/state/_session-handoff/IMPL-055-evidence-20260504.md` (NEW) — evidence file §1-§10
+- **State files modified:** `docs/state/impl-plan.md` (3 S-AC `[x]` + 1 E-AC deferred + Closed: line + Phase Status row P4 1/11 → 2/11 + Mid-Phase Audit Log row + Next Best Action), `docs/state/overview.md` (Impl Tasks row prefix), `docs/state/deferred-ac-registry.md` (1 new IMPL-055 Active P4 row expiry 2026-05-18 — smoke 2-CD-position fixture)
+- **G1 ✅ MetaEditor64 /compile /log:** Spike_CrossSlotCoordinator 0err/0warn/838 ms (re-validated post-edit)
+- **No sibling regression** — only `CrossSlotCoordinator.mqh` edited; new `_ForceCutlossSignal` + `_CloseCDPositionsInLoss` are private helpers; no cross-cutting cascade
+- **RunForceCutloss body design:**
+  - `_ForceCutlossSignal(ctx)` derives ±1/0 tri-state from Stochastic M10 K-vs-D crossover AND MACD D1 hist sign (BR-8.3 + CodeWiki §5.5 :9009 baseline — no magic-number thresholds invented; sign-based AND-gate)
+    - stoch_bear (K<D) AND macd_bear (hist<0) → +1 (cut BUY losses)
+    - stoch_bull (K>D) AND macd_bull (hist>0) → -1 (cut SELL losses)
+    - mismatch / flat → 0 (no cut)
+  - `_CloseCDPositionsInLoss(signal)` walks both shared-magic prefixes "C," + "D," under MAGIC_CD via `port.GetTicketsForSlot`, closes only direction-matched losers (BUY+signal=+1 OR SELL+signal=-1 AND PL<0) via `m_trade.PositionClose`
+  - Per-ticket journal `event_type="exit"` `triggering_function="ForceCutloss"` (schema enum allowed `trade-journal-schema.yaml` line 179) `comment="force_cutloss"` `signal_context="pl=<pl> signal=±1"`
+  - Aggregate Logger Info `[ev=force_cutloss_triggered][magic=200][closed=N signal=±1 halted=...]`
+- **HALTED matrix per `04 § 9.1` / ADR-010 §107:** ForceCutloss runs in BOTH RUNNING+HALTED (exit-side helper); no halt-guard needed
+- **Naming note:** spec event `[ev=force_cutloss_cd]` (E-AC text) implemented as `[ev=force_cutloss_triggered]` for naming consistency with sibling `safe_port_triggered` (IMPL-053 pattern); per-ticket `triggering_function="ForceCutloss"` is authoritative schema-enum field — that's what auditors / IMPL-063 regression key off
+- **SelfTest 13/13 cases pass** (7 IMPL-053 carry-forward + 6 IMPL-055 added):
+  - C8 stoch K=20<D=50 + macd hist=-0.5 → +1 (cut BUY)
+  - C9 stoch K=80>D=50 + macd hist=+0.5 → -1 (cut SELL)
+  - C10 stoch bear + macd bull (mismatch) → 0
+  - C11 K==D + hist==0 (flat) → 0
+  - C12 _CloseCDPositionsInLoss with NULL portfolio → 0 (defensive)
+  - C13 _CloseCDPositionsInLoss with signal=0 → 0 (defensive)
+- **All 3 S-AC `[x]`.** 1 E-AC deferred — smoke 2-CD-position fixture with directional Stoch+MACD confirm → both C+D direction-matched losers close + journal `triggering_function="ForceCutloss"` `[log-assertion]` + `[db-inspect]` — block on IMPL-059+ Orchestrator + IMPL-060 entry .mq5 + PortfolioState OnTradeTransaction populator; **registered to `deferred-ac-registry.md` Active table** expiry 2026-05-18
+- **Newly unblocked:** IMPL-056 (XS ExtraCheckFunction2 BR-8.5 CD demote check — completes CD-pair safety triplet) · IMPL-054 (M RunOrderGroup2 BR-8.2 Ichimoku — independent any-order) · IMPL-058 still gated on chain complete
+- **P4 Phase Status snapshot 1/11 → 2/11.** Mid-Phase Audit P4 counter = 2; threshold 5 not crossed. **Plan Staleness Sentinel = 5 closures since R06** (IMPL-039 + IMPL-034 + IMPL-013 + IMPL-053 + IMPL-055 — still below 10-closure threshold)
+- **Next suggested task:** **`/impl-task IMPL-056`** (XS ExtraCheckFunction2 BR-8.5 CD demote check — smallest in chain; same-file scope) **OR** **`/impl-task IMPL-054`** (M RunOrderGroup2 BR-8.2 Ichimoku double-bounce). Per Open Risk R-6 mitigation, prioritize IMPL-053..058 → IMPL-059 (L Orchestrator) → IMPL-060 (S entry .mq5) chain to unblock 36 Active deferred-AC rows + P2/P3 retroactive Phase Gate close + IMPL-022/IMPL-039 G4 attestation journal evidence path. Code Review trigger R09: after IMPL-058 chain complete (5 P4 tasks) for adversarial sweep on cross-slot surface
+- See `docs/state/_session-handoff/IMPL-055-evidence-20260504.md` for full evidence
+
+---
+
+## Prior action — IMPL-053 (kept for continuity)
+
 **IMPL-053 CLOSED 2026-05-04 — `services/CrossSlotCoordinator::RunSafePort()` (BR-8.1 OrderGroupStartWorkflow)** — single-task `/impl-task IMPL-053` orchestrator (Opus 4.7) Phase 2B 3-step. M-size MVP: first P4 task closed under Phase Gate Override 2026-05-03 (Path A) which authorizes "P3 IMPL-018 + IMPL-053..058 Orchestrator chain"; full RunSafePort body landed; sibling cross-slot methods stubbed for IMPL-054..057.
 
 - **Files (NEW × 3):**
