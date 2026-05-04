@@ -1,0 +1,356 @@
+=== Init phase (lines 1-300) ===
+﻿CS	0	15:08:25.332	Startup	MetaTester 5 build 5833, 25 Apr 2026
+CS	0	15:08:25.333	Server	MetaTester 5 started on 127.0.0.1:3000
+CS	0	15:08:25.493	Network	1478 bytes of tester parameters loaded
+CS	0	15:08:25.494	Tester	expert file added: Experts\PhoenicisNex\PhoenicisNex.ex5. 292321 bytes loaded
+CS	0	15:08:25.494	Tester	program file added: Indicators\Examples\ZigZag.ex5. 13896 bytes loaded
+CS	0	15:08:25.496	Tester	11947 Mb available, 148 blocks set for ticks generating
+CS	0	15:08:25.497	Tester	initial deposit 1000.00 USD, leverage 1:500
+CS	0	15:08:25.497	Tester	successfully initialized
+CS	0	15:08:25.497	Tester	AMD Ryzen 7 7840HS w/ Radeon 780M, 31938 MB
+CS	0	15:08:25.523	Tester	EURUSD,H4 (FBS-Real): every tick generating
+CS	0	15:08:25.524	Tester	EURUSD,H4: testing of Experts\PhoenicisNex\PhoenicisNex.ex5 from 2024.01.02 00:00 to 2024.01.05 00:00 started with inputs:
+CS	0	15:08:25.524	Tester	  General=
+CS	0	15:08:25.524	Tester	  InpInteruptRatioDecrease=8.0
+CS	0	15:08:25.524	Tester	  InpMainOverloadRatioDecrease=4.0
+CS	0	15:08:25.524	Tester	  InpUseCOverload=true
+CS	0	15:08:25.524	Tester	  InpUseOverloadAutoRange=true
+CS	0	15:08:25.524	Tester	  InpOverLoadUseLastLot=true
+CS	0	15:08:25.524	Tester	  InpFIDValue=21
+CS	0	15:08:25.524	Tester	  InpTradeOnHNN=false
+CS	0	15:08:25.524	Tester	  InpZigZagPeriod=5
+CS	0	15:08:25.524	Tester	  InpLADXMLevel=30.0
+CS	0	15:08:25.524	Tester	  InpLADXMLevelMin=22.0
+CS	0	15:08:25.524	Tester	  InpJPip1StBetweenC=-10
+CS	0	15:08:25.524	Tester	  InpJPip1StBetweenD=-13
+CS	0	15:08:25.524	Tester	  InpFRatioDecrease=1.0
+CS	0	15:08:25.524	Tester	  InpJRatioDecrease=2.3
+CS	0	15:08:25.524	Tester	  InpGRatioDecrease=10.0
+CS	0	15:08:25.524	Tester	  InpGORatioDecrease=10.0
+CS	0	15:08:25.524	Tester	  InpHRatioDecrease=10.0
+CS	0	15:08:25.524	Tester	  InpGRisk=15
+CS	0	15:08:25.524	Tester	  InpMainRiskRatio=1.0
+CS	0	15:08:25.524	Tester	  InpLimitMaxLotSizeRatio=2.9
+CS	0	15:08:25.524	Tester	  InpNormalTakeProfitPIP=48
+CS	0	15:08:25.524	Tester	  TimeGates=
+CS	0	15:08:25.524	Tester	  InpMorningWindowMinutes=5
+CS	0	15:08:25.524	Tester	  InpMondaySpreadThreshold=10
+CS	0	15:08:25.524	Tester	  InpHolidayStartMonth=12
+CS	0	15:08:25.524	Tester	  InpHolidayStartDay=21
+CS	0	15:08:25.524	Tester	  InpHolidayEndMonth=1
+CS	0	15:08:25.524	Tester	  InpHolidayEndDay=3
+CS	0	15:08:25.524	Tester	  InpBanCCooldownBars=5
+CS	0	15:08:25.524	Tester	  InpBanLCooldownBars=5
+CS	0	15:08:25.524	Tester	  InpBanMCooldownBars=5
+CS	0	15:08:25.524	Tester	  InpKLastOrderCooldownBars=4
+CS	0	15:08:25.524	Tester	  InpGPauseCooldownBars=3
+CS	0	15:08:25.524	Tester	  Pending=
+CS	0	15:08:25.524	Tester	  InpForceClearC_Bars=100
+CS	0	15:08:25.524	Tester	  InpForceClearM_Bars=150
+CS	0	15:08:25.524	Tester	  InpForceClearT_Bars=80
+CS	0	15:08:25.524	Tester	  InpForceClearQ_Bars=100
+CS	0	15:08:25.524	Tester	  InpLegacyCBars=8
+CS	0	15:08:25.524	Tester	  InpLegacyCAdxBars=30
+CS	0	15:08:25.524	Tester	  InpLegacyRBars=40
+CS	0	15:08:25.524	Tester	  InpLegacyPBars=70
+CS	0	15:08:25.524	Tester	  InpLegacyForceBars=9
+CS	0	15:08:25.524	Tester	  Logging=
+CS	0	15:08:25.524	Tester	  InpLogLevel=1
+CS	0	15:08:25.524	Tester	  InpAlertOnError=true
+CS	0	15:08:25.524	Tester	  InpErrorEscalationN=10
+CS	0	15:08:25.524	Tester	  Slot C=
+CS	0	15:08:25.524	Tester	  InpEnableSlotC=true
+CS	0	15:08:25.524	Tester	  InpCMaxOrders=1
+CS	0	15:08:25.524	Tester	  InpCBaseLot=20.0
+CS	0	15:08:25.524	Tester	  InpCSlPipsFloor=50.0
+CS	0	15:08:25.524	Tester	  InpCAdxMin=20.0
+CS	0	15:08:25.524	Tester	  InpCStochOversold=30.0
+CS	0	15:08:25.524	Tester	  InpCStochOverbought=70.0
+CS	0	15:08:25.524	Tester	  InpCTpProfitPips=40.0
+CS	0	15:08:25.524	Tester	  InpCMacdSignalThresh=0.0
+CS	0	15:08:25.524	Tester	  Slot D=
+CS	0	15:08:25.524	Tester	  InpEnableSlotD=true
+CS	0	15:08:25.524	Tester	  InpDLotMultiplier=1.4
+CS	0	15:08:25.524	Tester	  Slot F=
+CS	0	15:08:25.524	Tester	  InpEnableSlotF=true
+CS	0	15:08:25.524	Tester	  InpFMaxOrders=1
+CS	0	15:08:25.524	Tester	  InpFLotReductionRatio=0.7
+CS	0	15:08:25.524	Tester	  InpFSlPipsFloor=50.0
+CS	0	15:08:25.524	Tester	  InpFTpProfitPips=40.0
+CS	0	15:08:25.524	Tester	  Slot J=
+CS	0	15:08:25.524	Tester	  InpEnableSlotJ=true
+CS	0	15:08:25.524	Tester	  InpJMaxOrders=1
+CS	0	15:08:25.524	Tester	  InpJSlPipsFloor=50.0
+CS	0	15:08:25.524	Tester	  InpJTpProfitPips=40.0
+CS	0	15:08:25.524	Tester	  Slot H=
+CS	0	15:08:25.524	Tester	  InpEnableSlotH=true
+CS	0	15:08:25.524	Tester	  InpHMaxOrders=2
+CS	0	15:08:25.524	Tester	  InpHFractalLookback=3
+CS	0	15:08:25.524	Tester	  InpHIchimokuMaxPips=35.0
+CS	0	15:08:25.524	Tester	  InpHBaseLot=15.0
+CS	0	15:08:25.524	Tester	  InpHSlPips=90.0
+CS	0	15:08:25.524	Tester	  InpHTpMinPips=30.0
+CS	0	15:08:25.524	Tester	  InpHMaxAgeBars=8
+CS	0	15:08:25.524	Tester	  Slot K=
+CS	0	15:08:25.524	Tester	  InpEnableSlotK=true
+CS	0	15:08:25.524	Tester	  InpKBaseLot=15.0
+CS	0	15:08:25.524	Tester	  InpKSlPips=90.0
+CS	0	15:08:25.524	Tester	  InpKTpProfitPips=20.0
+CS	0	15:08:25.524	Tester	  InpKMaxOrders=1
+CS	0	15:08:25.524	Tester	  InpKFICrossThreshHigh=0.5
+CS	0	15:08:25.524	Tester	  InpKFICrossThreshLow=-0.2
+CS	0	15:08:25.524	Tester	  InpKFICrossAltHigh=1.0
+CS	0	15:08:25.524	Tester	  Slot G=
+CS	0	15:08:25.524	Tester	  InpEnableSlotG=true
+CS	0	15:08:25.524	Tester	  InpGMaxOrders=1
+CS	0	15:08:25.524	Tester	  InpGBaseLot=30.0
+CS	0	15:08:25.524	Tester	  InpGSlPipsFloor=61.8
+CS	0	15:08:25.524	Tester	  InpGFICrossThreshHigh=0.0
+CS	0	15:08:25.524	Tester	  InpGFICrossThreshLow=-0.2
+CS	0	15:08:25.524	Tester	  InpGFICrossAltHigh=1.0
+CS	0	15:08:25.524	Tester	  InpGFICrossAltLow=-3.0
+CS	0	15:08:25.524	Tester	  InpGAdxDominanceMin=20.0
+CS	0	15:08:25.524	Tester	  InpGStochOversold=25.0
+CS	0	15:08:25.524	Tester	  InpGStochOverbought=75.0
+CS	0	15:08:25.524	Tester	  InpGTpProfitPips=50.0
+CS	0	15:08:25.524	Tester	  InpGOverloadForceMin=15.0
+CS	0	15:08:25.524	Tester	  InpGOverloadAdxMin=49.0
+CS	0	15:08:25.524	Tester	  InpGOverloadMaxOffset=20.0
+CS	0	15:08:25.524	Tester	  Slot G2=
+CS	0	15:08:25.524	Tester	  InpEnableSlotG2=true
+CS	0	15:08:25.524	Tester	  InpG2MaxOrders=1
+CS	0	15:08:25.524	Tester	  InpG2BaseLot=20.0
+CS	0	15:08:25.524	Tester	  InpG2SlPipsFloor=50.0
+CS	0	15:08:25.524	Tester	  InpG2FIContinuationMin=0.0
+CS	0	15:08:25.524	Tester	  InpG2FIContinuationLow=-0.2
+CS	0	15:08:25.524	Tester	  InpG2TpProfitPips=30.0
+CS	0	15:08:25.524	Tester	  Slot GO=
+CS	0	15:08:25.524	Tester	  InpEnableSlotGO=true
+CS	0	15:08:25.524	Tester	  InpGOMaxOrders=1
+CS	0	15:08:25.524	Tester	  InpGOBaseLot=30.0
+CS	0	15:08:25.524	Tester	  InpGOSlPipsFloor=50.0
+CS	0	15:08:25.524	Tester	  InpGOTpProfitPips=40.0
+CS	0	15:08:25.524	Tester	  Slot M=
+CS	0	15:08:25.524	Tester	  InpEnableSlotM=true
+CS	0	15:08:25.524	Tester	  InpMMaxOrders=1
+CS	0	15:08:25.524	Tester	  InpMBaseLot=20.0
+CS	0	15:08:25.524	Tester	  InpMSlPipsFloor=50.0
+CS	0	15:08:25.524	Tester	  InpMAdxMin=20.0
+CS	0	15:08:25.524	Tester	  InpMStochOversold=30.0
+CS	0	15:08:25.524	Tester	  InpMStochOverbought=70.0
+CS	0	15:08:25.524	Tester	  InpMTpProfitPips=40.0
+CS	0	15:08:25.524	Tester	  InpMMacdSignalThresh=0.0
+CS	0	15:08:25.524	Tester	  Slot L=
+CS	0	15:08:25.524	Tester	  InpEnableSlotL=true
+CS	0	15:08:25.524	Tester	  InpLBaseLot=20.0
+CS	0	15:08:25.524	Tester	  InpLSlPips=80.0
+CS	0	15:08:25.524	Tester	  InpLTpProfitPips=40.0
+CS	0	15:08:25.524	Tester	  InpLMaxOrders=1
+CS	0	15:08:25.524	Tester	  InpLAdxThreshold=20.0
+CS	0	15:08:25.524	Tester	  InpLWprOversold=-80.0
+CS	0	15:08:25.524	Tester	  InpLWprOverbought=-20.0
+CS	0	15:08:25.524	Tester	  Slot LX=
+CS	0	15:08:25.524	Tester	  InpEnableSlotLX=true
+CS	0	15:08:25.524	Tester	  InpLXMaxOrders=1
+CS	0	15:08:25.524	Tester	  InpLXBaseLot=15.0
+CS	0	15:08:25.524	Tester	  InpLXSlPips=60.0
+CS	0	15:08:25.524	Tester	  InpLXTpProfitPips=25.0
+CS	0	15:08:25.524	Tester	  InpLXPyramidGatePips=30.0
+CS	0	15:08:25.524	Tester	  Slot Q=
+CS	0	15:08:25.524	Tester	  InpEnableSlotQ=true
+CS	0	15:08:25.524	Tester	  InpQMaxOrders=1
+CS	0	15:08:25.524	Tester	  InpQBaseLot=20.0
+CS	0	15:08:25.524	Tester	  InpQSlPipsFloor=50.0
+CS	0	15:08:25.524	Tester	  InpQAdxMin=20.0
+CS	0	15:08:25.524	Tester	  InpQRsiOversold=40.0
+CS	0	15:08:25.524	Tester	  InpQRsiOverbought=60.0
+CS	0	15:08:25.524	Tester	  InpQTpProfitPips=40.0
+CS	0	15:08:25.524	Tester	  InpQMacdSignalThresh=0.0
+CS	0	15:08:25.524	Tester	  Slot R=
+CS	0	15:08:25.524	Tester	  InpEnableSlotR=true
+CS	0	15:08:25.524	Tester	  InpRMaxOrders=1
+CS	0	15:08:25.524	Tester	  InpRBaseLot=20.0
+CS	0	15:08:25.524	Tester	  InpRSlPipsFloor=50.0
+CS	0	15:08:25.524	Tester	  InpRAdxMin=20.0
+CS	0	15:08:25.524	Tester	  InpRRsiOversold=35.0
+CS	0	15:08:25.524	Tester	  InpRRsiOverbought=65.0
+CS	0	15:08:25.524	Tester	  InpRTpProfitPips=40.0
+CS	0	15:08:25.524	Tester	  Slot I=
+CS	0	15:08:25.524	Tester	  InpEnableSlotI=true
+CS	0	15:08:25.524	Tester	  InpIMaxOrders=1
+CS	0	15:08:25.524	Tester	  InpIBaseLot=15.0
+CS	0	15:08:25.524	Tester	  InpISlPips=60.0
+CS	0	15:08:25.524	Tester	  InpITpProfitPips=25.0
+CS	0	15:08:25.524	Tester	  InpILookbackBars=20
+CS	0	15:08:25.524	Tester	  InpIFibLevel=0.5
+CS	0	15:08:25.524	Tester	  Slot P=
+CS	0	15:08:25.524	Tester	  InpEnableSlotP=true
+CS	0	15:08:25.524	Tester	  InpPMaxOrders=1
+CS	0	15:08:25.524	Tester	  InpPBaseLot=20.0
+CS	0	15:08:25.524	Tester	  InpPSlPipsFloor=80.0
+CS	0	15:08:25.524	Tester	  InpPAdxMin=18.0
+CS	0	15:08:25.524	Tester	  InpPForcePxGate=0.1
+CS	0	15:08:25.524	Tester	  InpPDiffSlPxThreshold=200.0
+CS	0	15:08:25.524	Tester	  InpPTpPipsPx=7.0
+CS	0	15:08:25.524	Tester	  InpPTpPipsPh=15.0
+CS	0	15:08:25.524	Tester	  InpPTpPipsE=25.0
+CS	0	15:08:25.524	Tester	  InpPPyramidGatePips=30.0
+CS	0	15:08:25.524	Tester	  Slot T=
+CS	0	15:08:25.524	Tester	  InpEnableSlotT=true
+CS	0	15:08:25.524	Tester	  InpTMaxOrders=1
+CS	0	15:08:25.524	Tester	  InpTBaseLot=20.0
+CS	0	15:08:25.524	Tester	  InpTSlPipsFloor=55.0
+CS	0	15:08:25.524	Tester	  InpTAdxMin=22.0
+CS	0	15:08:25.524	Tester	  InpTStochOversold=25.0
+CS	0	15:08:25.524	Tester	  InpTStochOverbought=75.0
+CS	0	15:08:25.524	Tester	  InpTTpProfitPips=45.0
+CS	0	15:08:25.524	Tester	  InpTMacdSignalThresh=0.0
+CS	0	15:08:25.524	Tester	  Slot S=
+CS	0	15:08:25.524	Tester	  InpEnableSlotS=true
+CS	0	15:08:25.524	Tester	  InpSBaseLot=10.0
+CS	0	15:08:25.524	Tester	  InpSSlPips=60.0
+CS	0	15:08:25.524	Tester	  InpSTpProfitPips=35.0
+CS	0	15:08:25.524	Tester	  InpSMaxOrders=1
+CS	0	15:08:25.524	Tester	  InpSAdxMin=20.0
+CS	0	15:08:25.524	Tester	  InpSWprOversold=-80.0
+CS	0	15:08:25.524	Tester	  InpSWprOverbought=-20.0
+CS	0	15:08:25.524	Tester	  Slot B=
+CS	0	15:08:25.524	Tester	  InpEnableSlotB=true
+CS	0	15:08:25.524	Tester	  InpBBaseLot=20.0
+CS	0	15:08:25.524	Tester	  InpBSlPips=80.0
+CS	0	15:08:25.524	Tester	  InpBTpProfitPips=50.0
+CS	0	15:08:25.524	Tester	  InpBMaxOrders=1
+CS	0	15:08:25.524	Tester	  InpBAdxThreshold=18.0
+CS	0	15:08:25.524	Tester	  InpBCloudDistMaxPips=180.0
+CS	0	15:08:25.524	Tester	  InpBFractalLookback=12
+CS	0	15:08:25.524	Tester	  Slot BR=
+CS	0	15:08:25.524	Tester	  InpEnableSlotBR=true
+CS	0	15:08:25.524	Tester	  InpBRMaxOrders=1
+CS	0	15:08:25.524	Tester	  InpBRBaseLot=20.0
+CS	0	15:08:25.524	Tester	  InpBRSlPipsFloor=80.0
+CS	0	15:08:25.524	Tester	  InpBRTpProfitPips=40.0
+CS	0	15:08:25.524	Tester	  Slot BI=
+CS	0	15:08:25.524	Tester	  InpEnableSlotBI=true
+CS	0	15:08:25.524	Tester	  InpBIMaxOrders=1
+CS	0	15:08:25.524	Tester	  InpBIBaseLot=14.0
+CS	0	15:08:25.524	Tester	  InpBIPyramidGatePips=30.0
+CS	0	15:08:25.524	Tester	  InpBITpProfitPips=30.0
+CS	0	15:08:25.524	Tester	  InpBISlFallbackPips=80.0
+CS	0	15:08:25.536	PhoenicisNex (EURUSD,H4)	2024.01.02 00:00:00   [Phoenicis][2024-01-02 00:00:00.000][INFO][slot=system][ev=logger_init_ok][magic=0] Logger initialised; min_level=INFO alert_on_error=true escalation_n=10
+CS	0	15:08:25.536	PhoenicisNex (EURUSD,H4)	2024.01.02 00:00:00   [Phoenicis][slot=system][ev=pip_math_init][digit_multiplier=10]
+CS	0	15:08:25.536	PhoenicisNex (EURUSD,H4)	2024.01.02 00:00:00   [Phoenicis][2024-01-02 00:00:00.000][INFO][slot=RiskManager][ev=init_ok][magic=0] main_risk=1.0000 max_lot_ratio=2.9000 port=wired
+CS	0	15:08:25.536	PhoenicisNex (EURUSD,H4)	2024.01.02 00:00:00   [Phoenicis][2024-01-02 00:00:00.000][INFO][slot=CircuitBreaker][ev=cb_init_ok][magic=0] CircuitBreaker initialised; buffer_size=16 ping_threshold=3s near_miss_threshold=5s
+CS	0	15:08:25.536	PhoenicisNex (EURUSD,H4)	2024.01.02 00:00:00   [Phoenicis][2024-01-02 00:00:00.000][INFO][slot=TimeGate][ev=init_ok][magic=0] window=5 spread_thr=10 holiday=12/21..1/3
+CS	0	15:08:25.536	PhoenicisNex (EURUSD,H4)	2024.01.02 00:00:00   [Phoenicis][2024-01-02 00:00:00.000][INFO][slot=PortfolioMonitor][ev=init_ok][magic=0] eq_high=0.00 worst_dd=0.0000 cur_dd=0.0000
+CS	0	15:08:25.588	Tester	program file added: \Indicators\Examples\ZigZag.ex5. 13897 bytes loaded
+CS	0	15:08:25.618	PhoenicisNex (EURUSD,H4)	2024.01.02 00:00:00   [Phoenicis][2024-01-02 00:00:00.082][INFO][slot=indicators][ev=handles_created][magic=0] All 24 indicator handles valid (ADR-003 inventory)
+CS	0	15:08:25.618	PhoenicisNex (EURUSD,H4)	2024.01.02 00:00:00   [Phoenicis][2024-01-02 00:00:00.082][WARN][slot=system][ev=state_corrupt_starting_fresh][magic=0] GV-recovery attempted for watch_profits subset (per 02 § 6.1.1)
+CS	0	15:08:25.618	PhoenicisNex (EURUSD,H4)	2024.01.02 00:00:00   [Phoenicis][2024-01-02 00:00:00.082][INFO][slot=portfolio][ev=portfolio_registered][magic=0] magics registered: 17
+CS	0	15:08:25.619	PhoenicisNex (EURUSD,H4)	2024.01.02 00:00:00   [Phoenicis][2024-01-02 00:00:00.083][INFO][slot=system][ev=init_ok][magic=0] handles=24 slots=21 magics=17 state=EA_STATE_RUNNING
+CS	0	15:08:25.643	PhoenicisNex (EURUSD,H4)	2024.01.02 00:05:30   [Phoenicis][2024-01-02 00:05:30.106][INFO][slot=pending][ev=enter_pending][magic=0] machine=C bar=0
+CS	0	15:08:25.643	PhoenicisNex (EURUSD,H4)	2024.01.02 00:05:30   [Phoenicis][2024-01-02 00:05:30.106][INFO][slot=SlotC][ev=pending_entered][magic=200] dir=BUY bar_index=0 payload={"dir":"BUY","sl_pips":50.0}
+CS	0	15:08:25.643	PhoenicisNex (EURUSD,H4)	2024.01.02 00:05:30   [Phoenicis][2024-01-02 00:05:30.106][INFO][slot=pending][ev=enter_pending][magic=0] machine=M bar=0
+CS	0	15:08:25.643	PhoenicisNex (EURUSD,H4)	2024.01.02 00:05:30   [Phoenicis][2024-01-02 00:05:30.106][INFO][slot=SlotM][ev=pending_entered][magic=210] dir=BUY bar_index=0 payload={"dir":"BUY","sl_pips":50.0}
+CS	0	15:08:25.643	PhoenicisNex (EURUSD,H4)	2024.01.02 00:05:30   [Phoenicis][2024-01-02 00:05:30.106][WARN][slot=RiskManager][ev=clamp_applied][magic=0] slot=L raw=150.0000 → clamped=2.9000 [floor=0.0100 cap=2.9000]
+CS	0	15:08:25.643	PhoenicisNex (EURUSD,H4)	2024.01.02 00:05:30   [Phoenicis][2024-01-02 00:05:30.106][INFO][slot=Slot_L][ev=entry_buy][magic=211] lot=2.90 price=1.10478 sl=1.09678 comment=L,wave,1
+CS	0	15:08:25.643	PhoenicisNex (EURUSD,H4)	2024.01.02 00:05:30   [Phoenicis][2024-01-02 00:05:30.106][INFO][slot=pending][ev=enter_pending][magic=0] machine=T bar=0
+CS	0	15:08:25.643	PhoenicisNex (EURUSD,H4)	2024.01.02 00:05:30   [Phoenicis][2024-01-02 00:05:30.106][INFO][slot=SlotT][ev=pending_entered][magic=219] dir=BUY bar_index=0 payload={"dir":"BUY","sl_pips":55.0}
+CS	0	15:08:25.643	PhoenicisNex (EURUSD,H4)	2024.01.02 00:05:30   [Phoenicis][2024-01-02 00:05:30.106][ERROR][slot=RiskManager][ev=s_pct_tp_invalid][magic=217] percent_tp=1.0000 not in {5,10,15}; S lot = 0.0 (no order)
+CS	0	15:08:25.643	PhoenicisNex (EURUSD,H4)	2024.01.02 00:05:30   Alert: [Phoenicis][2024-01-02 00:05:30.106][ERROR][slot=RiskManager][ev=s_pct_tp_invalid][magic=217] percent_tp=1.0000 not in {5,10,15}; S lot = 0.0 (no order)
+CS	0	15:08:25.643	PhoenicisNex (EURUSD,H4)	2024.01.02 00:05:30   [Phoenicis][2024-01-02 00:05:30.106][WARN][slot=RiskManager][ev=clamp_applied][magic=0] slot=S raw=0.0000 → clamped=0.0100 [floor=0.0100 cap=2.9000]
+CS	0	15:08:25.643	PhoenicisNex (EURUSD,H4)	2024.01.02 00:05:30   [Phoenicis][2024-01-02 00:05:30.106][INFO][slot=SlotS][ev=entry_signal][magic=217] dir=BUY lot=0.01 sl_pips=60.0 price=1.10478 sl=1.09878 comment=S,post,1 adx=24.7 wpr=-92.8 trend=1
+CS	0	15:08:25.644	PhoenicisNex (EURUSD,H4)	2024.01.02 00:06:30   [Phoenicis][2024-01-02 00:06:30.108][WARN][slot=RiskManager][ev=clamp_applied][magic=0] slot=C raw=150.0000 → clamped=2.9000 [floor=0.0100 cap=2.9000]
+CS	0	15:08:25.644	PhoenicisNex (EURUSD,H4)	2024.01.02 00:06:30   [Phoenicis][2024-01-02 00:06:30.108][INFO][slot=SlotC][ev=entry_signal][magic=200] dir=BUY lot=2.90 sl_pips=50.0 price=1.10479 sl=1.09979 comment=C,MA,N,1,SL
+CS	0	15:08:25.644	PhoenicisNex (EURUSD,H4)	2024.01.02 00:06:30   [Phoenicis][2024-01-02 00:06:30.108][INFO][slot=pending][ev=transition_executed][magic=0] machine=C
+CS	0	15:08:25.644	PhoenicisNex (EURUSD,H4)	2024.01.02 00:06:30   [Phoenicis][2024-01-02 00:06:30.108][WARN][slot=RiskManager][ev=clamp_applied][magic=0] slot=M raw=200.0000 → clamped=2.9000 [floor=0.0100 cap=2.9000]
+CS	0	15:08:25.644	PhoenicisNex (EURUSD,H4)	2024.01.02 00:06:30   [Phoenicis][2024-01-02 00:06:30.108][INFO][slot=SlotM][ev=entry_signal][magic=210] dir=BUY lot=2.90 sl_pips=50.0 price=1.10479 sl=1.09979 comment=M,MA,N,1,SL
+CS	0	15:08:25.644	PhoenicisNex (EURUSD,H4)	2024.01.02 00:06:30   [Phoenicis][2024-01-02 00:06:30.108][INFO][slot=pending][ev=transition_executed][magic=0] machine=M
+CS	0	15:08:25.644	PhoenicisNex (EURUSD,H4)	2024.01.02 00:06:30   [Phoenicis][2024-01-02 00:06:30.108][WARN][slot=RiskManager][ev=clamp_applied][magic=0] slot=L raw=150.0000 → clamped=2.9000 [floor=0.0100 cap=2.9000]
+CS	0	15:08:25.644	PhoenicisNex (EURUSD,H4)	2024.01.02 00:06:30   [Phoenicis][2024-01-02 00:06:30.108][INFO][slot=Slot_L][ev=entry_buy][magic=211] lot=2.90 price=1.10479 sl=1.09679 comment=L,wave,1
+CS	0	15:08:25.644	PhoenicisNex (EURUSD,H4)	2024.01.02 00:06:30   [Phoenicis][2024-01-02 00:06:30.108][WARN][slot=RiskManager][ev=clamp_applied][magic=0] slot=T raw=200.0000 → clamped=2.9000 [floor=0.0100 cap=2.9000]
+CS	0	15:08:25.644	PhoenicisNex (EURUSD,H4)	2024.01.02 00:06:30   [Phoenicis][2024-01-02 00:06:30.108][INFO][slot=SlotT][ev=entry_signal][magic=219] dir=BUY lot=2.90 sl_pips=55.0 price=1.10479 sl=1.09929 comment=T,MA,N,1,SL
+CS	0	15:08:25.644	PhoenicisNex (EURUSD,H4)	2024.01.02 00:06:30   [Phoenicis][2024-01-02 00:06:30.108][INFO][slot=pending][ev=transition_executed][magic=0] machine=T
+CS	0	15:08:25.644	PhoenicisNex (EURUSD,H4)	2024.01.02 00:06:30   [Phoenicis][2024-01-02 00:06:30.108][ERROR][slot=RiskManager][ev=s_pct_tp_invalid][magic=217] percent_tp=1.0000 not in {5,10,15}; S lot = 0.0 (no order)
+CS	0	15:08:25.644	PhoenicisNex (EURUSD,H4)	2024.01.02 00:06:30   Alert: [Phoenicis][2024-01-02 00:06:30.108][ERROR][slot=RiskManager][ev=s_pct_tp_invalid][magic=217] percent_tp=1.0000 not in {5,10,15}; S lot = 0.0 (no order)
+CS	0	15:08:25.644	PhoenicisNex (EURUSD,H4)	2024.01.02 00:06:30   [Phoenicis][2024-01-02 00:06:30.108][WARN][slot=RiskManager][ev=clamp_applied][magic=0] slot=S raw=0.0000 → clamped=0.0100 [floor=0.0100 cap=2.9000]
+CS	0	15:08:25.644	PhoenicisNex (EURUSD,H4)	2024.01.02 00:06:30   [Phoenicis][2024-01-02 00:06:30.108][INFO][slot=SlotS][ev=entry_signal][magic=217] dir=BUY lot=0.01 sl_pips=60.0 price=1.10479 sl=1.09879 comment=S,post,1 adx=24.7 wpr=-92.8 trend=1
+CS	0	15:08:25.645	PhoenicisNex (EURUSD,H4)	2024.01.02 00:07:30   [Phoenicis][2024-01-02 00:07:30.109][WARN][slot=RiskManager][ev=clamp_applied][magic=0] slot=L raw=150.0000 → clamped=2.9000 [floor=0.0100 cap=2.9000]
+CS	0	15:08:25.645	PhoenicisNex (EURUSD,H4)	2024.01.02 00:07:30   [Phoenicis][2024-01-02 00:07:30.109][INFO][slot=Slot_L][ev=entry_buy][magic=211] lot=2.90 price=1.10475 sl=1.09675 comment=L,wave,1
+CS	0	15:08:25.645	PhoenicisNex (EURUSD,H4)	2024.01.02 00:07:30   [Phoenicis][2024-01-02 00:07:30.109][ERROR][slot=RiskManager][ev=s_pct_tp_invalid][magic=217] percent_tp=1.0000 not in {5,10,15}; S lot = 0.0 (no order)
+
+=== Error/Alert summary ===
+      2 CS	0	15:13:14.234	PhoenicisNex (EURUSD,H4)	2024.01.04 02:54:12   Alert: [Phoenicis][2024-01-04 02:54:12.700][ERROR][slot=RiskManager][ev=s_pct_tp_invalid][magic=217] percent_tp=1.0000 not in {5,10,15}; S lot = 0.0 (no order)
+      2 CS	0	15:13:14.234	PhoenicisNex (EURUSD,H4)	2024.01.04 02:54:12   [Phoenicis][2024-01-04 02:54:12.700][ERROR][slot=RiskManager][ev=s_pct_tp_invalid][magic=217] percent_tp=1.0000 not in {5,10,15}; S lot = 0.0 (no order)
+      2 CS	0	15:13:07.469	PhoenicisNex (EURUSD,H4)	2024.01.03 22:57:33   Alert: [Phoenicis][2024-01-03 22:57:33.933][ERROR][slot=RiskManager][ev=s_pct_tp_invalid][magic=217] percent_tp=1.0000 not in {5,10,15}; S lot = 0.0 (no order)
+      2 CS	0	15:13:07.469	PhoenicisNex (EURUSD,H4)	2024.01.03 22:57:33   [Phoenicis][2024-01-03 22:57:33.933][ERROR][slot=RiskManager][ev=s_pct_tp_invalid][magic=217] percent_tp=1.0000 not in {5,10,15}; S lot = 0.0 (no order)
+      2 CS	0	15:13:05.345	PhoenicisNex (EURUSD,H4)	2024.01.03 22:41:23   Alert: [Phoenicis][2024-01-03 22:41:23.809][ERROR][slot=RiskManager][ev=s_pct_tp_invalid][magic=217] percent_tp=1.0000 not in {5,10,15}; S lot = 0.0 (no order)
+      2 CS	0	15:13:05.345	PhoenicisNex (EURUSD,H4)	2024.01.03 22:41:23   [Phoenicis][2024-01-03 22:41:23.809][ERROR][slot=RiskManager][ev=s_pct_tp_invalid][magic=217] percent_tp=1.0000 not in {5,10,15}; S lot = 0.0 (no order)
+      2 CS	0	15:13:05.123	PhoenicisNex (EURUSD,H4)	2024.01.03 22:39:48   Alert: [Phoenicis][2024-01-03 22:39:48.587][ERROR][slot=RiskManager][ev=s_pct_tp_invalid][magic=217] percent_tp=1.0000 not in {5,10,15}; S lot = 0.0 (no order)
+      2 CS	0	15:13:05.123	PhoenicisNex (EURUSD,H4)	2024.01.03 22:39:48   [Phoenicis][2024-01-03 22:39:48.587][ERROR][slot=RiskManager][ev=s_pct_tp_invalid][magic=217] percent_tp=1.0000 not in {5,10,15}; S lot = 0.0 (no order)
+      2 CS	0	15:13:04.928	PhoenicisNex (EURUSD,H4)	2024.01.03 22:37:56   Alert: [Phoenicis][2024-01-03 22:37:56.392][ERROR][slot=RiskManager][ev=s_pct_tp_invalid][magic=217] percent_tp=1.0000 not in {5,10,15}; S lot = 0.0 (no order)
+      2 CS	0	15:13:04.928	PhoenicisNex (EURUSD,H4)	2024.01.03 22:37:56   [Phoenicis][2024-01-03 22:37:56.392][ERROR][slot=RiskManager][ev=s_pct_tp_invalid][magic=217] percent_tp=1.0000 not in {5,10,15}; S lot = 0.0 (no order)
+      2 CS	0	15:13:04.300	PhoenicisNex (EURUSD,H4)	2024.01.03 22:33:26   Alert: [Phoenicis][2024-01-03 22:33:26.764][ERROR][slot=RiskManager][ev=s_pct_tp_invalid][magic=217] percent_tp=1.0000 not in {5,10,15}; S lot = 0.0 (no order)
+      2 CS	0	15:13:04.300	PhoenicisNex (EURUSD,H4)	2024.01.03 22:33:26   [Phoenicis][2024-01-03 22:33:26.764][ERROR][slot=RiskManager][ev=s_pct_tp_invalid][magic=217] percent_tp=1.0000 not in {5,10,15}; S lot = 0.0 (no order)
+      2 CS	0	15:13:03.151	PhoenicisNex (EURUSD,H4)	2024.01.03 22:25:05   Alert: [Phoenicis][2024-01-03 22:25:05.615][ERROR][slot=RiskManager][ev=s_pct_tp_invalid][magic=217] percent_tp=1.0000 not in {5,10,15}; S lot = 0.0 (no order)
+      2 CS	0	15:13:03.151	PhoenicisNex (EURUSD,H4)	2024.01.03 22:25:05   [Phoenicis][2024-01-03 22:25:05.615][ERROR][slot=RiskManager][ev=s_pct_tp_invalid][magic=217] percent_tp=1.0000 not in {5,10,15}; S lot = 0.0 (no order)
+      2 CS	0	15:13:01.695	PhoenicisNex (EURUSD,H4)	2024.01.03 22:16:22   Alert: [Phoenicis][2024-01-03 22:16:22.159][ERROR][slot=RiskManager][ev=s_pct_tp_invalid][magic=217] percent_tp=1.0000 not in {5,10,15}; S lot = 0.0 (no order)
+      2 CS	0	15:13:01.695	PhoenicisNex (EURUSD,H4)	2024.01.03 22:16:22   [Phoenicis][2024-01-03 22:16:22.159][ERROR][slot=RiskManager][ev=s_pct_tp_invalid][magic=217] percent_tp=1.0000 not in {5,10,15}; S lot = 0.0 (no order)
+      2 CS	0	15:13:01.084	PhoenicisNex (EURUSD,H4)	2024.01.03 22:12:09   Alert: [Phoenicis][2024-01-03 22:12:09.549][ERROR][slot=RiskManager][ev=s_pct_tp_invalid][magic=217] percent_tp=1.0000 not in {5,10,15}; S lot = 0.0 (no order)
+      2 CS	0	15:13:01.084	PhoenicisNex (EURUSD,H4)	2024.01.03 22:12:09   [Phoenicis][2024-01-03 22:12:09.549][ERROR][slot=RiskManager][ev=s_pct_tp_invalid][magic=217] percent_tp=1.0000 not in {5,10,15}; S lot = 0.0 (no order)
+      2 CS	0	15:13:00.963	PhoenicisNex (EURUSD,H4)	2024.01.03 22:11:02   Alert: [Phoenicis][2024-01-03 22:11:02.427][ERROR][slot=RiskManager][ev=s_pct_tp_invalid][magic=217] percent_tp=1.0000 not in {5,10,15}; S lot = 0.0 (no order)
+      2 CS	0	15:13:00.963	PhoenicisNex (EURUSD,H4)	2024.01.03 22:11:02   [Phoenicis][2024-01-03 22:11:02.427][ERROR][slot=RiskManager][ev=s_pct_tp_invalid][magic=217] percent_tp=1.0000 not in {5,10,15}; S lot = 0.0 (no order)
+
+=== Total log line count ===
+1414435
+
+=== Last 50 lines (tail of run) ===
+CS	0	15:15:15.997	PhoenicisNex (EURUSD,H4)	2024.01.04 23:56:49   [Phoenicis][2024-01-04 23:56:49.460][INFO][slot=SlotG2][ev=entry_signal][magic=208] dir=SELL lot=2.90 sl_pips=113.8 price=1.09447 sl=1.10585 comment=G2,F1,N,1,SL
+CS	0	15:15:15.998	PhoenicisNex (EURUSD,H4)	2024.01.04 23:56:59   [Phoenicis][2024-01-04 23:56:59.461][WARN][slot=RiskManager][ev=clamp_applied][magic=0] slot=G2 raw=105.0000 → clamped=2.9000 [floor=0.0100 cap=2.9000]
+CS	0	15:15:15.998	PhoenicisNex (EURUSD,H4)	2024.01.04 23:56:59   [Phoenicis][2024-01-04 23:56:59.461][INFO][slot=SlotG2][ev=entry_signal][magic=208] dir=SELL lot=2.90 sl_pips=114.2 price=1.09443 sl=1.10585 comment=G2,F1,N,1,SL
+CS	0	15:15:15.998	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:00   [Phoenicis][2024-01-04 23:57:00.462][WARN][slot=RiskManager][ev=clamp_applied][magic=0] slot=G2 raw=105.0000 → clamped=2.9000 [floor=0.0100 cap=2.9000]
+CS	0	15:15:15.998	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:00   [Phoenicis][2024-01-04 23:57:00.462][INFO][slot=SlotG2][ev=entry_signal][magic=208] dir=SELL lot=2.90 sl_pips=114.2 price=1.09443 sl=1.10585 comment=G2,F1,N,1,SL
+CS	0	15:15:15.998	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:03   [Phoenicis][2024-01-04 23:57:03.462][WARN][slot=RiskManager][ev=clamp_applied][magic=0] slot=G2 raw=105.0000 → clamped=2.9000 [floor=0.0100 cap=2.9000]
+CS	0	15:15:15.998	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:03   [Phoenicis][2024-01-04 23:57:03.462][INFO][slot=SlotG2][ev=entry_signal][magic=208] dir=SELL lot=2.90 sl_pips=114.1 price=1.09444 sl=1.10585 comment=G2,F1,N,1,SL
+CS	0	15:15:16.000	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:06   [Phoenicis][2024-01-04 23:57:06.463][WARN][slot=RiskManager][ev=clamp_applied][magic=0] slot=G2 raw=105.0000 → clamped=2.9000 [floor=0.0100 cap=2.9000]
+CS	0	15:15:16.000	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:06   [Phoenicis][2024-01-04 23:57:06.463][INFO][slot=SlotG2][ev=entry_signal][magic=208] dir=SELL lot=2.90 sl_pips=114.3 price=1.09442 sl=1.10585 comment=G2,F1,N,1,SL
+CS	0	15:15:16.000	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:09   [Phoenicis][2024-01-04 23:57:09.464][WARN][slot=RiskManager][ev=clamp_applied][magic=0] slot=G2 raw=105.0000 → clamped=2.9000 [floor=0.0100 cap=2.9000]
+CS	0	15:15:16.000	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:09   [Phoenicis][2024-01-04 23:57:09.464][INFO][slot=SlotG2][ev=entry_signal][magic=208] dir=SELL lot=2.90 sl_pips=114.2 price=1.09443 sl=1.10585 comment=G2,F1,N,1,SL
+CS	0	15:15:16.001	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:13   [Phoenicis][2024-01-04 23:57:13.465][WARN][slot=RiskManager][ev=clamp_applied][magic=0] slot=G2 raw=105.0000 → clamped=2.9000 [floor=0.0100 cap=2.9000]
+CS	0	15:15:16.001	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:13   [Phoenicis][2024-01-04 23:57:13.465][INFO][slot=SlotG2][ev=entry_signal][magic=208] dir=SELL lot=2.90 sl_pips=114.1 price=1.09444 sl=1.10585 comment=G2,F1,N,1,SL
+CS	0	15:15:16.002	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:16   [Phoenicis][2024-01-04 23:57:16.466][WARN][slot=RiskManager][ev=clamp_applied][magic=0] slot=G2 raw=105.0000 → clamped=2.9000 [floor=0.0100 cap=2.9000]
+CS	0	15:15:16.002	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:16   [Phoenicis][2024-01-04 23:57:16.466][INFO][slot=SlotG2][ev=entry_signal][magic=208] dir=SELL lot=2.90 sl_pips=114.3 price=1.09442 sl=1.10585 comment=G2,F1,N,1,SL
+CS	0	15:15:16.002	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:19   [Phoenicis][2024-01-04 23:57:19.466][WARN][slot=RiskManager][ev=clamp_applied][magic=0] slot=G2 raw=105.0000 → clamped=2.9000 [floor=0.0100 cap=2.9000]
+CS	0	15:15:16.002	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:19   [Phoenicis][2024-01-04 23:57:19.466][INFO][slot=SlotG2][ev=entry_signal][magic=208] dir=SELL lot=2.90 sl_pips=114.2 price=1.09443 sl=1.10585 comment=G2,F1,N,1,SL
+CS	0	15:15:16.004	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:23   [Phoenicis][2024-01-04 23:57:23.467][WARN][slot=RiskManager][ev=clamp_applied][magic=0] slot=G2 raw=105.0000 → clamped=2.9000 [floor=0.0100 cap=2.9000]
+CS	0	15:15:16.004	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:23   [Phoenicis][2024-01-04 23:57:23.467][INFO][slot=SlotG2][ev=entry_signal][magic=208] dir=SELL lot=2.90 sl_pips=114.1 price=1.09444 sl=1.10585 comment=G2,F1,N,1,SL
+CS	0	15:15:16.004	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:26   [Phoenicis][2024-01-04 23:57:26.468][WARN][slot=RiskManager][ev=clamp_applied][magic=0] slot=G2 raw=105.0000 → clamped=2.9000 [floor=0.0100 cap=2.9000]
+CS	0	15:15:16.004	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:26   [Phoenicis][2024-01-04 23:57:26.468][INFO][slot=SlotG2][ev=entry_signal][magic=208] dir=SELL lot=2.90 sl_pips=114.0 price=1.09445 sl=1.10585 comment=G2,F1,N,1,SL
+CS	0	15:15:16.005	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:29   [Phoenicis][2024-01-04 23:57:29.469][WARN][slot=RiskManager][ev=clamp_applied][magic=0] slot=G2 raw=105.0000 → clamped=2.9000 [floor=0.0100 cap=2.9000]
+CS	0	15:15:16.005	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:29   [Phoenicis][2024-01-04 23:57:29.469][INFO][slot=SlotG2][ev=entry_signal][magic=208] dir=SELL lot=2.90 sl_pips=114.2 price=1.09443 sl=1.10585 comment=G2,F1,N,1,SL
+CS	0	15:15:16.006	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:33   [Phoenicis][2024-01-04 23:57:33.470][WARN][slot=RiskManager][ev=clamp_applied][magic=0] slot=G2 raw=105.0000 → clamped=2.9000 [floor=0.0100 cap=2.9000]
+CS	0	15:15:16.006	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:33   [Phoenicis][2024-01-04 23:57:33.470][INFO][slot=SlotG2][ev=entry_signal][magic=208] dir=SELL lot=2.90 sl_pips=114.0 price=1.09445 sl=1.10585 comment=G2,F1,N,1,SL
+CS	0	15:15:16.007	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:36   [Phoenicis][2024-01-04 23:57:36.471][WARN][slot=RiskManager][ev=clamp_applied][magic=0] slot=G2 raw=105.0000 → clamped=2.9000 [floor=0.0100 cap=2.9000]
+CS	0	15:15:16.007	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:36   [Phoenicis][2024-01-04 23:57:36.471][INFO][slot=SlotG2][ev=entry_signal][magic=208] dir=SELL lot=2.90 sl_pips=114.1 price=1.09444 sl=1.10585 comment=G2,F1,N,1,SL
+CS	0	15:15:16.008	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:39   [Phoenicis][2024-01-04 23:57:39.472][WARN][slot=RiskManager][ev=clamp_applied][magic=0] slot=G2 raw=105.0000 → clamped=2.9000 [floor=0.0100 cap=2.9000]
+CS	0	15:15:16.008	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:39   [Phoenicis][2024-01-04 23:57:39.472][INFO][slot=SlotG2][ev=entry_signal][magic=208] dir=SELL lot=2.90 sl_pips=113.7 price=1.09448 sl=1.10585 comment=G2,F1,N,1,SL
+CS	0	15:15:16.009	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:43   [Phoenicis][2024-01-04 23:57:43.473][WARN][slot=RiskManager][ev=clamp_applied][magic=0] slot=G2 raw=105.0000 → clamped=2.9000 [floor=0.0100 cap=2.9000]
+CS	0	15:15:16.009	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:43   [Phoenicis][2024-01-04 23:57:43.473][INFO][slot=SlotG2][ev=entry_signal][magic=208] dir=SELL lot=2.90 sl_pips=114.1 price=1.09444 sl=1.10585 comment=G2,F1,N,1,SL
+CS	0	15:15:16.009	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:46   [Phoenicis][2024-01-04 23:57:46.473][WARN][slot=RiskManager][ev=clamp_applied][magic=0] slot=G2 raw=105.0000 → clamped=2.9000 [floor=0.0100 cap=2.9000]
+CS	0	15:15:16.009	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:46   [Phoenicis][2024-01-04 23:57:46.473][INFO][slot=SlotG2][ev=entry_signal][magic=208] dir=SELL lot=2.90 sl_pips=114.0 price=1.09445 sl=1.10585 comment=G2,F1,N,1,SL
+CS	0	15:15:16.011	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:49   [Phoenicis][2024-01-04 23:57:49.474][WARN][slot=RiskManager][ev=clamp_applied][magic=0] slot=G2 raw=105.0000 → clamped=2.9000 [floor=0.0100 cap=2.9000]
+CS	0	15:15:16.011	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:49   [Phoenicis][2024-01-04 23:57:49.474][INFO][slot=SlotG2][ev=entry_signal][magic=208] dir=SELL lot=2.90 sl_pips=114.1 price=1.09444 sl=1.10585 comment=G2,F1,N,1,SL
+CS	0	15:15:16.011	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:59   [Phoenicis][2024-01-04 23:57:59.475][WARN][slot=RiskManager][ev=clamp_applied][magic=0] slot=G2 raw=105.0000 → clamped=2.9000 [floor=0.0100 cap=2.9000]
+CS	0	15:15:16.011	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:59   [Phoenicis][2024-01-04 23:57:59.475][INFO][slot=SlotG2][ev=entry_signal][magic=208] dir=SELL lot=2.90 sl_pips=114.2 price=1.09443 sl=1.10585 comment=G2,F1,N,1,SL
+CS	0	15:15:16.012	Tester	final balance 1000.00 USD
+CS	0	15:15:16.013	Tester	OnTester result 1000
+CS	0	15:15:16.013	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:59   [Phoenicis][2024-01-04 23:57:59.476][INFO][slot=system][ev=deinit_cleanup][magic=0] reason=1 state=EA_STATE_RUNNING
+CS	0	15:15:16.018	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:59   [Phoenicis][slot=system][ev=init_failed_cleanup] reason=dtor_fallback (logger un-init — Print fallback)
+CS	0	15:15:16.018	Tester	EURUSD,H4: 304418 ticks, 18 bars generated. Test passed in 0:06:50.521 (including ticks preprocessing 0:00:00.016).
+CS	0	15:15:16.018	Tester	97 Mb memory used including 9 Mb of history data, 64 Mb of tick data
+CS	0	15:15:16.018	Tester	log file "C:\Users\kritsana.ye\AppData\Roaming\MetaQuotes\Tester\A12EC900AF5AF5023ECB36F7FB72E396\Agent-127.0.0.1-3000\logs\20260504.log" written
+CS	0	15:15:16.026	Tester	test Experts\PhoenicisNex\PhoenicisNex.ex5 on EURUSD,H4 thread finished
+CS	0	15:15:16.048	127.0.0.1	tester forced to close
+CS	0	15:15:16.048	127.0.0.1	prepare for shutdown
+CS	0	15:15:16.048	127.0.0.1	stop immediately
+CS	0	15:15:16.048	127.0.0.1	shutdown finished
+CS	0	15:15:16.327	Server	MetaTester 5 stopped
