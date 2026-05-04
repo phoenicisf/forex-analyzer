@@ -60,4 +60,14 @@ static const int MAGIC_T  = 219;
 //    StatePersistence / TradeJournal / Orchestrator (see fix-round-10 § 10.7).
 #define PHOENICISNEX_MAGIC_COUNT 17
 
+//--- PhoenicisNex magic-number range gate (per BR-1.1 + ADR-005).
+//    Used by trade-transaction surface (Orchestrator::OnTradeTransaction)
+//    to reject foreign-EA close events on multi-EA terminals before they
+//    reach CircuitBreaker BR-3.6 ring buffer. See fix-round-11 § 11.2.
+//    Range = [200..219] inclusive (Slot U=220 deleted per OQ-8 — kept out).
+bool IsPhoenicisMagic(int magic)
+  {
+   return magic >= 200 && magic <= 219;
+  }
+
 #endif // PHOENICISNEX_DOMAIN_ENUMTYPES_MQH

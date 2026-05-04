@@ -48,12 +48,29 @@
 //|      9th INIT_FAILED site "wire_services_alloc_fail"            |
 //|      (fix-round-10 § 10.1 — closes NFR-5.1 silent-halt gap).    |
 //|  D-8 CircuitBreaker producer-side wiring via OnTradeTransaction |
-//|      added (fix-round-10 § 10.3). D-2 banner remains: consumer- |
-//|      side CheckPingPong() takes zero args; producer feed routes |
-//|      DEAL_ENTRY_OUT events to m_breaker.RecordClose. Entry .mq5 |
-//|      (IMPL-060) must forward MT5 OnTradeTransaction lifecycle   |
-//|      to g_orch.OnTradeTransaction — until then, ring buffer     |
-//|      stays empty + CheckPingPong returns false on every tick.   |
+//|      WIRED (fix-round-10 § 10.3 + IMPL-060 entry .mq5 lines     |
+//|      80-85 forwarding). Consumer-side CheckPingPong() takes     |
+//|      zero args (D-2). Producer feed filters trade-transaction   |
+//|      stream and routes DEAL_ENTRY_OUT events to                  |
+//|      m_breaker.RecordClose. Filters added in fix-round-11 § 11.2|
+//|      / 11.3 / 11.4 / 11.5 — see D-9.                             |
+//|  D-9 OnTradeTransaction multi-layer guard (fix-round-11 §11.2-5)|
+//|      defends BR-3.6 ring buffer from foreign-EA / pre-Init /    |
+//|      post-halt / non-trade-deal-type pollution:                  |
+//|        (a) m_init_complete + m_breaker NULL gate (§ 11.3)        |
+//|        (b) m_state_enum == RUNNING gate    (§ 11.5)              |
+//|        (c) DEAL_SYMBOL == _Symbol filter   (§ 11.2 NFR-5.3)      |
+//|        (d) IsPhoenicisMagic() range filter (§ 11.2 ADR-005)      |
+//|        (e) DEAL_TYPE BUY/SELL only filter  (§ 11.4)              |
+//|      Helper IsPhoenicisMagic() lives in domain/EnumTypes.mqh    |
+//|      so other surfaces (CrossSlotCoordinator weak-metrics, etc) |
+//|      can share the same canonical magic-range gate (XS-11.3).   |
+//|  D-10 m_teardown_done + m_init_complete lifecycle flags         |
+//|      (fix-round-11 § 11.1). Dtor on value-typed global path     |
+//|      checks m_teardown_done to suppress duplicate Error emit     |
+//|      after OnDeinit ran. m_init_complete gates trade-transaction|
+//|      surface so pre-OnInit broker-recovery deals cannot reach   |
+//|      un-Init'd CircuitBreaker.                                   |
 //|                                                                   |
 //| Error pattern (per ADR-011 boot-time bypass):                     |
 //|   m_logger.ErrorBypassThrottle("system","init_failed_cleanup",0, |
@@ -143,6 +160,19 @@ private:
    EEAState                  m_state_enum;
    string                    m_halt_reason;
 
+   //--- Lifecycle gates (fix-round-11 § 11.1 + § 11.3).
+   //    m_teardown_done — set true at end of _TeardownAll. Dtor checks this
+   //      to suppress dtor-fallback CleanupPartialInit on the value-typed
+   //      global path (OnDeinit already ran → no leak to surface). Without
+   //      this guard every normal EA unload re-emits Error-tag
+   //      `init_failed_cleanup`, polluting QA Phase 3T `[log-assertion]`.
+   //    m_init_complete — set true on INIT_SUCCEEDED return. Trade-transaction
+   //      surface (OnTradeTransaction) gates on this so close events that
+   //      arrive in the pre-OnInit window during MT5 broker reconnect
+   //      cannot reach an un-Init'd CircuitBreaker.
+   bool                      m_teardown_done;
+   bool                      m_init_complete;
+
 public:
                      COrchestrator()
       : m_pip(NULL), m_comment_parser(NULL), m_json_writer(NULL), m_atomic(NULL),
@@ -150,14 +180,18 @@ public:
         m_ctx_builder(NULL), m_risk(NULL), m_journal(NULL), m_breaker(NULL),
         m_time(NULL), m_pending(NULL), m_xslot(NULL), m_monitor(NULL),
         m_validator(NULL), m_registry(NULL), m_ea_state(NULL),
-        m_state_enum(EA_STATE_RUNNING), m_halt_reason("")
+        m_state_enum(EA_STATE_RUNNING), m_halt_reason(""),
+        m_teardown_done(false), m_init_complete(false)
      {}
 
                     ~COrchestrator()
      {
-      // Defensive: if OnDeinit was not called (rare — MT5 lifecycle
-      // ensures OnDeinit on INIT_SUCCEEDED), CleanupPartialInit covers
-      // the leak surface.
+      // fix-round-11 § 11.1 — value-typed global path (PhoenicisNex.mq5:41)
+      // invokes this dtor AFTER MT5's OnDeinit already ran _TeardownAll.
+      // Skip dtor-fallback emit when teardown already completed; only fire
+      // if dtor reaches us with services still live (true partial-init crash
+      // where OnDeinit never ran — original safety-net intent).
+      if(m_teardown_done) return;
       CleanupPartialInit("dtor_fallback");
      }
 
@@ -334,6 +368,11 @@ int COrchestrator::OnInit()
                               m_registry.Count(),
                               m_portfolio.MagicCount(),
                               EnumToString(m_state_enum)));
+   // fix-round-11 § 11.3 — open trade-transaction surface only after Phase B/C
+   // succeed, so close events arriving in the pre-OnInit window (MT5 broker
+   // reconnect dispatching queued deals before WireServices completes) cannot
+   // reach an un-Init'd CircuitBreaker.
+   m_init_complete = true;
    return INIT_SUCCEEDED;
   }
 
@@ -491,6 +530,12 @@ void COrchestrator::_TeardownAll()
    // Logger released LAST — required above for ErrorBypassThrottle visibility
    if(m_logger != NULL)
      { delete m_logger;         m_logger         = NULL; }   // step 1
+
+   // fix-round-11 § 11.1 — flag teardown complete so dtor on value-typed
+   // global path skips its fallback CleanupPartialInit emit. Also reset
+   // m_init_complete so trade-transaction surface stops feeding CB.
+   m_init_complete = false;
+   m_teardown_done = true;
   }
 
 //+------------------------------------------------------------------+
@@ -665,20 +710,47 @@ void COrchestrator::OnTradeTransaction(const MqlTradeTransaction &trans,
                                        const MqlTradeRequest &request,
                                        const MqlTradeResult &result)
   {
-   if(m_breaker == NULL) return;
+   // fix-round-11 § 11.3 — pre-OnInit window guard. MT5 may dispatch queued
+   //   trade events during broker reconnect before WireServices/Phase B run;
+   //   m_breaker may be non-NULL but un-Init'd. m_init_complete flips true
+   //   only at OnInit's INIT_SUCCEEDED return.
+   // fix-round-11 § 11.5 — HALTED gate. PhoenicisNex emits no new entries in
+   //   HALTED/HALTED_STABLE per ADR-010 enable matrix, so close events from
+   //   exit-pass drain should not poison the BR-3.6 ring across halt cycles.
+   if(!m_init_complete || m_breaker == NULL) return;
+   if(m_state_enum != EA_STATE_RUNNING) return;
    if(trans.type != TRADE_TRANSACTION_DEAL_ADD) return;
 
    ulong deal = trans.deal;
    if(!HistoryDealSelect(deal)) return;
 
+   // fix-round-11 § 11.2 — own-symbol filter. Multi-symbol terminals fire
+   //   foreign-symbol deals that must not feed BR-3.6 (NFR-5.3 boundary
+   //   replicated at trade-transaction surface).
+   string deal_symbol = HistoryDealGetString(deal, DEAL_SYMBOL);
+   if(deal_symbol != _Symbol) return;
+
    ENUM_DEAL_ENTRY entry = (ENUM_DEAL_ENTRY)HistoryDealGetInteger(deal, DEAL_ENTRY);
    if(entry != DEAL_ENTRY_OUT) return;     // only closes feed BR-3.6
 
    int magic = (int)HistoryDealGetInteger(deal, DEAL_MAGIC);
+   // fix-round-11 § 11.2 — own-magic-range filter. Manual closes (magic=0)
+   //   and other-EA magics outside [200..219] cannot feed BR-3.6 ring buffer.
+   if(!IsPhoenicisMagic(magic)) return;
+
    ENUM_DEAL_TYPE dt = (ENUM_DEAL_TYPE)HistoryDealGetInteger(deal, DEAL_TYPE);
-   // Closing deal type is opposite of the original position direction:
-   //   DEAL_TYPE_SELL closes a long  ⇒ direction = 1 (was BUY)
-   //   DEAL_TYPE_BUY  closes a short ⇒ direction = 0 (was SELL)
+   // fix-round-11 § 11.4 — defensive guard against non-trade deal types
+   //   (DEAL_TYPE_BALANCE / CREDIT / BONUS / CHARGE / ...). The DEAL_ENTRY_OUT
+   //   guard already excludes these for FBS hedging accounts (C-5), but
+   //   explicit type check protects against Phase 2 broker-mode change
+   //   per BA `03 § 5 Note`.
+   if(dt != DEAL_TYPE_BUY && dt != DEAL_TYPE_SELL) return;
+   // Hedging-mode mapping (C-5 + ADR-001). Closing deal type is opposite of
+   //   the original position direction:
+   //     DEAL_TYPE_SELL closes a long  ⇒ direction = 1 (was BUY)
+   //     DEAL_TYPE_BUY  closes a short ⇒ direction = 0 (was SELL)
+   //   Netting-mode brokers use DEAL_ENTRY_INOUT for partial-close-and-reverse
+   //   — out-of-scope per Phase 1; revisit if multi-broker evolves.
    int direction = (dt == DEAL_TYPE_SELL) ? 1 : 0;
    datetime t = (datetime)HistoryDealGetInteger(deal, DEAL_TIME);
 
@@ -695,6 +767,16 @@ void COrchestrator::OnTradeTransaction(const MqlTradeTransaction &trans,
 //+------------------------------------------------------------------+
 double COrchestrator::OnTester()
   {
+   // fix-round-11 § 11.6 — loud warning when optimizer runs against the
+   //   Phase 1 placeholder. Raw-equity ranking biases toward high-leverage
+   //   outcomes (C-7 lev=500); operator must wait for IMPL-061..063 Sharpe-
+   //   style finalization before enabling Optimization=1 in `.ini` files.
+   //   See deferred-ac-registry § OnTester score row.
+   if(MQLInfoInteger(MQL_OPTIMIZATION))
+      Print("[Phoenicis][slot=system][ev=ontester_placeholder]"
+            " WARNING: Optimization enabled but OnTester returns raw equity;"
+            " rankings will be biased toward leverage-heavy outcomes —"
+            " final Sharpe-style score lands at IMPL-061..063");
    return AccountInfoDouble(ACCOUNT_EQUITY);
   }
 

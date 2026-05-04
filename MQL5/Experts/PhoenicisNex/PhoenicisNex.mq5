@@ -30,14 +30,22 @@
 #property version   "1.00"
 #property description "PhoenicisNex EA — single-instrument EURUSD H4 modular monolith"
 #property strict
+//--- fix-round-11 § 11.8 — pin Strategy Tester to fresh tick stream each run.
+//    Without this property a future MT5 build that changes Tester defaults
+//    could silently invalidate committed simulation/headless-tests/<task>.ini
+//    files (TD-02 §13.6 reproducibility contract).
+#property tester_no_cache
 
 #include "core/Orchestrator.mqh"
 
 //--- Single global composition root.
 //    Default-constructed (all member pointers NULL); WireServices()
 //    runs on first OnInit() invocation. Dtor on EA unload routes
-//    through CleanupPartialInit("dtor_fallback") as a defensive net
-//    in case OnDeinit was skipped (per Orchestrator.mqh § dtor).
+//    through CleanupPartialInit("dtor_fallback") ONLY when teardown
+//    has not already completed (m_teardown_done gate, fix-round-11
+//    § 11.1) — value-typed global means MT5 always invokes dtor
+//    AFTER OnDeinit on the happy path, so the fallback fires only on
+//    a true partial-init crash where OnDeinit never ran.
 COrchestrator g_orchestrator;
 
 //+------------------------------------------------------------------+
