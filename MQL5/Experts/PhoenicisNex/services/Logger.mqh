@@ -64,6 +64,12 @@ private:
    //--- 2-phase init: nullable pointer to StatePersistence (wired at OnInit step 4a)
    CStatePersistence *m_state;
 
+   //--- Init-completion flag — true after CLogger::Init() body completes.
+   //    Lets Orchestrator::CleanupPartialInit distinguish "Logger heap-alloc'd
+   //    but Init() never called" (Phase A failure between WireServices and
+   //    Phase B step 1) from "Logger fully ready" — see fix-round-10 § 10.4.
+   bool              m_initialized;
+
    //--- Private helpers
    string            FormatLine(ESeverity level, string slot, string ev,
                                 int magic, string msg) const;
@@ -82,7 +88,8 @@ public:
                m_escalation_n(10),
                m_recent_count(0),
                m_tick_counter(0),
-               m_state(NULL)
+               m_state(NULL),
+               m_initialized(false)
      {
       ArrayInitialize(m_recent_tick_count, 0);
       ArrayInitialize(m_consecutive_count, 0);
@@ -109,6 +116,10 @@ public:
 
    //--- Halt-trigger bypass — always Alert, never throttled (ADR-010 halt path)
    void              ErrorBypassThrottle(string slot, string event_name, int magic, string msg);
+
+   //--- Init-state accessor — Orchestrator::CleanupPartialInit checks this
+   //    before routing emit through Error/Alert; falls back to Print otherwise.
+   bool              IsInitialized() const { return m_initialized; }
 
    //--- Per-tick callback — Orchestrator calls once per OnTick before slot dispatch
    void              OnTickBoundary();
@@ -143,6 +154,7 @@ void CLogger::Init(ESeverity min_level, bool alert_on_error, int escalation_n)
                                  " alert_on_error=" + (alert_on_error ? "true" : "false") +
                                  " escalation_n=" + IntegerToString(m_escalation_n));
    Print(init_line);
+   m_initialized = true;   // fix-round-10 § 10.4 — signal Orchestrator cleanup-emit safety
   }
 
 //+------------------------------------------------------------------+

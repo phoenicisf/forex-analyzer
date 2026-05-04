@@ -484,8 +484,8 @@ string CStatePersistence::SerializeAll(EEAState ea_state,
       ss.Begin();
       if(m_portfolio != NULL)
         {
-         int magics[17] = {200,201,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219};
-         for(int i = 0; i < 17; i++)
+         int magics[PHOENICISNEX_MAGIC_COUNT] = {200,201,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219};
+         for(int i = 0; i < PHOENICISNEX_MAGIC_COUNT; i++)
            {
             SlotState *s = m_portfolio.GetByMagic(magics[i]);
             CJsonWriter se;

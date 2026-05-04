@@ -37,6 +37,23 @@
 //|      so journal sustained-failure path can call back into halt.  |
 //|      Not in TD-02 §7.4 explicit pseudo-code; inferred from      |
 //|      IHaltSink.mqh + TradeJournal.SetHaltSink existence.         |
+//|  D-6 RunExitPass(const MarketContext&) accepts ctx but CSlotBase|
+//|      ManageExits signature is (CPortfolioState&) only (per      |
+//|      IMPL-018 contract) — ctx plumbed for symmetry with         |
+//|      RunEntryPass + future ctx-aware exit policies; not         |
+//|      forwarded to slots today (fix-round-10 § 10.9).            |
+//|  D-7 WireServices() returns bool (TD-02 §7.4 sketches void).     |
+//|      Per-alloc NULL re-check protects Phase B from heap-alloc   |
+//|      failures; OnInit routes through CleanupPartialInit at a    |
+//|      9th INIT_FAILED site "wire_services_alloc_fail"            |
+//|      (fix-round-10 § 10.1 — closes NFR-5.1 silent-halt gap).    |
+//|  D-8 CircuitBreaker producer-side wiring via OnTradeTransaction |
+//|      added (fix-round-10 § 10.3). D-2 banner remains: consumer- |
+//|      side CheckPingPong() takes zero args; producer feed routes |
+//|      DEAL_ENTRY_OUT events to m_breaker.RecordClose. Entry .mq5 |
+//|      (IMPL-060) must forward MT5 OnTradeTransaction lifecycle   |
+//|      to g_orch.OnTradeTransaction — until then, ring buffer     |
+//|      stays empty + CheckPingPong returns false on every tick.   |
 //|                                                                   |
 //| Error pattern (per ADR-011 boot-time bypass):                     |
 //|   m_logger.ErrorBypassThrottle("system","init_failed_cleanup",0, |
@@ -150,6 +167,14 @@ public:
    void              OnDeinit(const int reason);
    double            OnTester();
 
+   //--- MT5 trade-transaction lifecycle (fix-round-10 § 10.3 / D-8).
+   //    Entry .mq5 (IMPL-060) forwards MT5 OnTradeTransaction here.
+   //    Routes DEAL_ENTRY_OUT events to CircuitBreaker.RecordClose so
+   //    BR-3.6 ping-pong detector receives non-empty input.
+   void              OnTradeTransaction(const MqlTradeTransaction &trans,
+                                        const MqlTradeRequest &request,
+                                        const MqlTradeResult &result);
+
    //--- Test harness accessor — Spike_Orchestrator.mq5 inspects state
    //    after OnInit / Phase C fail to assert cleanup ordering.
    EEAState          GetStateEnum() const { return m_state_enum; }
@@ -158,14 +183,22 @@ public:
    bool              IsRegistryLive() const { return m_registry != NULL; }
 
 private:
-   //--- Phase A — heap-construct everything (no Init yet)
-   void              WireServices();
+   //--- Phase A — heap-construct everything (no Init yet).
+   //    Returns false if any `new T()` returns NULL on allocation failure;
+   //    OnInit then routes through CleanupPartialInit at the 9th INIT_FAILED
+   //    site "wire_services_alloc_fail" (fix-round-10 § 10.1 / D-7).
+   bool              WireServices();
 
-   //--- Phase A continued — heap-construct 21 slots via SlotRegistry
-   bool              WireSlots();
-
-   //--- TD-02 §7.4.1 — reverse-order release at all 8 INIT_FAILED sites
+   //--- TD-02 §7.4.1 — reverse-order release at all 9 INIT_FAILED sites
+   //    (fix-round-10 § 10.1 promotes count from 8 → 9 with WireServices).
+   //    Emits Error-level `init_failed_cleanup` then delegates to
+   //    `_TeardownAll`. Used by OnInit Phase A/C failure paths and dtor.
    void              CleanupPartialInit(string failure_reason);
+
+   //--- Pure resource teardown — no emit. Called by both
+   //    CleanupPartialInit (init failure) and OnDeinit (normal shutdown
+   //    with Info-level `deinit_cleanup` semantic — fix-round-10 § 10.11).
+   void              _TeardownAll();
 
    //--- Halt() helper — delegates to CEAState.Halt + updates cached mirrors.
    //    Called from OnTick steps 4 (CB), 5 (handle invalid), 13b (journal halt).
@@ -195,12 +228,14 @@ private:
 int COrchestrator::OnInit()
   {
    // === Phase A — heap construction ============================
-   WireServices();
-   if(!WireSlots())
+   //   D-7: WireServices returns bool with per-alloc NULL re-check so a
+   //   heap-exhaustion mid-Phase-A (e.g. memory-pressured re-attach) is
+   //   surfaced through CleanupPartialInit instead of a silent NULL-deref
+   //   on the first Phase B Init() call (fix-round-10 § 10.1 — was the
+   //   only escape route from the NFR-5.1 "no silent halt" contract).
+   if(!WireServices())
      {
-      // SlotRegistry::Init failed or one of 21 ctor allocations
-      // returned NULL. Cleanup whatever was already wired.
-      CleanupPartialInit("wire_slots_alloc_fail");
+      CleanupPartialInit("wire_services_alloc_fail");
       return INIT_FAILED;
      }
 
@@ -272,7 +307,8 @@ int COrchestrator::OnInit()
    m_state_enum  = m_ea_state.GetState();
    m_halt_reason = m_ea_state.GetHaltReason();
 
-   if(!m_validator.ValidateSlotRegistry(m_portfolio.MagicCount(), 17))
+   if(!m_validator.ValidateSlotRegistry(m_portfolio.MagicCount(),
+                                        PHOENICISNEX_MAGIC_COUNT))
      { CleanupPartialInit("slot_registry_invariant"); return INIT_FAILED; }
 
    if(!m_registry.RegisterAll(m_indicators, m_risk, m_journal, m_logger,
@@ -302,50 +338,49 @@ int COrchestrator::OnInit()
   }
 
 //+------------------------------------------------------------------+
-//| WireServices — Phase A heap construction                         |
+//| WireServices — Phase A heap construction (D-7)                   |
+//|                                                                  |
+//| Returns false if any `new T()` returns NULL on allocation        |
+//| failure (MQL5 documented behavior under heap exhaustion).        |
+//| Caller (OnInit) routes failure through CleanupPartialInit at     |
+//| INIT_FAILED site #9 "wire_services_alloc_fail". The helper macro |
+//| keeps the body terse + ensures the NULL re-check is never        |
+//| forgotten when adding a new service in the future.               |
+//|                                                                  |
+//| The 21-slot heap allocation lives inside SlotRegistry per ADR-002|
+//| (slot lifecycle owner) — Phase C calls m_registry.RegisterAll    |
+//| after services are Init'd (slots need service pointers at Init). |
 //+------------------------------------------------------------------+
-void COrchestrator::WireServices()
+#define PHOENICISNEX_WIRE(member, ctor) \
+   if(member == NULL) member = new ctor(); \
+   if(member == NULL) return false;
+
+bool COrchestrator::WireServices()
   {
    // Construction order = DI table § 7.3 step 1 → 17. Helpers (step 3)
    // bundled together; no Init() needed (stateless utilities).
-   if(m_logger          == NULL) m_logger          = new CLogger();
-   if(m_pip             == NULL) m_pip             = new CPipMath();
-   if(m_comment_parser  == NULL) m_comment_parser  = new CCommentParser();
-   if(m_json_writer     == NULL) m_json_writer     = new CJsonWriter();
-   if(m_atomic          == NULL) m_atomic          = new CAtomicFile();
-   if(m_state           == NULL) m_state           = new CStatePersistence();
-   if(m_portfolio       == NULL) m_portfolio       = new CPortfolioState();
-   if(m_indicators      == NULL) m_indicators      = new CIndicatorService();
-   if(m_ctx_builder     == NULL) m_ctx_builder     = new CMarketContextBuilder();
-   if(m_risk            == NULL) m_risk            = new CRiskManager();
-   if(m_journal         == NULL) m_journal         = new CTradeJournal();
-   if(m_breaker         == NULL) m_breaker         = new CCircuitBreaker();
-   if(m_time            == NULL) m_time            = new CTimeGate();
-   if(m_pending         == NULL) m_pending         = new CPendingMachineRegistry();
-   if(m_xslot           == NULL) m_xslot           = new CCrossSlotCoordinator();
-   if(m_monitor         == NULL) m_monitor         = new CPortfolioMonitor();
-   if(m_validator       == NULL) m_validator       = new CBootstrapValidator();
-   if(m_registry        == NULL) m_registry        = new CSlotRegistry();
-   if(m_ea_state        == NULL) m_ea_state        = new CEAState();
+   PHOENICISNEX_WIRE(m_logger,          CLogger)              // step 1 (first; used by CleanupPartialInit emit)
+   PHOENICISNEX_WIRE(m_pip,             CPipMath)             // step 2
+   PHOENICISNEX_WIRE(m_comment_parser,  CCommentParser)       // step 3
+   PHOENICISNEX_WIRE(m_json_writer,     CJsonWriter)          // step 3
+   PHOENICISNEX_WIRE(m_atomic,          CAtomicFile)          // step 3
+   PHOENICISNEX_WIRE(m_state,           CStatePersistence)    // step 4
+   PHOENICISNEX_WIRE(m_portfolio,       CPortfolioState)      // step 5
+   PHOENICISNEX_WIRE(m_indicators,      CIndicatorService)    // step 6
+   PHOENICISNEX_WIRE(m_ctx_builder,     CMarketContextBuilder)// step 7
+   PHOENICISNEX_WIRE(m_risk,            CRiskManager)         // step 8
+   PHOENICISNEX_WIRE(m_journal,         CTradeJournal)        // step 9
+   PHOENICISNEX_WIRE(m_breaker,         CCircuitBreaker)      // step 10
+   PHOENICISNEX_WIRE(m_time,            CTimeGate)            // step 11
+   PHOENICISNEX_WIRE(m_pending,         CPendingMachineRegistry) // step 12
+   PHOENICISNEX_WIRE(m_xslot,           CCrossSlotCoordinator)   // step 13
+   PHOENICISNEX_WIRE(m_monitor,         CPortfolioMonitor)    // step 14
+   PHOENICISNEX_WIRE(m_validator,       CBootstrapValidator)  // step 15
+   PHOENICISNEX_WIRE(m_registry,        CSlotRegistry)        // step 16
+   PHOENICISNEX_WIRE(m_ea_state,        CEAState)             // step 17
+   return true;
   }
-
-//+------------------------------------------------------------------+
-//| WireSlots — delegates to SlotRegistry::RegisterAll                |
-//|                                                                  |
-//| The 21-slot heap allocation lives inside SlotRegistry per ADR-002|
-//| (slot lifecycle owner). Orchestrator only confirms registry      |
-//| object exists; actual slot ctors fire during RegisterAll which   |
-//| is called from Phase C after services are Init'd (slots need     |
-//| service pointers at Init).                                       |
-//+------------------------------------------------------------------+
-bool COrchestrator::WireSlots()
-  {
-   // SlotRegistry was constructed in WireServices. All other prep work
-   // (slot heap-news + Init + SetPipMath) happens inside Phase C call to
-   // m_registry.RegisterAll(...). This stub returns true so Phase A/B can
-   // proceed; failure surface is in Phase C if RegisterAll returns false.
-   return (m_registry != NULL);
-  }
+#undef PHOENICISNEX_WIRE
 
 //+------------------------------------------------------------------+
 //| CleanupPartialInit — TD-02 §7.4.1 reverse-order release          |
@@ -360,9 +395,36 @@ bool COrchestrator::WireSlots()
 void COrchestrator::CleanupPartialInit(string failure_reason)
   {
    // Step 0 — emit failure reason BEFORE we tear down logger.
-   if(m_logger != NULL)
+   //   fix-round-10 § 10.4: when WireServices succeeds but Phase B step 1
+   //   (m_logger.Init) is never reached, m_logger is non-NULL but un-Init'd.
+   //   ErrorBypassThrottle is benign on an un-Init'd CLogger today (body
+   //   only touches m_alert_on_error which the ctor sets to true), but we
+   //   route through Print() to keep the safety contract independent of
+   //   future CLogger refactors that may dereference m_state or arrays.
+   if(m_logger != NULL && m_logger.IsInitialized())
+     {
       m_logger.ErrorBypassThrottle("system", "init_failed_cleanup", 0, failure_reason);
+     }
+   else
+     {
+      Print("[Phoenicis][slot=system][ev=init_failed_cleanup] reason=", failure_reason,
+            " (logger un-init — Print fallback)");
+     }
 
+   _TeardownAll();
+  }
+
+//+------------------------------------------------------------------+
+//| _TeardownAll — pure reverse-order resource release (no emit)     |
+//|                                                                  |
+//| fix-round-10 § 10.11 — extracted from CleanupPartialInit so      |
+//| OnDeinit can emit `deinit_cleanup` (Info severity) instead of    |
+//| `init_failed_cleanup` (Error). Prevents QA Phase 3T              |
+//| `[log-assertion]` E-ACs from counting normal shutdowns as        |
+//| init-failure false-positives.                                    |
+//+------------------------------------------------------------------+
+void COrchestrator::_TeardownAll()
+  {
    if(m_ea_state != NULL)
      { delete m_ea_state;       m_ea_state       = NULL; }   // step 17
 
@@ -460,41 +522,46 @@ void COrchestrator::OnTick()
    m_xslot.SetHalted(m_state_enum != EA_STATE_RUNNING);
 
    // 6. Time gates (cheap)
+   //   fix-round-10 § 10.2 — only the ENTRY pass is gated on morning_block.
+   //   Exit pass + portfolio refresh + pending tick must run every tick to
+   //   honour ADR-010 enable matrix ("exit pass always runs, even in HALTED")
+   //   + BR-3.1 + CodeWiki §3.1 ("morning window suppresses NEW entries"
+   //   only). Gating exits caused (a) BR-8.1 SafePort + BR-8.3 ForceCutloss
+   //   to be silently disarmed during morning window, (b) state.json saves
+   //   with stale Refresh aggregates (§ 10.5), (c) ADR-008 force-clear
+   //   timeouts to freeze for InpMorningWindowMinutes minutes per day.
    bool morning_block = m_time.IsMorningWakeup(ctx.tick_time);
-   bool monday_block  = false;
-   bool holiday_block = false;
-   if(!morning_block)
+   bool monday_block  = m_time.IsMondaySpreadHigh(ctx.tick_time,
+                            (int)SymbolInfoInteger(_Symbol, SYMBOL_SPREAD));
+
+   // 7. PortfolioState refresh (~100 µs) — every tick (§ 10.5: state.json
+   //    save at step 13 reads SlotState aggregates populated here).
+   m_portfolio.Refresh();
+
+   // 8. PendingMachineRegistry tick — every tick (force-clear timeouts per
+   //    ADR-008 must not freeze during morning window).
+   m_pending.TickAll(ctx);
+
+   // 9. EXIT PASS (always runs — even in HALTED per ADR-010; m_xslot.m_halted
+   //    already correct from step 5b).
+   RunExitPass(ctx);
+   m_xslot.RunForceCutloss(ctx);
+   m_xslot.ExtraCheckFunction2();
+   m_xslot.RunSafePort(ctx);
+   m_xslot.RunOrderGroup2(ctx);
+   m_xslot.RunCOverload(ctx);
+
+   // 10. Holiday block (after exit pass; before entry pass)
+   bool holiday_block = m_time.HolidayBlock(ctx.tick_time, *m_portfolio);
+
+   // 11. ENTRY PASS (skip in HALTED, morning-window, or any time-block).
+   if(!morning_block && !ShouldSkipEntryPass(ctx, monday_block, holiday_block))
      {
-      monday_block = m_time.IsMondaySpreadHigh(ctx.tick_time,
-                        (int)SymbolInfoInteger(_Symbol, SYMBOL_SPREAD));
-
-      // 7. PortfolioState refresh (~100 µs)
-      m_portfolio.Refresh();
-
-      // 8. PendingMachineRegistry tick (force-clear emits journal+log if triggered)
-      m_pending.TickAll(ctx);
-
-      // 9. EXIT PASS (always runs — even in HALTED per ADR-010; m_xslot.m_halted
-      //    already correct from step 5b).
-      RunExitPass(ctx);
-      m_xslot.RunForceCutloss(ctx);
-      m_xslot.ExtraCheckFunction2();
-      m_xslot.RunSafePort(ctx);
-      m_xslot.RunOrderGroup2(ctx);
-      m_xslot.RunCOverload(ctx);
-
-      // 10. Holiday block (after exit pass; before entry pass)
-      holiday_block = m_time.HolidayBlock(ctx.tick_time, *m_portfolio);
-
-      // 11. ENTRY PASS (skip in HALTED or any time-block)
-      if(!ShouldSkipEntryPass(ctx, monday_block, holiday_block))
-        {
-         RunEntryPass(ctx);
-         m_xslot.RunEOverload(ctx);
-        }
+      RunEntryPass(ctx);
+      m_xslot.RunEOverload(ctx);
      }
 
-   // === housekeeping (always runs, even when morning_block forced skip) ===
+   // === housekeeping (always runs) ===
 
    // 12. PortfolioMonitor (~30 µs)
    m_monitor.Update(AccountInfoDouble(ACCOUNT_EQUITY), ctx.tick_time);
@@ -515,7 +582,11 @@ void COrchestrator::OnTick()
      {
       // Cached mirror update + summary Alert with throttled-count digest
       m_state_enum = m_ea_state.GetState();
-      Alert(StringFormat("PhoenicisNex halted_stable + %d throttled alerts cumulative — check Experts log",
+      // fix-round-10 § 10.10 — Alert text MUST include halt reason so
+      // operator does not have to log-dive at exactly the worst time
+      // (live incident). NFR-5.1 + ADR-011 contract.
+      Alert(StringFormat("PhoenicisNex HALTED_STABLE reason=%s + %d throttled alerts cumulative — check Experts log",
+                         m_halt_reason,
                          m_state.GetLoggerThrottledCount()));
      }
   }
@@ -562,13 +633,15 @@ void COrchestrator::RunEntryPass(const MarketContext &ctx)
 //+------------------------------------------------------------------+
 //| OnDeinit — inverse-order release per `04 § 5.4`                  |
 //|                                                                  |
-//| Routes through CleanupPartialInit so a single code path covers    |
-//| both INIT_FAILED Phase C exits and normal MT5 shutdown.           |
+//| Routes through `_TeardownAll` (NOT CleanupPartialInit) so the    |
+//| event-tag is `deinit_cleanup` (Info) — preserving `init_failed_  |
+//| cleanup` (Error) as a unique signal for true Phase A/C failures  |
+//| (fix-round-10 § 10.11).                                          |
 //+------------------------------------------------------------------+
 void COrchestrator::OnDeinit(const int reason)
   {
-   if(m_logger != NULL)
-      m_logger.Info("system", "deinit", 0,
+   if(m_logger != NULL && m_logger.IsInitialized())
+      m_logger.Info("system", "deinit_cleanup", 0,
                     StringFormat("reason=%d state=%s",
                                  reason, EnumToString(m_state_enum)));
 
@@ -576,7 +649,40 @@ void COrchestrator::OnDeinit(const int reason)
    if(m_state != NULL)
       m_state.Save(m_state_enum, m_halt_reason);
 
-   CleanupPartialInit(StringFormat("deinit_reason_%d", reason));
+   _TeardownAll();
+  }
+
+//+------------------------------------------------------------------+
+//| OnTradeTransaction — D-8 / fix-round-10 § 10.3                   |
+//|                                                                  |
+//| Producer side of CircuitBreaker BR-3.6 ping-pong defense.        |
+//| Filters MT5 trade-transaction stream to DEAL_ENTRY_OUT events    |
+//| only (closes), then feeds (magic, direction, time) into the      |
+//| breaker ring buffer. Entry .mq5 (IMPL-060) is responsible for    |
+//| forwarding the MT5 OnTradeTransaction lifecycle here.            |
+//+------------------------------------------------------------------+
+void COrchestrator::OnTradeTransaction(const MqlTradeTransaction &trans,
+                                       const MqlTradeRequest &request,
+                                       const MqlTradeResult &result)
+  {
+   if(m_breaker == NULL) return;
+   if(trans.type != TRADE_TRANSACTION_DEAL_ADD) return;
+
+   ulong deal = trans.deal;
+   if(!HistoryDealSelect(deal)) return;
+
+   ENUM_DEAL_ENTRY entry = (ENUM_DEAL_ENTRY)HistoryDealGetInteger(deal, DEAL_ENTRY);
+   if(entry != DEAL_ENTRY_OUT) return;     // only closes feed BR-3.6
+
+   int magic = (int)HistoryDealGetInteger(deal, DEAL_MAGIC);
+   ENUM_DEAL_TYPE dt = (ENUM_DEAL_TYPE)HistoryDealGetInteger(deal, DEAL_TYPE);
+   // Closing deal type is opposite of the original position direction:
+   //   DEAL_TYPE_SELL closes a long  ⇒ direction = 1 (was BUY)
+   //   DEAL_TYPE_BUY  closes a short ⇒ direction = 0 (was SELL)
+   int direction = (dt == DEAL_TYPE_SELL) ? 1 : 0;
+   datetime t = (datetime)HistoryDealGetInteger(deal, DEAL_TIME);
+
+   m_breaker.RecordClose(magic, direction, t);
   }
 
 //+------------------------------------------------------------------+

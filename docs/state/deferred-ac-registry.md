@@ -58,6 +58,34 @@
 
 ---
 
+## IMPL-060 Cascade Drain Plan (added 2026-05-04 per fix-round-10 § 10.8 + XS-10.1)
+
+> **Purpose:** A single live attach on IMPL-060 must validate ~36 deferred E-ACs simultaneously. Without an explicit drain order, a single regression detected on IMPL-060 closure could cascade-suspect every IMPL-053..058 + IMPL-059 closure that currently relies on Spike-only structural verification. This paragraph maps the dependency graph + suggests the order in which rows unblock when IMPL-060 + entry .mq5 lands.
+>
+> **Tier 0 — Composition root** (must validate first; failure here invalidates everything below):
+> - IMPL-059 (Phase A/B/C ordering + OnTick step 5b precedence + CleanupPartialInit reverse-order release)
+> - IMPL-009 / IMPL-042 / IMPL-008 / IMPL-011 (Logger / PipMath / CommentParser / JsonWriter init_ok emissions — log-assertion only; cheap)
+>
+> **Tier 1 — IMPL-007 PortfolioState OnTradeTransaction populator** (must land alongside IMPL-060; blocks all close-path rows below):
+> - IMPL-007 broker reconcile + GetByMagic accuracy
+> - **fix-round-10 § 10.3 / D-8** — CircuitBreaker producer-side wiring: entry .mq5 must forward MT5 OnTradeTransaction → `g_orch.OnTradeTransaction(trans, request, result)`. Until then, `m_breaker.RecordClose` receives zero events → BR-3.6 ping-pong CheckPingPong returns false on every tick. (Code-side handler already landed in fix-round-10; only entry-point plumbing pending.)
+>
+> **Tier 2 — Cross-slot close-path** (depend on Tier 1):
+> - IMPL-053..056 (close-path empirical exercise — _AggregateWeakMetrics magic-filter + _CloseSlotGroup + _CloseCDPositionsInLoss)
+> - IMPL-053 SafePort / IMPL-054 OrderGroup2 / IMPL-055 ForceCutloss / IMPL-056 ExtraCheckFunction2 / IMPL-057 overload helpers / IMPL-058 HALTED matrix
+>
+> **Tier 3 — Per-slot 60-day Tester runs** (depend on Tier 0 + RiskManager OrderSend):
+> - IMPL-019..039 P3 slot smokes
+> - IMPL-022 + IMPL-039 G4 attestation journal-evidence path (cannot capture journal until Tier 0 wires TradeJournal.Init)
+>
+> **Tier 4 — Boot-cold + persistence cycles** (depend on Tier 0):
+> - IMPL-049 / IMPL-052 boot-cold restart paths
+> - IMPL-043 journal sustained-write halt path
+>
+> **Drain order recommendation:** when IMPL-060 lands, run a single Tester smoke covering Tier 0 + Tier 1 first (cheap; resolves ~5 rows). Then run scoped Tester per-slot fixtures across Tier 2 → Tier 3 → Tier 4 in dependency order. If a Tier-0 regression surfaces, halt drain + open `/backtrack sd` or `/amend td` before continuing.
+
+---
+
 ## Resolved
 
 | Phase | Task | E-AC text | Resolved on | Evidence artifact path |

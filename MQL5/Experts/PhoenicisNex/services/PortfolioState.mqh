@@ -44,7 +44,7 @@ private:
 
    //--- Iteration order for Refresh / ReleaseAll (17 distinct magics)
    //    ADR-005 § BR-1.1: 21 slots − 4 shared-magic pairs = 17 magics
-   int               m_magic_list[17];
+   int               m_magic_list[PHOENICISNEX_MAGIC_COUNT];
 
    //--- Count of registered magics (asserted == 17 by BootstrapValidator)
    int               m_magic_count;
@@ -137,7 +137,7 @@ void CPortfolioState::RegisterAll()
   {
    // --- Define 17 magics in iteration order (matches m_magic_list) ---
    // Source: domain/EnumTypes.mqh MAGIC_* constants + ADR-005 BR-1.1
-   int magics[17] = {
+   int magics[PHOENICISNEX_MAGIC_COUNT] = {
       MAGIC_CD,  // 200 — C, D shared
       MAGIC_F,   // 201 — F
       MAGIC_H,   // 205 — H
@@ -158,9 +158,9 @@ void CPortfolioState::RegisterAll()
    };
 
    // Copy into m_magic_list for Refresh/ReleaseAll iteration
-   ArrayCopy(m_magic_list, magics, 0, 0, 17);
+   ArrayCopy(m_magic_list, magics, 0, 0, PHOENICISNEX_MAGIC_COUNT);
 
-   for(int i = 0; i < 17; i++)
+   for(int i = 0; i < PHOENICISNEX_MAGIC_COUNT; i++)
      {
       int magic = magics[i];
 

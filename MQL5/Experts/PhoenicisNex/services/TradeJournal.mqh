@@ -375,11 +375,11 @@ string CTradeJournal::BuildPortfolioSummary()
    slot_counts.Begin();
    if(m_portfolio != NULL)
      {
-      int magics[17] = {
+      int magics[PHOENICISNEX_MAGIC_COUNT] = {
          MAGIC_CD, MAGIC_F, MAGIC_H, MAGIC_J, MAGIC_K, MAGIC_G, MAGIC_GO, MAGIC_M, MAGIC_L,
          MAGIC_Q, MAGIC_R, MAGIC_B, MAGIC_BR, MAGIC_I, MAGIC_S, MAGIC_P, MAGIC_T
       };
-      for(int i = 0; i < 17; i++)
+      for(int i = 0; i < PHOENICISNEX_MAGIC_COUNT; i++)
         {
          SlotState *state = m_portfolio.GetByMagic(magics[i]);
          if(state == NULL)
@@ -395,11 +395,11 @@ string CTradeJournal::BuildPortfolioSummary()
    double total_lots = 0.0;
    if(m_portfolio != NULL)
      {
-      int magics[17] = {
+      int magics[PHOENICISNEX_MAGIC_COUNT] = {
          MAGIC_CD, MAGIC_F, MAGIC_H, MAGIC_J, MAGIC_K, MAGIC_G, MAGIC_GO, MAGIC_M, MAGIC_L,
          MAGIC_Q, MAGIC_R, MAGIC_B, MAGIC_BR, MAGIC_I, MAGIC_S, MAGIC_P, MAGIC_T
       };
-      for(int i = 0; i < 17; i++)
+      for(int i = 0; i < PHOENICISNEX_MAGIC_COUNT; i++)
         {
          SlotState *state = m_portfolio.GetByMagic(magics[i]);
          if(state != NULL)

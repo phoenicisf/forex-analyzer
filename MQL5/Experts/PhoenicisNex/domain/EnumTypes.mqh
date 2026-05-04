@@ -55,4 +55,9 @@ static const int MAGIC_P  = 218;
 static const int MAGIC_T  = 219;
 // Slot U (magic 220) deleted per OQ-8 (2026-05-01)
 
+//--- BR-1.1 + ADR-005: 21 active slots − 4 shared-magic pairs = 17 distinct magics.
+//    Single source of truth — replaces literal `17` across PortfolioState /
+//    StatePersistence / TradeJournal / Orchestrator (see fix-round-10 § 10.7).
+#define PHOENICISNEX_MAGIC_COUNT 17
+
 #endif // PHOENICISNEX_DOMAIN_ENUMTYPES_MQH
