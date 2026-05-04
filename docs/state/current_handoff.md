@@ -4,6 +4,27 @@
 
 ## Last completed action
 
+**IMPL-FIX-001 + IMPL-FIX-002 CLOSED 2026-05-04 (parallel batch) — Tier 1.5 walk batch-1 findings drained at coordinator level** — `/impl-task parallel` 2-subagent fan-out under Phase Gate Override 2026-05-03 Path A.
+
+- **Batch:** 2 disjoint `[ea]` subagents on Sonnet 4.6 (general-purpose persona = `andm-impl-engineer` SKILL via Slim-Onboarding directive + shared context file). Orchestrator: Opus 4.7 main session.
+  - **FIX-001 (HIGH):** Slot_S percent_tp threading — `inputs/Inputs_Slot_S.mqh` adds `input double InpSPercentTp = 10.0;` (BR-4.1 valid {5,10,15} default 10 per CodeWiki §3.S; group "Slot S" annotation per NFR-6.3) + `slots/Slot_S.mqh:203` threads `InpSPercentTp` as 4th positional arg to `m_risk.ComputeLot("S", InpSSlPips, balance, InpSPercentTp)`. Root cause: caller-side gap — `RiskManager::ComputeLot` already accepted 4th `extra_multiplier` (default 1.0) so previous 3-arg call left percent_tp=1.0 → outside BR-4.1 range → `_ComputeLotForS` factor=0.0 → S lot=0 + per-tick `[ERROR][ev=s_pct_tp_invalid]` over entire 3-day Tier 1.5 walk.
+  - **FIX-002 (MEDIUM):** clamp_applied log noise hygiene — `services/RiskManager.mqh:257` demoted `m_logger.Warn("RiskManager","clamp_applied",...)` → `m_logger.Debug(...)` + header comment + inline 3-line rationale block. Engineer chose option (a) per task spec; (b) rate-limit out-of-scope (would need Logger.mqh edit); (d) bump deposit out-of-scope (`.ini` edit). Clamp is BR-4.2/4.3 protection functioning as designed; 3-day walk produced 629 MB log dominated by per-tick WARN.
+- **Files modified:** `MQL5/Experts/PhoenicisNex/inputs/Inputs_Slot_S.mqh` (+1 line) · `MQL5/Experts/PhoenicisNex/slots/Slot_S.mqh:203` (4-arg call) · `MQL5/Experts/PhoenicisNex/services/RiskManager.mqh:257` (Warn→Debug + comments).
+- **Files created:** `docs/state/_parallel-context/impl-task-parallel-20260504-1500.md` (NEW shared context with Pre-loaded Context section + scope rules + race-prevention + fragment schema).
+- **State files modified:** `docs/state/impl-plan.md` (IMPL-FIX-001 3 S-AC `[x]` + 2 E-AC deferred + Closed line · IMPL-FIX-002 2 S-AC `[x]` + 1 E-AC deferred + Closed line · TL;DR last-action rewrite · Open Risks unchanged · Next Best Action checkbox flipped · Mid-Phase Audit Log new row · Plan Staleness Sentinel 1 → 3) · `docs/state/deferred-ac-registry.md` (2 new Active rows: P3 IMPL-FIX-001 G3 + P2 IMPL-FIX-002 G3, both expiry 2026-05-18) · `docs/state/overview.md` (Impl Plan row Last Updated 2026-05-04 + status string append).
+- **G1 ✅ MetaEditor64 /compile /log:** orchestrator-side rerun on merged state = `Result: 0 errors, 0 warnings, 3673 ms elapsed`. Subagent fragments both reported 4127 ms but were on stale pre-merge log; orchestrator rerun is authoritative. `.ex5` produced fresh 16:21:50.
+- **Race-prevention verified:** subagent file sets disjoint (FIX-001 = inputs/Inputs_Slot_S + slots/Slot_S; FIX-002 = services/RiskManager only); no scope violation; both fragments returned `status: completed`. Wall-clock saving ~58% vs serial (fan-out finished in time of slowest task, not sum).
+- **All 5 S-AC `[x]`** (FIX-001 3/3 + FIX-002 2/2). **2 E-AC deferred** (FIX-001 G3 zero `[ev=s_pct_tp_invalid]` + non-zero S lot · FIX-002 G3 ≤ 1 clamp_applied per slot OR log ≤ 100 MB) — both pair with single Tier 1.5 walk batch-2 G3 rerun.
+- **SelfTest re-checked (FIX-002):** RiskManager.mqh Cases 5+6 (lines 537-579) assert numeric ClampLot return only; not log level → demotion has zero impact. No re-run needed.
+- **Plan Staleness Sentinel = 3 closures since R07** (IMPL-060 + IMPL-FIX-001 + IMPL-FIX-002) — within 10-closure threshold ✅.
+- **Newly unblocked:** Tier 1.5 walk batch-2 (operator: close foreground MT5 + run `bootstrap_smoke.ini` ~10 min → drains 13+ resolvable deferred-AC rows simultaneously).
+- **Next suggested action:** Tier 1.5 walk batch-2 → `/impl-review all` R09 (cross-slot + Orchestrator + entry .mq5 + 2 FIX commits + walk findings = significant attack surface) → P4 QA chain IMPL-061..068.
+- **Commits:** `4110a78` (FIX-001) + `a290d7a` (FIX-002) — landed.
+
+---
+
+## Previous action
+
 **IMPL-059 CLOSED 2026-05-04 — `core/Orchestrator` composition root + OnInit 3-phase + OnTick F1 14-step + CleanupPartialInit reverse-order release** — single-task `/impl-task IMPL-059` orchestrator (Opus 4.7) Phase 2C 12-step decomposition (verbatim TD-02 §7.1-7.4.1 transcription).
 
 - **Files created:** `core/Orchestrator.mqh` (NEW; 740+ LOC) + `spike/Spike_Orchestrator.mq5` (NEW; Phase A construction + dtor fallback NULL-safety) + `simulation/headless-tests/orchestrator_smoke.ini` (NEW; per TD-02 §13.6) + `docs/state/_session-handoff/IMPL-059-evidence-20260504.md` (NEW)
