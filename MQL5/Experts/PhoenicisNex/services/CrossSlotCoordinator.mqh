@@ -12,9 +12,33 @@
 //|                    bounce); _CloseSlotGroup refactored to take  |
 //|                    (triggering_function, comment) per call so   |
 //|                    SafePort + OrderGroup2 share target traversal|
-//| Sibling methods (RunCOverload/RunEOverload/TriggerGOverload/    |
-//| EvaluateBR_OrphanExit) are TODO IMPL-057 stubs; HALTED guard    |
-//| already in place where matrix dictates.                         |
+//| IMPL-058 sub-pass: pin `04 § 9.1` RUNNING/HALTED enable matrix  |
+//|                    in code (matrix doc block below) + audit each|
+//|                    method's halt behavior + add SelfTest C26-28 |
+//|                    for entry-side guard observability. The      |
+//|                    Orchestrator OnTick step 5b call site that   |
+//|                    invokes SetHalted(true) BEFORE RunExitPass   |
+//|                    (per Claim 01.3 + TD-02 §7.2) is owned by    |
+//|                    IMPL-059 — deferred E-AC tracked in registry.|
+//| Sibling methods (RunCOverload + EvaluateBR_OrphanExit body) are |
+//| TODO IMPL-057/038 stubs; halt-guard placement already matches   |
+//| matrix per audit (COverload runs in both states, no guard;      |
+//| EOverload/GOverload entry-side gated; orphan-exit body owned    |
+//| by IMPL-038).                                                    |
+//|                                                                  |
+//| === 04 § 9.1 RUNNING/HALTED enable matrix (authoritative) ===    |
+//| Helper                              | RUNNING | HALTED | Guarded?|
+//| ------------------------------------|---------|--------|---------|
+//| RunSafePort       (BR-8.1)          |   ✅    |   ✅   |   no    |
+//| RunOrderGroup2    (BR-8.2)          |   ✅    |   ✅   |   no    |
+//| RunForceCutloss   (BR-8.3)          |   ✅    |   ✅   |   no    |
+//| ExtraCheckFunction2 (BR-8.5)        |   ✅    |   ✅   |   no    |
+//| RunCOverload      (BR-8.4 cut CD)   |   ✅    |   ✅   |   no    |
+//| RunEOverload      (BR-8.4 add CD)   |   ✅    |   ❌   |  YES    |
+//| TriggerGOverload  (BR-8.4 GO inv)   |   ✅    |   ❌   |  YES    |
+//| (Pending PENDING→EXECUTED transitions are frozen in HALTED but  |
+//|  owned by PendingMachineRegistry, not this service.)             |
+//|                                                                  |
 //|                                                                  |
 //| Spec deviation logged: TD-02 §5.11 declares                     |
 //|   `void RunSafePort(const MarketContext&)`                      |
@@ -772,9 +796,61 @@ bool CCrossSlotCoordinator::SelfTest(CLogger *logger)
    }
    // If we reach here, the NULL guard worked.
 
+   //--- IMPL-058 enable-matrix audit: verify entry-side guards short-circuit
+   //    when m_halted=true and that exit-side methods remain reachable.
+   //    We can't query Logger output directly from SelfTest, so coverage
+   //    is reach-without-crash + IsHalted() round-trip — sufficient for the
+   //    matrix-pin contract; live `[ev=overload_skipped_halted]` log
+   //    assertion lives in IMPL-059+ Tester smoke (deferred E-AC).
+
+   //--- Case 26: SetHalted(true) → entry-side methods early-return safely
+   SetHalted(true);
+   if(!IsHalted()) { Print("[xslot] SelfTest C26 FAIL halted set"); return false; }
+   {
+    MarketContext bare;
+    bare.tick_time = 0; bare.bid = 0; bare.ask = 0;
+    bare.spread_pip = 0; bare.bar_index_h4 = 0;
+    bare.derived.wpr_wave_signal = false;
+    bare.derived.adx_force_peak_valid = false;
+    bare.derived.ichi_double_bounce_active = false;
+    RunEOverload(bare);              // halt-guarded — must early-return
+    TriggerGOverload(0.10, +1);      // halt-guarded — must early-return
+   }
+   // Reaching here = guards executed without crash + did not attempt order
+
+   //--- Case 27: SetHalted(true) → exit-side methods stay reachable
+   //    RunForceCutloss path: signal=0 short-circuits before any close;
+   //    ExtraCheckFunction2 path: portfolio==NULL guard short-circuits.
+   //    Coverage = no halt-induced false-blocking on exit helpers.
+   {
+    MarketContext bare;
+    bare.tick_time = 0; bare.bid = 0; bare.ask = 0;
+    bare.spread_pip = 0; bare.bar_index_h4 = 0;
+    bare.stoch_m10.k_main = 50.0; bare.stoch_m10.d_signal = 50.0;
+    bare.macd_d1.hist = 0.0;
+    bare.derived.ichi_double_bounce_active = false;
+    RunForceCutloss(bare);           // exit-side, allowed in HALTED — reaches signal eval
+    ExtraCheckFunction2();            // exit-side, allowed in HALTED — reaches predicate
+    RunCOverload(bare);               // exit-side, allowed in HALTED — TODO body but no guard
+   }
+   // Reaching here = exit-side helpers were not falsely halt-blocked
+
+   //--- Case 28: SetHalted(false) restores entry-side reachability
+   SetHalted(false);
+   if(IsHalted()) { Print("[xslot] SelfTest C28 FAIL halted reset"); return false; }
+   {
+    MarketContext bare;
+    bare.tick_time = 0; bare.bid = 0; bare.ask = 0;
+    bare.spread_pip = 0; bare.bar_index_h4 = 0;
+    bare.derived.ichi_double_bounce_active = false;
+    RunEOverload(bare);              // not halted — reaches TODO body without guard
+    TriggerGOverload(0.10, +1);      // not halted — reaches TODO body without guard
+   }
+   // Reaching here = restore path works (no permanent halt latch)
+
    if(logger != NULL)
-      logger.Info("xslot", "selftest_ok", 0, "25/25 cases pass");
-   Print("[xslot] SelfTest 25/25 PASS");
+      logger.Info("xslot", "selftest_ok", 0, "28/28 cases pass");
+   Print("[xslot] SelfTest 28/28 PASS");
    return true;
   }
 

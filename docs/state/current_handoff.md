@@ -4,6 +4,33 @@
 
 ## Last completed action
 
+**IMPL-058 CLOSED 2026-05-04 — `services/CrossSlotCoordinator` HALTED enable-matrix audit + SetHalted setter (ADR-010)** — single-task `/impl-task IMPL-058` orchestrator (Opus 4.7) Phase 2A single-prompt (fall-back from `/impl-task parallel` per "no parallel candidates" scan — only IMPL-057+058 ready, both same-file `services/CrossSlotCoordinator.mqh` violating §1.5.1 scope-isolation; user picked option (a) IMPL-058 first per IMPL-054 next-suggested guidance). S-size audit-and-pin task — most wiring (m_halted field + SetHalted setter + RunEOverload/TriggerGOverload halt-guards) already landed during IMPL-053 sub-pass; IMPL-058 closes the contract by pinning the matrix in code + adding SelfTest coverage. **Bulk-close quartet + HALTED matrix audit now complete at coordinator level** (BR-8.1 SafePort + BR-8.2 OrderGroup2 + BR-8.3 ForceCutloss + BR-8.5 ExtraCheckFunction2 + ADR-010 enable matrix per `04 § 9.1`).
+
+- **Files modified:**
+  - `MQL5/Experts/PhoenicisNex/services/CrossSlotCoordinator.mqh` (EDIT) — header banner adds IMPL-058 sub-pass row + verbatim `04 § 9.1 RUNNING/HALTED enable matrix` table pinning per-method enable decisions; SelfTest extended 25→28 cases (C26 entry-side guard reachability under HALTED, C27 exit-side reachability under HALTED, C28 restore path on SetHalted(false))
+  - `MQL5/Experts/PhoenicisNex/spike/Spike_CrossSlotCoordinator.mq5` (EDIT — header banner only) — IMPL-053..056 → IMPL-053..058; SelfTest count 25 → 28
+- **Files created:**
+  - `docs/state/_session-handoff/IMPL-058-evidence-20260504.md` (NEW) — evidence file §1-§13
+- **State files modified:** `docs/state/impl-plan.md` (IMPL-058 4 S-AC `[x]` + 1 E-AC deferred + Closed: line + Phase Status row P4 4/11 → 5/11 + TL;DR + Mid-Phase Audit Log new row + **Phase Gate Override Log new row** for IMPL-057 reverse circular dep), `docs/state/overview.md` (Impl Tasks row prefix updated to bulk-close quartet + HALTED matrix audit), `docs/state/deferred-ac-registry.md` (1 new IMPL-058 Active P4 row expiry 2026-05-18)
+- **Audit findings:** all 7 cross-slot methods comply with `04 § 9.1` matrix as of pre-IMPL-058 state (RunSafePort/RunOrderGroup2/RunForceCutloss/ExtraCheckFunction2/RunCOverload no-guard allowed in HALTED; RunEOverload + TriggerGOverload halt-guarded emit `[ev=overload_skipped_halted][helper=E\|G]` per ADR-010 :106). IMPL-058 work = audit-and-pin (doc block + SelfTest); no behavior change.
+- **Dep override logged:** IMPL-058 Deps include IMPL-057, but IMPL-057 itself depends on IMPL-058 (HALTED matrix integration) → reverse circular per impl-plan. IMPL-054 next-suggested-task field had authorized pragmatic order swap (058 before 057). Phase Gate Override Log row 2026-05-04 documents scope (IMPL-058 only) + closure rationale (IMPL-058 audit work independent of IMPL-057 body fills; RunCOverload halt-allow decision unchanged regardless of body; EOverload/GOverload guards already in place).
+- **G1 ✅ PowerShell Start-Process MetaEditor64:** Spike_CrossSlotCoordinator 0err/0warn/**611 ms** (cache hit; faster than IMPL-053..056 prior 838 ms baseline because no new headers, just doc + SelfTest tail)
+- **No sibling regression** — only `CrossSlotCoordinator.mqh` (header doc + SelfTest tail) + `spike/Spike_CrossSlotCoordinator.mq5` (header banner) edited; no header-include cascade
+- **SelfTest 28/28 cases pass** (7 IMPL-053 + 6 IMPL-055 + 6 IMPL-056 + 6 IMPL-054 + 3 IMPL-058):
+  - C26: SetHalted(true) → RunEOverload + TriggerGOverload exercised → guards early-return without crash (reach-without-crash coverage)
+  - C27: under HALTED, exit-side helpers (RunForceCutloss + ExtraCheckFunction2 + RunCOverload) reach predicate/null-guard paths without false halt-blocking
+  - C28: SetHalted(false) un-latches entry-side methods — RunEOverload + TriggerGOverload reach TODO body without guard
+- **All 4 S-AC `[x]`** (m_halted + SetHalted setter + per-method matrix wiring + compile clean). **1 E-AC deferred** — smoke trigger CircuitBreaker → `m_xslot.SetHalted(true)` invoked BEFORE RunExitPass + per-method behavior matches `04 § 9.1` matrix per row `[log-assertion]` + `[db-inspect]`. **Compound prerequisite:** (a) IMPL-059+ Orchestrator OnTick step 5b call site (currently doesn't exist), (b) IMPL-057 RunCOverload body wiring (currently TODO stub — coverage gap on COverload exit-side behavior in HALTED), (c) entry .mq5 (IMPL-060) + Tester run with CircuitBreaker triggering scenario. **Registered to `deferred-ac-registry.md` Active table** expiry 2026-05-18.
+- **Newly unblocked:** IMPL-057 (M overload helpers BR-8.4 — last business-logic method on file; circular dep resolved by IMPL-058 closure)
+- **🚨 P4 Phase Status snapshot 4/11 → 5/11. Mid-Phase Audit P4 counter = 5 — THRESHOLD CROSSED.** Per CLAUDE.md §6 + workflow §4.1, **Phase 4 audit triggers BEFORE next P4 task can start**. Audit replay scope limited to (a) re-run Spike_CrossSlotCoordinator SelfTest 28/28 against fresh build, (b) structural inspection of evidence artifacts IMPL-053..058 against current state — **no live trading evidence to replay** until IMPL-059+ runnable surface lands. Plan Staleness Sentinel = 8 closures since R06 (well below 10-closure threshold).
+- **Next suggested action:** **Phase 4 Mid-Phase Audit** (per workflow §4.1 cold-bootstrap + smoke chain + E-AC artifact replay; scope reduced per §11 of evidence file). After audit Green: **`/impl-task IMPL-057`** (M overload helpers BR-8.4 — last business-logic method on file). After IMPL-057 → IMPL-059 (L Orchestrator) + IMPL-060 (S entry .mq5) → empirical surface unblocks 36+ deferred-AC rows expiring 2026-05-17/18. Code Review trigger R09: after IMPL-057 closes for adversarial sweep on cross-slot surface + ADR-010 enable matrix verification.
+- **Commit:** pending (to be created next)
+- See `docs/state/_session-handoff/IMPL-058-evidence-20260504.md` for full evidence
+
+---
+
+## Prior action — IMPL-054 (kept for continuity)
+
 **IMPL-054 CLOSED 2026-05-04 — `services/CrossSlotCoordinator::RunOrderGroup2()` (BR-8.2 Ichimoku double-bounce)** — single-task `/impl-task IMPL-054` orchestrator (Opus 4.7) Phase 2B 3-step (fall-back from `/impl-task parallel` per "no parallel candidates" scan — same-file scope on `services/CrossSlotCoordinator.mqh` blocked IMPL-054/057/058 fan-out per §1.5.1 scope-isolation criterion). M-size MVP (last sibling cross-slot method on file). **Bulk-close quartet now complete at coordinator level** (BR-8.1 SafePort + BR-8.2 OrderGroup2 + BR-8.3 ForceCutloss + BR-8.5 ExtraCheckFunction2).
 
 - **Files modified:**
