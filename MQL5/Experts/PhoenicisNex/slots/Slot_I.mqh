@@ -272,7 +272,10 @@ void CSlotI::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //--- Comment: "I,fib,1" per CodeWiki §3.I "I,..." pattern
    string comment = "I,fib,1";
 
-   //--- Phase-1 stub: OrderSend deferred to IMPL-053+ orchestrator wiring.
+   //--- fix-round-12 § 12.8 — Phase 1 emits entry_signal Logger.Info as
+   //    the observable milestone; actual OrderSend lives in
+   //    `RiskManager::OpenOrder` per `.claude/rules/ea.md` (IMPL-017 +
+   //    IMPL-062 5-yr regression).
    //    Observable milestone for E-AC [log-assertion]:
    m_logger.Info("SlotI", "entry_signal", MAGIC_I,
                  StringFormat("dir=%s lot=%.2f sl_pips=%.1f price=%.5f sl=%.5f comment=%s fib_level=%.2f g_dir=%s",

@@ -341,15 +341,17 @@ void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
            }
          else
            {
-            //--- Phase-1 stub: log-intent only — actual OrderSend deferred to
-            //    IMPL-053+ Orchestrator/RiskManager wiring per Slot_BI/Slot_R
-            //    precedent. (review-round-07 Finding 07.4)
+            //--- fix-round-12 § 12.8 — Phase 1 emits entry_signal_pyramid
+            //    Logger.Info as the observable milestone; actual OrderSend
+            //    lives in `RiskManager::OpenOrder` per `.claude/rules/ea.md`
+            //    (IMPL-017 + IMPL-062 5-yr regression). Slot_BI / Slot_R
+            //    follow the same pattern. (review-round-07 Finding 07.4)
             string comment = "PI,MA,E,1,SL";
             string dir_str = parent_isBuy ? "BUY" : "SELL";
             m_logger.Info("SlotP", "entry_signal_pyramid", MAGIC_P,
                           StringFormat("sub_mode=E dir=%s lot=%.2f sl_pips=%.1f "
                                        "price=%.5f sl=%.5f comment=%s parent_open=%.5f "
-                                       "(Phase-1 stub: OrderSend deferred to IMPL-053+)",
+                                       "(Phase 1 logger-only; OrderSend at IMPL-017/IMPL-062)",
                                        dir_str, lot, sl_pips, price, sl_price,
                                        comment, parent_open));
            }
@@ -470,13 +472,15 @@ void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       string sub_str = (sub == PSUB_PX) ? "PX" : "PH";
       string comment = StringFormat("P,MA,%s,1,SL", sub_str);
 
-      //--- Phase-1 stub: log-intent only — actual OrderSend deferred to
-      //    IMPL-053+ Orchestrator/RiskManager wiring per Slot_BI/Slot_R
-      //    precedent. (review-round-07 Finding 07.4)
+      //--- fix-round-12 § 12.8 — Phase 1 emits entry_signal Logger.Info as
+      //    the observable milestone; actual OrderSend lives in
+      //    `RiskManager::OpenOrder` per `.claude/rules/ea.md` (IMPL-017 +
+      //    IMPL-062 5-yr regression). Slot_BI / Slot_R follow the same
+      //    pattern. (review-round-07 Finding 07.4)
       m_logger.Info("SlotP", "entry_signal", MAGIC_P,
                     StringFormat("sub_mode=%s dir=%s lot=%.2f sl_pips=%.1f "
                                  "price=%.5f sl=%.5f comment=%s "
-                                 "(Phase-1 stub: OrderSend deferred to IMPL-053+)",
+                                 "(Phase 1 logger-only; OrderSend at IMPL-017/IMPL-062)",
                                  sub_str, (isBuy ? "BUY" : "SELL"), lot, sl_pips,
                                  price, sl_price, comment));
 

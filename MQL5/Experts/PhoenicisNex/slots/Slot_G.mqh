@@ -367,9 +367,11 @@ void CSlotG::ManageExits(CPortfolioState &port)
                        StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f → close",
                                     ticket, profit_pips, InpGTpProfitPips));
 
-         //--- Close via CTrade route (IMPL-053+ wiring)
-         //    Phase-1 stub: log intent; OrderSend deferred to orchestrator wiring.
-         //    Evidence for E-AC [log-assertion]: above Info log is the observable milestone.
+         //--- Close via CTrade route — fix-round-12 § 12.8: actual close
+         //    routes through `RiskManager::OpenOrder` / `CloseOrder` per
+         //    `.claude/rules/ea.md` (IMPL-017 + IMPL-062 5-yr regression).
+         //    Phase 1 logs intent only. Evidence for E-AC [log-assertion]:
+         //    above Info log is the observable milestone.
          m_maxProfitPip = 0.0;   // reset on close
         }
 

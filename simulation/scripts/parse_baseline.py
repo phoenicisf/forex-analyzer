@@ -197,14 +197,19 @@ def _extract_slot_prefix(comment: str) -> str:
 # Core parsing — build per-slot trade list
 # ---------------------------------------------------------------------------
 
-def _parse_deals(html_rows: list, start_idx: int) -> list:
+def _parse_deals(html_rows: list, start_idx: int) -> tuple:
     """
     Walk the Deals table and match each 'out' deal to its originating 'in'
     deal via FIFO queues keyed by (opening_trade_type, volume_str).
 
-    Returns a list of dicts:
-      {"slot_id": str, "net_pnl": float}
-    one entry per closed trade.
+    Returns a 2-tuple:
+      (trades, parse_anomaly_count)
+    where trades is a list of dicts {"slot_id": str, "net_pnl": float} (one
+    entry per closed trade), and parse_anomaly_count is the total number of
+    swap/profit cells that failed float() and were defaulted to 0.0
+    (fix-round-12 § 12.5 — surfaces silent ValueError fallbacks so the
+    IMPL-062 regression cannot trust the baseline if any cells were
+    unparseable).
 
     Columns (0-based, 13 total):
       0=Time, 1=Deal, 2=Symbol, 3=Type, 4=Direction, 5=Volume, 6=Price,
@@ -214,6 +219,7 @@ def _parse_deals(html_rows: list, start_idx: int) -> list:
     open_positions: dict[tuple, deque] = {}
     trades: list = []
     unmatched_out_count = 0
+    parse_anomaly_count = 0
 
     for row in html_rows[start_idx:]:
         if len(row) != 13:
@@ -236,14 +242,27 @@ def _parse_deals(html_rows: list, start_idx: int) -> list:
 
             profit_raw = row[10].replace("\xa0", "").replace(" ", "")
             swap_raw = row[9].replace("\xa0", "").replace(" ", "")
+            deal_id = row[1] if len(row) > 1 else "?"
             try:
                 profit = float(profit_raw)
             except ValueError:
                 profit = 0.0
+                parse_anomaly_count += 1
+                print(
+                    f"[parse_baseline] WARNING: deal {deal_id!r} has unparseable "
+                    f"profit cell {row[10]!r}; defaulting to 0.0",
+                    file=sys.stderr,
+                )
             try:
                 swap = float(swap_raw)
             except ValueError:
                 swap = 0.0
+                parse_anomaly_count += 1
+                print(
+                    f"[parse_baseline] WARNING: deal {deal_id!r} has unparseable "
+                    f"swap cell {row[9]!r}; defaulting to 0.0",
+                    file=sys.stderr,
+                )
             net_pnl = profit + swap
 
             slot_id = ""
@@ -272,7 +291,15 @@ def _parse_deals(html_rows: list, start_idx: int) -> list:
             file=sys.stderr,
         )
 
-    return trades
+    if parse_anomaly_count:
+        print(
+            f"[parse_baseline] WARNING: {parse_anomaly_count} swap/profit cell(s) "
+            "were unparseable and defaulted to 0.0 — IMPL-062 regression should "
+            "treat this baseline as untrusted (per fix-round-12 § 12.5).",
+            file=sys.stderr,
+        )
+
+    return trades, parse_anomaly_count
 
 
 # ---------------------------------------------------------------------------
@@ -310,6 +337,7 @@ def _build_output(
     total_net_profit: float,
     stats: dict,
     trades: list,
+    parse_anomaly_count: int = 0,
 ) -> dict:
     """Construct the final output JSON structure."""
     # Total trades = count of closed trades with a recognised slot
@@ -336,6 +364,9 @@ def _build_output(
         "extracted_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "total_net_profit": total_net_profit,
         "total_trades": total_trades,
+        # fix-round-12 § 12.5 — surface unparseable swap/profit cells so
+        # IMPL-062 regression can refuse to compute drift on a tainted baseline.
+        "parse_anomaly_count": parse_anomaly_count,
         "slots": slot_list,
     }
 
@@ -353,13 +384,14 @@ def parse_baseline(input_path: str, output_path: str) -> dict:
     html_rows = _parse_html_rows(input_path)
     total_net_profit = _extract_total_net_profit(html_rows)
     deals_start = _find_deals_section_start(html_rows)
-    trades = _parse_deals(html_rows, deals_start)
+    trades, parse_anomaly_count = _parse_deals(html_rows, deals_start)
     stats = _aggregate_slots(trades)
     output = _build_output(
         report_source=os.path.basename(input_path),
         total_net_profit=total_net_profit,
         stats=stats,
         trades=trades,
+        parse_anomaly_count=parse_anomaly_count,
     )
 
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)

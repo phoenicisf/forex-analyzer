@@ -245,7 +245,10 @@ void CSlotG2::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    req.magic        = MAGIC_G;
    req.type_filling = ORDER_FILLING_FOK;   // filling mode set per broker detection at IMPL-053+
 
-   //--- Phase-1 stub: OrderSend deferred to IMPL-053+ orchestrator wiring.
+   //--- fix-round-12 § 12.8 — Phase 1 emits entry_signal Logger.Info as
+   //    the observable milestone; actual OrderSend lives in
+   //    `RiskManager::OpenOrder` per `.claude/rules/ea.md` (IMPL-017 +
+   //    IMPL-062 5-yr regression).
    //    Observable milestone for E-AC [log-assertion]:
    m_logger.Info("SlotG2", "entry_signal", MAGIC_G,
                  StringFormat("dir=%s lot=%.2f sl_pips=%.1f price=%.5f sl=%.5f comment=%s",

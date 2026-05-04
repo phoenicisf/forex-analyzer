@@ -133,26 +133,49 @@ void CCircuitBreaker::_WriteEvent(int magic, int direction, datetime now_s)
 
 //+------------------------------------------------------------------+
 //| RecordOpen — record an order-open event                          |
+//|                                                                  |
+//| fix-round-12 § 12.6 — defense-in-depth pre-Init guard. The Phase |
+//| 1 call topology routes everything through Orchestrator's         |
+//| `m_init_complete` gate, but TD-02 §5.8 documents this method as  |
+//| "called by slot post-OrderSend ack". When IMPL-017 / IMPL-062    |
+//| wire RiskManager::OpenOrder through slots, those callers will    |
+//| not have access to Orchestrator's lifecycle flag — so a pre-Init |
+//| dispatch (e.g. broker-recovery OnTradeTransaction firing before  |
+//| OnInit completes) could otherwise write into a buffer with no    |
+//| logger. The null-logger early-return mirrors Option B of the     |
+//| review-round-11 § 11.3 finding (orchestrator gate = Option A).   |
 //+------------------------------------------------------------------+
 void CCircuitBreaker::RecordOpen(int magic, int direction, datetime now_s)
   {
+   if(m_logger == NULL)
+     {
+      Print("[CircuitBreaker][WARN] RecordOpen pre-Init dropped: magic=", magic,
+            " dir=", direction, " t=", (int)now_s);
+      return;
+     }
    _WriteEvent(magic, direction, now_s);
-   if(m_logger != NULL)
-      m_logger.Debug("CircuitBreaker", "record_open", magic,
-                     "dir=" + IntegerToString(direction) +
-                     " t=" + IntegerToString((int)now_s));
+   m_logger.Debug("CircuitBreaker", "record_open", magic,
+                  "dir=" + IntegerToString(direction) +
+                  " t=" + IntegerToString((int)now_s));
   }
 
 //+------------------------------------------------------------------+
 //| RecordClose — record an order-close event                        |
+//|                                                                  |
+//| fix-round-12 § 12.6 — mirrors the RecordOpen pre-Init guard.     |
 //+------------------------------------------------------------------+
 void CCircuitBreaker::RecordClose(int magic, int direction, datetime now_s)
   {
+   if(m_logger == NULL)
+     {
+      Print("[CircuitBreaker][WARN] RecordClose pre-Init dropped: magic=", magic,
+            " dir=", direction, " t=", (int)now_s);
+      return;
+     }
    _WriteEvent(magic, direction, now_s);
-   if(m_logger != NULL)
-      m_logger.Debug("CircuitBreaker", "record_close", magic,
-                     "dir=" + IntegerToString(direction) +
-                     " t=" + IntegerToString((int)now_s));
+   m_logger.Debug("CircuitBreaker", "record_close", magic,
+                  "dir=" + IntegerToString(direction) +
+                  " t=" + IntegerToString((int)now_s));
   }
 
 //+------------------------------------------------------------------+

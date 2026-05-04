@@ -133,6 +133,7 @@ if ($DryRun) {
         parse_fail                = 0
         state_missing_tmp_present = 0
         state_missing_tmp_missing = 0
+        startup_timeout_count     = 0
         note           = 'Dry-run only - param validation + file-existence check passed. Numeric run deferred to Tier 1.5 walk batch-2.'
     }
 
@@ -150,6 +151,11 @@ $parse_pass                = 0
 $parse_fail                = 0
 $state_missing_tmp_present = 0
 $state_missing_tmp_missing = 0
+# fix-round-12 §12.3 — track trials where MT5 startup never produced a write
+#   target before the bounded poll deadline expired. A healthy run should
+#   show startup_timeout_count == 0; non-zero means the spike's write loop
+#   never started within 60s, so the kill window did not race a real write.
+$startup_timeout_count     = 0
 
 $StateJson    = Join-Path $AbsStateDir 'state.json'
 $StateTmp     = Join-Path $AbsStateDir 'state.json.tmp'
@@ -174,21 +180,52 @@ for ($i = 1; $i -le $Trials; $i++) {
         continue
     }
 
-    # 5b. Random sleep 50-500ms (attack window inside write-tmp phase)
+    # 5b. fix-round-12 §12.3 — poll-then-attack: wait for the spike to start
+    #     writing (state.json or state.json.tmp appears) before applying the
+    #     50-500ms random offset. Without this, a fixed 50-500ms sleep
+    #     pre-empts terminal64.exe cold-bootstrap (typically 3-15s) so the
+    #     kill arrives before any write target exists, leaving every trial
+    #     in `state_missing_tmp_missing` with `verdict=PASS` despite zero
+    #     atomic writes ever being raced (false-positive NFR-3.1 closure).
+    $pollDeadline = (Get-Date).AddSeconds(60)
+    $writeStarted = $false
+    while ((Get-Date) -lt $pollDeadline) {
+        if ((Test-Path $StateJson) -or (Test-Path $StateTmp)) {
+            $writeStarted = $true
+            break
+        }
+        Start-Sleep -Milliseconds 100
+    }
+
+    if (-not $writeStarted) {
+        Write-Warning "[atomic-write-kill] Trial $i/${Trials}: spike never wrote within 60s — startup timeout. Killing terminal and skipping."
+        Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+        try { Wait-Process -Id $proc.Id -Timeout 10 -ErrorAction SilentlyContinue } catch { }
+        # Clean any partial .tmp orphan before next trial
+        if (Test-Path $StateTmp) {
+            Remove-Item -Path $StateTmp -Force -ErrorAction SilentlyContinue
+        }
+        $startup_timeout_count++
+        continue
+    }
+
+    # 5c. Random sleep 50-500ms — now the window genuinely lands inside an
+    #     active write iteration (paired with InpTotalWrites=100000 in the
+    #     .ini override per fix-round-12 §12.3).
     $sleepMs = Get-Random -Minimum 50 -Maximum 501
     Start-Sleep -Milliseconds $sleepMs
 
-    # 5c. Kill the process
+    # 5d. Kill the process
     Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
 
-    # 5d. Wait for full exit (max 10s)
+    # 5e. Wait for full exit (max 10s)
     try {
         Wait-Process -Id $proc.Id -Timeout 10 -ErrorAction SilentlyContinue
     } catch {
         # process already gone - acceptable
     }
 
-    # 5e. Inspect state dir
+    # 5f. Inspect state dir
     $jsonExists = Test-Path $StateJson
     $tmpExists  = Test-Path $StateTmp
 
@@ -211,27 +248,31 @@ for ($i = 1; $i -le $Trials; $i++) {
         Write-Verbose "[atomic-write-kill] Trial $i/${Trials}: state_missing_tmp_missing (pre-first-write kill, acceptable)"
     }
 
-    # 5f. Clean .tmp orphan (ADR-007 (S)OnInit recovery contract - harness mimics OnInit behaviour)
+    # 5g. Clean .tmp orphan (ADR-007 (S)OnInit recovery contract - harness mimics OnInit behaviour)
     if ($tmpExists) {
         Remove-Item -Path $StateTmp -Force -ErrorAction SilentlyContinue
     }
 
-    # 5g. Progress every 10 trials
+    # 5h. Progress every 10 trials
     if ($i % 10 -eq 0) {
-        Write-Host "[atomic-write-kill] Progress $i/$Trials - parse_pass=$parse_pass parse_fail=$parse_fail missing_tmp_present=$state_missing_tmp_present missing_clean=$state_missing_tmp_missing"
+        Write-Host "[atomic-write-kill] Progress $i/$Trials - parse_pass=$parse_pass parse_fail=$parse_fail missing_tmp_present=$state_missing_tmp_present missing_clean=$state_missing_tmp_missing startup_timeout=$startup_timeout_count"
     }
 }
 
 # ---------------------------------------------------------------------------
 # 6. Aggregate + verdict
 # ---------------------------------------------------------------------------
-$total   = $parse_pass + $parse_fail + $state_missing_tmp_present + $state_missing_tmp_missing
-$isPass  = ($parse_fail -eq 0) -and ($total -eq $Trials)
+$total   = $parse_pass + $parse_fail + $state_missing_tmp_present + $state_missing_tmp_missing + $startup_timeout_count
+# fix-round-12 §12.3 — verdict requires every trial to have actually exercised
+#   a write loop. startup_timeout_count > 0 means MT5 startup never produced
+#   a write target before deadline; that trial did NOT race a real atomic
+#   write and cannot count toward NFR-3.1 100/100.
+$isPass  = ($parse_fail -eq 0) -and ($total -eq $Trials) -and ($startup_timeout_count -eq 0)
 $verdict = if ($isPass) { 'PASS' } else { 'FAIL' }
 
 Write-Host ""
 Write-Host "=========================================="
-Write-Host "[atomic-write-kill] trials=$Trials parse_pass=$parse_pass parse_fail=$parse_fail missing_tmp_present=$state_missing_tmp_present missing_clean=$state_missing_tmp_missing verdict=$verdict"
+Write-Host "[atomic-write-kill] trials=$Trials parse_pass=$parse_pass parse_fail=$parse_fail missing_tmp_present=$state_missing_tmp_present missing_clean=$state_missing_tmp_missing startup_timeout=$startup_timeout_count verdict=$verdict"
 Write-Host "=========================================="
 
 if (-not $isPass) {
@@ -240,6 +281,9 @@ if (-not $isPass) {
     }
     if ($total -ne $Trials) {
         Write-Warning "[atomic-write-kill] FAIL: total outcomes ($total) != Trials ($Trials) - accounting error."
+    }
+    if ($startup_timeout_count -gt 0) {
+        Write-Warning "[atomic-write-kill] FAIL: $startup_timeout_count trial(s) hit MT5 startup timeout (60s) without ever creating a write target - kill never raced an atomic write. Investigate terminal64.exe boot time or .ini path."
     }
 }
 
@@ -266,6 +310,7 @@ $sidecar = [ordered]@{
     parse_fail                = $parse_fail
     state_missing_tmp_present = $state_missing_tmp_present
     state_missing_tmp_missing = $state_missing_tmp_missing
+    startup_timeout_count     = $startup_timeout_count
     nfr_ref                   = 'NFR-3.1'
     adr_ref                   = 'ADR-007'
     note                      = $sidecarNote

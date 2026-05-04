@@ -170,8 +170,11 @@ public:
                                   : NormalizeDouble(price + sl_dist, digits);
       string           comment  = "LX,pyr,1";
 
-      //--- Phase-1 stub: OrderSend deferred to IMPL-053+ orchestrator wiring.
-      //    Log intent — observable milestone for E-AC [log-assertion].
+      //--- fix-round-12 § 12.8 — Phase 1 emits entry_signal Logger.Info as
+      //    the observable milestone; actual OrderSend lives in
+      //    `RiskManager::OpenOrder` per `.claude/rules/ea.md` (IMPL-017 +
+      //    IMPL-062 5-yr regression). Log intent — observable milestone
+      //    for E-AC [log-assertion].
       m_logger.Info("Slot_LX", buy_signal ? "entry_pyramid_buy" : "entry_pyramid_sell",
                     MAGIC_L,
                     StringFormat("parent_ticket=%I64u parent_profit_pips=%.1f "

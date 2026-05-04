@@ -220,8 +220,11 @@ void CSlotS::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //--- Comment: "S,post,1" per CodeWiki §3.S "S,..." pattern
    string comment = "S,post,1";
 
-   //--- Build MqlTradeRequest stub (req.magic = MAGIC_S per directive)
-   //    OrderSend deferred to IMPL-053+ orchestrator wiring.
+   //--- Build MqlTradeRequest stub (req.magic = MAGIC_S per directive).
+   //    fix-round-12 § 12.8 — Phase 1 architectural choice: slots emit
+   //    `entry_signal` Logger.Info as the observable milestone; actual
+   //    OrderSend wiring lives in `RiskManager::OpenOrder` per
+   //    `.claude/rules/ea.md` (IMPL-017 + IMPL-062 5-yr regression).
    //    Observable milestone for E-AC [log-assertion]:
    MqlTradeRequest req = {};
    req.action    = TRADE_ACTION_DEAL;

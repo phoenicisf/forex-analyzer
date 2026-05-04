@@ -61,11 +61,20 @@ Per-trial sequence:
 
 Aggregate verdict: `PASS` iff `parse_fail == 0` AND `Total == Trials`.
 
-### 2.3 .ini Reuse
+### 2.3 .ini Reuse — UPDATED 2026-05-04 (fix-round-12 §12.1 + §12.3 + §12.4)
 
-`simulation/headless-tests/atomic_write_kill.ini` was committed during IMPL-046 spike (TD-02 §13.6 PR contract). This file is **present** and reused as-is — no modification required.
+`simulation/headless-tests/atomic_write_kill.ini` was committed during IMPL-046 spike (TD-02 §13.6 PR contract) and is reused for IMPL-064 with a `[TesterInputs]` override block added in fix-round-12 to repair the harness/spike contract:
+
+| Override | Purpose | Fix-round-12 finding |
+|---|---|---|
+| `InpStateFile=PhoenicisNex/state/state.json` | Redirects spike from sandbox path (`spike/state.json`) to the production path so the harness inspect path matches the spike write path | §12.1 CRITICAL |
+| `InpTmpFile=PhoenicisNex/state/state.json.tmp` | Same — `.tmp` orphan visibility for `state_missing_tmp_present` accounting | §12.1 |
+| `InpTotalWrites=100000` | Large enough that the random 50-500ms harness attack window always lands inside an active write iteration | §12.3 HIGH |
+| `InpKillTrials=0` | Disables the spike's internal Phase 2 (software-simulated crashes); the external PowerShell `Stop-Process` alone owns kill semantics | §12.4 MEDIUM |
 
 The .ini targets `PhoenicisNex\spike\Spike_AtomicWrite` EA which continuously exercises the `AtomicFile.mqh` write path in a short 1-day date window (2021-01-04 to 2021-01-05, `Model=2`, `ShutdownTerminal=1`, `Visual=0`).
+
+> **IMPL-046 sandbox usage** still runs `Spike_AtomicWrite.mq5` directly without this `.ini`, so the spike's input defaults (`PhoenicisNex/spike/state.json`, 1000 writes, 100 kills) remain authoritative for the original spike contract — only the IMPL-064 harness path inherits the overrides.
 
 ---
 

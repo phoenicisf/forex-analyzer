@@ -241,7 +241,9 @@ void CSlotR::Evaluate(const MarketContext &ctx, CPortfolioState &port)
 
       //--- Submit order through RiskManager CTrade wrapper
       //    ห้าม instantiate CTrade direct (ea.md + ADR-002)
-      //    Phase-1 stub: OrderSend deferred to Orchestrator wiring (IMPL-053+).
+      //    fix-round-12 § 12.8 — Phase 1 emits entry_signal Info as the
+      //    observable milestone; actual OrderSend wiring lives in
+      //    `RiskManager::OpenOrder` (IMPL-017 + IMPL-062 5-yr regression).
       //    Observable E-AC milestone: emit entry_signal Info log.
       ENUM_ORDER_TYPE order_type = isBuy ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
 

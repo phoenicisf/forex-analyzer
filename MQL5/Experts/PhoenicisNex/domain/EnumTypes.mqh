@@ -60,14 +60,46 @@ static const int MAGIC_T  = 219;
 //    StatePersistence / TradeJournal / Orchestrator (see fix-round-10 § 10.7).
 #define PHOENICISNEX_MAGIC_COUNT 17
 
-//--- PhoenicisNex magic-number range gate (per BR-1.1 + ADR-005).
+//--- PhoenicisNex magic-number membership gate (per BR-1.1 + ADR-005).
 //    Used by trade-transaction surface (Orchestrator::OnTradeTransaction)
 //    to reject foreign-EA close events on multi-EA terminals before they
-//    reach CircuitBreaker BR-3.6 ring buffer. See fix-round-11 § 11.2.
-//    Range = [200..219] inclusive (Slot U=220 deleted per OQ-8 — kept out).
+//    reach CircuitBreaker BR-3.6 ring buffer. See fix-round-11 § 11.2,
+//    fix-round-12 § 12.2.
+//
+//    fix-round-12 § 12.2 — switched from literal range [200..219] to
+//    explicit set membership over MAGIC_* constants. The MAGIC_* set is
+//    NOT contiguous: 202, 203, 204 fall in the gap between MAGIC_F=201 and
+//    MAGIC_H=205 with no slot owning them. A range check would let a
+//    foreign EA running with magic 202/203/204 feed BR-3.6 and trigger
+//    false-positive ping-pong halts (partial regression of fix-round-11
+//    § 11.2). Updates here MUST mirror any future MAGIC_* addition or
+//    removal (also bump PHOENICISNEX_MAGIC_COUNT).
 bool IsPhoenicisMagic(int magic)
   {
-   return magic >= 200 && magic <= 219;
+   //--- if/else over MAGIC_* ladder rather than `switch` because MQL5
+   //    switch labels require literal constant expressions, and the
+   //    `static const int MAGIC_*` declarations above are runtime-initialised
+   //    objects (`error 188: constant expression required`).
+   //    PHOENICISNEX_MAGIC_COUNT (=17) and the MAGIC_* set above are the
+   //    single source of truth — keep this list in sync with any future
+   //    addition or removal.
+   return magic == MAGIC_CD     // 200 (C, D shared)
+       || magic == MAGIC_F      // 201
+       || magic == MAGIC_H      // 205
+       || magic == MAGIC_J      // 206
+       || magic == MAGIC_K      // 207
+       || magic == MAGIC_G      // 208 (G, G2 shared)
+       || magic == MAGIC_GO     // 209
+       || magic == MAGIC_M      // 210
+       || magic == MAGIC_L      // 211 (L, LX shared)
+       || magic == MAGIC_Q      // 212
+       || magic == MAGIC_R      // 213
+       || magic == MAGIC_B      // 214 (B, BI shared)
+       || magic == MAGIC_BR     // 215
+       || magic == MAGIC_I      // 216
+       || magic == MAGIC_S      // 217
+       || magic == MAGIC_P      // 218
+       || magic == MAGIC_T;     // 219
   }
 
 #endif // PHOENICISNEX_DOMAIN_ENUMTYPES_MQH

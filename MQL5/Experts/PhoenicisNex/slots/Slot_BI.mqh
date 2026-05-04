@@ -213,10 +213,12 @@ public:
                              : _NormalizeBrokerPrice(bi_entry + sl_distance);
       string comment       = "BI,pyr,1";
 
-      //--- Phase-1 stub: OrderSend deferred to IMPL-053+ orchestrator wiring.
-      //    Log intent — observable milestone for E-AC [log-assertion] +
-      //    [db-inspect] (sl_distance_pip > 0 invariant verifiable in journal
-      //    via signal_context once IMPL-053+ TradeJournal write wires).
+      //--- fix-round-12 § 12.8 — Phase 1 emits entry_signal Logger.Info as
+      //    the observable milestone; actual OrderSend lives in
+      //    `RiskManager::OpenOrder` per `.claude/rules/ea.md` (IMPL-017 +
+      //    IMPL-062 5-yr regression). Log intent — observable milestone for
+      //    E-AC [log-assertion] + [db-inspect] (sl_distance_pip > 0 invariant
+      //    verifiable in journal via signal_context once RiskManager wires).
       m_logger.Info("Slot_BI", buy_signal ? "entry_pyramid_buy" : "entry_pyramid_sell",
                     MAGIC_B,
                     StringFormat("parent_ticket=%I64u parent_profit_pips=%.1f "
