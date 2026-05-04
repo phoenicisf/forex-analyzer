@@ -4,6 +4,40 @@
 
 ## Last completed action
 
+**IMPL-056 CLOSED 2026-05-04 — `services/CrossSlotCoordinator::ExtraCheckFunction2()` (BR-8.5 CD demote check)** — single-task `/impl-task IMPL-056` orchestrator (Opus 4.7) Phase 2A single-prompt. XS-size MVP (continuation of CD-pair safety triplet — same-file scope as IMPL-053/055). **CD-pair safety triplet now complete at coordinator level** (BR-8.1 SafePort + BR-8.3 ForceCutloss + BR-8.5 ExtraCheckFunction2).
+
+- **Files modified:**
+  - `MQL5/Experts/PhoenicisNex/services/CrossSlotCoordinator.mqh` (EDIT) — replaced ExtraCheckFunction2 TODO stub with full body + 1 private helper (`_IsCDDemoteCondition`); extended SelfTest 13 → 19 cases
+- **Files created:**
+  - `simulation/headless-tests/cross_slot_extra_check.ini` (NEW) — smoke fixture per TD-02 §13.6; activation deferred to IMPL-059+
+  - `docs/state/_session-handoff/IMPL-056-evidence-20260504.md` (NEW) — evidence file §1-§9
+- **State files modified:** `docs/state/impl-plan.md` (3 S-AC `[x]` + 1 E-AC deferred + Closed: line + Phase Status row P4 2/11 → 3/11 + Mid-Phase Audit Log row), `docs/state/overview.md` (Impl Tasks row prefix updated to triplet), `docs/state/deferred-ac-registry.md` (1 new IMPL-056 Active P4 row expiry 2026-05-18)
+- **G1 ✅ MetaEditor64 /compile /log:** Spike_CrossSlotCoordinator 0err/0warn/838 ms (re-validated post-edit)
+- **No sibling regression** — only `CrossSlotCoordinator.mqh` edited; new `_IsCDDemoteCondition` is private helper; no cross-cutting cascade
+- **ExtraCheckFunction2 body design:**
+  - NULL guards on m_portfolio + m_logger
+  - `m_portfolio.GetByMagic(MAGIC_CD)` → `SlotState* cd` (CD pool aggregate per ADR-005 shared-magic)
+  - `_IsCDDemoteCondition(cd.buy_count, cd.sell_count)` predicate: `(buy + sell) == 1` per BA `04 § BR-8.5` "portfolio[MagicCD].count == 1" + CodeWiki §5.5 :157
+  - On trigger: `Logger.Info("xslot","cd_demote_triggered",MAGIC_CD,"cd_count=1 buy=N sell=N halted=...")`
+- **HALTED matrix per `04 § 9.1` / ADR-010:** ExtraCheckFunction2 runs in BOTH RUNNING+HALTED (no order activity — pure state-trigger event)
+- **XS scope split:** this sub-pass implements **predicate + Logger trigger emission** only. The actual `cross_slot_state.extra_force_mode_reason` integer field mutation (state-persistence-schema.yaml § cross_slot_state line 119-121) is owned downstream by IMPL-047 StatePersistence + IMPL-059 Orchestrator wiring (CrossSlotCoordinator currently lacks CrossSlotState reference; injection deferred per XS scope). Pattern matches IMPL-053 (SafePort emits log + journal but `ichi_double_bounce_buffer` not yet wired) precedent
+- **SelfTest 19/19 cases pass** (7 IMPL-053 carry-forward + 6 IMPL-055 carry-forward + 6 IMPL-056 added):
+  - C14 _IsCDDemoteCondition empty (0,0) → false
+  - C15 single BUY (1,0) → true
+  - C16 single SELL (0,1) → true
+  - C17 paired (1,1) → false
+  - C18 over-stack (2,0) → false
+  - C19 ExtraCheckFunction2 NULL portfolio → no-op (defensive)
+- **All 3 S-AC `[x]`.** 1 E-AC deferred — smoke 1-CD-position fixture → check returns true + `[ev=cd_demote_triggered]` Logger Print + state.json `extra_force_mode_reason` reset to 0 — block on IMPL-059+ Orchestrator + IMPL-060 entry .mq5 + cross_slot_state field mutation wiring; **registered to `deferred-ac-registry.md` Active table** expiry 2026-05-18
+- **Newly unblocked:** IMPL-054 (M RunOrderGroup2 BR-8.2 Ichimoku double-bounce — last remaining sibling cross-slot method on `CrossSlotCoordinator.mqh`); IMPL-057/058 still gated on prereqs
+- **P4 Phase Status snapshot 2/11 → 3/11.** Mid-Phase Audit P4 counter = 3; threshold 5 not crossed. **Plan Staleness Sentinel = 6 closures since R06** (still below 10-closure threshold)
+- **Next suggested task:** **`/impl-task IMPL-054`** (M RunOrderGroup2 BR-8.2 Ichimoku double-bounce — last sibling on CrossSlotCoordinator.mqh; completes the cross-slot bulk-cleanup quartet at coordinator level before IMPL-058 wire-up). After IMPL-054 → IMPL-058 (S HALTED enable matrix wire-up; depends on IMPL-053..057 chain — gating on IMPL-057 which depends on IMPL-058 itself; per Open Risk R-6 mitigation, may need to defer IMPL-057 to post-IMPL-059 if circular dep blocks). Code Review trigger R09: after IMPL-054/058 chain complete (5 P4 tasks total) for adversarial sweep on cross-slot surface
+- See `docs/state/_session-handoff/IMPL-056-evidence-20260504.md` for full evidence
+
+---
+
+## Prior action — IMPL-055 (kept for continuity)
+
 **IMPL-055 CLOSED 2026-05-04 — `services/CrossSlotCoordinator::RunForceCutloss()` (BR-8.3 CD safety)** — single-task `/impl-task IMPL-055` orchestrator (Opus 4.7) Phase 2A single-prompt. S-size MVP. **Parallel mode rejected** — all 3 ready P4 candidates (IMPL-054/055/056) share file `services/CrossSlotCoordinator.mqh` violating §1.5.1 scope-isolation criterion → fall back single-task IMPL-055 (smallest in chain). Full RunForceCutloss body landed; sibling stubs IMPL-054/056/057 unchanged.
 
 - **Files modified:**

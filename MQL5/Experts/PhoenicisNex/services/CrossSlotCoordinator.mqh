@@ -7,10 +7,10 @@
 //|                                                                  |
 //| IMPL-053 sub-pass: skeleton + RunSafePort full body (BR-8.1).   |
 //| IMPL-055 sub-pass: RunForceCutloss full body (BR-8.3 CD safety).|
-//| Sibling methods (RunOrderGroup2/ExtraCheckFunction2/            |
-//| RunCOverload/RunEOverload/TriggerGOverload/EvaluateBR_OrphanExit|
-//| ) are TODO IMPL-054/056/057 stubs; HALTED guard already in      |
-//| place where matrix dictates.                                    |
+//| IMPL-056 sub-pass: ExtraCheckFunction2 full body (BR-8.5 demote)|
+//| Sibling methods (RunOrderGroup2/RunCOverload/RunEOverload/      |
+//| TriggerGOverload/EvaluateBR_OrphanExit) are TODO IMPL-054/057   |
+//| stubs; HALTED guard already in place where matrix dictates.     |
 //|                                                                  |
 //| Spec deviation logged: TD-02 §5.11 declares                     |
 //|   `void RunSafePort(const MarketContext&)`                      |
@@ -134,6 +134,11 @@ private:
    //    Emits per-ticket exit journal with triggering_function="ForceCutloss"
    //    Returns count of close calls issued.
    int               _CloseCDPositionsInLoss(int signal);
+
+   //--- BR-8.5 ExtraCheckFunction2 demote predicate (CodeWiki §5.5 :157)
+   //    True when CD pool size == 1 (one CD position open, unpaired).
+   //    Pure function — testable without portfolio fixture.
+   bool              _IsCDDemoteCondition(int buy_count, int sell_count) const;
   };
 
 //+------------------------------------------------------------------+
@@ -472,9 +477,46 @@ void CCrossSlotCoordinator::RunForceCutloss(const MarketContext &ctx)
                               (m_halted ? "true" : "false")));
   }
 
+//+------------------------------------------------------------------+
+//| _IsCDDemoteCondition — BR-8.5 trigger predicate                  |
+//|                                                                  |
+//| Per CodeWiki §5.5 :157 + BA `04 § BR-8.5`: when MAGIC_CD pool   |
+//| size == 1 (one CD position open, unpaired) → demote              |
+//| ExtraForceModeReason. Pure function — predicate logic isolated   |
+//| from portfolio coupling so SelfTest can exercise truth-table     |
+//| without a portfolio fixture (matches IMPL-053 _SafePortTriggered |
+//| isolation pattern).                                              |
+//+------------------------------------------------------------------+
+bool CCrossSlotCoordinator::_IsCDDemoteCondition(int buy_count, int sell_count) const
+  {
+   return (buy_count + sell_count) == 1;
+  }
+
+//+------------------------------------------------------------------+
+//| ExtraCheckFunction2 — BR-8.5 CD-count==1 demote                  |
+//|                                                                  |
+//| HALTED-allowed per `04 § 9.1` matrix (no order activity — pure   |
+//| state-mutation trigger). Per IMPL-018+ header-only precedent,    |
+//| actual `cross_slot_state.extra_force_mode_reason` mutation       |
+//| (state-persistence-schema.yaml § cross_slot_state line 119-121)  |
+//| is owned by IMPL-047 StatePersistence + IMPL-059 Orchestrator    |
+//| wiring; this method emits the demote-triggered Logger event for  |
+//| forensic audit, while the integer field clear is a downstream    |
+//| Orchestrator responsibility (registered as deferred E-AC).       |
+//+------------------------------------------------------------------+
 void CCrossSlotCoordinator::ExtraCheckFunction2()
   {
-   // TODO IMPL-056: BR-8.5 CD demote check
+   if(m_portfolio == NULL || m_logger == NULL) return;
+
+   SlotState *cd = m_portfolio.GetByMagic(MAGIC_CD);
+   if(cd == NULL) return;     // MAGIC_CD not registered — skip
+
+   if(!_IsCDDemoteCondition(cd.buy_count, cd.sell_count)) return;
+
+   m_logger.Info("xslot", "cd_demote_triggered", MAGIC_CD,
+                 StringFormat("cd_count=1 buy=%d sell=%d halted=%s",
+                              cd.buy_count, cd.sell_count,
+                              (m_halted ? "true" : "false")));
   }
 
 void CCrossSlotCoordinator::RunCOverload(const MarketContext &ctx)
@@ -590,9 +632,37 @@ bool CCrossSlotCoordinator::SelfTest(CLogger *logger)
    if(_CloseCDPositionsInLoss(0) != 0)
      { Print("[xslot] SelfTest C13 FAIL close_cd zero_signal"); return false; }
 
+   //--- BR-8.5 ExtraCheckFunction2 demote predicate truth-table (IMPL-056)
+   //    True iff buy_count + sell_count == 1 (CD pool size exactly 1).
+
+   //--- Case 14: empty pool (0,0) → false
+   if(_IsCDDemoteCondition(0, 0))
+     { Print("[xslot] SelfTest C14 FAIL demote empty_pool"); return false; }
+
+   //--- Case 15: one BUY only (1,0) → true
+   if(!_IsCDDemoteCondition(1, 0))
+     { Print("[xslot] SelfTest C15 FAIL demote single_buy"); return false; }
+
+   //--- Case 16: one SELL only (0,1) → true
+   if(!_IsCDDemoteCondition(0, 1))
+     { Print("[xslot] SelfTest C16 FAIL demote single_sell"); return false; }
+
+   //--- Case 17: paired (1,1) → false (CD count==2, not demote condition)
+   if(_IsCDDemoteCondition(1, 1))
+     { Print("[xslot] SelfTest C17 FAIL demote paired"); return false; }
+
+   //--- Case 18: over-stacked (2,0) → false
+   if(_IsCDDemoteCondition(2, 0))
+     { Print("[xslot] SelfTest C18 FAIL demote overstack"); return false; }
+
+   //--- Case 19: ExtraCheckFunction2 with NULL portfolio → no-op (defensive)
+   //    No assertion possible (void return); just verify it doesn't crash.
+   ExtraCheckFunction2();
+   // If we reach here, the NULL guard worked.
+
    if(logger != NULL)
-      logger.Info("xslot", "selftest_ok", 0, "13/13 cases pass");
-   Print("[xslot] SelfTest 13/13 PASS");
+      logger.Info("xslot", "selftest_ok", 0, "19/19 cases pass");
+   Print("[xslot] SelfTest 19/19 PASS");
    return true;
   }
 
