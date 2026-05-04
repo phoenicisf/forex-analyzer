@@ -4,6 +4,28 @@
 
 ## Last completed action
 
+**IMPL-057 CLOSED 2026-05-04 — `services/CrossSlotCoordinator` BR-8.4 overload helpers (EOverload/COverload/GOverload — last business-logic method on file)** — single-task `/impl-task IMPL-057` orchestrator (Opus 4.7) Phase 2B 3-step. M-size structural completion of the 3 overload-helper bodies per BR-8.4 + FR-7.5 + CodeWiki §5.5 :9395/:9277/:9493. Predicate logic + Logger emit lands here; downstream order side-effects (CD-add via Slot_C, CD PartialClose, GO inverse open via Slot_GO) deferred to IMPL-059 Orchestrator wiring per ea.md `services/* must not #include slots/*` layering. **CrossSlotCoordinator service surface complete at coordinator level** — only `EvaluateBR_OrphanExit` body remains as TODO IMPL-038 (Slot_BR ownership, out of P4 scope).
+
+- **Files modified:**
+  - `MQL5/Experts/PhoenicisNex/services/CrossSlotCoordinator.mqh` (EDIT) — module-local thresholds (EOVERLOAD_*/COVERLOAD_*/GOVERLOAD_*) added to header `#define` block; 3 private predicates declared (`_EOverloadTriggered`/`_COverloadTriggered`/`_LastGapPipFromZigZag`); `RunEOverload`/`RunCOverload`/`TriggerGOverload` body fills (predicate eval + Logger emit + TODO IMPL-059 markers for order side-effects); SelfTest extended 28→36 cases (C29-C32 EOverload truth-table 4 cases + C33-C35 COverload truth-table 3 cases + C36 reach-without-crash for all 3 helpers under bare MarketContext); header banner IMPL-057 sub-pass row added
+  - `MQL5/Experts/PhoenicisNex/spike/Spike_CrossSlotCoordinator.mq5` (EDIT — header banner only) — IMPL-053..058 → IMPL-053..058 + IMPL-057; SelfTest count 28 → 36
+- **Files created:**
+  - `simulation/headless-tests/cross_slot_overload_helpers.ini` (NEW) — committed per TD-02 §13.6 reproducibility
+  - `docs/state/_session-handoff/IMPL-057-evidence-20260504.md` (NEW) — evidence file §1-§13
+- **State files modified:** `docs/state/impl-plan.md` (IMPL-057 4 S-AC `[x]` + 1 E-AC `[ ]` deferred + Closed line + P4 status row 5/11→6/11 + TL;DR + Mid-Phase Audit Log new row), `docs/state/overview.md` (Impl Tasks row P4 6/11), `docs/state/deferred-ac-registry.md` (1 new IMPL-057 Active P4 row expiry 2026-05-18), `docs/state/current_handoff.md` (this file)
+- **G1 ✅ PowerShell Start-Process MetaEditor64:** Spike_CrossSlotCoordinator 0err/0warn/**609 ms** (cache hit; no new headers — predicates + body fills only). G2-G4 deferred per IMPL-018+ header-only `.mqh` precedent (no entry .mq5 yet — runnable surface lands at IMPL-059+IMPL-060).
+- **No sibling regression** — only `services/CrossSlotCoordinator.mqh` (header `#define` + private predicates + body fills + SelfTest tail) + `spike/Spike_CrossSlotCoordinator.mq5` (header banner only) edited. No other slots/services/domain/helpers files touched. No header-include cascade.
+- **All 4 S-AC `[x]`** (3 helpers + HALTED matrix inherited from IMPL-058 + no-op log inherited from IMPL-053 + compile clean). **1 E-AC deferred** (combined HALTED+RUNNING matrix smoke + downstream order-execution side-effects + cross_slot_state request flag pickup `[log-assertion]` + `[db-inspect]` → block on IMPL-059+ Orchestrator + InpUseCOverload feature flag + InpInteruptRatioDecrease/InpGORatioDecrease wiring + Slot_C/Slot_GO OpenOrder dispatch + portfolio populator OnTradeTransaction); registered to `deferred-ac-registry.md` Active P4 row expiry 2026-05-18.
+- **Code Review trigger R09 condition met** (5 P4 structural + 1 final business-logic = 6 P4 tasks closed; cross-slot surface complete). **Recommend `/impl-review all`** for adversarial sweep on cross-slot surface + ADR-010 enable matrix verification.
+- **Newly unblocked:** IMPL-059 (L Orchestrator composition root — depends on ALL prior P1+P2+P3 + cross-slot IMPL-053..058+057). IMPL-060 chain follows.
+- **Next suggested action:** `/impl-review all` (R09 trigger) → `/impl-task IMPL-059` (L Orchestrator) → IMPL-060 entry .mq5 → empirical surface unblocks 36+ deferred-AC rows expiring 2026-05-17/18.
+- **Commit:** pending (to be created next)
+- See `docs/state/_session-handoff/IMPL-057-evidence-20260504.md` for full evidence
+
+---
+
+## Previous action — Phase 4 Mid-Phase Audit GREEN
+
 **Phase 4 Mid-Phase Audit CLOSED 2026-05-04 — Verdict GREEN, IMPL-057 unblocked** — `/next` recommended audit per CLAUDE.md §6 + workflow §4.1 after IMPL-058 closure crossed P4 counter = 5 threshold. Replay scope per IMPL-058 evidence §11 (structural-only — no runnable surface until IMPL-059+ Orchestrator + entry .mq5 land).
 
 - **Replay actions (6 checks all ✅):**

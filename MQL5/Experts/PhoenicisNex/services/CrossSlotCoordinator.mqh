@@ -20,11 +20,18 @@
 //|                    invokes SetHalted(true) BEFORE RunExitPass   |
 //|                    (per Claim 01.3 + TD-02 §7.2) is owned by    |
 //|                    IMPL-059 — deferred E-AC tracked in registry.|
-//| Sibling methods (RunCOverload + EvaluateBR_OrphanExit body) are |
-//| TODO IMPL-057/038 stubs; halt-guard placement already matches   |
-//| matrix per audit (COverload runs in both states, no guard;      |
-//| EOverload/GOverload entry-side gated; orphan-exit body owned    |
-//| by IMPL-038).                                                    |
+//| IMPL-057 sub-pass: BR-8.4 overload helper bodies (EOverload +    |
+//|                    COverload + GOverload). Predicate logic +     |
+//|                    Logger emit on trigger landed here; the       |
+//|                    downstream order-execution side-effects       |
+//|                    (CD-add via Slot_C OpenOrder, CD-cut via      |
+//|                    PositionPartialClose, GO inverse open via     |
+//|                    Slot_GO OpenOrderGO) are wired by IMPL-059    |
+//|                    Orchestrator + slot composition — marked TODO |
+//|                    + tracked as deferred E-AC. SelfTest C29-C36  |
+//|                    cover the predicate truth-tables + reach-     |
+//|                    without-crash on NULL-dep Init.                |
+//| Pending sibling: EvaluateBR_OrphanExit body (TODO IMPL-038).     |
 //|                                                                  |
 //| === 04 § 9.1 RUNNING/HALTED enable matrix (authoritative) ===    |
 //| Helper                              | RUNNING | HALTED | Guarded?|
@@ -76,6 +83,25 @@
 //| BR-8.2 trigger thresholds (CodeWiki §5.5 :512 baseline)         |
 //+------------------------------------------------------------------+
 #define ORDER_GROUP_2_WEAK_ORDER_MIN  2   // weakOrderCount > 2 (strict, per BR-8.2)
+
+//+------------------------------------------------------------------+
+//| BR-8.4 overload-helper thresholds (CodeWiki §5.5 :9395/:9277/:9493)
+//|                                                                  |
+//| Default values mirror Inputs_General.mqh (CodeWiki §1.3) — module|
+//| -local until Init() composition root in IMPL-059 wires the input |
+//| values through. Services layer MUST NOT #include inputs/* per    |
+//| ea.md; Inp* are visible only after entry .mq5 includes them.     |
+//+------------------------------------------------------------------+
+#define EOVERLOAD_WPR_MIN              90.0   // WPR>90 → peak-reversion (CodeWiki §5.5 :9395)
+#define EOVERLOAD_FORCE_MAX            -11.0  // Force<-11 → momentum collapse (alt trigger)
+#define EOVERLOAD_LAST_GAP_PIP_MIN     33.0   // ≥33 pip last gap (BR-8.4 spec literal)
+#define EOVERLOAD_LOT_DIVISOR_DEFAULT  8.0    // InpInteruptRatioDecrease default
+
+#define COVERLOAD_LOSS_BARS_MIN        7      // ≥7 bars MACD same-sign losses (BR-8.4 spec)
+#define COVERLOAD_ADXW_WEAK_MAX        25.0   // ADXW < 25 → trend-weak qualifier
+
+#define GOVERLOAD_RATIO_DECREASE_DEF   10.0   // InpGORatioDecrease default (CodeWiki §1.3)
+#define GOVERLOAD_LOT_FACTOR           0.9    // OpenOrderGO trim (CodeWiki :16790)
 
 //+------------------------------------------------------------------+
 //| Target slot set for BR-8.1 bulk close: {C,D,J,H,K,L,M,Q,GO,T,S} |
@@ -188,6 +214,26 @@ private:
    //    True when CD pool size == 1 (one CD position open, unpaired).
    //    Pure function — testable without portfolio fixture.
    bool              _IsCDDemoteCondition(int buy_count, int sell_count) const;
+
+   //--- BR-8.4 EOverload trigger predicate (CodeWiki §5.5 :9395)
+   //    Peak-reversion: (|wpr| > 90 OR force < -11) AND last_gap_pip >= 33.
+   //    Pure function — sign of `wpr` interpreted as |wpr| (legacy code uses
+   //    the absolute |WPR| > 90 reading; "WPR>90" in spec is the abs form).
+   bool              _EOverloadTriggered(double wpr_abs,
+                                         double force_h4_value,
+                                         double last_gap_pip) const;
+
+   //--- BR-8.4 COverload trigger predicate (CodeWiki §5.5 :9277)
+   //    True when MACD same-sign loss bar count >= 7 AND ADXW is weak (<25).
+   //    Pure function — testable without MarketContext fixture.
+   bool              _COverloadTriggered(int same_sign_loss_bars,
+                                         double adxw_value) const;
+
+   //--- BR-8.4 EOverload "last gap" derivation (zigzag swing magnitude)
+   //    Last swing high - last swing low, expressed in pips. Used as a
+   //    proxy for the 33-pip "last gap" gate. Returns 0 if pip helper /
+   //    zigzag fields are not initialized.
+   double            _LastGapPipFromZigZag(const MarketContext &ctx) const;
   };
 
 //+------------------------------------------------------------------+
@@ -665,12 +711,103 @@ void CCrossSlotCoordinator::ExtraCheckFunction2()
                               (m_halted ? "true" : "false")));
   }
 
-void CCrossSlotCoordinator::RunCOverload(const MarketContext &ctx)
+//+------------------------------------------------------------------+
+//| _EOverloadTriggered — BR-8.4 EOverload composite gate            |
+//|                                                                  |
+//| Per CodeWiki §5.5 :9395: peak-reversion fires when |WPR| > 90    |
+//| (extreme oscillator reading) OR force < -11 (momentum collapse), |
+//| gated by last_gap_pip >= 33 (the "last gap" bar-distance check). |
+//| The 33-pip gap gate dominates — without it, the WPR/Force signals|
+//| produce too many false adds.                                     |
+//+------------------------------------------------------------------+
+bool CCrossSlotCoordinator::_EOverloadTriggered(double wpr_abs,
+                                                double force_h4_value,
+                                                double last_gap_pip) const
   {
-   datetime t = ctx.tick_time; t = t;
-   // TODO IMPL-057: BR-8.4 COverload exit-side (allowed in HALTED per `04 § 9.1`)
+   if(last_gap_pip < EOVERLOAD_LAST_GAP_PIP_MIN) return false;
+   bool wpr_extreme   = (wpr_abs > EOVERLOAD_WPR_MIN);
+   bool force_collapse = (force_h4_value < EOVERLOAD_FORCE_MAX);
+   return (wpr_extreme || force_collapse);
   }
 
+//+------------------------------------------------------------------+
+//| _COverloadTriggered — BR-8.4 COverload composite gate            |
+//|                                                                  |
+//| Per CodeWiki §5.5 :9277: cuts CD size when MACD same-sign loss   |
+//| streak >= 7 bars (sustained directional pain) AND ADXW < 25      |
+//| (trend-weak qualifier — strong trend would not warrant cutting). |
+//+------------------------------------------------------------------+
+bool CCrossSlotCoordinator::_COverloadTriggered(int same_sign_loss_bars,
+                                                double adxw_value) const
+  {
+   if(same_sign_loss_bars < COVERLOAD_LOSS_BARS_MIN) return false;
+   if(adxw_value >= COVERLOAD_ADXW_WEAK_MAX)         return false;
+   return true;
+  }
+
+//+------------------------------------------------------------------+
+//| _LastGapPipFromZigZag — derive last-gap magnitude in pips        |
+//|                                                                  |
+//| Uses zigzag_m5.last_high - last_low as the "last gap" proxy.     |
+//| Pip helper not initialized (m_pip == NULL) → return 0 so gate    |
+//| safely under-triggers in spike harness / pre-Init paths.         |
+//+------------------------------------------------------------------+
+double CCrossSlotCoordinator::_LastGapPipFromZigZag(const MarketContext &ctx) const
+  {
+   if(m_pip == NULL) return 0.0;
+   double price_diff = MathAbs(ctx.zigzag_m5.last_high - ctx.zigzag_m5.last_low);
+   double pip_unit   = m_pip.PipToPrice(1.0);
+   if(pip_unit <= 0.0) return 0.0;
+   return price_diff / pip_unit;
+  }
+
+//+------------------------------------------------------------------+
+//| RunCOverload — BR-8.4 COverload exit-side (cut CD size)          |
+//|                                                                  |
+//| HALTED-allowed per `04 § 9.1` matrix (no order-open, only        |
+//| existing-position trim). Predicate evaluation + Logger emit on   |
+//| trigger lands here; the actual `PositionPartialClose` of CD      |
+//| tickets is owned by IMPL-059 Orchestrator wiring (PartialClose   |
+//| volume calc requires per-ticket lot read + InpMainOverloadRatio  |
+//| input — both Orchestrator/composition-root concerns).            |
+//+------------------------------------------------------------------+
+void CCrossSlotCoordinator::RunCOverload(const MarketContext &ctx)
+  {
+   if(m_logger == NULL) return;
+
+   //--- IMPL-057 NOTE: InpUseCOverload feature flag (CodeWiki §1.3) is
+   //    consulted at the Orchestrator OnTick step (IMPL-059) before this
+   //    helper is invoked — coordinator stays input-agnostic per ea.md
+   //    layering (services/* must not #include inputs/*).
+
+   int    loss_bars = ctx.macd_d1.same_sign_loss_bars;
+   double adxw      = ctx.adx_h4.adx_wave;
+
+   if(!_COverloadTriggered(loss_bars, adxw)) return;
+
+   m_logger.Info("xslot", "coverload_triggered", MAGIC_CD,
+                 StringFormat("loss_bars=%d adxw=%.2f halted=%s",
+                              loss_bars, adxw,
+                              (m_halted ? "true" : "false")));
+
+   // TODO IMPL-059: PositionPartialClose CD tickets at MainOverloadRatioDecrease
+   //   - Iterate m_portfolio.GetTicketsForSlot(MAGIC_CD, "C,") + ("D,")
+   //   - For each ticket: m_trade.PositionClosePartial(ticket, lot/divisor)
+   //   - Per-ticket exit journal w/ triggering_function="COverload"
+   //   - InpMainOverloadRatioDecrease wired via Init() composition root
+  }
+
+//+------------------------------------------------------------------+
+//| RunEOverload — BR-8.4 EOverload entry-side (add CD on peak)      |
+//|                                                                  |
+//| HALTED-disabled per `04 § 9.1` matrix (entry-side helper).       |
+//| Predicate evaluation + Logger emit lands here; the actual extra  |
+//| CD order open is owned by IMPL-059 Orchestrator wiring (calls    |
+//| Slot_C OpenOrder via composition root). Per ea.md, services/*    |
+//| must not include slots/* — slot-side OpenOrder is invoked by    |
+//| Orchestrator after this helper signals via Logger event +        |
+//| (later) cross_slot_state.eoverload_request flag.                 |
+//+------------------------------------------------------------------+
 void CCrossSlotCoordinator::RunEOverload(const MarketContext &ctx)
   {
    if(m_halted)
@@ -679,10 +816,40 @@ void CCrossSlotCoordinator::RunEOverload(const MarketContext &ctx)
          m_logger.Info("xslot", "overload_skipped_halted", 0, "helper=E");
       return;
      }
-   datetime t = ctx.tick_time; t = t;
-   // TODO IMPL-057: BR-8.4 EOverload entry-side
+   if(m_logger == NULL) return;
+
+   double wpr_abs      = MathAbs(ctx.wpr_h4.wpr);
+   double force_value  = ctx.force_h4.f1;            // bar-1 reading per CodeWiki :9395
+   double last_gap_pip = _LastGapPipFromZigZag(ctx);
+
+   if(!_EOverloadTriggered(wpr_abs, force_value, last_gap_pip)) return;
+
+   m_logger.Info("xslot", "eoverload_triggered", MAGIC_CD,
+                 StringFormat("wpr_abs=%.2f force=%.2f gap_pip=%.1f lot_div=%.1f halted=%s",
+                              wpr_abs, force_value, last_gap_pip,
+                              EOVERLOAD_LOT_DIVISOR_DEFAULT,
+                              (m_halted ? "true" : "false")));
+
+   // TODO IMPL-059: signal Slot_C to add extra CD order at lot/InpInteruptRatioDecrease
+   //   - Set cross_slot_state.eoverload_request = +1 (BUY-side) or -1 (SELL-side)
+   //     deduced from ctx.derived (peak direction)
+   //   - Slot_C BusinessLogic_C consumes flag in next entry pass and calls
+   //     OpenOrderC with lot = base_lot / InpInteruptRatioDecrease
+   //   - InpInteruptRatioDecrease wired via Init() composition root
   }
 
+//+------------------------------------------------------------------+
+//| TriggerGOverload — BR-8.4 post-exit hook from Slot_G ManageExits |
+//|                                                                  |
+//| HALTED-disabled per `04 § 9.1` matrix (entry-side hook — opens   |
+//| inverse GO position). Lot reduction + direction flip computed    |
+//| here for forensic log; actual Slot_GO OpenOrderGO call is owned  |
+//| by IMPL-059 Orchestrator wiring (slot composition route — same   |
+//| reasoning as RunEOverload).                                      |
+//|                                                                  |
+//| direction:  +1 = closing G was BUY → open GO SELL (inverse hedge)|
+//|             -1 = closing G was SELL → open GO BUY                |
+//+------------------------------------------------------------------+
 void CCrossSlotCoordinator::TriggerGOverload(double closing_lot, int direction)
   {
    if(m_halted)
@@ -691,8 +858,27 @@ void CCrossSlotCoordinator::TriggerGOverload(double closing_lot, int direction)
          m_logger.Info("xslot", "overload_skipped_halted", 0, "helper=G");
       return;
      }
-   closing_lot = closing_lot; direction = direction;
-   // TODO IMPL-057: BR-8.4 GOverload post-exit hook
+   if(m_logger == NULL) return;
+   if(closing_lot <= 0.0)            return;
+   if(direction != +1 && direction != -1) return;
+
+   //--- Lot calc per CodeWiki §3.8 + :16790: closing_lot * (GORatioDecrease/10) * 0.9
+   //    Default ratio 10 → factor 1.0; final * 0.9 trim → 0.9 of closing lot.
+   double inverse_lot = closing_lot
+                        * (GOVERLOAD_RATIO_DECREASE_DEF / 10.0)
+                        * GOVERLOAD_LOT_FACTOR;
+   int    inverse_dir = -direction;
+
+   m_logger.Info("xslot", "goverload_triggered", MAGIC_GO,
+                 StringFormat("close_lot=%.2f dir=%d inv_lot=%.2f inv_dir=%d halted=%s",
+                              closing_lot, direction, inverse_lot, inverse_dir,
+                              (m_halted ? "true" : "false")));
+
+   // TODO IMPL-059: open GO order via Slot_GO composition root
+   //   - Slot_GO::OpenOrderGO(inverse_lot, inverse_dir, "G,O")
+   //   - Or set cross_slot_state.goverload_request = inverse_dir
+   //     and let Orchestrator dispatch to Slot_GO before next OnTick exit
+   //   - InpGORatioDecrease wired via Init() composition root
   }
 
 void CCrossSlotCoordinator::EvaluateBR_OrphanExit()
@@ -894,9 +1080,65 @@ bool CCrossSlotCoordinator::SelfTest(CLogger *logger)
    }
    // Reaching here = restore path works (no permanent halt latch)
 
+   //--- BR-8.4 EOverload trigger predicate truth-table (IMPL-057)
+   //    True iff (wpr_abs > 90 OR force < -11) AND last_gap_pip >= 33.
+
+   //--- Case 29: WPR=95 + force=0 + gap=40 → true (WPR alternative + gap pass)
+   if(!_EOverloadTriggered(95.0, 0.0, 40.0))
+     { Print("[xslot] SelfTest C29 FAIL eoverload wpr_only"); return false; }
+
+   //--- Case 30: WPR=20 + force=-15 + gap=40 → true (Force alternative + gap pass)
+   if(!_EOverloadTriggered(20.0, -15.0, 40.0))
+     { Print("[xslot] SelfTest C30 FAIL eoverload force_only"); return false; }
+
+   //--- Case 31: WPR=20 + force=0 + gap=40 → false (neither indicator triggers)
+   if(_EOverloadTriggered(20.0, 0.0, 40.0))
+     { Print("[xslot] SelfTest C31 FAIL eoverload no_indicator"); return false; }
+
+   //--- Case 32: WPR=95 + force=-15 + gap=20 → false (gap gate dominates)
+   if(_EOverloadTriggered(95.0, -15.0, 20.0))
+     { Print("[xslot] SelfTest C32 FAIL eoverload gap_dominates"); return false; }
+
+   //--- BR-8.4 COverload trigger predicate truth-table (IMPL-057)
+   //    True iff same_sign_loss_bars >= 7 AND adxw < 25.
+
+   //--- Case 33: bars=6 + adxw=15 → false (bar count below floor)
+   if(_COverloadTriggered(6, 15.0))
+     { Print("[xslot] SelfTest C33 FAIL coverload bars_below"); return false; }
+
+   //--- Case 34: bars=7 + adxw=15 → true (boundary bar count + weak adxw)
+   if(!_COverloadTriggered(7, 15.0))
+     { Print("[xslot] SelfTest C34 FAIL coverload trigger_min"); return false; }
+
+   //--- Case 35: bars=7 + adxw=30 → false (adxw too strong)
+   if(_COverloadTriggered(7, 30.0))
+     { Print("[xslot] SelfTest C35 FAIL coverload adxw_strong"); return false; }
+
+   //--- Case 36: RunEOverload + RunCOverload + TriggerGOverload reach without
+   //    crash on a bare MarketContext. RunEOverload is HALTED-guarded
+   //    (un-latched first since C28 already restored), TriggerGOverload uses
+   //    valid lot/direction args. RunCOverload predicate stays false on
+   //    bare ctx (loss_bars=0, adxw=0) so no trigger emit.
+   {
+    MarketContext bare;
+    bare.tick_time = 0; bare.bid = 0; bare.ask = 0;
+    bare.spread_pip = 0; bare.bar_index_h4 = 0;
+    bare.wpr_h4.wpr             = 0.0;
+    bare.force_h4.f0            = 0.0;
+    bare.force_h4.f1            = 0.0;
+    bare.zigzag_m5.last_high    = 0.0;
+    bare.zigzag_m5.last_low     = 0.0;
+    bare.macd_d1.same_sign_loss_bars = 0;
+    bare.adx_h4.adx_wave        = 0.0;
+    RunEOverload(bare);              // not halted (C28 restored) — predicate false → no emit
+    RunCOverload(bare);               // predicate false → no emit
+    TriggerGOverload(0.10, +1);       // valid args → emits (m_logger non-null)
+   }
+   // Reaching here = all three helper bodies executed without crash
+
    if(logger != NULL)
-      logger.Info("xslot", "selftest_ok", 0, "28/28 cases pass");
-   Print("[xslot] SelfTest 28/28 PASS");
+      logger.Info("xslot", "selftest_ok", 0, "36/36 cases pass");
+   Print("[xslot] SelfTest 36/36 PASS");
    return true;
   }
 
