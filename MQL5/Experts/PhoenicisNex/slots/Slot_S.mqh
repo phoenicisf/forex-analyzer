@@ -200,7 +200,7 @@ void CSlotS::Evaluate(const MarketContext &ctx, CPortfolioState &port)
 
    //--- Compute lot via RiskManager (no direct CTrade — ADR-002 + ea.md rule)
    double balance = AccountInfoDouble(ACCOUNT_BALANCE);
-   double lot     = m_risk.ComputeLot("S", InpSSlPips, balance);
+   double lot     = m_risk.ComputeLot("S", InpSSlPips, balance, InpSPercentTp);
 
    if(lot <= 0.0)
      {
