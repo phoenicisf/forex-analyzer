@@ -1,9 +1,12 @@
 //+------------------------------------------------------------------+
 //|                                  Spike_CrossSlotCoordinator.mq5 |
 //|                                      Copyright 2026, PhoenicisNex|
-//| G1 compile gate for IMPL-053: exercises CCrossSlotCoordinator    |
+//| G1 compile gate for IMPL-053..056: exercises CCrossSlotCoordinator|
 //| Init signature, SafePort trigger gate, target-table integrity,   |
-//| HALTED toggle round-trip via inline SelfTest (7 cases).          |
+//| ForceCutloss signal truth-table, ExtraCheckFunction2 demote     |
+//| predicate, OrderGroupStartWorkflow2 trigger predicate, HALTED   |
+//| toggle round-trip via inline SelfTest (now 25 cases — IMPL-053  |
+//| 7 + IMPL-055 6 + IMPL-056 6 + IMPL-054 6).                      |
 //| Full BR-8.x runtime smoke arrives at IMPL-059+ Orchestrator wire.|
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, PhoenicisNex"

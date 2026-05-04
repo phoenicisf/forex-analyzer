@@ -8,9 +8,13 @@
 //| IMPL-053 sub-pass: skeleton + RunSafePort full body (BR-8.1).   |
 //| IMPL-055 sub-pass: RunForceCutloss full body (BR-8.3 CD safety).|
 //| IMPL-056 sub-pass: ExtraCheckFunction2 full body (BR-8.5 demote)|
-//| Sibling methods (RunOrderGroup2/RunCOverload/RunEOverload/      |
-//| TriggerGOverload/EvaluateBR_OrphanExit) are TODO IMPL-054/057   |
-//| stubs; HALTED guard already in place where matrix dictates.     |
+//| IMPL-054 sub-pass: RunOrderGroup2 full body (BR-8.2 Ichi double-|
+//|                    bounce); _CloseSlotGroup refactored to take  |
+//|                    (triggering_function, comment) per call so   |
+//|                    SafePort + OrderGroup2 share target traversal|
+//| Sibling methods (RunCOverload/RunEOverload/TriggerGOverload/    |
+//| EvaluateBR_OrphanExit) are TODO IMPL-057 stubs; HALTED guard    |
+//| already in place where matrix dictates.                         |
 //|                                                                  |
 //| Spec deviation logged: TD-02 §5.11 declares                     |
 //|   `void RunSafePort(const MarketContext&)`                      |
@@ -38,6 +42,11 @@
 #define SAFEPORT_WEAK_ORDER_MIN     1     // weakOrderCount > 1 (strict)
 #define SAFEPORT_AVG_BAD_PIP_MIN    55.0  // avg bad-PIP excursion threshold
 #define SAFEPORT_PROFIT_MIN         0.0   // combined floating PL > 0
+
+//+------------------------------------------------------------------+
+//| BR-8.2 trigger thresholds (CodeWiki §5.5 :512 baseline)         |
+//+------------------------------------------------------------------+
+#define ORDER_GROUP_2_WEAK_ORDER_MIN  2   // weakOrderCount > 2 (strict, per BR-8.2)
 
 //+------------------------------------------------------------------+
 //| Target slot set for BR-8.1 bulk close: {C,D,J,H,K,L,M,Q,GO,T,S} |
@@ -89,7 +98,7 @@ public:
 
    //--- Exit-side helpers — RUN in both RUNNING and HALTED (per ADR-010 / `04 § 9.1`)
    int               RunSafePort(const MarketContext &ctx);              // BR-8.1 (returns slots_closed_count)
-   void              RunOrderGroup2(const MarketContext &ctx);            // BR-8.2 — TODO IMPL-054
+   void              RunOrderGroup2(const MarketContext &ctx);            // BR-8.2 Ichimoku double-bounce
    void              RunForceCutloss(const MarketContext &ctx);           // BR-8.3 — TODO IMPL-055
    void              ExtraCheckFunction2();                                // BR-8.5 — TODO IMPL-056
    void              RunCOverload(const MarketContext &ctx);               // BR-8.4 exit-side — TODO IMPL-057
@@ -122,8 +131,19 @@ private:
    int               _FillSafePortTargets(SafePortTarget &out[]) const;
 
    //--- Close all positions for one (magic, slot_prefix) pair via CTrade
-   //    Returns count of close calls issued (regardless of MT5 ack).
-   int               _CloseSlotGroup(int magic, string slot_prefix);
+   //    triggering_function = journal enum value ("OrderGroupStartWorkflow" |
+   //    "OrderGroupStartWorkflow2" — schema enum). comment = exit comment +
+   //    log_fail tag suffix. Returns count of close calls issued (regardless
+   //    of MT5 ack).
+   int               _CloseSlotGroup(int magic,
+                                     string slot_prefix,
+                                     string triggering_function,
+                                     string comment_tag);
+
+   //--- BR-8.2 OrderGroupStartWorkflow2 trigger predicate (CodeWiki §5.5 :512)
+   //    True when ichi_double_bounce_active AND weak_count > 2.
+   //    Pure function — testable without MarketContext fixture.
+   bool              _OrderGroup2Triggered(bool ichi_active, int weak_count) const;
 
    //--- BR-8.3 ForceCutloss composite signal (Stoch M10 + MACD D1 confirm)
    //    Returns +1 to cut BUY losses, -1 to cut SELL losses, 0 otherwise
@@ -258,7 +278,10 @@ int CCrossSlotCoordinator::_FillSafePortTargets(SafePortTarget &out[]) const
 //| still ack-fail; broker ack accounting belongs in Orchestrator's  |
 //| OnTradeTransaction handler, not here).                           |
 //+------------------------------------------------------------------+
-int CCrossSlotCoordinator::_CloseSlotGroup(int magic, string slot_prefix)
+int CCrossSlotCoordinator::_CloseSlotGroup(int magic,
+                                           string slot_prefix,
+                                           string triggering_function,
+                                           string comment_tag)
   {
    if(m_portfolio == NULL) return 0;
 
@@ -278,12 +301,12 @@ int CCrossSlotCoordinator::_CloseSlotGroup(int magic, string slot_prefix)
       bool ok = m_trade.PositionClose(tk);
       if(!ok && m_logger != NULL)
         {
-         m_logger.Warn("xslot", "safe_port_close_fail", magic,
+         m_logger.Warn("xslot", comment_tag + "_close_fail", magic,
                        StringFormat("ticket=%I64u rc=%u", tk, m_trade.ResultRetcode()));
         }
       closed++;
 
-      //--- Per-ticket exit journal entry (triggering_function = OrderGroupStartWorkflow)
+      //--- Per-ticket exit journal entry (triggering_function per schema enum)
       if(m_journal != NULL)
         {
          JournalEvent ev;
@@ -299,9 +322,9 @@ int CCrossSlotCoordinator::_CloseSlotGroup(int magic, string slot_prefix)
          ev.price                  = PositionGetDouble(POSITION_PRICE_CURRENT);
          ev.sl                     = 0.0;
          ev.tp                     = 0.0;
-         ev.comment                = "safe_port";
+         ev.comment                = comment_tag;
          ev.signal_context         = StringFormat("pl=%.2f", pl);
-         ev.triggering_function    = "OrderGroupStartWorkflow";
+         ev.triggering_function    = triggering_function;
          ev.parent_ticket_id       = 0;
          ev.halt_reason            = "";
          ev.pending_age_bars       = 0;
@@ -340,7 +363,10 @@ int CCrossSlotCoordinator::RunSafePort(const MarketContext &ctx)
    int target_n = _FillSafePortTargets(targets);
    int slots_closed_count = 0;
    for(int i = 0; i < target_n; i++)
-      slots_closed_count += _CloseSlotGroup(targets[i].magic, targets[i].slot_prefix);
+      slots_closed_count += _CloseSlotGroup(targets[i].magic,
+                                            targets[i].slot_prefix,
+                                            "OrderGroupStartWorkflow",
+                                            "safe_port");
 
    m_logger.Info("xslot", "safe_port_triggered", 0,
                  StringFormat("slots_closed=%d weak=%d avg_bad_pip=%.1f pl=%.2f halted=%s",
@@ -351,12 +377,62 @@ int CCrossSlotCoordinator::RunSafePort(const MarketContext &ctx)
   }
 
 //+------------------------------------------------------------------+
-//| Sibling stubs (TODO IMPL-054..057)                               |
+//| _OrderGroup2Triggered — composite gate per BR-8.2                |
+//|   ichi_double_bounce_active AND weak_count > 2                   |
+//|                                                                  |
+//| Source: CodeWiki §5.5 :512 ("Ichimoku double-bounce + Force      |
+//| confirmation pattern, weakOrderCount > 2"). Force confirmation   |
+//| is folded into the derived signal `ichi_double_bounce_active`    |
+//| computation owned by MarketContextBuilder (ADR-004); coordinator |
+//| consumes the boolean only.                                       |
+//+------------------------------------------------------------------+
+bool CCrossSlotCoordinator::_OrderGroup2Triggered(bool ichi_active,
+                                                  int weak_count) const
+  {
+   if(!ichi_active)                                  return false;
+   if(weak_count <= ORDER_GROUP_2_WEAK_ORDER_MIN)    return false;
+   return true;
+  }
+
+//+------------------------------------------------------------------+
+//| RunOrderGroup2 — BR-8.2 OrderGroupStartWorkflow2                 |
+//|                                                                  |
+//| HALTED-allowed per `04 § 9.1` matrix (exit-side helper).         |
+//| Re-uses _AggregateWeakMetrics + _FillSafePortTargets +           |
+//| _CloseSlotGroup so the bulk-close primitive is shared with       |
+//| RunSafePort (BR-8.1); only the gate predicate + journal label    |
+//| differ. Returns void per TD-02 §5.11 skeleton.                   |
 //+------------------------------------------------------------------+
 void CCrossSlotCoordinator::RunOrderGroup2(const MarketContext &ctx)
   {
-   datetime t = ctx.tick_time; t = t;
-   // TODO IMPL-054: BR-8.2 Ichimoku double-bounce close-all
+   if(m_portfolio == NULL || m_logger == NULL) return;
+
+   //--- Quick out: derived ichi flag is the dominant gate
+   bool ichi_active = ctx.derived.ichi_double_bounce_active;
+   if(!ichi_active) return;
+
+   int    weak_count  = 0;
+   double sum_bad_pip = 0.0;
+   double total_pl    = 0.0;
+   _AggregateWeakMetrics(weak_count, sum_bad_pip, total_pl);
+
+   if(!_OrderGroup2Triggered(ichi_active, weak_count)) return;
+
+   //--- Triggered — bulk close shared target set
+   SafePortTarget targets[];
+   int target_n = _FillSafePortTargets(targets);
+   int slots_closed_count = 0;
+   for(int i = 0; i < target_n; i++)
+      slots_closed_count += _CloseSlotGroup(targets[i].magic,
+                                            targets[i].slot_prefix,
+                                            "OrderGroupStartWorkflow2",
+                                            "order_group_2");
+
+   double avg_bad_pip = (weak_count > 0) ? (sum_bad_pip / weak_count) : 0.0;
+   m_logger.Info("xslot", "order_group_2_triggered", 0,
+                 StringFormat("slots_closed=%d weak=%d avg_bad_pip=%.1f pl=%.2f halted=%s",
+                              slots_closed_count, weak_count, avg_bad_pip, total_pl,
+                              (m_halted ? "true" : "false")));
   }
 
 //+------------------------------------------------------------------+
@@ -660,9 +736,45 @@ bool CCrossSlotCoordinator::SelfTest(CLogger *logger)
    ExtraCheckFunction2();
    // If we reach here, the NULL guard worked.
 
+   //--- BR-8.2 OrderGroupStartWorkflow2 trigger predicate truth-table (IMPL-054)
+   //    True iff ichi_double_bounce_active AND weak_count > 2.
+
+   //--- Case 20: ichi=false + weak=0 → false
+   if(_OrderGroup2Triggered(false, 0))
+     { Print("[xslot] SelfTest C20 FAIL og2 zero"); return false; }
+
+   //--- Case 21: ichi=true + weak=2 (boundary) → false (must be strictly > 2)
+   if(_OrderGroup2Triggered(true, 2))
+     { Print("[xslot] SelfTest C21 FAIL og2 boundary"); return false; }
+
+   //--- Case 22: ichi=true + weak=3 → true (first qualifying weak count)
+   if(!_OrderGroup2Triggered(true, 3))
+     { Print("[xslot] SelfTest C22 FAIL og2 trigger_min"); return false; }
+
+   //--- Case 23: ichi=true + weak=10 → true (well above threshold)
+   if(!_OrderGroup2Triggered(true, 10))
+     { Print("[xslot] SelfTest C23 FAIL og2 trigger_high"); return false; }
+
+   //--- Case 24: ichi=false + weak=10 → false (gate dominated by ichi flag)
+   if(_OrderGroup2Triggered(false, 10))
+     { Print("[xslot] SelfTest C24 FAIL og2 no_ichi"); return false; }
+
+   //--- Case 25: RunOrderGroup2 with NULL portfolio → no-op (defensive guard)
+   //    No assertion possible (void return); verify it does not crash.
+   {
+    MarketContext bare;
+    bare.tick_time = 0; bare.bid = 0; bare.ask = 0;
+    bare.spread_pip = 0; bare.bar_index_h4 = 0;
+    bare.derived.wpr_wave_signal = false;
+    bare.derived.adx_force_peak_valid = false;
+    bare.derived.ichi_double_bounce_active = true;
+    RunOrderGroup2(bare);
+   }
+   // If we reach here, the NULL guard worked.
+
    if(logger != NULL)
-      logger.Info("xslot", "selftest_ok", 0, "19/19 cases pass");
-   Print("[xslot] SelfTest 19/19 PASS");
+      logger.Info("xslot", "selftest_ok", 0, "25/25 cases pass");
+   Print("[xslot] SelfTest 25/25 PASS");
    return true;
   }
 
