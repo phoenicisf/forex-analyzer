@@ -4,6 +4,23 @@
 
 ## Last completed action
 
+**Phase 4 Mid-Phase Audit CLOSED 2026-05-04 — Verdict GREEN, IMPL-057 unblocked** — `/next` recommended audit per CLAUDE.md §6 + workflow §4.1 after IMPL-058 closure crossed P4 counter = 5 threshold. Replay scope per IMPL-058 evidence §11 (structural-only — no runnable surface until IMPL-059+ Orchestrator + entry .mq5 land).
+
+- **Replay actions (6 checks all ✅):**
+  1. **G1 recompile** — Spike_CrossSlotCoordinator 0err/0warn/661 ms (fresh post fix-round-09: m_risk dropped, IsKnownMagic added, tickets_closed_count rename, no-op Warn branches, SetTypeFilling Init detection — all delta intact)
+  2. **SelfTest structural integrity** — 28 explicit `Case <N>:` markers + `Print("[xslot] SelfTest 28/28 PASS")` + Logger `selftest_ok` event with "28/28 cases pass" all present (live runtime invocation deferred per §11 — covered by deferred-AC IMPL-053..056 close-path row in registry)
+  3. **P4 evidence file structural pass** — IMPL-{053,054,055,056,058}-evidence-20260504.md all present + dated 2026-05-04 + sections 9-13 each (per IMPL-018+ header-only precedent)
+  4. **Sibling regression** — Spike_PendingMachineRegistry 0err/0warn/1432 ms (verifies PortfolioState `IsKnownMagic` addition + general method-table change didn't break sister consumer chain)
+  5. **Forbidden-closure pattern strict grep on `[x]` AC lines** — 0 hits ✅ (1 false-positive from greedy `.*` regex spanning audit-log narrative — `"deferred per XS scope"` + `"precedent"` in same Mid-Phase Audit Log cell — confirmed not a Dimension #11 violation)
+  6. **fix-round-09 anti-regression** — `m_risk` 0 hits in `services/CrossSlotCoordinator.mqh` ✅ / `tickets_closed` 13 hits ✅ / `IsKnownMagic` 1 consumer + 3 hits in PortfolioState (decl + body + comment) ✅
+- **State files modified:** `docs/state/impl-plan.md` (Mid-Phase Audit Log new row + TL;DR threshold-crossed → GREEN), `docs/state/overview.md` (Code Review row prepended audit verdict), `docs/state/current_handoff.md` (this rebump)
+- **Verdict:** Phase 4 unblocked — recommend `/impl-task IMPL-057` (M overload helpers BR-8.4 — last business-logic method on `services/CrossSlotCoordinator.mqh`; circular dep resolved by IMPL-058). After IMPL-057 → IMPL-059 (L Orchestrator) + IMPL-060 (S entry .mq5) → empirical surface unblocks 36+ deferred-AC rows expiring 2026-05-17/18 + Code Review Round 10 trigger.
+- **Commit:** pending (audit log + state propagation only — no source changes)
+
+---
+
+## Previous action — fix-round-09
+
 **fix-round-09 CLOSED 2026-05-04 — adversarial review of `services/CrossSlotCoordinator.mqh` (post IMPL-053/054/055/056/058 land)** — `/impl-review-fix review-round-09.md` accepted 6/7 + 1 partial (09.5 deferred-AC); 0 reject. **2 HIGH** (09.1 magic filter via new `IsKnownMagic` predicate / 09.2 `_triggered` log → `_no_op` Warn when close count = 0) + **3 MEDIUM** (09.3 `SetTypeFilling` + Warn→Error on close-fail / 09.4 dropped dead `m_risk` injection / 09.5 partial → registry row) + **2 LOW** (09.6 single-gate `RunOrderGroup2` / 09.7 `slots_closed_count` → `tickets_closed_count` rename).
 
 - **Files modified:**
