@@ -4,6 +4,52 @@
 
 ## Last completed action
 
+**IMPL-053 CLOSED 2026-05-04 — `services/CrossSlotCoordinator::RunSafePort()` (BR-8.1 OrderGroupStartWorkflow)** — single-task `/impl-task IMPL-053` orchestrator (Opus 4.7) Phase 2B 3-step. M-size MVP: first P4 task closed under Phase Gate Override 2026-05-03 (Path A) which authorizes "P3 IMPL-018 + IMPL-053..058 Orchestrator chain"; full RunSafePort body landed; sibling cross-slot methods stubbed for IMPL-054..057.
+
+- **Files (NEW × 3):**
+  - `MQL5/Experts/PhoenicisNex/services/CrossSlotCoordinator.mqh` — class skeleton (7 public methods per TD-02 §5.11) + RunSafePort full body + sibling stubs guarded for IMPL-054..057 + private helpers (`_SafePortTriggered`, `_AggregateWeakMetrics`, `_FillSafePortTargets`, `_CloseSlotGroup`) + 7-case SelfTest. Service-layer CTrade member allowed (ea.md restricts only slots/*).
+  - `MQL5/Experts/PhoenicisNex/spike/Spike_CrossSlotCoordinator.mq5` — G1 compile harness; Init(NULL deps) + SelfTest 7 cases pass.
+  - `simulation/headless-tests/cross_slot_safe_port.ini` — smoke fixture (TD-02 §13.6) `[Tester]` block Visual=0 + ShutdownTerminal=1 + EURUSD H4 Model=4 60-day window 2024.01.01→2024.03.01; activation deferred to IMPL-059+.
+- **Files modified:** `docs/state/impl-plan.md` (TL;DR + IMPL-053 closure block all 4 S-AC `[x]` + Phase Status row P4 0→1/11 + Mid-Phase Audit Log row + Action ถัดไป + Last updated), `docs/state/overview.md` (Impl Tasks row prefix), `docs/state/deferred-ac-registry.md` (1 new IMPL-053 Active P4 row expiry 2026-05-18 — smoke 10-position fixture), `docs/state/_session-handoff/IMPL-053-evidence-20260504.md` (NEW evidence file with §1-§10).
+- **G1 ✅ orchestrator-side independent recompile** (PowerShell Start-Process MetaEditor64): Spike_CrossSlotCoordinator 0err/0warn/838 ms.
+- **No sibling regression** — `services/CrossSlotCoordinator.mqh` is a new file with zero existing `#include` consumers; no cascade.
+- **RunSafePort body design:**
+  - `_AggregateWeakMetrics` iterates `PositionsTotal()` filtered `_Symbol==EURUSD` (NFR-5.3 whitelist) → derives `weak_count` (signed_pip<0), `sum_bad_pip` (abs of signed_pip), `total_pl` (POSITION_PROFIT)
+  - `_SafePortTriggered` AND-gate: `weak_count > 1` AND `avg_bad_pip > 55.0` AND `combined_pl > 0.0` per BR-8.1 spec literal (CodeWiki §5.5 baseline)
+  - `_FillSafePortTargets` populates 11 entries `{(MAGIC_CD,"C,"), (MAGIC_CD,"D,"), (MAGIC_J,"J,"), (MAGIC_H,"H,"), (MAGIC_K,"K,"), (MAGIC_L,"L,"), (MAGIC_M,"M,"), (MAGIC_Q,"Q,"), (MAGIC_GO,"GO,"), (MAGIC_T,"T,"), (MAGIC_S,"S,")}` per BA `04 § BR-8.1` slot list
+  - per (magic, prefix) `_CloseSlotGroup` calls `port.GetTicketsForSlot` + `m_trade.PositionClose(ticket)` + per-ticket journal `event_type="exit"` `triggering_function="OrderGroupStartWorkflow"` `comment="safe_port"` `signal_context="pl=<pl>"` + accumulates count
+  - Aggregate Logger Info `[ev=safe_port_triggered][slots_closed=N weak=N avg_bad_pip=N pl=N halted=...]`
+  - Returns `int slots_closed_count`
+- **HALTED matrix per `04 § 9.1` / ADR-010:** SafePort runs in BOTH RUNNING+HALTED (exit-side helper); EOverload/TriggerGOverload guarded `if(m_halted) return;` with Logger `[ev=overload_skipped_halted][helper=E|G]`.
+- **Spec deviation logged:** TD-02 §5.11 declares `void RunSafePort(const MarketContext&)`; implementation returns `int` (slots_closed_count) per S-AC #3 plan-text imperative — Plan text > skeleton text per Plan QA precedent (mirrors IMPL-039 ADR-009 + R06 Slot_P signature deviations). Documented in `services/CrossSlotCoordinator.mqh` header banner + evidence §7 + impl-plan + Mid-Phase Audit Log.
+- **SelfTest 7/7 cases pass:** C1 Init defaults (m_halted=false), C2 SetHalted toggle round-trip, C3 _SafePortTriggered all-zero → false, C4 weak=2/avg=60/pl=10 → true, C5 weak=2/avg=40/pl=10 → false (low pip), C6 weak=2/avg=60/pl=-5 → false (neg pl), C7 _FillSafePortTargets returns 11 entries with [0]=(MAGIC_CD,"C,") and [10]=(MAGIC_S,"S,") — composite gate truth-table fully covered.
+- **All 4 S-AC `[x]`.** 1 E-AC deferred — smoke 10-position fixture with avg badPIP=60 + currentProfit>0 → SafePort closes en masse + journal `[ev=safe_port_triggered][slots_closed=10]` + per-ticket `triggering_function="OrderGroupStartWorkflow"` `[log-assertion]` + `[db-inspect]` — block on IMPL-059+ Orchestrator + IMPL-060 entry .mq5 + PortfolioState OnTradeTransaction populator (Finding 02.3 fix contract); **registered to `deferred-ac-registry.md` Active table** expiry 2026-05-18.
+- **Newly unblocked:** IMPL-054 (RunOrderGroup2 BR-8.2 — same-file sequential) · IMPL-055 (RunForceCutloss BR-8.3 S-size simpler) · IMPL-056 (ExtraCheckFunction2 BR-8.5 XS) · IMPL-057 (overload helpers M; depends on IMPL-058) · IMPL-058 (HALTED matrix wire-up S — depends on IMPL-053..057).
+- **P4 Phase Status snapshot 0/11 → 1/11.** Mid-Phase Audit P4 counter = 1. **Plan Staleness Sentinel = 4 closures since R06** (IMPL-039 + IMPL-034 + IMPL-013 + IMPL-053 — well below 10-closure threshold).
+- **Commit:** `637fd38` `[feat:ea] IMPL-053 CrossSlotCoordinator::RunSafePort - BR-8.1 OrderGroupStartWorkflow` (backfill commit `e252cdf` ships paired R06 plan rebuttal + R08 code review/fix artifacts).
+- **Next suggested task:** **`/impl-task IMPL-055`** (S RunForceCutloss BR-8.3 CD pair — simplest in chain; same-file scope) **OR** **`/impl-task IMPL-054`** (M RunOrderGroup2 BR-8.2 Ichimoku double-bounce) **OR** **`/impl-task IMPL-056`** (XS ExtraCheckFunction2 BR-8.5 CD demote check). Per Open Risk R-6 mitigation, prioritize IMPL-053..058 → IMPL-059 (L Orchestrator) → IMPL-060 (S entry .mq5) chain to unblock 36 Active deferred-AC rows + P2/P3 retroactive Phase Gate close + IMPL-022/IMPL-039 G4 attestation journal evidence path. Code Review trigger R09: after IMPL-058 chain complete (~5 P4 tasks) for adversarial sweep on cross-slot surface + ADR-010 HALTED enable matrix verification.
+- See `docs/state/_session-handoff/IMPL-053-evidence-20260504.md` for full evidence.
+
+---
+
+## Prior action — Code Review Round 08 (kept for continuity)
+
+**Code Review Round 08 + Fix Round 08 APPLIED 2026-05-04** — `/impl-review-fix review-round-08.md` accepted **5/5** findings (CRITICAL 0 / HIGH 0 / MEDIUM 3 / LOW 2; 0 reject, 0 partial). 2 source files modified (`slots/Slot_P.mqh` + `services/PendingMachineRegistry.mqh`).
+
+- **Major fixes:**
+  - **08.1 MEDIUM + 08.2 MEDIUM + 08.4 LOW** (bundled — Slot_P entry-path housekeeping) Adopted canonical `_PipsToPrice(sl_pips)` helper at Path A pyramid + Path B primary (Round 06 06.1 collapse honored); paired both Evaluate sites with NFR-5.1 loud-failure guard symmetric to ManageExits Round 07.5 (`Logger.Error` + Path B `Alert` + early-return); added `diff_sl_pip <= 0.0` skip-with-Warn at Phase A IDLE→PENDING (eliminates `+0.0` vs `-0.0` ambiguity in signed-encoding scheme per schema § PendingMachineState_PVariant.diff_sl)
+  - **08.5 LOW** `_ParsePDouble` loose char-class loop replaced with strict JSON-number state machine — `[+|-]? digits ( . digits )? ( [eE][+|-]? digits )?` — rejects malformed forms (`--250` / `1-2-3` / `1e`) while binary-equivalent on canonical `_BuildPPayload` output
+  - **08.3 MEDIUM** PMR SelfTest extended +Case 8 (negative `diff_sl` round-trip — empirical proof of Round 07.1 sign-convention fix; SELL marker preserved through `DoubleToString` / strict `_ParsePDouble`) + Case 9 (`pending_started_bar` invariance under `OverwritePPayload` via indirect legacy-timeout behavior at PM_P age=69 still-PENDING + age=70 transitions-IDLE — empirical proof of Round 07.3 BR-6.4 fix)
+- **Anti-regression sweep (post-fix grep):** `_PipSize() *|sl_pips * pip_size` in Slot_P.mqh **0 hits** ✅ · `_PipsToPrice` in Slot_P.mqh **2 hits** ✅ (Path A line 323 + Path B line 445) · `if(diff_sl_pip <= 0.0)` in Evaluate **1 hit** ✅ (Phase A guard) · `if(sl_dist <= 0.0)` in Evaluate **2 hits** ✅ (NFR-5.1 symmetry both paths) · `ch == '-' || ch == '+'` loose char-class **0 hits** ✅ · `EnterPending(PM_P,` in `slots/` **0 hits** ✅ (Round 07.2 collapse intact)
+- **G1 ✅:** 3/3 affected spikes 0err/0warn (Spike_PendingMachineRegistry 1299 ms / Spike_Slot_P 398 ms / Spike_Slot_BI 386 ms via PowerShell Start-Process MetaEditor64). G2-G4 deferred per header-only `.mqh` precedent (gates activate at IMPL-053+ Composition Root); SelfTest Case 8+9 exercised at Spike_PendingMachineRegistry runtime when entry .mq5 lands.
+- **3 commits:** (A) Slot_P entry-path housekeeping (08.1+08.2+08.4); (B) PMR `_ParsePDouble` strict parser (08.5); (C) PMR SelfTest Cases 8+9 (08.3) — see git log post-2026-05-04.
+- **No Tier-1 task ACs reopened, no Deferred-AC registry rows affected.** IMPL-039 + IMPL-034 attestation surface stable; Round 08 surface fully resolved.
+- See `docs/code-review/fix-round-08.md` for full evidence + verdict table + per-finding diffs.
+
+---
+
+## Prior action — IMPL-013 (kept for continuity)
+
 **IMPL-013 CLOSED 2026-05-04 — `inputs/Inputs_Slot_<X>.mqh` × 21 (formal rolling-close mark)** — single-task `/impl-task IMPL-013` orchestrator (Opus 4.7) formal AC marking. **No new code shipped** — file set rolled in incrementally with IMPL-019..039 commits per impl-plan IMPL-013 description engineer convention ("May complete as 21 sub-tasks bundled with IMPL-019..039 OR as one batch landing"). Trigger: IMPL-034 closed 2026-05-04 → `Inputs_Slot_P.mqh` shipped → 21/21 file set complete. **P3 Phase Status snapshot 22/23 → 23/23 ✅** — P3 Phase Gate now nominate-able pending IMPL-053+ Orchestrator runnable surface.
 
 - **Files modified (no new code):** `docs/state/impl-plan.md` (3 S-AC `[x]` + 1 E-AC `[x]` + 1 E-AC deferred + Closed: line + Phase Status row 22/23 → 23/23 ✅ + TL;DR + Mid-Phase Audit Log row + Action ถัดไป + Last updated), `docs/state/overview.md` (Impl Tasks row prefix), `docs/state/deferred-ac-registry.md` (1 new IMPL-013 Active P3 row expiry 2026-05-18 — live MT5 input dialog probe defers to IMPL-060 entry .mq5).
