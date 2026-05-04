@@ -4,6 +4,46 @@
 
 ## Last completed action
 
+**IMPL-054 CLOSED 2026-05-04 — `services/CrossSlotCoordinator::RunOrderGroup2()` (BR-8.2 Ichimoku double-bounce)** — single-task `/impl-task IMPL-054` orchestrator (Opus 4.7) Phase 2B 3-step (fall-back from `/impl-task parallel` per "no parallel candidates" scan — same-file scope on `services/CrossSlotCoordinator.mqh` blocked IMPL-054/057/058 fan-out per §1.5.1 scope-isolation criterion). M-size MVP (last sibling cross-slot method on file). **Bulk-close quartet now complete at coordinator level** (BR-8.1 SafePort + BR-8.2 OrderGroup2 + BR-8.3 ForceCutloss + BR-8.5 ExtraCheckFunction2).
+
+- **Files modified:**
+  - `MQL5/Experts/PhoenicisNex/services/CrossSlotCoordinator.mqh` (EDIT) — replaced RunOrderGroup2 TODO stub with full body + 1 private helper (`_OrderGroup2Triggered`) + 1 define (`ORDER_GROUP_2_WEAK_ORDER_MIN`); refactored `_CloseSlotGroup` signature to take `(magic, prefix, triggering_function, comment_tag)` so SafePort + OrderGroup2 share bulk-close primitive; extended SelfTest 19 → 25 cases; updated header banner
+  - `MQL5/Experts/PhoenicisNex/spike/Spike_CrossSlotCoordinator.mq5` (EDIT — header banner only, reflects 25-case count)
+- **Files created:**
+  - `simulation/headless-tests/cross_slot_order_group_2.ini` (NEW) — smoke fixture per TD-02 §13.6; activation deferred to IMPL-059+
+  - `docs/state/_session-handoff/IMPL-054-evidence-20260504.md` (NEW) — evidence file §1-§11
+- **State files modified:** `docs/state/impl-plan.md` (3 S-AC `[x]` + 1 E-AC deferred + Closed: line + Phase Status row P4 3/11 → 4/11 + TL;DR + Mid-Phase Audit Log row), `docs/state/overview.md` (Impl Tasks row prefix updated to quartet), `docs/state/deferred-ac-registry.md` (1 new IMPL-054 Active P4 row expiry 2026-05-18)
+- **G1 ✅ PowerShell Start-Process MetaEditor64:** Spike_CrossSlotCoordinator 0err/0warn/**569 ms** (incremental cache hit — faster than IMPL-053/055/056 prior 838 ms; refactor only, no new headers)
+- **No sibling regression** — only `CrossSlotCoordinator.mqh` + spike header touched; refactored `_CloseSlotGroup` is private helper called by 2 sites (RunSafePort + RunOrderGroup2) both updated atomically
+- **RunOrderGroup2 body design:**
+  - NULL guards on m_portfolio + m_logger
+  - Quick-out: `bool ichi_active = ctx.derived.ichi_double_bounce_active; if(!ichi_active) return;` (ADR-004 immutable derived signal)
+  - `_AggregateWeakMetrics(weak_count, sum_bad_pip, total_pl)` — re-uses IMPL-053 helper
+  - `_OrderGroup2Triggered(ichi_active, weak_count)` AND-gate (`ichi=true AND weak > 2` strict per BR-8.2 / CodeWiki §5.5 :512)
+  - `_FillSafePortTargets(targets[])` shared 11-entry table (CD/J/H/K/L/M/Q/GO/T/S — bulk close mirrors RunSafePort target set per CodeWiki §5.5 :512 "similar to OrderGroupStartWorkflow")
+  - Per-pair: `_CloseSlotGroup(magic, prefix, "OrderGroupStartWorkflow2", "order_group_2")` — issues per-ticket CTrade.PositionClose + per-ticket exit journal `triggering_function="OrderGroupStartWorkflow2"` (schema enum allowed `trade-journal-schema.yaml:179`)
+  - Aggregate: `Logger.Info("xslot","order_group_2_triggered","slots_closed=N weak=N avg_bad_pip=N pl=N halted=...")`
+- **Returns:** `void` per TD-02 §5.11 skeleton — **no spec deviation** (unlike IMPL-053 which returned `int` per Plan-text override)
+- **HALTED matrix per `04 § 9.1` / ADR-010:** RunOrderGroup2 runs in BOTH RUNNING+HALTED (exit-side helper, mirrors RunSafePort semantics)
+- **`_CloseSlotGroup` refactor justification:** 2 real call sites (SafePort + OrderGroup2) — DRY, not premature abstraction. Both helpers walk the same 11-entry target table; only the gate predicate + journal label + comment tag differ. Adheres to ea.md "Minimal changes" + "No over-engineering" principles. CTrade fail-log tag generalized `"safe_port_close_fail"` → `comment_tag + "_close_fail"`
+- **SelfTest 25/25 cases pass** (7 IMPL-053 carry-forward + 6 IMPL-055 carry-forward + 6 IMPL-056 carry-forward + 6 IMPL-054 added):
+  - C20 _OrderGroup2Triggered ichi=false, weak=0 → false
+  - C21 ichi=true, weak=2 (boundary) → false (gate is strict `> 2`)
+  - C22 ichi=true, weak=3 (first qualifying) → true
+  - C23 ichi=true, weak=10 (well above) → true
+  - C24 ichi=false, weak=10 (no ichi) → false (ichi flag dominates)
+  - C25 RunOrderGroup2 with NULL portfolio + ichi=true → no-op (defensive guard)
+- **All 3 S-AC `[x]`.** 1 E-AC deferred — smoke 3+ weak-position fixture in target slot set + Ichi-bounce signal active → close-all triggered + `[ev=order_group_2_triggered]` + per-ticket `triggering_function="OrderGroupStartWorkflow2"` `[log-assertion]` + `[db-inspect]`. **Compound prerequisite:** `ComputeIchiDoubleBounce` is currently PLACEHOLDER returning `false` per `MarketContextBuilder.mqh:577` (TODO IMPL-FUTURE — needs H4 history scan ≥50 bars beyond ADR-004 single-tick snapshot). Block on IMPL-059+ Orchestrator + IMPL-060 entry .mq5 + portfolio populator + Ichi-bounce signal refinement; **registered to `deferred-ac-registry.md` Active table** expiry 2026-05-18
+- **Newly unblocked:** IMPL-058 (S HALTED matrix wire-up — depends on IMPL-053..057 chain; pending IMPL-057) + IMPL-057 (M overload helpers — depends on IMPL-058 per impl-plan; pragmatic order: IMPL-058 first as wire-up is simpler then IMPL-057 business logic on top)
+- **P4 Phase Status snapshot 3/11 → 4/11.** Mid-Phase Audit P4 counter = 4; **next P4 closure trips threshold 5** → Phase 4 audit will trigger before any subsequent task can start; audit replay scope limited to SelfTest re-run + structural inspection until IMPL-059+ runnable surface lands. **Plan Staleness Sentinel = 7 closures since R06** (still below 10-closure threshold)
+- **Next suggested task:** **`/impl-task IMPL-058`** (S HALTED matrix wire-up — `m_halted` field + setter already exist; just per-method enable gate documentation + Orchestrator OnTick step 5b call site stub) **THEN** `/impl-task IMPL-057` (M overload helpers BR-8.4 — last business-logic method on file). After IMPL-057+058 → IMPL-059 (L Orchestrator) + IMPL-060 (S entry .mq5) → empirical surface unblocks 36+ deferred-AC rows expiring 2026-05-17/18. Code Review trigger R09: after IMPL-057+058 chain complete for adversarial sweep on cross-slot surface + ADR-010 HALTED enable matrix verification
+- **Commit:** `2907e4a` `[feat:ea] IMPL-054 CrossSlotCoordinator::RunOrderGroup2 - BR-8.2 Ichi double-bounce`
+- See `docs/state/_session-handoff/IMPL-054-evidence-20260504.md` for full evidence
+
+---
+
+## Prior action — IMPL-056 (kept for continuity)
+
 **IMPL-056 CLOSED 2026-05-04 — `services/CrossSlotCoordinator::ExtraCheckFunction2()` (BR-8.5 CD demote check)** — single-task `/impl-task IMPL-056` orchestrator (Opus 4.7) Phase 2A single-prompt. XS-size MVP (continuation of CD-pair safety triplet — same-file scope as IMPL-053/055). **CD-pair safety triplet now complete at coordinator level** (BR-8.1 SafePort + BR-8.3 ForceCutloss + BR-8.5 ExtraCheckFunction2).
 
 - **Files modified:**
