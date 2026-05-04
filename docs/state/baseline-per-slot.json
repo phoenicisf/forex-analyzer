@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "report_source": "ReportTester-25045474.html",
+  "extracted_at": "2026-05-04T09:50:33Z",
+  "total_net_profit": 24271276.63,
+  "total_trades": 231,
+  "slots": [
+    {
+      "slot_id": "C",
+      "count": 34,
+      "net_pnl": 2791422.44,
+      "win_rate": 0.911765
+    },
+    {
+      "slot_id": "D",
+      "count": 12,
+      "net_pnl": 104131.12,
+      "win_rate": 0.916667
+    },
+    {
+      "slot_id": "F",
+      "count": 0,
+      "net_pnl": 0.0,
+      "win_rate": null
+    },
+    {
+      "slot_id": "J",
+      "count": 12,
+      "net_pnl": 599859.09,
+      "win_rate": 0.916667
+    },
+    {
+      "slot_id": "H",
+      "count": 7,
+      "net_pnl": 287971.69,
+      "win_rate": 1.0
+    },
+    {
+      "slot_id": "K",
+      "count": 32,
+      "net_pnl": 1032080.09,
+      "win_rate": 0.84375
+    },
+    {
+      "slot_id": "G",
+      "count": 19,
+      "net_pnl": 3616141.09,
+      "win_rate": 0.894737
+    },
+    {
+      "slot_id": "G2",
+      "count": 0,
+      "net_pnl": 0.0,
+      "win_rate": null
+    },
+    {
+      "slot_id": "GO",
+      "count": 0,
+      "net_pnl": 0.0,
+      "win_rate": null
+    },
+    {
+      "slot_id": "M",
+      "count": 11,
+      "net_pnl": 922398.88,
+      "win_rate": 1.0
+    },
+    {
+      "slot_id": "L",
+      "count": 7,
+      "net_pnl": 559974.48,
+      "win_rate": 1.0
+    },
+    {
+      "slot_id": "LX",
+      "count": 1,
+      "net_pnl": 230044.5,
+      "win_rate": 1.0
+    },
+    {
+      "slot_id": "Q",
+      "count": 5,
+      "net_pnl": 5690.56,
+      "win_rate": 1.0
+    },
+    {
+      "slot_id": "R",
+      "count": 7,
+      "net_pnl": 1886899.79,
+      "win_rate": 1.0
+    },
+    {
+      "slot_id": "I",
+      "count": 3,
+      "net_pnl": 1959207.09,
+      "win_rate": 0.666667
+    },
+    {
+      "slot_id": "P",
+      "count": 19,
+      "net_pnl": 2584404.58,
+      "win_rate": 0.894737
+    },
+    {
+      "slot_id": "T",
+      "count": 24,
+      "net_pnl": 2490740.32,
+      "win_rate": 0.958333
+    },
+    {
+      "slot_id": "S",
+      "count": 13,
+      "net_pnl": 1705245.49,
+      "win_rate": 0.923077
+    },
+    {
+      "slot_id": "B",
+      "count": 18,
+      "net_pnl": 3122275.59,
+      "win_rate": 1.0
+    },
+    {
+      "slot_id": "BR",
+      "count": 7,
+      "net_pnl": 372789.83,
+      "win_rate": 0.857143
+    },
+    {
+      "slot_id": "BI",
+      "count": 0,
+      "net_pnl": 0.0,
+      "win_rate": null
+    }
+  ]
+}
