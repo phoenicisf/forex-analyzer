@@ -75,6 +75,13 @@ public:
    //    Returns NULL + Logger Warn for unregistered magic
    SlotState        *GetByMagic(int magic);
 
+   //--- Silent membership test — true iff `magic` was registered by
+   //    RegisterAll(). Distinct from GetByMagic: no Logger Warn on miss.
+   //    Use in hot loops (e.g. _AggregateWeakMetrics) that iterate
+   //    PositionsTotal() and must skip foreign-EA positions without
+   //    spamming the log. (Added per fix-round-09 Finding 09.1.)
+   bool              IsKnownMagic(int magic);   // non-const: CHashMap.TryGetValue is non-const
+
    //--- Filter shared-magic positions by comment prefix (BR-1.2)
    //    Body deferred to IMPL-007-getticketsforslot (uses CommentParser)
    int               GetTicketsForSlot(int magic, string slot_prefix,
@@ -342,6 +349,17 @@ SlotState *CPortfolioState::GetByMagic(int magic)
       return NULL;
      }
    return s;
+  }
+
+//+------------------------------------------------------------------+
+//| IsKnownMagic — silent membership test (no Logger Warn on miss)   |
+//| Used by hot loops that must filter foreign-EA positions out of   |
+//| PositionsTotal() iteration without log spam (Finding 09.1).      |
+//+------------------------------------------------------------------+
+bool CPortfolioState::IsKnownMagic(int magic)
+  {
+   SlotState *s = NULL;
+   return m_map.TryGetValue(magic, s);
   }
 
 //+------------------------------------------------------------------+

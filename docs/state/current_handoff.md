@@ -4,6 +4,26 @@
 
 ## Last completed action
 
+**fix-round-09 CLOSED 2026-05-04 — adversarial review of `services/CrossSlotCoordinator.mqh` (post IMPL-053/054/055/056/058 land)** — `/impl-review-fix review-round-09.md` accepted 6/7 + 1 partial (09.5 deferred-AC); 0 reject. **2 HIGH** (09.1 magic filter via new `IsKnownMagic` predicate / 09.2 `_triggered` log → `_no_op` Warn when close count = 0) + **3 MEDIUM** (09.3 `SetTypeFilling` + Warn→Error on close-fail / 09.4 dropped dead `m_risk` injection / 09.5 partial → registry row) + **2 LOW** (09.6 single-gate `RunOrderGroup2` / 09.7 `slots_closed_count` → `tickets_closed_count` rename).
+
+- **Files modified:**
+  - `MQL5/Experts/PhoenicisNex/services/CrossSlotCoordinator.mqh` (EDIT) — 09.1 magic filter / 09.2 no-op Warn / 09.3 filling-policy + Warn→Error / 09.4 drop m_risk + RiskManager include + Init param / 09.6 drop quick-out / 09.7 rename + header banner amend
+  - `MQL5/Experts/PhoenicisNex/services/PortfolioState.mqh` (EDIT) — new public `IsKnownMagic(int)` silent membership predicate (distinct from `GetByMagic` which Warns on miss)
+  - `MQL5/Experts/PhoenicisNex/spike/Spike_CrossSlotCoordinator.mq5` (EDIT) — Init signature 5→4 args (drop trailing NULL after RiskManager removal)
+- **Files created:**
+  - `docs/code-review/fix-round-09.md` (NEW) — verdict table + per-finding fix narrative + summary metrics
+- **State files modified:** `docs/state/overview.md` (Code Review row prepended Round 09 entry), `docs/state/deferred-ac-registry.md` (new P4 Active row IMPL-053..056 close-path empirical exercise, expires 2026-05-18), `docs/state/current_handoff.md` (this file)
+- **G1 ✅ MetaEditor64 (PowerShell):** Spike_CrossSlotCoordinator 0err/0warn (668 ms) + Spike_PendingMachineRegistry 0err/0warn (1432 ms regression sweep — verifies PortfolioState `IsKnownMagic` addition didn't break sister consumers). G2-G4 deferred per header-only `.mqh` precedent.
+- **Anti-regression sweep:** `m_risk` 0 hits in `services/CrossSlotCoordinator.mqh` ✅; `slots_closed=` 0 hits in same file ✅; `tickets_closed=` 2 hits ✅ (RunSafePort + RunOrderGroup2); `IsKnownMagic` 1 hit consumed in `_AggregateWeakMetrics` ✅; spike Init arg count = 4 ✅
+- **Open follow-ups:** Finding 09.5 close-path empirical coverage tracked in `deferred-ac-registry.md` P4 row tied to IMPL-007 `GetTicketsForSlot` body landing. Newly added `IsKnownMagic` is structurally tested via spike SelfTest (28/28) but unexercised against real foreign-EA position — same registry row covers.
+- **Next suggested action:** Code Review **Round 10** — adversarial re-sweep on fix-round-09 delta (HIGH-finding fixes are observability + filter changes, prone to subtle regressions) OR proceed to **Phase 4 Mid-Phase Audit** then `/impl-task IMPL-057` (M overload helpers BR-8.4) per IMPL-058's prior next-suggested action.
+- **Commit:** pending (to be created next)
+- See `docs/code-review/fix-round-09.md` for full evidence
+
+---
+
+## Previous action — IMPL-058
+
 **IMPL-058 CLOSED 2026-05-04 — `services/CrossSlotCoordinator` HALTED enable-matrix audit + SetHalted setter (ADR-010)** — single-task `/impl-task IMPL-058` orchestrator (Opus 4.7) Phase 2A single-prompt (fall-back from `/impl-task parallel` per "no parallel candidates" scan — only IMPL-057+058 ready, both same-file `services/CrossSlotCoordinator.mqh` violating §1.5.1 scope-isolation; user picked option (a) IMPL-058 first per IMPL-054 next-suggested guidance). S-size audit-and-pin task — most wiring (m_halted field + SetHalted setter + RunEOverload/TriggerGOverload halt-guards) already landed during IMPL-053 sub-pass; IMPL-058 closes the contract by pinning the matrix in code + adding SelfTest coverage. **Bulk-close quartet + HALTED matrix audit now complete at coordinator level** (BR-8.1 SafePort + BR-8.2 OrderGroup2 + BR-8.3 ForceCutloss + BR-8.5 ExtraCheckFunction2 + ADR-010 enable matrix per `04 § 9.1`).
 
 - **Files modified:**

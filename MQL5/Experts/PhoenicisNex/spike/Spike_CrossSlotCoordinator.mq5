@@ -28,7 +28,7 @@ int OnInit()
    // platform-side _AggregateWeakMetrics is not exercised in spike (no
    // open positions during spike OnInit) and would early-return on the
    // (m_portfolio == NULL || m_pip == NULL) guard regardless.
-   g_xslot.Init(NULL, NULL, &g_logger, NULL, NULL);
+   g_xslot.Init(NULL, NULL, &g_logger, NULL);
 
    if(!g_xslot.SelfTest(&g_logger))
      {

@@ -42,9 +42,15 @@
 //|                                                                  |
 //| Spec deviation logged: TD-02 §5.11 declares                     |
 //|   `void RunSafePort(const MarketContext&)`                      |
-//| this implementation returns `int` (slots_closed_count) per      |
+//| this implementation returns `int` (tickets_closed_count) per    |
 //| IMPL-053 S-AC #3 ("Returns per-call summary for journal record")|
 //| Plan text > skeleton text per Plan QA precedent.                |
+//|                                                                  |
+//| fix-round-09 amend: return value semantically counts per-ticket |
+//| PositionClose calls (not "slot groups closed") — a SafePort     |
+//| firing on {C:3, J:2, M:1} returns 6, not 3. Variable + log key  |
+//| renamed `tickets_closed_count` / `tickets_closed=` accordingly  |
+//| (Finding 09.7).                                                  |
 //+------------------------------------------------------------------+
 #ifndef PHOENICISNEX_SERVICES_CROSSSLOTCOORDINATOR_MQH
 #define PHOENICISNEX_SERVICES_CROSSSLOTCOORDINATOR_MQH
@@ -57,7 +63,6 @@
 #include "../helpers/PipMath.mqh"
 #include "Logger.mqh"
 #include "PortfolioState.mqh"
-#include "RiskManager.mqh"
 #include "TradeJournal.mqh"
 
 //+------------------------------------------------------------------+
@@ -95,7 +100,6 @@ private:
    CPortfolioState  *m_portfolio;
    CTradeJournal    *m_journal;
    CLogger          *m_logger;
-   CRiskManager     *m_risk;
    CPipMath         *m_pip;
    bool              m_halted;     // updated each tick from EAState (per `02 § 7.2 step 5b`)
    CTrade            m_trade;       // service-layer CTrade allowed (ea.md restricts only slots/*)
@@ -105,15 +109,16 @@ public:
       : m_portfolio(NULL),
         m_journal(NULL),
         m_logger(NULL),
-        m_risk(NULL),
         m_pip(NULL),
         m_halted(false) {}
 
    //--- Composition Root injection (Orchestrator OnInit step 6+ per TD-02 §7.4)
+   //    RiskManager is intentionally NOT injected — bulk-close uses the
+   //    service-owned m_trade (CTrade) directly per TD-02 §5.11; lot-sizing
+   //    is not part of this coordinator's surface (see fix-round-09 09.4).
    void              Init(CPortfolioState *port,
                           CTradeJournal *tj,
                           CLogger *lg,
-                          CRiskManager *rm,
                           CPipMath *pip);
 
    //--- Called by Orchestrator OnTick step 5b BEFORE RunExitPass (Claim 01.3)
@@ -191,16 +196,22 @@ private:
 void CCrossSlotCoordinator::Init(CPortfolioState *port,
                                  CTradeJournal *tj,
                                  CLogger *lg,
-                                 CRiskManager *rm,
                                  CPipMath *pip)
   {
    m_portfolio = port;
    m_journal   = tj;
    m_logger    = lg;
-   m_risk      = rm;
    m_pip       = pip;
    m_halted    = false;
-   // CTrade defaults are sufficient (filling-policy detected per-call inside MT5)
+
+   //--- Detect broker filling policy (per ea.md MQL5 idiom + BR-1.5).
+   //    CTrade defaults to FOK which FBS-Real may reject for EURUSD on
+   //    some account/server combinations (TRADE_RETCODE_INVALID_FILL).
+   //    Prefer IOC → FOK → RETURN per SYMBOL_FILLING_MODE bitmask.
+   long fm = SymbolInfoInteger(_Symbol, SYMBOL_FILLING_MODE);
+   if((fm & SYMBOL_FILLING_IOC) != 0)      m_trade.SetTypeFilling(ORDER_FILLING_IOC);
+   else if((fm & SYMBOL_FILLING_FOK) != 0) m_trade.SetTypeFilling(ORDER_FILLING_FOK);
+   else                                    m_trade.SetTypeFilling(ORDER_FILLING_RETURN);
   }
 
 //+------------------------------------------------------------------+
@@ -248,6 +259,13 @@ void CCrossSlotCoordinator::_AggregateWeakMetrics(int &weak_count,
 
       string sym = PositionGetString(POSITION_SYMBOL);
       if(sym != _Symbol) continue;            // EURUSD whitelist (NFR-5.3)
+
+      //--- Portfolio ownership filter (Finding 09.1): _Symbol gate alone
+      //    cannot exclude positions opened by another EA / manual order /
+      //    copy-trade signal that share EURUSD. BR-8.1 trigger arithmetic
+      //    must count only PhoenicisNex-owned magics or it false-positives.
+      long mg = PositionGetInteger(POSITION_MAGIC);
+      if(!m_portfolio.IsKnownMagic((int)mg)) continue;
 
       double open_price = PositionGetDouble(POSITION_PRICE_OPEN);
       double pl         = PositionGetDouble(POSITION_PROFIT);
@@ -325,8 +343,11 @@ int CCrossSlotCoordinator::_CloseSlotGroup(int magic,
       bool ok = m_trade.PositionClose(tk);
       if(!ok && m_logger != NULL)
         {
-         m_logger.Warn("xslot", comment_tag + "_close_fail", magic,
-                       StringFormat("ticket=%I64u rc=%u", tk, m_trade.ResultRetcode()));
+         //--- Finding 09.3 — promote close-fail to Error so ADR-011 Alert
+         //    escalation fires; silent Warn under broker-reject filling
+         //    policy violates NFR-5.1 ("no silent failure").
+         m_logger.Error("xslot", comment_tag + "_close_fail", magic,
+                        StringFormat("ticket=%I64u rc=%u", tk, m_trade.ResultRetcode()));
         }
       closed++;
 
@@ -385,19 +406,31 @@ int CCrossSlotCoordinator::RunSafePort(const MarketContext &ctx)
    //--- Triggered — bulk close target slot set
    SafePortTarget targets[];
    int target_n = _FillSafePortTargets(targets);
-   int slots_closed_count = 0;
+   int tickets_closed_count = 0;     // Finding 09.7 — counts per-ticket close calls
    for(int i = 0; i < target_n; i++)
-      slots_closed_count += _CloseSlotGroup(targets[i].magic,
-                                            targets[i].slot_prefix,
-                                            "OrderGroupStartWorkflow",
-                                            "safe_port");
+      tickets_closed_count += _CloseSlotGroup(targets[i].magic,
+                                              targets[i].slot_prefix,
+                                              "OrderGroupStartWorkflow",
+                                              "safe_port");
+
+   //--- Finding 09.2 — emit Warn on no-op (GetTicketsForSlot stub returns
+   //    0 today) so observability matches reality; flip to Info-only once
+   //    IMPL-007 lands the body and SelfTest covers a non-empty path.
+   if(tickets_closed_count <= 0)
+     {
+      m_logger.Warn("xslot", "safe_port_no_op", 0,
+                    StringFormat("triggered_but_zero_close weak=%d avg_bad_pip=%.1f pl=%.2f halted=%s stub=GetTicketsForSlot",
+                                 weak_count, avg_bad_pip, total_pl,
+                                 (m_halted ? "true" : "false")));
+      return 0;
+     }
 
    m_logger.Info("xslot", "safe_port_triggered", 0,
-                 StringFormat("slots_closed=%d weak=%d avg_bad_pip=%.1f pl=%.2f halted=%s",
-                              slots_closed_count, weak_count, avg_bad_pip, total_pl,
+                 StringFormat("tickets_closed=%d weak=%d avg_bad_pip=%.1f pl=%.2f halted=%s",
+                              tickets_closed_count, weak_count, avg_bad_pip, total_pl,
                               (m_halted ? "true" : "false")));
 
-   return slots_closed_count;
+   return tickets_closed_count;
   }
 
 //+------------------------------------------------------------------+
@@ -431,31 +464,43 @@ void CCrossSlotCoordinator::RunOrderGroup2(const MarketContext &ctx)
   {
    if(m_portfolio == NULL || m_logger == NULL) return;
 
-   //--- Quick out: derived ichi flag is the dominant gate
-   bool ichi_active = ctx.derived.ichi_double_bounce_active;
-   if(!ichi_active) return;
-
+   //--- Single gate via predicate (Finding 09.6 — was duplicated quick-out
+   //    + predicate). The extra _AggregateWeakMetrics pass when ichi=false
+   //    is one position-loop iteration — negligible vs. shared-gate clarity.
    int    weak_count  = 0;
    double sum_bad_pip = 0.0;
    double total_pl    = 0.0;
    _AggregateWeakMetrics(weak_count, sum_bad_pip, total_pl);
 
-   if(!_OrderGroup2Triggered(ichi_active, weak_count)) return;
+   if(!_OrderGroup2Triggered(ctx.derived.ichi_double_bounce_active, weak_count)) return;
 
    //--- Triggered — bulk close shared target set
    SafePortTarget targets[];
    int target_n = _FillSafePortTargets(targets);
-   int slots_closed_count = 0;
+   int tickets_closed_count = 0;     // Finding 09.7 — counts per-ticket close calls
    for(int i = 0; i < target_n; i++)
-      slots_closed_count += _CloseSlotGroup(targets[i].magic,
-                                            targets[i].slot_prefix,
-                                            "OrderGroupStartWorkflow2",
-                                            "order_group_2");
+      tickets_closed_count += _CloseSlotGroup(targets[i].magic,
+                                              targets[i].slot_prefix,
+                                              "OrderGroupStartWorkflow2",
+                                              "order_group_2");
 
    double avg_bad_pip = (weak_count > 0) ? (sum_bad_pip / weak_count) : 0.0;
+
+   //--- Finding 09.2 — emit Warn on no-op (GetTicketsForSlot stub returns
+   //    0 today) so observability matches reality; flip back to Info-only
+   //    once IMPL-007 lands the body and SelfTest covers a non-empty path.
+   if(tickets_closed_count <= 0)
+     {
+      m_logger.Warn("xslot", "order_group_2_no_op", 0,
+                    StringFormat("triggered_but_zero_close weak=%d avg_bad_pip=%.1f pl=%.2f halted=%s stub=GetTicketsForSlot",
+                                 weak_count, avg_bad_pip, total_pl,
+                                 (m_halted ? "true" : "false")));
+      return;
+     }
+
    m_logger.Info("xslot", "order_group_2_triggered", 0,
-                 StringFormat("slots_closed=%d weak=%d avg_bad_pip=%.1f pl=%.2f halted=%s",
-                              slots_closed_count, weak_count, avg_bad_pip, total_pl,
+                 StringFormat("tickets_closed=%d weak=%d avg_bad_pip=%.1f pl=%.2f halted=%s",
+                              tickets_closed_count, weak_count, avg_bad_pip, total_pl,
                               (m_halted ? "true" : "false")));
   }
 
@@ -521,8 +566,9 @@ int CCrossSlotCoordinator::_CloseCDPositionsInLoss(int signal)
          bool ok = m_trade.PositionClose(tk);
          if(!ok && m_logger != NULL)
            {
-            m_logger.Warn("xslot", "force_cutloss_close_fail", MAGIC_CD,
-                          StringFormat("ticket=%I64u rc=%u", tk, m_trade.ResultRetcode()));
+            //--- Finding 09.3 — Error escalation per NFR-5.1
+            m_logger.Error("xslot", "force_cutloss_close_fail", MAGIC_CD,
+                           StringFormat("ticket=%I64u rc=%u", tk, m_trade.ResultRetcode()));
            }
          closed++;
 
