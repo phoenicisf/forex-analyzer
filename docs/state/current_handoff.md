@@ -4,6 +4,26 @@
 
 ## Last completed action
 
+**IMPL-061 + IMPL-064 + IMPL-068 CLOSED 2026-05-04 (parallel batch) — P4 QA chain authoring pass** — `/impl-task parallel` 3-subagent fan-out under Phase Gate Override 2026-05-03 Path A.
+
+- **Batch:** 3 disjoint `[ea-qa]` subagents on Sonnet 4.6 (general-purpose persona = `andm-impl-engineer` SKILL via Slim-Onboarding directive + shared context file `docs/state/_parallel-context/impl-task-parallel-20260504-1640.md`). Orchestrator: Opus 4.7 main session.
+  - **IMPL-061 (M [ea-qa] per-slot baseline parser):** Python stdlib parser on UTF-16 LE `docs/foundation-input-sources/ReportTester-25045474.html` with FIFO volume-matching deal attribution → 21-slot `docs/state/baseline-per-slot.json` (sum=$24,271,276.63 **exact match** to total Net Profit; delta=$0.00; 17 active C/D/J/H/K/G/M/L/LX/Q/R/I/P/T/S/B/BR + 4 zero-filled F/G2/GO/BI per BR-1.1; consistent with G4 BI SL fix being new-EA-only per ADR-009). 4/4 ACs `[x]` (no defer). Commit `2b27a2e`.
+  - **IMPL-064 (S [ea-qa] atomic-write kill-100 PowerShell harness):** 276-LOC `simulation/scripts/atomic_write_kill_100.ps1` per ADR-007 §Spike Result deferred-clause: 5-param spec + Start-Process terminal64 → random 50-500ms sleep → Stop-Process → state.json parse / .tmp orphan inspection per ADR-007 §OnInit recovery + JSON sidecar emit; PS5.1+PS7 ParseFile/ParseInput PASS; reuses `simulation/headless-tests/atomic_write_kill.ini` from IMPL-046 spike. 169-LOC `docs/state/nfr-3.1-atomic-write-result.md` skeleton (8 sections). 2/2 S-AC `[x]` structural; 1/1 E-AC deferred. Commit `41ffdd6`.
+  - **IMPL-068 (S [ea-qa] ADR-008 force-clear validation):** 295-LOC `docs/state/adr-008-force-clear-validation.md` with 5 jq filter recipes per machine M=150/T=80/Q=100 + Q-Pending sub-code drill-down + 4-outcome pass criterion matrix + ADR-008 amendment template skeleton + PowerShell fallback. 2/2 S-AC `[x]` structural; 2/2 E-AC deferred (gated on IMPL-062/063 5-yr regression). Commit `1165137`.
+- **Files created (deliverables):** `simulation/scripts/parse_baseline.py` (NEW; 403 LOC) · `simulation/scripts/atomic_write_kill_100.ps1` (NEW; 276 LOC) · `docs/state/baseline-per-slot.json` (NEW) · `docs/state/nfr-3.1-atomic-write-result.md` (NEW) · `docs/state/adr-008-force-clear-validation.md` (NEW) · `docs/state/_parallel-context/impl-task-parallel-20260504-1640.md` (NEW shared context)
+- **State files modified:** `docs/state/impl-plan.md` (3 task entries + Closed lines · TL;DR rewrite · Phase Status P4 8/17 → 11/17 · Mid-Phase Audit Log new row · Plan Staleness Sentinel 3 → 6) · `docs/state/deferred-ac-registry.md` (2 new Active rows: IMPL-064 numeric + IMPL-068 paired bundle, both expiry 2026-05-18)
+- **G1 N/A** for all 3 (script + doc deliverables only). Entry .mq5 baseline from IMPL-060 still 0err/0warn/3673 ms preserved.
+- **Race-prevention verified:** file sets disjoint; no scope violation; all 3 fragments `status: completed`.
+- **Parallel-execution telemetry:** wall-clock ≈ slowest task (470s IMPL-061 / 262s IMPL-064 / 200s IMPL-068) vs serial sum 932s ≈ **62% wall-clock saving**.
+- **All 8 S-AC `[x]`** (4+2+2). **2/5 E-AC `[x]`** (IMPL-061 contract-roundtrip + file-blob-check). **3 E-AC deferred**.
+- **Mid-Phase Audit P4 counter = 6** (≥ 5; satisfied semantically by next-recommended R09 + walk batch-2). **Plan Staleness Sentinel = 6 closures since R07** — within 10-closure threshold ✅.
+- **Next suggested action:** `/impl-review all` R09 → Tier 1.5 walk batch-2 → P4 tail = IMPL-017 + IMPL-062/063/065/066/067 + IMPL-068 numeric drain.
+- **Commits:** `2b27a2e` + `41ffdd6` + `1165137` — landed.
+
+---
+
+## Previous action — IMPL-FIX-001 + IMPL-FIX-002
+
 **IMPL-FIX-001 + IMPL-FIX-002 CLOSED 2026-05-04 (parallel batch) — Tier 1.5 walk batch-1 findings drained at coordinator level** — `/impl-task parallel` 2-subagent fan-out under Phase Gate Override 2026-05-03 Path A.
 
 - **Batch:** 2 disjoint `[ea]` subagents on Sonnet 4.6 (general-purpose persona = `andm-impl-engineer` SKILL via Slim-Onboarding directive + shared context file). Orchestrator: Opus 4.7 main session.
