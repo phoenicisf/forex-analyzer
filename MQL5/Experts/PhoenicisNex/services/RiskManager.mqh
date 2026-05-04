@@ -218,7 +218,7 @@ double CRiskManager::ComputeLot(string slot_id, double sl_pips, double balance,
 //| cap   = m_limit_max_lot_size_ratio * balance / 1000.0  (BR-4.2)  |
 //|         using AccountInfoDouble(ACCOUNT_BALANCE) per spec         |
 //|         Also hard-cap at SYMBOL_VOLUME_MAX                        |
-//| Emits Logger Warn iff raw_lot outside [floor, cap]               |
+//| Emits Logger Debug iff raw_lot outside [floor, cap] (FIX-002)    |
 //+------------------------------------------------------------------+
 double CRiskManager::ClampLot(double raw_lot, string slot_id)
   {
@@ -254,9 +254,12 @@ double CRiskManager::ClampLot(double raw_lot, string slot_id)
      }
 
    if(was_clamped && m_logger != NULL)
-      m_logger.Warn("RiskManager", "clamp_applied", 0,
-                    StringFormat("slot=%s raw=%.4f → clamped=%.4f [floor=%.4f cap=%.4f]",
-                                 slot_id, raw_lot, clamped, floor_lot, cap));
+      m_logger.Debug("RiskManager", "clamp_applied", 0,
+                     StringFormat("slot=%s raw=%.4f -> clamped=%.4f [floor=%.4f cap=%.4f]",
+                                  slot_id, raw_lot, clamped, floor_lot, cap));
+   // FIX-002: demoted WARN -> DEBUG — clamp is BR-4.2/4.3 protection functioning as designed
+   // (not a defect); per-tick WARN was producing ~629 MB log in 3-day backtest (Tier 1.5 batch-1).
+   // DEBUG level is appropriate for operational telemetry visible only during investigation.
 
    return clamped;
   }
