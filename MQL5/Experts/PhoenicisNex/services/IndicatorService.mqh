@@ -75,30 +75,33 @@ private:
 
    //--- Symbolic handle index constants (per TD-02 §5.1 note on IDX_* convention)
    //    MarketContextBuilder reads via GetHandle(IDX_*) for named access
-   static const int  IDX_ICHI_H4     = 0;   // Ichimoku H4  (ADR-003 inventory row 1)
-   static const int  IDX_ICHI_D1     = 1;   // Ichimoku D1
-   static const int  IDX_FORCE_H4    = 2;   // Force H4     (slots: C,J,G,GO,M,L,B,P)
-   static const int  IDX_ADX_H4      = 3;   // ADX H4       (slots: C,K,G)
-   static const int  IDX_ADX_D1      = 4;   // ADX D1
-   static const int  IDX_WPR_H4      = 5;   // WPR H4       (slots: C,H,L,S)
-   static const int  IDX_WPR_D1      = 6;   // WPR D1
-   static const int  IDX_WPR_M15     = 7;   // WPR M15
-   static const int  IDX_BBANDS_H4   = 8;   // Bollinger H4 (slots: R,B,BR,BI,P,T,S)
-   static const int  IDX_DEMARK_H4   = 9;   // DeMarker H4  (slots: LX,M)
-   static const int  IDX_DEMARK_M15  = 10;  // DeMarker M15
-   static const int  IDX_STOCH_M10   = 11;  // Stochastic M10 (slot C: ForceCutloss)
-   static const int  IDX_STOCH_H4    = 12;  // Stochastic H4  (slot L)
-   static const int  IDX_STOCH_M15   = 13;  // Stochastic M15 variant (CodeWiki §1.4)
-   static const int  IDX_MACD_M10    = 14;  // MACD M10 (slot C: ForceCutloss, COverload)
-   static const int  IDX_MACD_D1     = 15;  // MACD D1
-   static const int  IDX_ZIGZAG_H4   = 16;  // ZigZag H4    (CodeWiki §1.4)
-   static const int  IDX_ZIGZAG_M5   = 17;  // ZigZag M5
-   static const int  IDX_MA_FAST_H4  = 18;  // MA Fast H4   (trend filter shared)
-   static const int  IDX_MA_SLOW_H4  = 19;  // MA Slow H4
-   static const int  IDX_RSI_H4      = 20;  // RSI H4       (filter shared)
-   static const int  IDX_RSI_D1      = 21;  // RSI D1
-   static const int  IDX_ATR_H4      = 22;  // ATR H4       (pip-distance reference)
-   static const int  IDX_MOMENTUM_H4 = 23;  // Momentum H4  (CodeWiki §1.4)
+   //--- IMPL-059 ODR fix: in-class declarations only (no `= value`); the
+   //    initial values are bound at the out-of-class definitions near the
+   //    end of this header. MQL5 emits error 219 if both sides set values.
+   static const int  IDX_ICHI_H4;     // Ichimoku H4  (ADR-003 inventory row 1)
+   static const int  IDX_ICHI_D1;     // Ichimoku D1
+   static const int  IDX_FORCE_H4;    // Force H4     (slots: C,J,G,GO,M,L,B,P)
+   static const int  IDX_ADX_H4;      // ADX H4       (slots: C,K,G)
+   static const int  IDX_ADX_D1;      // ADX D1
+   static const int  IDX_WPR_H4;      // WPR H4       (slots: C,H,L,S)
+   static const int  IDX_WPR_D1;      // WPR D1
+   static const int  IDX_WPR_M15;     // WPR M15
+   static const int  IDX_BBANDS_H4;   // Bollinger H4 (slots: R,B,BR,BI,P,T,S)
+   static const int  IDX_DEMARK_H4;   // DeMarker H4  (slots: LX,M)
+   static const int  IDX_DEMARK_M15;  // DeMarker M15
+   static const int  IDX_STOCH_M10;   // Stochastic M10 (slot C: ForceCutloss)
+   static const int  IDX_STOCH_H4;    // Stochastic H4  (slot L)
+   static const int  IDX_STOCH_M15;   // Stochastic M15 variant (CodeWiki §1.4)
+   static const int  IDX_MACD_M10;    // MACD M10 (slot C: ForceCutloss, COverload)
+   static const int  IDX_MACD_D1;     // MACD D1
+   static const int  IDX_ZIGZAG_H4;   // ZigZag H4    (CodeWiki §1.4)
+   static const int  IDX_ZIGZAG_M5;   // ZigZag M5
+   static const int  IDX_MA_FAST_H4;  // MA Fast H4   (trend filter shared)
+   static const int  IDX_MA_SLOW_H4;  // MA Slow H4
+   static const int  IDX_RSI_H4;      // RSI H4       (filter shared)
+   static const int  IDX_RSI_D1;      // RSI D1
+   static const int  IDX_ATR_H4;      // ATR H4       (pip-distance reference)
+   static const int  IDX_MOMENTUM_H4; // Momentum H4  (CodeWiki §1.4)
 
 public:
    //--- Constructor — zero-init all members
@@ -363,7 +366,8 @@ double CIndicatorService::CachedScan(string key, ScanFnType scan_fn)
    if(m_logger != NULL)
       m_logger.Warn("indicators", "cached_scan_unwired", 0,
                     "CachedScan called before IDX-mapping wired; key=" + key + " — returning 0.0");
-   (void)scan_fn;
+   // MQL5 disallows `(void)scan_fn;` cast — use no-op self-ref idiom (Round-06 PipMath fix).
+   scan_fn = scan_fn;
    return 0.0;
   }
 
@@ -383,5 +387,40 @@ void CIndicatorService::ReleaseHandles()
    m_handle_count = 0;
    ArrayInitialize(m_handles, INVALID_HANDLE);
   }
+
+//+------------------------------------------------------------------+
+//| Static-member out-of-class definitions (IMPL-059 ODR fix)        |
+//|                                                                  |
+//| MQL5 requires out-of-class definition for `static const int`     |
+//| members that are referenced from method bodies — without these   |
+//| the compiler emits error 370 "unresolved static variable" at     |
+//| every reference site. Surfaced when IndicatorService.mqh is      |
+//| transitively included from core/Orchestrator.mqh during IMPL-059 |
+//| spike compile (earlier service spikes did not pull this header). |
+//+------------------------------------------------------------------+
+const int CIndicatorService::IDX_ICHI_H4     = 0;
+const int CIndicatorService::IDX_ICHI_D1     = 1;
+const int CIndicatorService::IDX_FORCE_H4    = 2;
+const int CIndicatorService::IDX_ADX_H4      = 3;
+const int CIndicatorService::IDX_ADX_D1      = 4;
+const int CIndicatorService::IDX_WPR_H4      = 5;
+const int CIndicatorService::IDX_WPR_D1      = 6;
+const int CIndicatorService::IDX_WPR_M15     = 7;
+const int CIndicatorService::IDX_BBANDS_H4   = 8;
+const int CIndicatorService::IDX_DEMARK_H4   = 9;
+const int CIndicatorService::IDX_DEMARK_M15  = 10;
+const int CIndicatorService::IDX_STOCH_M10   = 11;
+const int CIndicatorService::IDX_STOCH_H4    = 12;
+const int CIndicatorService::IDX_STOCH_M15   = 13;
+const int CIndicatorService::IDX_MACD_M10    = 14;
+const int CIndicatorService::IDX_MACD_D1     = 15;
+const int CIndicatorService::IDX_ZIGZAG_H4   = 16;
+const int CIndicatorService::IDX_ZIGZAG_M5   = 17;
+const int CIndicatorService::IDX_MA_FAST_H4  = 18;
+const int CIndicatorService::IDX_MA_SLOW_H4  = 19;
+const int CIndicatorService::IDX_RSI_H4      = 20;
+const int CIndicatorService::IDX_RSI_D1      = 21;
+const int CIndicatorService::IDX_ATR_H4      = 22;
+const int CIndicatorService::IDX_MOMENTUM_H4 = 23;
 
 #endif // PHOENICISNEX_SERVICES_INDICATORSERVICE_MQH

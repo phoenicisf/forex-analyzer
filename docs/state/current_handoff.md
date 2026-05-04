@@ -4,6 +4,24 @@
 
 ## Last completed action
 
+**IMPL-059 CLOSED 2026-05-04 — `core/Orchestrator` composition root + OnInit 3-phase + OnTick F1 14-step + CleanupPartialInit reverse-order release** — single-task `/impl-task IMPL-059` orchestrator (Opus 4.7) Phase 2C 12-step decomposition (verbatim TD-02 §7.1-7.4.1 transcription).
+
+- **Files created:** `core/Orchestrator.mqh` (NEW; 740+ LOC) + `spike/Spike_Orchestrator.mq5` (NEW; Phase A construction + dtor fallback NULL-safety) + `simulation/headless-tests/orchestrator_smoke.ini` (NEW; per TD-02 §13.6) + `docs/state/_session-handoff/IMPL-059-evidence-20260504.md` (NEW)
+- **Files modified:** `core/SlotRegistry.mqh` (RegisterAll stub → 21-slot heap-new in BR-2.2 topo + 21 slot includes); `services/IndicatorService.mqh` + `services/CircuitBreaker.mqh` (ODR fix — 24 + 2 `static const int` decl/def split + `(void)scan_fn` cast → `scan_fn=scan_fn` idiom); `docs/state/impl-plan.md` (7 S-AC `[x]` + 3 E-AC deferred + Closed line + P4 6/11→7/11 + TL;DR + audit log row); `docs/state/overview.md` (P4 7/11 + EA core surface callout); `docs/state/deferred-ac-registry.md` (1 new IMPL-059 P4 Active row expiry 2026-05-18)
+- **G1 ✅ Spike_Orchestrator 0err/0warn/608 ms** (PowerShell Start-Process MetaEditor64). **Sibling regression sweep 26/26 spikes 0err/0warn**: 5 service spikes + 21 slot spikes (post ODR fix in IndicatorService + CircuitBreaker — confirms no behavior change).
+- **5 spec deviations from TD-02 §7.4** (service-actual signature divergence): D-1 ctx_builder.Init 2-arg / D-2 CB CheckPingPong 0-arg / D-3 xslot.Init pip not risk / D-4 pending.Init 11-arg no portfolio / D-5 journal.SetHaltSink wired (CEAState : IHaltSink). All documented in Orchestrator.mqh header banner.
+- **All 7 S-AC `[x]`**; **3 E-AC deferred** (combined Phase C deliberate-fail `_Symbol="GBPUSD"` + Logger Debug step ordering + step 5b SetHalted before RunExitPass under CB trip — needs IMPL-060 entry .mq5 + Tester run; expiry 2026-05-18). Closing IMPL-060 + this row simultaneously unblocks the full 36+ row registry purge.
+- **Plan Staleness Sentinel = 10 closures since R06 — TRIPS THRESHOLD** → strongly recommend `/impl-plan-review all` before IMPL-060. **Code Review trigger R09 strongly recommended** (Orchestrator + ODR fix + cross-slot surface = significant new adversarial sweep target).
+- **Newly unblocked:** IMPL-060 + IMPL-061..068 QA chain + IMPL-017.
+- **EA core surface complete pending IMPL-060 entry .mq5** — only one engineering task before MVP attach.
+- **Next suggested action:** `/impl-review all` + `/impl-plan-review all` THEN `/impl-task IMPL-060` (S entry .mq5 thin wrapper).
+- **Commit:** pending (to be created next).
+- See `docs/state/_session-handoff/IMPL-059-evidence-20260504.md` for full evidence.
+
+---
+
+## Previous action
+
 **IMPL-057 CLOSED 2026-05-04 — `services/CrossSlotCoordinator` BR-8.4 overload helpers (EOverload/COverload/GOverload — last business-logic method on file)** — single-task `/impl-task IMPL-057` orchestrator (Opus 4.7) Phase 2B 3-step. M-size structural completion of the 3 overload-helper bodies per BR-8.4 + FR-7.5 + CodeWiki §5.5 :9395/:9277/:9493. Predicate logic + Logger emit lands here; downstream order side-effects (CD-add via Slot_C, CD PartialClose, GO inverse open via Slot_GO) deferred to IMPL-059 Orchestrator wiring per ea.md `services/* must not #include slots/*` layering. **CrossSlotCoordinator service surface complete at coordinator level** — only `EvaluateBR_OrphanExit` body remains as TODO IMPL-038 (Slot_BR ownership, out of P4 scope).
 
 - **Files modified:**

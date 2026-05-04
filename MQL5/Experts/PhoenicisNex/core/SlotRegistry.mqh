@@ -27,6 +27,30 @@
 #include "../domain/CSlotBase.mqh"
 #include "../services/Logger.mqh"
 
+//--- 21 slot derived classes — included so RegisterAll() can `new` each.
+//    BR-2.2 topological order matches the construction loop below.
+#include "../slots/Slot_C.mqh"
+#include "../slots/Slot_D.mqh"
+#include "../slots/Slot_F.mqh"
+#include "../slots/Slot_J.mqh"
+#include "../slots/Slot_H.mqh"
+#include "../slots/Slot_K.mqh"
+#include "../slots/Slot_G.mqh"
+#include "../slots/Slot_G2.mqh"
+#include "../slots/Slot_GO.mqh"
+#include "../slots/Slot_M.mqh"
+#include "../slots/Slot_L.mqh"
+#include "../slots/Slot_LX.mqh"
+#include "../slots/Slot_Q.mqh"
+#include "../slots/Slot_R.mqh"
+#include "../slots/Slot_I.mqh"
+#include "../slots/Slot_P.mqh"
+#include "../slots/Slot_T.mqh"
+#include "../slots/Slot_S.mqh"
+#include "../slots/Slot_B.mqh"
+#include "../slots/Slot_BR.mqh"
+#include "../slots/Slot_BI.mqh"
+
 #define PHOENICISNEX_SLOT_CAPACITY 21
 
 class CSlotRegistry
@@ -137,23 +161,73 @@ public:
       return true;
      }
 
-   //--- RegisterAll — full instantiation lands at IMPL-019..039 (when 21
-   //    derived classes exist). For IMPL-018 sub-pass, this is a stub
-   //    that returns false to surface "not yet implemented" loudly.
-   //    Orchestrator (IMPL-053+) wires the real version when slot
-   //    classes are available.
+   //--- RegisterAll — heap-news 21 derived slots in BR-2.2 topo order +
+   //    Init each with the 8 service pointers. Caller (Orchestrator)
+   //    invokes SetPipMath on each post-RegisterAll (Round-06 06.1).
+   //    Returns false if any allocation fails OR Add() rejects (capacity).
+   //    On failure the partially-built array is reclaimed by ReleaseAll
+   //    (m_owns_slots=true is the default for production wiring).
    bool              RegisterAll(CIndicatorService *ind, CRiskManager *rm,
                                  CTradeJournal *tj, CLogger *lg,
                                  CStatePersistence *sp, CPortfolioState *ps,
                                  CPendingMachineRegistry *pmr,
                                  CCrossSlotCoordinator *xs)
      {
-      // Suppress unused-parameter warnings — full body lands at IMPL-019..039.
-      ind = ind; rm = rm; tj = tj; lg = lg; sp = sp; ps = ps; pmr = pmr; xs = xs;
-      if(m_logger != NULL)
-         m_logger.Warn("SlotRegistry", "register_all_stub", 0,
-                       "21 derived slot classes pending IMPL-019..039");
-      return false;
+      // Production-mode ownership: this registry deletes the 21 slots in
+      //   ReleaseAll (called from CleanupPartialInit + dtor). Test harnesses
+      //   that pass stack-allocated stubs MUST flip via SetOwnsSlots(false).
+      m_owns_slots = true;
+
+      // BR-2.2 literal topological order — matches `04 § 2 dispatch order`
+      // and the comment-prefix disambig contract in CommentParser.
+      CSlotBase *slots[PHOENICISNEX_SLOT_CAPACITY];
+      slots[0]  = new CSlotC();
+      slots[1]  = new CSlotD();
+      slots[2]  = new CSlotF();
+      slots[3]  = new CSlotJ();
+      slots[4]  = new CSlotH();
+      slots[5]  = new CSlotK();
+      slots[6]  = new CSlotG();
+      slots[7]  = new CSlotG2();
+      slots[8]  = new CSlotGO();
+      slots[9]  = new CSlotM();
+      slots[10] = new CSlotL();
+      slots[11] = new CSlotLX();
+      slots[12] = new CSlotQ();
+      slots[13] = new CSlotR();
+      slots[14] = new CSlotI();
+      slots[15] = new CSlotP();
+      slots[16] = new CSlotT();
+      slots[17] = new CSlotS();
+      slots[18] = new CSlotB();
+      slots[19] = new CSlotBR();
+      slots[20] = new CSlotBI();
+
+      for(int i = 0; i < PHOENICISNEX_SLOT_CAPACITY; i++)
+        {
+         if(slots[i] == NULL)
+           {
+            if(m_logger != NULL)
+               m_logger.Error("SlotRegistry", "alloc_fail", i, "");
+            // Reclaim the ones we did allocate before bailing.
+            for(int j = 0; j < PHOENICISNEX_SLOT_CAPACITY; j++)
+               if(slots[j] != NULL) { delete slots[j]; slots[j] = NULL; }
+            return false;
+           }
+         slots[i].Init(ind, rm, tj, lg, sp, ps, pmr, xs);
+         if(!Add(slots[i]))
+           {
+            // Capacity exceeded should be impossible here (we just sized to
+            //   PHOENICISNEX_SLOT_CAPACITY) but Add() also rejects NULL —
+            //   defensive cleanup for both cases.
+            if(m_logger != NULL)
+               m_logger.Error("SlotRegistry", "add_failed_in_register_all", i, "");
+            for(int j = i; j < PHOENICISNEX_SLOT_CAPACITY; j++)
+               if(slots[j] != NULL) { delete slots[j]; slots[j] = NULL; }
+            return false;
+           }
+        }
+      return true;
      }
 
    //--- ADR-002 Layer 1 — sentinel check + topo order validation.

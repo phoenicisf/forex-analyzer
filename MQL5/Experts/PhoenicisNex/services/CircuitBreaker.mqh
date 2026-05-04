@@ -58,8 +58,8 @@ private:
    CLogger          *m_logger;      // injected logger (Composition Root)
 
    //--- Threshold constants (BR-3.6: 3000 ms = 3 s; near-miss = 5 s — Finding 02.2)
-   static const int  PING_PONG_THRESHOLD_S = 3;    // ping-pong halt threshold (seconds; BR-3.6 = 3000 ms)
-   static const int  NEAR_MISS_THRESHOLD_S = 5;    // near-miss warn threshold (seconds)
+   static const int  PING_PONG_THRESHOLD_S;   // ping-pong halt threshold (seconds; BR-3.6 = 3000 ms) — IMPL-059 ODR fix; value at out-of-class def
+   static const int  NEAR_MISS_THRESHOLD_S;   // near-miss warn threshold (seconds) — IMPL-059 ODR fix
 
    //--- Private helpers
    bool              _IsRingFull()   const { return m_count >= 16; }
@@ -357,5 +357,11 @@ bool CCircuitBreaker::SelfTest()
 
    return all_pass;
   }
+
+//+------------------------------------------------------------------+
+//| Static-member out-of-class definitions (IMPL-059 ODR fix)        |
+//+------------------------------------------------------------------+
+const int CCircuitBreaker::PING_PONG_THRESHOLD_S = 3;
+const int CCircuitBreaker::NEAR_MISS_THRESHOLD_S = 5;
 
 #endif // PHOENICISNEX_SERVICES_CIRCUITBREAKER_MQH
