@@ -314,13 +314,23 @@ void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       double parent_open  = 0.0;
       if(_ParentProfitPipsAtLeast(port, InpPPyramidGatePips, parent_isBuy, parent_open))
         {
-         //--- Compute pyramid SL: parent open ± fallback floor
-         double pip_size = _PipSize();
-         double sl_pips  = InpPSlPipsFloor;
+         //--- Compute pyramid SL: parent open ± fallback floor.
+         //    Use canonical _PipsToPrice helper (Round 06 06.1 collapse) so
+         //    pip arithmetic stays at one site; guard ≤ 0 per NFR-5.1
+         //    surfacing — symmetric with ManageExits guard (review-round-07
+         //    Finding 07.5; review-round-08 Finding 08.1 + 08.2).
+         double sl_pips = InpPSlPipsFloor;
+         double sl_dist = _PipsToPrice(sl_pips);
+         if(sl_dist <= 0.0)
+           {
+            m_logger.Error("SlotP", "degenerate_pip_size", MAGIC_P,
+                           "Path A pyramid aborted — _PipsToPrice returned ≤ 0 (NFR-5.1 surfacing)");
+            return;   // Don't fall through to Path B; symbol metric corrupt this tick.
+           }
          double price    = parent_isBuy ? ctx.ask : ctx.bid;
          double sl_price = parent_isBuy
-                           ? _NormalizeBrokerPrice(price - sl_pips * pip_size)
-                           : _NormalizeBrokerPrice(price + sl_pips * pip_size);
+                           ? _NormalizeBrokerPrice(price - sl_dist)
+                           : _NormalizeBrokerPrice(price + sl_dist);
 
          double balance = AccountInfoDouble(ACCOUNT_BALANCE);
          double lot     = m_risk.ComputeLot("P", sl_pips, balance);
@@ -365,6 +375,19 @@ void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
 
       double diff_sl_pip = _ComputeDiffSlPip(ctx);
       double band_ratio  = ctx.bb_h4.bb_ratio;
+
+      //--- Reject degenerate diff_sl_pip (≤ 0): the signed-diff_sl encoding
+      //    cannot disambiguate +0.0 vs −0.0 (IEEE 754 `(-0.0 >= 0.0)` is
+      //    true), so SELL with diff_sl_pip == 0 would round-trip as BUY.
+      //    Skip pending entry this tick instead of corrupting direction.
+      //    (review-round-08 Finding 08.4)
+      if(diff_sl_pip <= 0.0)
+        {
+         m_logger.Warn("SlotP", "skip_idle_zero_diff_sl", MAGIC_P,
+                       StringFormat("diff_sl_pip=%.4f bb_top=%.5f bb_bot=%.5f — pending skipped",
+                                    diff_sl_pip, ctx.bb_h4.bb_top, ctx.bb_h4.bb_bot));
+         return;
+        }
 
       //--- Direction encoded via signed diff_sl (BUY ≥ 0, SELL < 0) per
       //    state-persistence-schema.yaml § PendingMachineState_PVariant
@@ -414,9 +437,21 @@ void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
 
       //--- Compute SL distance: PX uses |diff_sl| from payload (snapshot at IDLE);
       //    PH uses input floor (default conservative).
-      double pip_size = _PipSize();
-      double sl_pips  = (sub == PSUB_PX) ? diff_sl_abs : InpPSlPipsFloor;
+      //    Use canonical _PipsToPrice helper (Round 06 06.1 collapse); guard
+      //    ≤ 0 per NFR-5.1 surfacing — symmetric with ManageExits guard
+      //    (review-round-07 Finding 07.5; review-round-08 Finding 08.1 + 08.2).
+      double sl_pips = (sub == PSUB_PX) ? diff_sl_abs : InpPSlPipsFloor;
       if(sl_pips < InpPSlPipsFloor) sl_pips = InpPSlPipsFloor;   // floor guard
+      double sl_dist = _PipsToPrice(sl_pips);
+      if(sl_dist <= 0.0)
+        {
+         m_logger.Error("SlotP", "degenerate_pip_size", MAGIC_P,
+                        StringFormat("_PipsToPrice(%.1f) returned %.10f — primary entry "
+                                     "aborted; symbol metric corrupt (NFR-5.1 surfacing)",
+                                     sl_pips, sl_dist));
+         Alert("[PhoenicisNex] Slot_P degenerate _PipSize() — primary entry aborted");
+         return;
+        }
 
       double balance = AccountInfoDouble(ACCOUNT_BALANCE);
       double lot     = m_risk.ComputeLot("P", sl_pips, balance);
@@ -429,8 +464,8 @@ void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
 
       double price    = isBuy ? ctx.ask : ctx.bid;
       double sl_price = isBuy
-                        ? _NormalizeBrokerPrice(price - sl_pips * pip_size)
-                        : _NormalizeBrokerPrice(price + sl_pips * pip_size);
+                        ? _NormalizeBrokerPrice(price - sl_dist)
+                        : _NormalizeBrokerPrice(price + sl_dist);
 
       string sub_str = (sub == PSUB_PX) ? "PX" : "PH";
       string comment = StringFormat("P,MA,%s,1,SL", sub_str);

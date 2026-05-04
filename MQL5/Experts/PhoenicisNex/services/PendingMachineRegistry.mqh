@@ -256,26 +256,56 @@ private:
 
    static double     _ParsePDouble(string payload, string field)
      {
+      // Strict numeric-token parser per JSON number grammar:
+      //   [-|+]? digits ( . digits )? ( [eE][+|-]? digits )?
+      // Replaces loose char-class loop that accepted malformed forms like
+      //   "--250" or "1-2-3" silently (review-round-08 Finding 08.5).
       if(StringLen(payload) == 0) return 0.0;
       string needle = "\"" + field + "\":";
       int p = StringFind(payload, needle);
       if(p < 0) return 0.0;
       p += StringLen(needle);
+      int len = StringLen(payload);
       // Skip whitespace
-      while(p < StringLen(payload) &&
+      while(p < len &&
             (StringGetCharacter(payload, p) == ' ' ||
              StringGetCharacter(payload, p) == '\t'))
          p++;
       int q = p;
-      ushort ch;
-      while(q < StringLen(payload))
+      // Optional leading sign
+      if(q < len && (StringGetCharacter(payload, q) == '-' ||
+                     StringGetCharacter(payload, q) == '+'))
+         q++;
+      // Integer digits (≥1 required)
+      int int_start = q;
+      while(q < len &&
+            StringGetCharacter(payload, q) >= '0' &&
+            StringGetCharacter(payload, q) <= '9')
+         q++;
+      if(q == int_start) return 0.0;        // no digits — malformed
+      // Optional fractional part
+      if(q < len && StringGetCharacter(payload, q) == '.')
         {
-         ch = StringGetCharacter(payload, q);
-         if((ch >= '0' && ch <= '9') || ch == '.' || ch == '-' || ch == '+' ||
-            ch == 'e' || ch == 'E')
+         q++;
+         while(q < len &&
+               StringGetCharacter(payload, q) >= '0' &&
+               StringGetCharacter(payload, q) <= '9')
             q++;
-         else
-            break;
+        }
+      // Optional exponent
+      if(q < len && (StringGetCharacter(payload, q) == 'e' ||
+                     StringGetCharacter(payload, q) == 'E'))
+        {
+         q++;
+         if(q < len && (StringGetCharacter(payload, q) == '-' ||
+                        StringGetCharacter(payload, q) == '+'))
+            q++;
+         int exp_start = q;
+         while(q < len &&
+               StringGetCharacter(payload, q) >= '0' &&
+               StringGetCharacter(payload, q) <= '9')
+            q++;
+         if(q == exp_start) return 0.0;     // exponent introduced but no digits
         }
       if(q == p) return 0.0;
       return (double)StringToDouble(StringSubstr(payload, p, q - p));
@@ -764,7 +794,59 @@ public:
          r3.GetForceClearCount(PM_M) != 1)
         { logger.Error("system","SelfTest_PMR",0,"Case 7 fail: PM_M did not force-clear at threshold after cold restart"); return false; }
 
-      logger.Info("system", "SelfTest_PMR", 0, "CPendingMachineRegistry self test PASS (7 cases, 8 machines, 5 P-sub-modes)");
+      // --- Case 8 — negative diff_sl round-trip (review-round-08 Finding 08.3 →
+      // empirical proof of review-round-07 Finding 07.1 sign-convention fix).
+      // state-persistence-schema.yaml § PendingMachineState_PVariant.diff_sl
+      // documents `BUY ≥ 0, SELL < 0`. Verify _BuildPPayload + _ParsePDouble
+      // round-trip preserves both magnitude AND sign through DoubleToString /
+      // StringToDouble path. Case 4 covered PSUB encode/decode but exercised
+      // only positive diff_sl values; this case closes that gap.
+      CPendingMachineRegistry r4;
+      r4.Init(150, 80, 100, 8, 30, 40, 70, 9, NULL, NULL, logger);
+      r4.EnterPPending(PSUB_N, -250.43, 75.5, 0);
+      double signed_round_trip = r4.GetPDiffSL();
+      if(MathAbs(signed_round_trip - (-250.43)) > 0.01)
+        { logger.Error("system","SelfTest_PMR",0,
+                       StringFormat("Case 8 fail: negative diff_sl round-trip got %.4f expected -250.43",
+                                    signed_round_trip)); return false; }
+      if(signed_round_trip >= 0.0)
+        { logger.Error("system","SelfTest_PMR",0,"Case 8 fail: SELL marker (diff_sl < 0) lost on round-trip"); return false; }
+      r4.TransitionIdle(PM_P, "test_case8_neg");
+      // Positive zero edge — must round-trip as ≥ 0 (BUY marker).
+      r4.EnterPPending(PSUB_N, 0.0, 50.0, 0);
+      if(r4.GetPDiffSL() < 0.0)
+        { logger.Error("system","SelfTest_PMR",0,"Case 8 fail: +0.0 round-trip flipped to negative"); return false; }
+      r4.TransitionIdle(PM_P, "test_case8_zero");
+
+      // --- Case 9 — pending_started_bar invariance under OverwritePPayload
+      // (review-round-08 Finding 08.3 → empirical proof of review-round-07
+      // Finding 07.3 BR-6.4 70-bar legacy timeout fix).
+      // OverwritePPayload must mutate payload only — must NOT reset
+      // pending_started_bar. Verify indirectly via timeout behavior:
+      //   enter PENDING at bar 1000; OverwritePPayload during PENDING phase;
+      //   tick at bar 1069 → still PENDING; tick at bar 1070 → IDLE
+      //     (PM_P legacy timeout = 70 bars; if started_bar were reset to
+      //     overwrite-time bar, the IDLE transition would fire at original+70+δ
+      //     instead of original+70).
+      CPendingMachineRegistry r5;
+      r5.Init(150, 80, 100, 8, 30, 40, 70, 9, NULL, NULL, logger);
+      r5.EnterPPending(PSUB_N, 200.0, 50.0, 1000);
+      // Simulate sub-mode lock at bar 1005 (Slot_P:N→PX/PH transition path).
+      r5.OverwritePPayload(PSUB_PX, 200.0, 50.0);
+      if(r5.GetPSubMode() != PSUB_PX)
+        { logger.Error("system","SelfTest_PMR",0,"Case 9 fail: OverwritePPayload sub-mode not applied"); return false; }
+      // Tick at original_bar + 69 (= 1069) → still PENDING (age=69 < 70).
+      ctx.bar_index_h4 = 1069;
+      r5.TickAll(ctx);
+      if(r5.GetState(PM_P) != PENDING_STATE_PENDING)
+        { logger.Error("system","SelfTest_PMR",0,"Case 9 fail: PM_P transitioned IDLE early — OverwritePPayload reset started_bar"); return false; }
+      // Tick at original_bar + 70 (= 1070) → IDLE per BR-6.4.
+      ctx.bar_index_h4 = 1070;
+      r5.TickAll(ctx);
+      if(r5.GetState(PM_P) != PENDING_STATE_IDLE)
+        { logger.Error("system","SelfTest_PMR",0,"Case 9 fail: PM_P legacy timeout did not fire at original+70"); return false; }
+
+      logger.Info("system", "SelfTest_PMR", 0, "CPendingMachineRegistry self test PASS (9 cases, 8 machines, 5 P-sub-modes, signed diff_sl)");
       return true;
      }
 
