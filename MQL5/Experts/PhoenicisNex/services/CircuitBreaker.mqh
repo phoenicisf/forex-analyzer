@@ -22,7 +22,7 @@
 //|  the spec letter is honored under datetime granularity. Pairs    |
 //|  with delta ∈ {0, 1, 2, 3} s halt; (3, 5] s warn (near-miss);   |
 //|  > 5 s ignored. Sub-second precision is not required at H4 EA    |
-//|  cadence (inter-tick noise ≈ 1 s). Upgrade path (IMPL-053+ if    |
+//|  cadence (inter-tick noise ≈ 1 s). Upgrade path (<closed; ref purged fix-round-18 §18.1> if    |
 //|  needed): add `ulong close_time_us` field via GetMicrosecondCount|
 //|  + bump constants to micros (3 000 000 / 5 000 000).             |
 //+------------------------------------------------------------------+
@@ -137,7 +137,7 @@ void CCircuitBreaker::_WriteEvent(int magic, int direction, datetime now_s)
 //| fix-round-12 § 12.6 — defense-in-depth pre-Init guard. The Phase |
 //| 1 call topology routes everything through Orchestrator's         |
 //| `m_init_complete` gate, but TD-02 §5.8 documents this method as  |
-//| "called by slot post-OrderSend ack". When IMPL-017 / IMPL-062    |
+//| "called by slot post-OrderSend ack". When <closed; ref purged fix-round-18 §18.1>    |
 //| wire RiskManager::OpenOrder through slots, those callers will    |
 //| not have access to Orchestrator's lifecycle flag — so a pre-Init |
 //| dispatch (e.g. broker-recovery OnTradeTransaction firing before  |
@@ -373,7 +373,7 @@ bool CCircuitBreaker::SelfTest()
    //         mutated + Print fallback emitted (fix-round-13 § 13.5;
    //         guards dual-gate added in fix-round-12 § 12.6).
    //
-   //         Phase 2 IMPL-017 / IMPL-062 RiskManager wiring may dispatch
+   //         Phase 2 <closed; ref purged fix-round-18 §18.1> RiskManager wiring may dispatch
    //         RecordOpen / RecordClose before Init() completes (e.g. via
    //         broker-recovery OnTradeTransaction). The NULL-logger early-
    //         return must keep the ring buffer untouched and emit a

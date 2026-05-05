@@ -12,7 +12,7 @@
 //|   J/BI/I read parent slot's `last_open_lot` (BR-4.1 spec literal: |
 //|   J = LastBuyLots2*0.23, I = LastGLots*..., BI = 0.236*B-last).  |
 //|   Field added by Finding 02.3 fix; populated by PortfolioState   |
-//|   OnTradeTransaction handler at IMPL-053+ wiring. Until then     |
+//|   OnTradeTransaction handler at <closed; ref purged fix-round-18 §18.1> wiring. Until then     |
 //|   `last_open_lot = 0.0` (RegisterAll default) → these helpers    |
 //|   emit Warn `parent_last_open_lot_unwired` + return 0.0          |
 //|   (fail-loud per round-01 Finding 01.7 philosophy — surfaces the |
@@ -292,14 +292,14 @@ double CRiskManager::_ComputeLotForJ(double extra)
      }
 
    //--- BR-4.1 spec literal: read LAST-opened parent lot (not total_lots aggregate).
-   //    last_open_lot populated by PortfolioState OnTradeTransaction handler at IMPL-053+;
+   //    last_open_lot populated by PortfolioState OnTradeTransaction handler at <closed; ref purged fix-round-18 §18.1>;
    //    until then = 0.0 → fail-loud rather than silent wrong-result (Finding 02.3 / 01.7).
    if(cd.last_open_lot <= 0.0)
      {
       if(m_logger != NULL)
          m_logger.Warn("RiskManager", "parent_last_open_lot_unwired", MAGIC_CD,
                        "J: CD.last_open_lot = 0 — PortfolioState OnTradeTransaction wiring "
-                       "missing (IMPL-053+); returning 0.0 lot");
+                       "missing (<closed; ref purged fix-round-18 §18.1>); returning 0.0 lot");
       return 0.0;
      }
    return cd.last_open_lot * 0.23 * extra;
@@ -338,7 +338,7 @@ double CRiskManager::_ComputeLotForBI()
       if(m_logger != NULL)
          m_logger.Warn("RiskManager", "parent_last_open_lot_unwired", MAGIC_B,
                        "BI: B.last_open_lot = 0 — PortfolioState OnTradeTransaction wiring "
-                       "missing (IMPL-053+); returning 0.0 lot");
+                       "missing (<closed; ref purged fix-round-18 §18.1>); returning 0.0 lot");
       return 0.0;
      }
    return b.last_open_lot * 0.236;   // ADR-009: Fibonacci 23.6% of B-last
@@ -350,7 +350,7 @@ double CRiskManager::_ComputeLotForBI()
 //| Formula: G_parent_last_open_lot × 0.382                          |
 //|   (BR-4.1 row I: "LastGLots × (1 + 0.618 × rangePct)";           |
 //|    Phase-1 simplification = 0.382 fixed — rangePct factor lands  |
-//|    at IMPL-053+ when range telemetry is wired)                   |
+//|    at <closed; ref purged fix-round-18 §18.1> when range telemetry is wired)                   |
 //| Parent magic: MAGIC_G (208) per EnumTypes.mqh                    |
 //| Returns 0.0 + Warn on: NULL portfolio / NULL parent / unwired    |
 //| last_open_lot (Finding 02.3 fail-loud).                          |
@@ -378,7 +378,7 @@ double CRiskManager::_ComputeLotForI()
       if(m_logger != NULL)
          m_logger.Warn("RiskManager", "parent_last_open_lot_unwired", MAGIC_G,
                        "I: G.last_open_lot = 0 — PortfolioState OnTradeTransaction wiring "
-                       "missing (IMPL-053+); returning 0.0 lot");
+                       "missing (<closed; ref purged fix-round-18 §18.1>); returning 0.0 lot");
       return 0.0;
      }
    return g.last_open_lot * 0.382;   // Fibonacci 38.2% of G-last (BR-4.1 row I phase-1)
@@ -436,7 +436,7 @@ double CRiskManager::_ComputeLotForK(double balance, double extra)
 //| Runs WITHOUT a live CPortfolioState (m_portfolio stays NULL for  |
 //| test instance) — J/BI/I parent-read paths are verified to return |
 //| 0.0 + Warn gracefully rather than crash. Full parent-read smoke  |
-//| completed at IMPL-053..060 (Orchestrator) per impl-plan; this    |
+//| completed at <closed; ref purged fix-round-18 §18.1> (Orchestrator) per impl-plan; this    |
 //| SelfTest covers the header-only structural surface (IMPL-005/    |
 //| 007/011 precedent).                                              |
 //|                                                                  |

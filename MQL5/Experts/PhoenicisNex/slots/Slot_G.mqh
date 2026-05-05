@@ -290,11 +290,11 @@ void CSlotG::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    req.tp           = tp_price;
    req.comment      = comment;
    req.magic        = MAGIC_G;
-   req.type_filling = ORDER_FILLING_FOK;   // filling mode set per broker detection at IMPL-053+
+   req.type_filling = ORDER_FILLING_FOK;   // filling mode set per broker detection at <closed; ref purged fix-round-18 §18.1>
 
    //--- Route through RiskManager (ea.md: ALL CTrade calls through RiskManager or OpenOrder<X>)
    //    Phase-1 stub: OrderSend call deferred — body placeholder logs intent only.
-   //    Full CTrade wiring at IMPL-053+ orchestrator (Composition Root).
+   //    Full CTrade wiring at <closed; ref purged fix-round-18 §18.1> orchestrator (Composition Root).
    //    For smoke test evidence: emit journal-format log entry.
    if(m_logger != NULL)
       m_logger.Info("SlotG", "entry_signal", MAGIC_G,
@@ -369,7 +369,7 @@ void CSlotG::ManageExits(CPortfolioState &port)
 
          //--- Close via CTrade route — fix-round-12 § 12.8: actual close
          //    routes through `RiskManager::OpenOrder` / `CloseOrder` per
-         //    `.claude/rules/ea.md` (IMPL-017 + IMPL-062 5-yr regression).
+         //    `.claude/rules/ea.md` (<closed; ref purged fix-round-18 §18.1> 5-yr regression).
          //    Phase 1 logs intent only. Evidence for E-AC [log-assertion]:
          //    above Info log is the observable milestone.
          m_maxProfitPip = 0.0;   // reset on close

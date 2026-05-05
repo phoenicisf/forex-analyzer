@@ -11,7 +11,7 @@
 //|   slot topology. Evaluate() early-returns (sub-call only guard).  |
 //|   ManageExits: profit-gate close pattern mirroring Slot_G2.       |
 //|                                                                   |
-//| Activation: IMPL-053+ (CrossSlotCoordinator wires G → GO call)   |
+//| Activation: <closed; ref purged fix-round-18 §18.1> (CrossSlotCoordinator wires G → GO call)   |
 //|   Slot_G.mqh:392: TriggerGOverload currently stubbed false.       |
 //|                                                                   |
 //| Exit (ManageExits):                                               |
@@ -108,7 +108,7 @@ bool CSlotGO::_HasActiveGOOrder(CPortfolioState &port) const
 void CSlotGO::Evaluate(const MarketContext &ctx, CPortfolioState &port)
   {
    //--- Sub-call guard: early-return when not enabled or service not wired
-   //    (Phase 1 MVP — real signal arrives from TriggerGOverload at IMPL-053+)
+   //    (Phase 1 MVP — real signal arrives from TriggerGOverload at <closed; ref purged fix-round-18 §18.1>)
    if(!InpEnableSlotGO) return;
    if(m_logger == NULL) return;
 
@@ -116,7 +116,7 @@ void CSlotGO::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    if(_HasActiveGOOrder(port)) return;
 
    //--- Phase-1 stub: no entry signal in main topo — TriggerGOverload sub-call
-   //    wires at IMPL-017 / IMPL-062 (cross-slot coupling per ea.md).
+   //    wires at <closed; ref purged fix-round-18 §18.1> (cross-slot coupling per ea.md).
    //    Observable milestone for E-AC [log-assertion] once that wires:
    //
    //    double balance  = AccountInfoDouble(ACCOUNT_BALANCE);
@@ -126,10 +126,10 @@ void CSlotGO::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //                  StringFormat("lot=%.2f sl_pips=%.1f comment=%s", lot, InpGOSlPipsFloor, comment));
    //
    //--- CrossSlotCoordinator stub: coupling from G → GO sub-call
-   if(m_xslot != NULL && false /* enable when TriggerGOverload wired (IMPL-017 / IMPL-062) */)
+   if(m_xslot != NULL && false /* enable when TriggerGOverload wired (<closed; ref purged fix-round-18 §18.1>) */)
      {
       //--- Stub: GO activation from G's TriggerGOverload
-      //    wires at IMPL-017 / IMPL-062 (cross-slot coupling per ea.md).
+      //    wires at <closed; ref purged fix-round-18 §18.1> (cross-slot coupling per ea.md).
      }
   }
 
@@ -180,7 +180,7 @@ void CSlotGO::ManageExits(CPortfolioState &port)
                                     ticket, profit_pips, InpGOTpProfitPips));
 
          //--- Phase-1 stub: logger-only milestone; broker close wires at
-         //    IMPL-017 / IMPL-062 (RiskManager::OpenOrder) per ea.md.
+         //    <closed; ref purged fix-round-18 §18.1> (RiskManager::OpenOrder) per ea.md.
          //    Evidence for E-AC [log-assertion]: above Info log is the observable milestone.
         }
 

@@ -235,7 +235,7 @@ void CSlotM::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       //    ห้าม instantiate CTrade direct (ea.md + ADR-002)
       //    fix-round-12 § 12.8 — Phase 1 emits entry_signal Info as the
       //    observable milestone; actual OrderSend wiring lives in
-      //    `RiskManager::OpenOrder` (IMPL-017 + IMPL-062 5-yr regression).
+      //    `RiskManager::OpenOrder` (<closed; ref purged fix-round-18 §18.1> 5-yr regression).
       //    Observable E-AC milestone: emit entry_signal Info log.
       ENUM_ORDER_TYPE order_type = isBuy ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
 
@@ -251,7 +251,7 @@ void CSlotM::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       req.tp           = 0.0;    // TP = 0; profit gate managed in ManageExits
       req.comment      = comment;
       req.magic        = MAGIC_M;
-      req.type_filling = ORDER_FILLING_FOK;  // broker detection at IMPL-053+
+      req.type_filling = ORDER_FILLING_FOK;  // broker detection at <closed; ref purged fix-round-18 §18.1>
 
       if(m_logger != NULL)
          m_logger.Info("SlotM", "entry_signal", MAGIC_M,
@@ -314,7 +314,7 @@ void CSlotM::ManageExits(CPortfolioState &port)
                                     ticket, profit_pips, InpMTpProfitPips));
 
          //--- Phase-1 stub: logger-only milestone; broker close wires at
-         //    IMPL-017 / IMPL-062 (RiskManager::OpenOrder) per ea.md.
+         //    <closed; ref purged fix-round-18 §18.1> (RiskManager::OpenOrder) per ea.md.
         }
      }
   }

@@ -5,9 +5,12 @@
 //+------------------------------------------------------------------+
 //| IMPL-066 extension (NFR-2.2 journal write latency measurement)  |
 //| Adds ≥200-sample ring buffer, running aggregates, per-event-type |
-//| breakdown map (linear-probe, 16 buckets), EmitLatencyReport()   |
-//| (periodic every 1000 writes + final at Close), and sidecar JSON |
-//| report at PhoenicisNex/journal/<mode>/latency-report-<ISO>.json |
+//| breakdown map (linear-probe, 15 unique buckets + 1 reserved for  |
+//| "_overflow" per fix-round-17 §17.5; doc-block aligned to runtime |
+//| contract by fix-round-18 §18.3), EmitLatencyReport() (periodic   |
+//| every 1000 writes Logger-only + final at Close with sidecar JSON |
+//| per fix-round-17 §17.4), sidecar at journal/<mode>/latency-      |
+//| report-<ISO>.json (UTF-8 binary write per fix-round-18 §18.7).   |
 //+------------------------------------------------------------------+
 #ifndef PHOENICISNEX_SERVICES_TRADEJOURNAL_MQH
 #define PHOENICISNEX_SERVICES_TRADEJOURNAL_MQH
@@ -23,6 +26,14 @@
 #define JOURNAL_HALT_THRESHOLD 10
 #define JOURNAL_OVERSHOOT_WINDOW 10
 #define JOURNAL_WARN_LATENCY_MS 5
+
+// fix-round-18 §18.3 — explicit capacity contract (was inline literals 15/16).
+// Sized at 16 array slots: indexes 0..14 hold unique event_types, index 15 is
+// reserved exclusively for "_overflow" (one-time Warn on first overflow per
+// fix-round-17 §17.5). Bumping the cap = change UNIQUE_CAP (15→23) + the
+// array size in m_evtype_keys/_counts/_total_us declarations to UNIQUE_CAP+1.
+#define JOURNAL_EVTYPE_UNIQUE_CAP    15
+#define JOURNAL_EVTYPE_OVERFLOW_BKT  15
 
 //+------------------------------------------------------------------+
 //| JournalEvent — caller-populated payload; TradeJournal fills      |
@@ -80,7 +91,9 @@ private:
    int                    m_latency_samples_idx;
    int                    m_latency_samples_filled;  // clamps to ≤ 200
 
-   //--- IMPL-066: per-event-type breakdown (linear-probe map, max 16 buckets)
+   //--- IMPL-066: per-event-type breakdown (linear-probe map; 15 unique
+   //    + 1 reserved for "_overflow" per fix-round-17 §17.5; aligned by
+   //    fix-round-18 §18.3 — bucket 15 = JOURNAL_EVTYPE_OVERFLOW_BKT)
    string                 m_evtype_keys[16];
    int                    m_evtype_counts[16];
    ulong                  m_evtype_total_us[16];
@@ -530,7 +543,9 @@ void CTradeJournal::TrackLatency(ulong elapsed_us, const string &event_type)
    if(m_latency_samples_filled < 200)
       m_latency_samples_filled++;
 
-   //--- per-event-type linear-probe map (max 16 buckets; overflow → "_overflow")
+   //--- per-event-type linear-probe map (15 unique buckets + bucket 15
+   //    reserved for "_overflow"; one-time Warn on first overflow per
+   //    fix-round-17 §17.5; doc aligned by fix-round-18 §18.3)
    string key = (StringLen(event_type) > 0) ? event_type : "unknown";
    int bucket = -1;
    for(int i = 0; i < m_evtype_used; i++)
@@ -543,11 +558,13 @@ void CTradeJournal::TrackLatency(ulong elapsed_us, const string &event_type)
      }
    if(bucket < 0)
      {
-      //--- fix-round-17 § 17.5 — reserve bucket 15 for "_overflow"; populate
-      //    unique event_types into buckets 0..14 only. On first overflow,
-      //    initialise the overflow bucket cleanly (zero counters) and emit
-      //    one-time Warn so operator knows attribution drifted.
-      if(m_evtype_used < 15)
+      //--- fix-round-17 §17.5 — reserve JOURNAL_EVTYPE_OVERFLOW_BKT exclusively
+      //    for "_overflow"; populate unique event_types into buckets
+      //    0..JOURNAL_EVTYPE_UNIQUE_CAP-1 only. On first overflow, initialise
+      //    the overflow bucket cleanly (zero counters) and emit one-time Warn
+      //    so operator knows attribution drifted. fix-round-18 §18.3: literal
+      //    15 → JOURNAL_EVTYPE_UNIQUE_CAP / JOURNAL_EVTYPE_OVERFLOW_BKT.
+      if(m_evtype_used < JOURNAL_EVTYPE_UNIQUE_CAP)
         {
          bucket = m_evtype_used;
          m_evtype_keys[bucket] = key;
@@ -555,18 +572,18 @@ void CTradeJournal::TrackLatency(ulong elapsed_us, const string &event_type)
         }
       else
         {
-         if(m_evtype_keys[15] != "_overflow")
+         if(m_evtype_keys[JOURNAL_EVTYPE_OVERFLOW_BKT] != "_overflow")
            {
             if(m_logger != NULL)
                m_logger.Warn("system", "journal_evtype_overflow", 0,
                              StringFormat("event_type=%s does not fit; using _overflow bucket. "
-                                          "Bump JOURNAL_EVTYPE_BUCKETS or audit event_type taxonomy.",
+                                          "Bump JOURNAL_EVTYPE_UNIQUE_CAP or audit event_type taxonomy.",
                                           key));
-            m_evtype_keys[15]     = "_overflow";
-            m_evtype_counts[15]   = 0;
-            m_evtype_total_us[15] = 0;
+            m_evtype_keys[JOURNAL_EVTYPE_OVERFLOW_BKT]     = "_overflow";
+            m_evtype_counts[JOURNAL_EVTYPE_OVERFLOW_BKT]   = 0;
+            m_evtype_total_us[JOURNAL_EVTYPE_OVERFLOW_BKT] = 0;
            }
-         bucket = 15;
+         bucket = JOURNAL_EVTYPE_OVERFLOW_BKT;
         }
      }
    m_evtype_counts[bucket]++;
@@ -663,16 +680,33 @@ void CTradeJournal::EmitLatencyReport(bool emit_sidecar)
       w.WriteRaw("by_event_type", types_json);
       w.End();
 
-      int fh = FileOpen(path, FILE_WRITE | FILE_TXT | FILE_ANSI);
+      //--- fix-round-18 §18.7 — write UTF-8 bytes (FILE_BIN) instead of
+      //    FILE_ANSI which is silently lossy for non-ASCII event_types.
+      //    JSON spec mandates UTF-8 + ADR-006 trade-journal-schema.yaml
+      //    contracts UTF-8 — sidecar must honour the same encoding.
+      int fh = FileOpen(path, FILE_WRITE | FILE_BIN);
+      string body = w.ToString();
       if(fh != INVALID_HANDLE)
         {
-         FileWriteString(fh, w.ToString());
+         uchar utf8[];
+         StringToCharArray(body, utf8, 0, -1, CP_UTF8);
+         //--- StringToCharArray appends a trailing NUL — drop it before write
+         int nbytes = ArraySize(utf8) - 1;
+         if(nbytes > 0)
+            FileWriteArray(fh, utf8, 0, nbytes);
          FileClose(fh);
         }
       else if(m_logger != NULL)
         {
+         //--- fix-round-18 §18.4 — sidecar write failed; emit full JSON body
+         //    inline as operator-recoverable fallback so `jq -R 'fromjson?'`
+         //    can recover the audit artifact from the Experts log when the
+         //    sidecar file fails to land (disk full / sandbox path collision /
+         //    antivirus lock). NFR-2.2 audit artifact must land somewhere.
          m_logger.Warn("system", "journal_latency_report_write_fail", 0,
-                       StringFormat("path=%s err=%d", path, GetLastError()));
+                       StringFormat("path=%s err=%d → fallback to Logger inline",
+                                    path, GetLastError()));
+         m_logger.Info("system", "journal_latency_report_inline", 0, body);
         }
      }
   }

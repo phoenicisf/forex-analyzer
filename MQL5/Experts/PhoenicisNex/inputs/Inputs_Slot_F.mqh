@@ -14,7 +14,7 @@
 //|     reduction (CodeWiki §5.3 :15620 dispatcher table)             |
 //|                                                                   |
 //| S-size MVP — header-only contract scaffold                        |
-//|   Real activation: IMPL-053+ (CrossSlotCoordinator wires CD-open  |
+//|   Real activation: <closed; ref purged fix-round-18 §18.1> (CrossSlotCoordinator wires CD-open  |
 //|   → BusinessLogic_F sub-call). Phase 1 Evaluate early-returns.    |
 //+------------------------------------------------------------------+
 #ifndef PHOENICISNEX_INPUTS_SLOT_F_MQH

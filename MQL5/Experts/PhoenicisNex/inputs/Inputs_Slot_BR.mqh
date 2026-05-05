@@ -7,7 +7,7 @@
 //| Source: CodeWiki §3.18 Slot BR; BR-2.2; TD-02 §5.4; NFR-6.3       |
 //|                                                                  |
 //| S-size MVP — header-only contract scaffold                        |
-//|   Real activation: IMPL-053+ CrossSlotCoordinator wires           |
+//|   Real activation: <closed; ref purged fix-round-18 §18.1> CrossSlotCoordinator wires           |
 //|   ExtraTakeProfit_B (Slot_B ManageExits) → TriggerBR sub-call.    |
 //|   Slot_B.mqh BR-trigger stub guarded `false /*IMPL-053*/`.        |
 //|                                                                  |

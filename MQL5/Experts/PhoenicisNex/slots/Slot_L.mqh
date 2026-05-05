@@ -154,7 +154,7 @@ public:
       string           comment    = "L,wave,1";
 
       //--- Submit order via RiskManager (which wraps CTrade per ea.md)
-      //    RiskManager::OpenOrder wired at IMPL-053+ Orchestrator skeleton.
+      //    RiskManager::OpenOrder wired at <closed; ref purged fix-round-18 §18.1> Orchestrator skeleton.
       //    Until then: log intent so SelfTest/smoke verifies entry path
       //    without panicking on NULL CTrade.
       if(m_logger != NULL)
@@ -207,7 +207,7 @@ public:
                           StringFormat("ticket=%I64u profit_pips=%.1f",
                                        ticket, profit_pips));
 
-         //--- Close order via RiskManager (CTrade wired at IMPL-053+)
+         //--- Close order via RiskManager (CTrade wired at <closed; ref purged fix-round-18 §18.1>)
          //    Log intent only until wiring complete (same pattern as Evaluate).
         }
      }

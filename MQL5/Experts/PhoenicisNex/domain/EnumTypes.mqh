@@ -115,7 +115,7 @@ bool IsPhoenicisMagic(int magic)
 //          - core/BootstrapValidator::RunDomainSelfTests (header-only;
 //            invoked once production Orchestrator wiring lands)
 //      • Phase 2 — production wire on live attach is deferred to
-//        IMPL-053..060 / IMPL-062 owner: Orchestrator::OnInit Phase B
+//        <closed; ref purged fix-round-18 §18.1> / IMPL-062 owner: Orchestrator::OnInit Phase B
 //        step 1 should call m_validator.RunDomainSelfTests() BEFORE
 //        ValidateSymbol so a live EURUSD H4 attach exercises this
 //        regression gate at first attach.

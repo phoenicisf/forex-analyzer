@@ -11,7 +11,7 @@
 //|   - Comment prefix "GO," for order disambiguation                 |
 //|                                                                   |
 //| S-size MVP — header-only contract scaffold                        |
-//|   Real activation: IMPL-053+ (orchestrator wiring TriggerGOverload)|
+//|   Real activation: <closed; ref purged fix-round-18 §18.1> (orchestrator wiring TriggerGOverload)|
 //+------------------------------------------------------------------+
 #ifndef PHOENICISNEX_INPUTS_SLOT_GO_MQH
 #define PHOENICISNEX_INPUTS_SLOT_GO_MQH

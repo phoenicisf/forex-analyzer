@@ -58,7 +58,7 @@
 //|   - ADR-009 Bollinger fallback (BBBot − 10 / BBTop + 10) — needs  |
 //|     M15 BB indicator in MarketContext (MVP fallback = pip floor).  |
 //|   - signal_context journal field "sl_inherit=B_parent_<ticket>"   |
-//|     — needs IMPL-053+ TradeJournal write wiring.                  |
+//|     — needs <closed; ref purged fix-round-18 §18.1> TradeJournal write wiring.                  |
 //|   - Multi-level pyramid (> 1 BI add-on layer)                     |
 //+------------------------------------------------------------------+
 #ifndef PHOENICISNEX_SLOTS_SLOT_BI_MQH
@@ -273,7 +273,7 @@ public:
             m_logger.Info("Slot_BI", "exit_profit_gate", MAGIC_B,
                           StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f -> close",
                                        ticket, profit_pips, InpBITpProfitPips));
-            //--- Phase-1 stub: logger-only milestone; broker close wires at IMPL-017 / IMPL-062 per ea.md.
+            //--- Phase-1 stub: logger-only milestone; broker close wires at <closed; ref purged fix-round-18 §18.1> per ea.md.
            }
         }
      }

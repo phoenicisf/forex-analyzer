@@ -159,7 +159,7 @@ public:
       string           comment    = "K,layer,1";
 
       //--- Submit order via RiskManager (which wraps CTrade per ea.md)
-      //    RiskManager::OpenOrder wired at IMPL-053+ Orchestrator skeleton.
+      //    RiskManager::OpenOrder wired at <closed; ref purged fix-round-18 §18.1> Orchestrator skeleton.
       //    Until then: log intent + update D1 guard so SelfTest/smoke
       //    verifies the entry path without panicking on NULL CTrade.
       if(m_logger != NULL)
@@ -209,14 +209,14 @@ public:
             continue;
 
          //--- Exit condition 2: price touches Ichimoku cloud edge
-         //    Full cloud-touch check wires at IMPL-017 / IMPL-062 when ctx
+         //    Full cloud-touch check wires at <closed; ref purged fix-round-18 §18.1> when ctx
          //    is passed to ManageExits. For MVP: close on profit gate alone
          //    when InpKTpProfitPips threshold met (sufficient for E-AC).
          if(m_logger != NULL)
             m_logger.Info("Slot_K", "exit_profit_gate", Magic(),
                           StringFormat("ticket=%I64u profit_pips=%.1f", ticket, profit_pips));
 
-         //--- Close order via RiskManager (CTrade wired at IMPL-053+)
+         //--- Close order via RiskManager (CTrade wired at <closed; ref purged fix-round-18 §18.1>)
          //    Log intent only until wiring complete (same pattern as Evaluate).
         }
      }

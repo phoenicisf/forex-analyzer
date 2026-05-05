@@ -80,7 +80,7 @@ public:
    //    boot-time alerts must NEVER be throttled per NFR-5.1 + security.md §Halt).
    //    Called from Orchestrator::Init Phase C (TD-02 §7.4 line 1654):
    //      if (!m_validator.ValidateInputs()) return INIT_FAILED;
-   //    CleanupPartialInit ownership: completed at IMPL-053..060 (Orchestrator)
+   //    CleanupPartialInit ownership: completed at <closed; ref purged fix-round-18 §18.1> (Orchestrator)
    //    per impl-plan.
    bool ValidateInputs() const;
 
@@ -99,7 +99,7 @@ public:
    //
    //    Phase 1 caller: spike-only (Spike_Orchestrator already invokes
    //    IsPhoenicisMagicSelfTest directly; once the Orchestrator OnInit
-   //    Phase B wire is added — Phase 2, IMPL-053..060 / IMPL-062 owner —
+   //    Phase B wire is added — Phase 2, <closed; ref purged fix-round-18 §18.1> / IMPL-062 owner —
    //    that path will call this umbrella instead of the raw helper).
    //    Header-only method; no production caller yet. See EnumTypes.mqh
    //    § "Wiring status" for the honest spike-vs-production matrix.
@@ -553,7 +553,7 @@ bool CBootstrapValidator::DetectDigitMultiplier() const
 //| Called from Orchestrator after PortfolioState::RegisterAll():    |
 //|   if (!m_validator.ValidateSlotRegistry(m_portfolio.MagicCount(),|
 //|                                         17)) return INIT_FAILED; |
-//| (TD-02 §7.4; orchestrator owner = IMPL-053+)                    |
+//| (TD-02 §7.4; orchestrator owner = <closed; ref purged fix-round-18 §18.1>)                    |
 //+------------------------------------------------------------------+
 bool CBootstrapValidator::ValidateSlotRegistry(int observed_count,
                                                int expected_count) const
@@ -581,7 +581,7 @@ bool CBootstrapValidator::ValidateSlotRegistry(int observed_count,
 //|     the umbrella once instead of N separate SelfTests.            |
 //|   - Phase 2: Orchestrator::OnInit Phase B step 1 will call:       |
 //|         if(!m_validator.RunDomainSelfTests()) return INIT_FAILED; |
-//|     before ValidateSymbol. (Owner: IMPL-053..060 / IMPL-062.)     |
+//|     before ValidateSymbol. (Owner: <closed; ref purged fix-round-18 §18.1> / IMPL-062.)     |
 //|                                                                  |
 //| Failure path: per-SelfTest body Prints `[SelfTest][FAIL] …` lines |
 //| identifying which case failed; this method emits one              |

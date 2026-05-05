@@ -51,6 +51,11 @@
 #define TLPROBE_STAGE_COUNT     8
 #define TLPROBE_RING_SIZE       200
 
+// fix-round-18 §18.2 — periodic emit cadence (tunable for short tester runs)
+#ifndef TLPROBE_PERIODIC_EVERY
+#define TLPROBE_PERIODIC_EVERY  1000
+#endif
+
 static const string TLPROBE_STAGE_NAMES[TLPROBE_STAGE_COUNT] =
   {
    "refresh", "ctx_build", "portfolio", "pending",
@@ -64,25 +69,33 @@ class CTickLatencyProbe
   {
 private:
    //--- Per-stage ring buffers + aggregates (mirrors IMPL-066 idiom)
+   //    fix-round-18 §18.6 — counters promoted to ulong to remove the
+   //    INT_MAX overflow surface on multi-yr / stress runs (5-yr ≈ 1.6B
+   //    samples per stage; 10-yr crosses INT_MAX). avg = total_us/count
+   //    cast bug only manifests after overflow, but defensive typing is
+   //    cheap.
    ulong   m_samples[TLPROBE_STAGE_COUNT][TLPROBE_RING_SIZE]; // [stage][slot]
-   int     m_idx[TLPROBE_STAGE_COUNT];          // next write index (mod TLPROBE_RING_SIZE)
+   ulong   m_idx[TLPROBE_STAGE_COUNT];          // next write index (mod TLPROBE_RING_SIZE)
    ulong   m_total_us[TLPROBE_STAGE_COUNT];     // running sum
    ulong   m_max_us[TLPROBE_STAGE_COUNT];       // running max
-   int     m_count[TLPROBE_STAGE_COUNT];         // total samples recorded
+   ulong   m_count[TLPROBE_STAGE_COUNT];        // total samples recorded
 
    //--- Pending start timestamps (one per stage; set on StageStart, read on StageEnd)
    ulong   m_t0[TLPROBE_STAGE_COUNT];
 
-   //--- Tick counter for periodic emit cadence (every 1000 ticks)
-   int     m_tick_count;
+   //--- Tick counter for periodic emit cadence (every TLPROBE_PERIODIC_EVERY ticks)
+   ulong   m_tick_count;
 
    CLogger *m_logger; // borrowed pointer — NOT owned; do not delete
 
    //--- Internal: sort a ring-buffer copy and return quantile value
-   ulong   _Quantile(const int stage, double pct);
+   ulong   _Quantile(const int stage, const double pct);
 
-   //--- Internal: build + emit one report line per stage
+   //--- Internal: build + emit one report line per stage (full per-stage detail)
    void    _EmitReport(const string trigger);
+
+   //--- fix-round-18 §18.2 — single-line periodic summary (no per-stage loop)
+   void    _EmitOneLineSummary(const string trigger);
 
 public:
                      CTickLatencyProbe()
@@ -113,11 +126,18 @@ public:
   };
 
 //--- CTickLatencyProbe::OnTickStart
+//
+// fix-round-18 §18.2 — periodic emit now writes a single Logger.Info line
+// (header summary only); full per-stage detail report is reserved for
+// FinalEmit() at OnDeinit. Honours XS-17.1 hot-path rule "instrumentation
+// NEVER invokes I/O on the hot-path; periodic = Logger only" by reducing
+// 9 Logger.Info calls per cadence to 1, eliminating ~270 µs measurement-
+// pollutes-host spikes from the NFR-2.1 overhead delta.
 void CTickLatencyProbe::OnTickStart()
   {
    m_tick_count++;
-   if(m_tick_count % 1000 == 0)
-      _EmitReport("periodic_1000ticks");
+   if(m_tick_count % TLPROBE_PERIODIC_EVERY == 0)
+      _EmitOneLineSummary("periodic_checkpoint");
   }
 
 //--- CTickLatencyProbe::StageStart
@@ -138,15 +158,15 @@ void CTickLatencyProbe::StageEnd(const int stage)
    // Accumulate per-stage ring + aggregates (IMPL-066 idiom)
    m_total_us[stage] += dt;
    if(dt > m_max_us[stage]) m_max_us[stage] = dt;
-   m_samples[stage][m_idx[stage] % TLPROBE_RING_SIZE] = dt;
+   m_samples[stage][(int)(m_idx[stage] % (ulong)TLPROBE_RING_SIZE)] = dt;
    m_idx[stage]++;
    m_count[stage]++;
   }
 
 //--- CTickLatencyProbe::_Quantile — sort ring copy, return floor(pct * n) element
-ulong CTickLatencyProbe::_Quantile(const int stage, double pct)
+ulong CTickLatencyProbe::_Quantile(const int stage, const double pct)
   {
-   int n = MathMin(m_count[stage], TLPROBE_RING_SIZE);
+   int n = (int)MathMin(m_count[stage], (ulong)TLPROBE_RING_SIZE);
    if(n <= 0) return 0;
 
    ulong buf[];
@@ -180,7 +200,7 @@ void CTickLatencyProbe::_EmitReport(const string trigger)
 
    // Header line
    m_logger.Info("system", "tick_latency_report", 0,
-                 StringFormat("trigger=%s ticks=%d", trigger, m_tick_count));
+                 StringFormat("trigger=%s ticks=%llu", trigger, m_tick_count));
 
    // Per-stage lines
    for(int s = 0; s < TLPROBE_STAGE_COUNT; s++)
@@ -193,17 +213,31 @@ void CTickLatencyProbe::_EmitReport(const string trigger)
          continue;
         }
 
-      ulong avg_us = (m_count[s] > 0) ? (ulong)(m_total_us[s] / (ulong)m_count[s]) : 0;
+      ulong avg_us = (m_count[s] > 0) ? (m_total_us[s] / m_count[s]) : 0;
       ulong p95_us = _Quantile(s, 0.95);
       ulong p99_us = _Quantile(s, 0.99);
       ulong max_us = m_max_us[s];
-      int   n      = m_count[s];
+      ulong n      = m_count[s];
 
       m_logger.Info("system", "tick_latency_report", 0,
-                    StringFormat("  stage=%-12s n=%d avg=%luus p95=%luus p99=%luus max=%luus",
+                    StringFormat("  stage=%-12s n=%llu avg=%lluus p95=%lluus p99=%lluus max=%lluus",
                                  TLPROBE_STAGE_NAMES[s], n,
                                  avg_us, p95_us, p99_us, max_us));
      }
+  }
+
+//--- CTickLatencyProbe::_EmitOneLineSummary — fix-round-18 §18.2
+//
+// One Logger.Info line; no per-stage loop, no _Quantile calls. Operator
+// reads "ticks=N (per-stage detail at OnDeinit)" and waits for FinalEmit
+// for the full report. Keeps periodic checkpoint cost to ~30 µs (single
+// Print + file write) instead of ~270 µs (9 calls + 8× insertion-sort).
+void CTickLatencyProbe::_EmitOneLineSummary(const string trigger)
+  {
+   if(m_logger == NULL) return;
+   m_logger.Info("system", "tick_latency_periodic", 0,
+                 StringFormat("trigger=%s ticks=%llu (per-stage detail at OnDeinit)",
+                              trigger, m_tick_count));
   }
 
 //--- CTickLatencyProbe::FinalEmit

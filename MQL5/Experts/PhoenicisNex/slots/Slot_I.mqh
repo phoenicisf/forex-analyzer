@@ -283,10 +283,10 @@ void CSlotI::Evaluate(const MarketContext &ctx, CPortfolioState &port)
                               InpIFibLevel, (g_dir == POSITION_TYPE_BUY ? "G_BUY" : "G_SELL")));
 
    //--- CrossSlotCoordinator stub
-   if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (IMPL-017 / IMPL-062) */)
+   if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (<closed; ref purged fix-round-18 §18.1>) */)
      {
       //--- Stub: Fibonacci parasite coupling
-      //    wires at IMPL-017 / IMPL-062 (cross-slot coupling per ea.md).
+      //    wires at <closed; ref purged fix-round-18 §18.1> (cross-slot coupling per ea.md).
      }
   }
 
@@ -341,15 +341,15 @@ void CSlotI::ManageExits(CPortfolioState &port)
                                     ticket, profit_pips, InpITpProfitPips));
 
          //--- Phase-1 stub: logger-only milestone; broker close wires at
-         //    IMPL-017 / IMPL-062 (RiskManager::OpenOrder) per ea.md.
+         //    <closed; ref purged fix-round-18 §18.1> (RiskManager::OpenOrder) per ea.md.
          //    Evidence for E-AC [log-assertion]: above Info log is the observable milestone.
         }
 
       //--- CrossSlotCoordinator stub
-      if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (IMPL-017 / IMPL-062) */)
+      if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (<closed; ref purged fix-round-18 §18.1>) */)
         {
          //--- Stub: orphan-guard coupling (close I when parent G closes)
-         //    wires at IMPL-017 / IMPL-062 (cross-slot coupling per ea.md).
+         //    wires at <closed; ref purged fix-round-18 §18.1> (cross-slot coupling per ea.md).
         }
      }
   }
