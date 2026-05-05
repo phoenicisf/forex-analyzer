@@ -10,10 +10,10 @@
 //|   - Get / Count / ReleaseAll accessors                            |
 //|   - SelfTest with negative + positive stub slots                 |
 //|                                                                  |
-//| Deferred to IMPL-019..039 wiring:                                 |
-//|   - RegisterAll() — instantiates 21 derived slots; current stub  |
+//| Wiring (now landed via slot batch + Orchestrator closure):       |
+//|   - RegisterAll() — instantiates 21 derived slots; stub still    |
 //|     accepts manual Add() of pre-built CSlotBase* for SelfTest +  |
-//|     for any pre-IMPL-053 Orchestrator harness                    |
+//|     for spike/harness paths that pre-date the Orchestrator wire  |
 //|   - ValidateDependencyOrder() — BR-2.2 literal-order check       |
 //|     (vacuously true for empty registry; full check ตอน 21 slots) |
 //|                                                                  |
@@ -75,8 +75,8 @@ private:
      {
       // Stub-safe path: with 0 or 1 slot registered, dependency order
       // is vacuously satisfied. For multi-slot harnesses (SelfTest +
-      // future IMPL-053 Orchestrator wiring), perform the literal-
-      // index-precedes-relation check using DependsOn().
+      // Orchestrator wiring path), perform the literal-index-precedes-
+      // relation check using DependsOn().
       if(m_count <= 1)
          return true;
 

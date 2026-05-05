@@ -141,7 +141,7 @@ int CSlotH::_CountHOrders(CPortfolioState &port) const
 //|   - OR order age > InpHMaxAgeBars H4 bars (8-bar age gate)        |
 //|                                                                   |
 //| Phase-1 stub: log-intent only — actual close goes through         |
-//| RiskManager wrapper at <closed; ref purged fix-round-18 §18.1> (ea.md: ALL CTrade calls via     |
+//| RiskManager wrapper at Phase-2 wiring; see docs/state/deferred-ac-registry.md (ea.md: ALL CTrade calls via     |
 //| RiskManager). Pattern mirrors 17 sibling slots (Slot_BR canonical)|
 //+------------------------------------------------------------------+
 void CSlotH::_TryExit(ulong ticket, double open_price, datetime open_time,
@@ -162,7 +162,7 @@ void CSlotH::_TryExit(ulong ticket, double open_price, datetime open_time,
    bool should_exit = (profit_pips >= InpHTpMinPips) || (age_bars > InpHMaxAgeBars);
    if(!should_exit) return;
 
-   //--- Phase-1 stub: log intent — m_risk.CloseOrder(ticket) wires at <closed; ref purged fix-round-18 §18.1>
+   //--- Phase-1 stub: log intent — m_risk.CloseOrder(ticket) wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md
    //    Observable milestone for E-AC [log-assertion] when wired.
    if(m_logger != NULL)
       m_logger.Info("Slot_H", "exit_profit_gate", MAGIC_H,
@@ -238,7 +238,7 @@ void CSlotH::Evaluate(const MarketContext &ctx, CPortfolioState &port)
 
    //--- Submit order via RiskManager wrapper (ea.md: ALL CTrade calls
    //    through RiskManager — slots ห้าม instantiate CTrade ตรง).
-   //    Phase-1 stub: log intent only; m_risk.OpenOrderH(...) wires at <closed; ref purged fix-round-18 §18.1>.
+   //    Phase-1 stub: log intent only; m_risk.OpenOrderH(...) wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md.
    //    SL is computed (not naked 0) so when wiring lands the stop-loss is
    //    threaded into OrderSend; mirrors 17 sibling slots (e.g. Slot_B sl_price).
    ENUM_ORDER_TYPE order_type = is_buy ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;

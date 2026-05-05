@@ -19,7 +19,7 @@
 //|                                                                   |
 //| M-size MVP — header-only contract scaffold:                       |
 //|   Slot J is a CD-follower (CodeWiki §3.J) — its full entry        |
-//|   pipeline runs in CrossSlotCoordinator (<closed; ref purged fix-round-18 §18.1>) which wires   |
+//|   pipeline runs in CrossSlotCoordinator (Phase-2 wiring; see docs/state/deferred-ac-registry.md) which wires   |
 //|   CD-entry → J follower invocation. Until then Evaluate() is a    |
 //|   no-op beyond enable + service-wired guards. ManageExits is      |
 //|   the active surface — it MUST iterate MAGIC_J (G4 fix) and is    |
@@ -80,7 +80,7 @@ public:
    virtual string        SlotId() const override { return "J"; }
 
    //--- 3. Evaluate — CD-follower (real signal arrives via CrossSlotCoordinator
-   //       at <closed; ref purged fix-round-18 §18.1>); early-return guard in Phase 1 MVP
+   //       at Phase-2 wiring; see docs/state/deferred-ac-registry.md); early-return guard in Phase 1 MVP
    virtual void          Evaluate(const MarketContext &ctx, CPortfolioState &port) override;
 
    //--- 4. ManageExits — exit pass; called in BOTH RUNNING + HALTED (ADR-010)
@@ -114,7 +114,7 @@ bool CSlotJ::_HasActiveJOrder(CPortfolioState &port) const
 //| Evaluate — Slot J entry pass (CD-follower; early-return guard)    |
 //|                                                                   |
 //| Phase 1 MVP: J entry signal is wired from CD-entry events via     |
-//| CrossSlotCoordinator (<closed; ref purged fix-round-18 §18.1>). Until then Evaluate is a no-op  |
+//| CrossSlotCoordinator (Phase-2 wiring; see docs/state/deferred-ac-registry.md). Until then Evaluate is a no-op  |
 //| beyond enable + service-wired guards. ManageExits remains active. |
 //|                                                                   |
 //| When IMPL-053 activates:                                          |
@@ -126,7 +126,7 @@ bool CSlotJ::_HasActiveJOrder(CPortfolioState &port) const
 void CSlotJ::Evaluate(const MarketContext &ctx, CPortfolioState &port)
   {
    //--- Sub-call guard: early-return when not enabled or service not wired
-   //    (Phase 1 MVP — real signal arrives via CrossSlotCoordinator at <closed; ref purged fix-round-18 §18.1>)
+   //    (Phase 1 MVP — real signal arrives via CrossSlotCoordinator at Phase-2 wiring; see docs/state/deferred-ac-registry.md)
    if(!InpEnableSlotJ) return;
    if(m_risk == NULL || m_logger == NULL) return;
 
@@ -134,7 +134,7 @@ void CSlotJ::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    if(_HasActiveJOrder(port)) return;
 
    //--- Phase-1 stub: no entry signal in main topo —
-   //    CD-follower sub-call wires at <closed; ref purged fix-round-18 §18.1>
+   //    CD-follower sub-call wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md
    //    (cross-slot coupling per ea.md) via CrossSlotCoordinator.
    //    Observable E-AC milestone for [log-assertion] once that wires:
    //
@@ -146,10 +146,10 @@ void CSlotJ::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //                               lot, InpJSlPipsFloor, comment));
    //
    //--- CrossSlotCoordinator stub: coupling from CD-entry → J follower
-   if(m_xslot != NULL && false /* enable when CrossSlotCoordinator wires CD→J (<closed; ref purged fix-round-18 §18.1>) */)
+   if(m_xslot != NULL && false /* enable when CrossSlotCoordinator wires CD→J (Phase-2 wiring; see docs/state/deferred-ac-registry.md) */)
      {
       //--- Stub: J activation from CD-entry event
-      //    wires at <closed; ref purged fix-round-18 §18.1> (cross-slot coupling per ea.md).
+      //    wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md (cross-slot coupling per ea.md).
      }
   }
 
@@ -226,7 +226,7 @@ void CSlotJ::ManageExits(CPortfolioState &port)
                                     ticket, profit_pips, InpJTpProfitPips, g4_tag));
 
          //--- Phase-1 stub: logger-only milestone; broker close wires at
-         //    <closed; ref purged fix-round-18 §18.1> (RiskManager::OpenOrder) per ea.md.
+         //    Phase-2 wiring; see docs/state/deferred-ac-registry.md (RiskManager::OpenOrder) per ea.md.
          //    G4 fix attestation: this code path is reached for MAGIC_J tickets
          //    (the original bug iterated MagicF and never reached here for J).
         }

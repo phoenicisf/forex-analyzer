@@ -243,7 +243,7 @@ void CSlotG2::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    req.tp           = tp_price;
    req.comment      = comment;
    req.magic        = MAGIC_G;
-   req.type_filling = ORDER_FILLING_FOK;   // filling mode set per broker detection at <closed; ref purged fix-round-18 §18.1> (RiskManager::OpenOrder)
+   req.type_filling = ORDER_FILLING_FOK;   // filling mode set per broker detection at Phase-2 wiring; see docs/state/deferred-ac-registry.md (RiskManager::OpenOrder)
 
    //--- fix-round-12 § 12.8 — Phase 1 emits entry_signal Logger.Info as
    //    the observable milestone; actual OrderSend lives in
@@ -255,10 +255,10 @@ void CSlotG2::Evaluate(const MarketContext &ctx, CPortfolioState &port)
                               (buySignal ? "BUY" : "SELL"), lot, sl_pips, price, sl_price, comment));
 
    //--- CrossSlotCoordinator stub
-   if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (<closed; ref purged fix-round-18 §18.1>) */)
+   if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (Phase-2 wiring; see docs/state/deferred-ac-registry.md) */)
      {
       //--- Stub: coupling to G-overload signal
-      //    wires at <closed; ref purged fix-round-18 §18.1> (cross-slot coupling per ea.md).
+      //    wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md (cross-slot coupling per ea.md).
      }
   }
 
@@ -309,7 +309,7 @@ void CSlotG2::ManageExits(CPortfolioState &port)
                                     ticket, profit_pips, InpG2TpProfitPips));
 
          //--- Phase-1 stub: logger-only milestone; broker close wires at
-         //    <closed; ref purged fix-round-18 §18.1> (RiskManager::OpenOrder) per ea.md.
+         //    Phase-2 wiring; see docs/state/deferred-ac-registry.md (RiskManager::OpenOrder) per ea.md.
          //    Evidence for E-AC [log-assertion]: above Info log is the observable milestone.
         }
 

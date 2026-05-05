@@ -13,7 +13,7 @@
 //|   returns (sub-call only guard). ManageExits: profit-gate close   |
 //|   pattern mirroring Slot_GO.                                       |
 //|                                                                  |
-//| Activation: <closed; ref purged fix-round-18 §18.1> (CrossSlotCoordinator wires Slot_B's        |
+//| Activation: Phase-2 wiring; see docs/state/deferred-ac-registry.md (CrossSlotCoordinator wires Slot_B's        |
 //|   ManageExits BR-trigger stub `false /*IMPL-053*/` → TriggerBR    |
 //|   → BusinessLogic_BR equivalent on this slot).                    |
 //|                                                                  |
@@ -122,7 +122,7 @@ public:
 void CSlotBR::Evaluate(const MarketContext &ctx, CPortfolioState &port)
   {
    //--- Sub-call guard: early-return when not enabled or service not wired
-   //    (Phase 1 MVP — real signal arrives from TriggerBR at <closed; ref purged fix-round-18 §18.1>)
+   //    (Phase 1 MVP — real signal arrives from TriggerBR at Phase-2 wiring; see docs/state/deferred-ac-registry.md)
    if(!InpEnableSlotBR) return;
    if(m_logger == NULL) return;
 
@@ -130,7 +130,7 @@ void CSlotBR::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    if(_CountBROrders(port) >= InpBRMaxOrders) return;
 
    //--- Phase-1 stub: no entry signal in main topo — TriggerBR sub-call
-   //    wires at <closed; ref purged fix-round-18 §18.1> (cross-slot coupling per ea.md).
+   //    wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md (cross-slot coupling per ea.md).
    //    Observable milestone for E-AC [log-assertion] once that wires:
    //
    //    double balance  = AccountInfoDouble(ACCOUNT_BALANCE);
@@ -141,10 +141,10 @@ void CSlotBR::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //                               lot, InpBRSlPipsFloor, comment));
    //
    //--- CrossSlotCoordinator stub: coupling from B → BR sub-call
-   if(m_xslot != NULL && false /* enable when TriggerBR wired per BR-2.2 (<closed; ref purged fix-round-18 §18.1>) */)
+   if(m_xslot != NULL && false /* enable when TriggerBR wired per BR-2.2 (Phase-2 wiring; see docs/state/deferred-ac-registry.md) */)
      {
       //--- Stub: BR activation from B's ExtraTakeProfit_B
-      //    wires at <closed; ref purged fix-round-18 §18.1> (cross-slot coupling per ea.md).
+      //    wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md (cross-slot coupling per ea.md).
      }
   }
 
@@ -192,7 +192,7 @@ void CSlotBR::ManageExits(CPortfolioState &port)
                                     ticket, profit_pips, InpBRTpProfitPips));
 
          //--- Phase-1 stub: logger-only milestone; broker close wires at
-         //    <closed; ref purged fix-round-18 §18.1> (RiskManager::OpenOrder) per ea.md.
+         //    Phase-2 wiring; see docs/state/deferred-ac-registry.md (RiskManager::OpenOrder) per ea.md.
          //    Evidence for E-AC [log-assertion]: above Info log is the observable milestone.
         }
      }

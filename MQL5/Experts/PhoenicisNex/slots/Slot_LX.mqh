@@ -184,10 +184,10 @@ public:
                                  lot, price, sl_price, comment));
 
       //--- CrossSlotCoordinator stub
-      if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (<closed; ref purged fix-round-18 §18.1>) */)
+      if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (Phase-2 wiring; see docs/state/deferred-ac-registry.md) */)
         {
          //--- Stub: LX pyramid coupling
-         //    wires at <closed; ref purged fix-round-18 §18.1> (cross-slot coupling per ea.md).
+         //    wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md (cross-slot coupling per ea.md).
         }
      }
 
@@ -226,7 +226,7 @@ public:
                                        ticket, profit_pips, InpLXTpProfitPips,
                                        pos_comment));
 
-            //--- Phase-1 stub: logger-only milestone; broker close wires at <closed; ref purged fix-round-18 §18.1> per ea.md.
+            //--- Phase-1 stub: logger-only milestone; broker close wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md per ea.md.
            }
         }
      }

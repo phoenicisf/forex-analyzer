@@ -295,7 +295,7 @@ double CSlotP::_TpPipsForSubMode(const string &comment) const
 //|                                  in Orchestrator step 8.          |
 //|                                                                   |
 //| NOTE: Phase-1 emits entry_signal Logger.Info; OrderSend wires at  |
-//|       <closed; ref purged fix-round-18 §18.1> (RiskManager::OpenOrder) per ea.md.     |
+//|       Phase-2 wiring; see docs/state/deferred-ac-registry.md (RiskManager::OpenOrder) per ea.md.     |
 //+------------------------------------------------------------------+
 void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
   {
@@ -343,14 +343,14 @@ void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
             //--- fix-round-12 § 12.8 — Phase 1 emits entry_signal_pyramid
             //    Logger.Info as the observable milestone; actual OrderSend
             //    lives in `RiskManager::OpenOrder` per `.claude/rules/ea.md`
-            //    (<closed; ref purged fix-round-18 §18.1> 5-yr regression). Slot_BI / Slot_R
+            //    (Phase-2 wiring; see docs/state/deferred-ac-registry.md 5-yr regression). Slot_BI / Slot_R
             //    follow the same pattern. (review-round-07 Finding 07.4)
             string comment = "PI,MA,E,1,SL";
             string dir_str = parent_isBuy ? "BUY" : "SELL";
             m_logger.Info("SlotP", "entry_signal_pyramid", MAGIC_P,
                           StringFormat("sub_mode=E dir=%s lot=%.2f sl_pips=%.1f "
                                        "price=%.5f sl=%.5f comment=%s parent_open=%.5f "
-                                       "(Phase 1 logger-only; OrderSend at <closed; ref purged fix-round-18 §18.1>)",
+                                       "(Phase 1 logger-only; OrderSend at Phase-2 wiring; see docs/state/deferred-ac-registry.md)",
                                        dir_str, lot, sl_pips, price, sl_price,
                                        comment, parent_open));
            }
@@ -479,7 +479,7 @@ void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       m_logger.Info("SlotP", "entry_signal", MAGIC_P,
                     StringFormat("sub_mode=%s dir=%s lot=%.2f sl_pips=%.1f "
                                  "price=%.5f sl=%.5f comment=%s "
-                                 "(Phase 1 logger-only; OrderSend at <closed; ref purged fix-round-18 §18.1>)",
+                                 "(Phase 1 logger-only; OrderSend at Phase-2 wiring; see docs/state/deferred-ac-registry.md)",
                                  sub_str, (isBuy ? "BUY" : "SELL"), lot, sl_pips,
                                  price, sl_price, comment));
 
@@ -495,7 +495,7 @@ void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
 //| Iterates own P + PI tickets, picks profit-gate pip threshold via  |
 //| comment 3rd CSV field ("PX"/"PH"/"E"), emits exit_profit_gate     |
 //| log-intent on threshold breach. Real OrderClose deferred to       |
-//| Orchestrator wiring (<closed; ref purged fix-round-18 §18.1>).                                  |
+//| Orchestrator wiring (Phase-2 wiring; see docs/state/deferred-ac-registry.md).                                  |
 //+------------------------------------------------------------------+
 void CSlotP::ManageExits(CPortfolioState &port)
   {
@@ -546,7 +546,7 @@ void CSlotP::ManageExits(CPortfolioState &port)
                        StringFormat("ticket=%I64u comment=%s profit_pips=%.1f "
                                     ">= gate=%.1f → close",
                                     ticket, c, profit_pips, gate));
-         //--- Phase-1 stub: logger-only milestone; broker close wires at <closed; ref purged fix-round-18 §18.1> per ea.md.
+         //--- Phase-1 stub: logger-only milestone; broker close wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md per ea.md.
         }
      }
 
@@ -572,7 +572,7 @@ void CSlotP::ManageExits(CPortfolioState &port)
                        StringFormat("ticket=%I64u sub_mode=E profit_pips=%.1f "
                                     ">= gate=%.1f → close",
                                     ticket, profit_pips, InpPTpPipsE));
-         //--- Phase-1 stub: logger-only milestone; broker close wires at <closed; ref purged fix-round-18 §18.1> per ea.md.
+         //--- Phase-1 stub: logger-only milestone; broker close wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md per ea.md.
         }
      }
   }

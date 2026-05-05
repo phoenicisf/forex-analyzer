@@ -20,7 +20,7 @@
 //|   See impl-plan IMPL-063 (P4 G4-fixes-on regression run).         |
 //|                                                                   |
 //| M-size MVP — header-only contract scaffold                        |
-//|   Real activation: <closed; ref purged fix-round-18 §18.1> (CrossSlotCoordinator wires CD-open  |
+//|   Real activation: Phase-2 wiring; see docs/state/deferred-ac-registry.md (CrossSlotCoordinator wires CD-open  |
 //|   → J follower entry). Phase 1 Evaluate early-returns.            |
 //+------------------------------------------------------------------+
 #ifndef PHOENICISNEX_INPUTS_SLOT_J_MQH

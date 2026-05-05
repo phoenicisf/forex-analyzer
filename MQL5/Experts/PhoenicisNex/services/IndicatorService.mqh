@@ -296,10 +296,10 @@ bool CIndicatorService::CreateHandles()
 //| Called: OnTick step 1 (per TD-02 §5.1 OnTick contract)          |
 //| Performance: no heap allocation (ea.md §4 hot-path rule)        |
 //|                                                                  |
-//| TODO IMPL-005-refresh: CopyBuffer × N handles per OnTick contract |
-//|   Full implementation deferred to IMPL-006 (MarketContextBuilder) |
-//|   which defines per-buffer layout. IndicatorService exposes       |
-//|   GetHandle(IDX_*) for MCB to call CopyBuffer directly.          |
+//| Note: CopyBuffer × N handles per OnTick contract is performed by  |
+//|   the MarketContextBuilder consumer (per-buffer layout owned       |
+//|   there). IndicatorService exposes GetHandle(IDX_*) for MCB to   |
+//|   call CopyBuffer directly.                                       |
 //+------------------------------------------------------------------+
 void CIndicatorService::Refresh()
   {

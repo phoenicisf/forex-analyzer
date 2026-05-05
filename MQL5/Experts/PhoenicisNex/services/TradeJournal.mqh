@@ -86,7 +86,7 @@ private:
    //--- IMPL-066: NFR-2.2 ≥200-sample latency aggregates
    ulong                  m_latency_total_us;
    ulong                  m_latency_max_us;
-   int                    m_latency_count;
+   ulong                  m_latency_count;   // fix-round-19 §19.3 int → ulong (overflow surface)
    ulong                  m_latency_samples[200];    // ring buffer, last 200 elapsed_us
    int                    m_latency_samples_idx;
    int                    m_latency_samples_filled;  // clamps to ≤ 200
@@ -609,7 +609,7 @@ void CTradeJournal::EmitLatencyReport(bool emit_sidecar)
       return;
 
    //--- compute avg
-   ulong avg_us = m_latency_total_us / (ulong)m_latency_count;
+   ulong avg_us = m_latency_total_us / m_latency_count;
 
    //--- compute p95 via local copy + sort
    ulong local_samples[];
@@ -627,7 +627,7 @@ void CTradeJournal::EmitLatencyReport(bool emit_sidecar)
    if(m_logger != NULL)
      {
       m_logger.Info("system", "journal_latency_report", 0,
-                    StringFormat("writes=%d avg_us=%llu p95_us=%llu max_us=%llu",
+                    StringFormat("writes=%llu avg_us=%llu p95_us=%llu max_us=%llu",
                                  m_latency_count, avg_us, p95_us, m_latency_max_us));
 
       //--- per-event-type rows
@@ -658,7 +658,7 @@ void CTradeJournal::EmitLatencyReport(bool emit_sidecar)
       //--- build JSON body
       CJsonWriter w;
       w.Begin();
-      w.WriteInt("writes",   m_latency_count);
+      w.WriteInt("writes",   (long)m_latency_count);
       w.WriteInt("avg_us",   (long)avg_us);
       w.WriteInt("p95_us",   (long)p95_us);
       w.WriteInt("max_us",   (long)m_latency_max_us);

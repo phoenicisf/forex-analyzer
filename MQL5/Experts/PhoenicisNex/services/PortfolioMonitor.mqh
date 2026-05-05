@@ -203,8 +203,8 @@ void CPortfolioMonitor::Update(double current_equity, datetime now)
 //| Note on deferral: SetXxx calls on real StatePersistence require   |
 //| a fully wired Orchestrator environment (OnInit phase C complete). |
 //| These calls are guarded-out here by passing NULL m_state.        |
-//| Full [db-inspect] E-AC deferred to IMPL-018+ orchestrator wiring |
-//| per header-only precedent (IMPL-005/007/011 pattern).            |
+//| Full [db-inspect] E-AC exercised via the Orchestrator wiring     |
+//| path (now landed); SelfTest here covers the structural half.    |
 //+------------------------------------------------------------------+
 bool CPortfolioMonitor::SelfTest()
   {

@@ -56,7 +56,7 @@
 //|   no existing B order.                                          |
 //|                                                                  |
 //| Exit logic: profit >= InpBTpProfitPips (50 pip default) +       |
-//|   STUBBED BR-trigger hook (<closed; ref purged fix-round-18 §18.1> via CrossSlotCoordinator).|
+//|   STUBBED BR-trigger hook (Phase-2 wiring; see docs/state/deferred-ac-registry.md via CrossSlotCoordinator).|
 //| Comment prefix: "B," — BI uses "BI," (IMPL-039 disambig).      |
 //+------------------------------------------------------------------+
 class CSlotB : public CSlotBase
@@ -206,7 +206,7 @@ public:
       string           comment    = "B,anti,1";
 
       //--- Submit order via RiskManager (which wraps CTrade per ea.md)
-      //    RiskManager::OpenOrder wired at <closed; ref purged fix-round-18 §18.1> Orchestrator skeleton.
+      //    RiskManager::OpenOrder wired at Phase-2 wiring; see docs/state/deferred-ac-registry.md Orchestrator skeleton.
       //    Until then: log intent so SelfTest/smoke verifies entry path
       //    without panicking on NULL CTrade.
       if(m_logger != NULL)
@@ -218,7 +218,7 @@ public:
 
    //--- 4. ManageExits() — exit pass; runs in BOTH RUNNING and HALTED
    //    per ADR-010. Exit condition: profit >= InpBTpProfitPips.
-   //    Hosts BR-trigger (post-close) + BI pyramid hooks (stubbed <closed; ref purged fix-round-18 §18.1>).
+   //    Hosts BR-trigger (post-close) + BI pyramid hooks (stubbed Phase-2 wiring; see docs/state/deferred-ac-registry.md).
    //    Uses canonical PortfolioState.GetTicketsForSlot + PositionSelectByTicket
    //    pattern (Slot_BR canonical) per ADR-005 + ADR-012. Open positions are
    //    accessed via Position* APIs — Order* APIs would walk the pending-order
@@ -264,7 +264,7 @@ public:
                           StringFormat("ticket=%I64u profit_pips=%.1f",
                                        ticket, profit_pips));
 
-         //--- Phase-1 stub: m_risk.CloseOrder(ticket) wires at <closed; ref purged fix-round-18 §18.1>
+         //--- Phase-1 stub: m_risk.CloseOrder(ticket) wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md
          //    Post-close BR-trigger hook (BR-2.2 orphan exit-only spawn);
          //    fires AFTER OrderClose returns per CodeWiki §3.18 contract.
          //    Gated `false` keeps G1 compile clean per Slot_G precedent.

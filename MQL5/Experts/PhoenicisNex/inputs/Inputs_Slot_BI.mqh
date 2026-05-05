@@ -12,7 +12,7 @@
 //|   from parent B's pip distance applied at BI entry price (NOT     |
 //|   naked SL=0 per CodeWiki §6.2 :20326 :20357 baseline bug).      |
 //|                                                                  |
-//| Real activation: <closed; ref purged fix-round-18 §18.1> Composition Root + RiskManager        |
+//| Real activation: Phase-2 wiring; see docs/state/deferred-ac-registry.md Composition Root + RiskManager        |
 //|   OrderSend wiring + Tester run.                                  |
 //+------------------------------------------------------------------+
 #ifndef PHOENICISNEX_INPUTS_SLOT_BI_MQH

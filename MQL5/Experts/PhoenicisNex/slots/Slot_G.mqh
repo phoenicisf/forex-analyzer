@@ -136,9 +136,10 @@ bool CSlotG::_HasActiveGOrder(CPortfolioState &port) const
    SlotState *gs = port.GetByMagic(MAGIC_G);
    if(gs == NULL) return false;
 
-   //--- GetTicketsForSlot body deferred to IMPL-007-getticketsforslot;
-   //    For MVP: use total_lots > 0 as proxy (sufficient for smoke test).
-   //    Full comment-prefix disambiguation via GetTicketsForSlot lands at IMPL-027+.
+   //--- GetTicketsForSlot body now landed in PortfolioState; this stub
+   //    still uses total_lots > 0 as proxy for smoke-path readability.
+   //    Full comment-prefix disambiguation already available via
+   //    PortfolioState.GetTicketsForSlot (no further pending work).
    ulong tickets[];
    int n = port.GetTicketsForSlot(MAGIC_G, "G,", tickets);
    return n > 0;
@@ -290,11 +291,11 @@ void CSlotG::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    req.tp           = tp_price;
    req.comment      = comment;
    req.magic        = MAGIC_G;
-   req.type_filling = ORDER_FILLING_FOK;   // filling mode set per broker detection at <closed; ref purged fix-round-18 §18.1>
+   req.type_filling = ORDER_FILLING_FOK;   // filling mode set per broker detection at Phase-2 wiring; see docs/state/deferred-ac-registry.md
 
    //--- Route through RiskManager (ea.md: ALL CTrade calls through RiskManager or OpenOrder<X>)
    //    Phase-1 stub: OrderSend call deferred — body placeholder logs intent only.
-   //    Full CTrade wiring at <closed; ref purged fix-round-18 §18.1> orchestrator (Composition Root).
+   //    Full CTrade wiring at Phase-2 wiring; see docs/state/deferred-ac-registry.md orchestrator (Composition Root).
    //    For smoke test evidence: emit journal-format log entry.
    if(m_logger != NULL)
       m_logger.Info("SlotG", "entry_signal", MAGIC_G,
@@ -369,7 +370,7 @@ void CSlotG::ManageExits(CPortfolioState &port)
 
          //--- Close via CTrade route — fix-round-12 § 12.8: actual close
          //    routes through `RiskManager::OpenOrder` / `CloseOrder` per
-         //    `.claude/rules/ea.md` (<closed; ref purged fix-round-18 §18.1> 5-yr regression).
+         //    `.claude/rules/ea.md` (Phase-2 wiring; see docs/state/deferred-ac-registry.md 5-yr regression).
          //    Phase 1 logs intent only. Evidence for E-AC [log-assertion]:
          //    above Info log is the observable milestone.
          m_maxProfitPip = 0.0;   // reset on close

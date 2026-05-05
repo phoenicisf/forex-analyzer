@@ -238,9 +238,9 @@ public:
    //|   - WriteBool / WriteNull / WriteRaw / WriteDouble / WriteInt   |
    //|                                                                 |
    //| NOTE on E-AC [contract-roundtrip]:                              |
-   //|   Full round-trip (serialize → write .jsonl → jq . parse)      |
-   //|   is deferred to orchestrator/journal-write runtime (IMPL-043+) |
-   //|   and runtime jq validation at G4 gate (IMPL-018+).            |
+   //|   Full round-trip (serialize → write .jsonl → jq . parse) is   |
+   //|   exercised at orchestrator/journal-write runtime (now wired    |
+   //|   through CTradeJournal.WriteEvent) and at G4 gate jq audits.  |
    //|   This selftest satisfies the structural portion via StringFind |
    //|   re-parse within MQL5 — sufficient for header-only phase.     |
    //|                                                                 |

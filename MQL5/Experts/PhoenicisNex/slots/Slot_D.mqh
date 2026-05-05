@@ -207,7 +207,7 @@ void CSlotD::ManageExits(CPortfolioState &port)
                                     ticket, profit_pips, InpCTpProfitPips));
 
          //--- Phase-1 stub: logger-only milestone; broker close wires at
-         //    <closed; ref purged fix-round-18 §18.1> (RiskManager::OpenOrder) per ea.md.
+         //    Phase-2 wiring; see docs/state/deferred-ac-registry.md (RiskManager::OpenOrder) per ea.md.
         }
      }
   }

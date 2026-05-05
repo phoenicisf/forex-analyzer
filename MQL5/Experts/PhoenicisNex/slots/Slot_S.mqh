@@ -31,7 +31,7 @@
 //|                                                                   |
 //| Exit (ManageExits):                                               |
 //|   - Profit gate >= InpSTpProfitPips (35 pip default)              |
-//|   Stub: log exit_profit_gate intent; OrderClose deferred <closed; ref purged fix-round-18 §18.1> |
+//|   Stub: log exit_profit_gate intent; OrderClose deferred Phase-2 wiring; see docs/state/deferred-ac-registry.md |
 //|                                                                   |
 //| Lot: RiskManager::ComputeLot("S", InpSSlPips, balance)            |
 //| Comment: "S,post,1" per CodeWiki §3.S "S,..." pattern             |
@@ -224,7 +224,7 @@ void CSlotS::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //    fix-round-12 § 12.8 — Phase 1 architectural choice: slots emit
    //    `entry_signal` Logger.Info as the observable milestone; actual
    //    OrderSend wiring lives in `RiskManager::OpenOrder` per
-   //    `.claude/rules/ea.md` (<closed; ref purged fix-round-18 §18.1> 5-yr regression).
+   //    `.claude/rules/ea.md` (Phase-2 wiring; see docs/state/deferred-ac-registry.md 5-yr regression).
    //    Observable milestone for E-AC [log-assertion]:
    MqlTradeRequest req = {};
    req.action    = TRADE_ACTION_DEAL;
@@ -246,10 +246,10 @@ void CSlotS::Evaluate(const MarketContext &ctx, CPortfolioState &port)
                               ctx.adx_h4.adx, ctx.wpr_h4.wpr, trend_dir));
 
    //--- CrossSlotCoordinator stub
-   if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (<closed; ref purged fix-round-18 §18.1>) */)
+   if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (Phase-2 wiring; see docs/state/deferred-ac-registry.md) */)
      {
       //--- Stub: S post-close coupling
-      //    wires at <closed; ref purged fix-round-18 §18.1> (cross-slot coupling per ea.md).
+      //    wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md (cross-slot coupling per ea.md).
      }
   }
 
@@ -304,15 +304,15 @@ void CSlotS::ManageExits(CPortfolioState &port)
                                     ticket, profit_pips, InpSTpProfitPips));
 
          //--- Phase-1 stub: logger-only milestone; broker close wires at
-         //    <closed; ref purged fix-round-18 §18.1> (RiskManager::OpenOrder) per ea.md.
+         //    Phase-2 wiring; see docs/state/deferred-ac-registry.md (RiskManager::OpenOrder) per ea.md.
          //    Evidence for E-AC [log-assertion]: above Info log is the observable milestone.
         }
 
       //--- CrossSlotCoordinator stub
-      if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (<closed; ref purged fix-round-18 §18.1>) */)
+      if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (Phase-2 wiring; see docs/state/deferred-ac-registry.md) */)
         {
          //--- Stub: orphan-guard coupling
-         //    wires at <closed; ref purged fix-round-18 §18.1> (cross-slot coupling per ea.md).
+         //    wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md (cross-slot coupling per ea.md).
         }
      }
   }

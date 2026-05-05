@@ -9,9 +9,9 @@
 //|          symbols (declared in inputs/*.mqh) that become visible   |
 //|          when the entry .mq5 includes both input headers and this  |
 //|          header. This file is intentionally non-compilable in     |
-//|          isolation — G1 deferred to IMPL-018+ per IMPL-042        |
-//|          precedent (all .mqh headers defer compile until entry    |
-//|          .mq5 exists).                                            |
+//|          isolation — header-only by design; G1 compile happens   |
+//|          via the entry .mq5 build (production + spike paths     |
+//|          both pull this through their respective include chain). |
 //|                                                                   |
 //| Error pattern (per ADR-011 boot-time bypass):                     |
 //|   m_logger.ErrorBypassThrottle("system","invalid_input",0,msg)   |
@@ -80,7 +80,7 @@ public:
    //    boot-time alerts must NEVER be throttled per NFR-5.1 + security.md §Halt).
    //    Called from Orchestrator::Init Phase C (TD-02 §7.4 line 1654):
    //      if (!m_validator.ValidateInputs()) return INIT_FAILED;
-   //    CleanupPartialInit ownership: completed at <closed; ref purged fix-round-18 §18.1> (Orchestrator)
+   //    CleanupPartialInit ownership: completed at Phase-2 wiring; see docs/state/deferred-ac-registry.md (Orchestrator)
    //    per impl-plan.
    bool ValidateInputs() const;
 
@@ -99,7 +99,7 @@ public:
    //
    //    Phase 1 caller: spike-only (Spike_Orchestrator already invokes
    //    IsPhoenicisMagicSelfTest directly; once the Orchestrator OnInit
-   //    Phase B wire is added — Phase 2, <closed; ref purged fix-round-18 §18.1> / IMPL-062 owner —
+   //    Phase B wire is added — Phase 2, Phase-2 wiring; see docs/state/deferred-ac-registry.md / IMPL-062 owner —
    //    that path will call this umbrella instead of the raw helper).
    //    Header-only method; no production caller yet. See EnumTypes.mqh
    //    § "Wiring status" for the honest spike-vs-production matrix.
@@ -553,7 +553,7 @@ bool CBootstrapValidator::DetectDigitMultiplier() const
 //| Called from Orchestrator after PortfolioState::RegisterAll():    |
 //|   if (!m_validator.ValidateSlotRegistry(m_portfolio.MagicCount(),|
 //|                                         17)) return INIT_FAILED; |
-//| (TD-02 §7.4; orchestrator owner = <closed; ref purged fix-round-18 §18.1>)                    |
+//| (TD-02 §7.4; orchestrator owner = Phase-2 wiring; see docs/state/deferred-ac-registry.md)                    |
 //+------------------------------------------------------------------+
 bool CBootstrapValidator::ValidateSlotRegistry(int observed_count,
                                                int expected_count) const
@@ -581,7 +581,7 @@ bool CBootstrapValidator::ValidateSlotRegistry(int observed_count,
 //|     the umbrella once instead of N separate SelfTests.            |
 //|   - Phase 2: Orchestrator::OnInit Phase B step 1 will call:       |
 //|         if(!m_validator.RunDomainSelfTests()) return INIT_FAILED; |
-//|     before ValidateSymbol. (Owner: <closed; ref purged fix-round-18 §18.1> / IMPL-062.)     |
+//|     before ValidateSymbol. (Owner: Phase-2 wiring; see docs/state/deferred-ac-registry.md / IMPL-062.)     |
 //|                                                                  |
 //| Failure path: per-SelfTest body Prints `[SelfTest][FAIL] …` lines |
 //| identifying which case failed; this method emits one              |

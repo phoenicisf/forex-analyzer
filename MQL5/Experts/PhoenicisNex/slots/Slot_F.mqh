@@ -15,7 +15,7 @@
 //|   Slot F is NOT iterated in the main OnTick slot topology;        |
 //|   Evaluate() guards sub-call-only activation and early-returns.   |
 //|                                                                   |
-//| Activation: <closed; ref purged fix-round-18 §18.1> (CrossSlotCoordinator wires CD-open →       |
+//| Activation: Phase-2 wiring; see docs/state/deferred-ac-registry.md (CrossSlotCoordinator wires CD-open →       |
 //|   BusinessLogic_F sub-call). Until then Evaluate() is a no-op     |
 //|   beyond enable + service-wired guards (mirrors Slot_GO pattern). |
 //|                                                                   |
@@ -75,7 +75,7 @@ public:
    virtual string        SlotId() const override { return "F"; }
 
    //--- 3. Evaluate — sub-call only (chained from CD per BR-2.1/2.2);
-   //       early-return guard in Phase 1 MVP (real activation <closed; ref purged fix-round-18 §18.1>)
+   //       early-return guard in Phase 1 MVP (real activation Phase-2 wiring; see docs/state/deferred-ac-registry.md)
    virtual void          Evaluate(const MarketContext &ctx, CPortfolioState &port) override;
 
    //--- 4. ManageExits — exit pass; called in BOTH RUNNING + HALTED (ADR-010)
@@ -111,7 +111,7 @@ bool CSlotF::_HasActiveFOrder(CPortfolioState &port) const
 //|                                                                   |
 //| Phase 1 MVP: F is invoked sub-call only from OpenOrderCD's chain  |
 //| (CodeWiki §5.3 :14185 — "chains BusinessLogic_F if isFOff==false")|
-//| not from main OnTick topo. The body early-returns until <closed; ref purged fix-round-18 §18.1> |
+//| not from main OnTick topo. The body early-returns until Phase-2 wiring; see docs/state/deferred-ac-registry.md |
 //| activates the CrossSlotCoordinator wiring that calls F.Evaluate   |
 //| right after CD entry execution.                                   |
 //|                                                                   |
@@ -125,7 +125,7 @@ bool CSlotF::_HasActiveFOrder(CPortfolioState &port) const
 void CSlotF::Evaluate(const MarketContext &ctx, CPortfolioState &port)
   {
    //--- Sub-call guard: early-return when not enabled or service not wired
-   //    (Phase 1 MVP — real signal arrives via OpenOrderCD chain at <closed; ref purged fix-round-18 §18.1>)
+   //    (Phase 1 MVP — real signal arrives via OpenOrderCD chain at Phase-2 wiring; see docs/state/deferred-ac-registry.md)
    if(!InpEnableSlotF) return;
    if(m_risk == NULL || m_logger == NULL) return;
 
@@ -133,7 +133,7 @@ void CSlotF::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    if(_HasActiveFOrder(port)) return;
 
    //--- Phase-1 stub: no entry signal in main topo —
-   //    OpenOrderCD (CD-chain) sub-call wires at <closed; ref purged fix-round-18 §18.1>
+   //    OpenOrderCD (CD-chain) sub-call wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md
    //    (cross-slot coupling per ea.md) via CrossSlotCoordinator.
    //    Observable E-AC milestone for [log-assertion] once that wires:
    //
@@ -146,10 +146,10 @@ void CSlotF::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //                               lot, InpFSlPipsFloor, comment));
    //
    //--- CrossSlotCoordinator stub: coupling from CD → F sub-call
-   if(m_xslot != NULL && false /* enable when OpenOrderCD chain wired (<closed; ref purged fix-round-18 §18.1>) */)
+   if(m_xslot != NULL && false /* enable when OpenOrderCD chain wired (Phase-2 wiring; see docs/state/deferred-ac-registry.md) */)
      {
       //--- Stub: F activation from CD's OpenOrderCD
-      //    wires at <closed; ref purged fix-round-18 §18.1> (cross-slot coupling per ea.md).
+      //    wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md (cross-slot coupling per ea.md).
      }
   }
 
@@ -200,7 +200,7 @@ void CSlotF::ManageExits(CPortfolioState &port)
                                     ticket, profit_pips, InpFTpProfitPips));
 
          //--- Phase-1 stub: logger-only milestone; broker close wires at
-         //    <closed; ref purged fix-round-18 §18.1> (RiskManager::OpenOrder) per ea.md.
+         //    Phase-2 wiring; see docs/state/deferred-ac-registry.md (RiskManager::OpenOrder) per ea.md.
         }
      }
   }

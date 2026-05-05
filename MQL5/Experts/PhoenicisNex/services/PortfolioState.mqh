@@ -10,7 +10,7 @@
 //|  • RegisterAll() pre-populates 17 SlotState* entries (BR-1.1)   |
 //|  • GetByMagic() returns NULL + Warn for unregistered magic       |
 //|  • Refresh() stub — full PositionsTotal() loop deferred to       |
-//|    <closed; ref purged fix-round-18 §18.1> (orchestrator wire-up) + IMPL-018+ (entry .mq5)    |
+//|    Phase-2 wiring; see docs/state/deferred-ac-registry.md (orchestrator wire-up) + IMPL-018+ (entry .mq5)    |
 //|  • ReleaseAll() deletes heap-allocated SlotState*               |
 //|                                                                  |
 //| 2-phase init: Init() called at Orchestrator OnInit step 5;       |
@@ -69,7 +69,7 @@ public:
 
    //--- OnTick step H: refresh aggregates from broker (~100 µs target)
    //    Per ADR-005 § Refresh contract; broker query body completed at
-   //    <closed; ref purged fix-round-18 §18.1> (Orchestrator) per impl-plan.
+   //    Phase-2 wiring; see docs/state/deferred-ac-registry.md (Orchestrator) per impl-plan.
    void              Refresh();
 
    //--- O(1) average slot accessor (ADR-005 — CHashMap lookup)
@@ -84,7 +84,7 @@ public:
    bool              IsKnownMagic(int magic);   // non-const: CHashMap.TryGetValue is non-const
 
    //--- Filter shared-magic positions by comment prefix (BR-1.2)
-   //    Body deferred to IMPL-007-getticketsforslot (uses CommentParser)
+   //    Body uses CommentParser for shared-magic disambiguation.
    int               GetTicketsForSlot(int magic, string slot_prefix,
                                        ulong &out_tickets[]) const;
 
@@ -173,7 +173,7 @@ void CPortfolioState::RegisterAll()
       s.buy_count     = 0;
       s.sell_count    = 0;
       s.total_lots    = 0.0;
-      s.last_open_lot = 0.0;   // Finding 02.3 — populated by OnTradeTransaction at <closed; ref purged fix-round-18 §18.1>
+      s.last_open_lot = 0.0;   // Finding 02.3 — populated by OnTradeTransaction at Phase-2 wiring; see docs/state/deferred-ac-registry.md
       s.total_profit  = 0.0;
       s.last_open_date = 0;
       s.pending_state  = PENDING_STATE_IDLE;
@@ -275,7 +275,7 @@ void CPortfolioState::RegisterAll()
      }
 
    // Emit registration summary for log-assertion E-AC evidence
-   //   (consumer wired at <closed; ref purged fix-round-18 §18.1> Orchestrator per impl-plan).
+   //   (consumer wired at Phase-2 wiring; see docs/state/deferred-ac-registry.md Orchestrator per impl-plan).
    // Grep pattern: grep -E '\[Phoenicis\].*\[ev=portfolio_registered\]'
    if(m_logger != NULL)
       m_logger.Info("portfolio", "portfolio_registered", 0,
@@ -288,7 +288,7 @@ void CPortfolioState::RegisterAll()
 //| ADR-005 § Refresh contract:                                      |
 //|   Step 1: Reset per-entry aggregates (buy/sell count, lots, PL,  |
 //|            ticket arrays)                                         |
-//|   Step 2: PositionsTotal() loop — completed at <closed; ref purged fix-round-18 §18.1>     |
+//|   Step 2: PositionsTotal() loop — completed at Phase-2 wiring; see docs/state/deferred-ac-registry.md     |
 //|            (Orchestrator owner) per impl-plan.                    |
 //+------------------------------------------------------------------+
 void CPortfolioState::Refresh()
@@ -310,9 +310,9 @@ void CPortfolioState::Refresh()
      }
 
    // TODO IMPL-007-refresh: full PositionsTotal() loop per ADR-005 § Refresh contract step 2
-   //   Deferred: requires entry .mq5 (IMPL-018+) + orchestrator wire-up (<closed; ref purged fix-round-18 §18.1>)
+   //   Deferred: requires entry .mq5 (IMPL-018+) + orchestrator wire-up (Phase-2 wiring; see docs/state/deferred-ac-registry.md)
    //
-   //   Implementation sketch (to land at <closed; ref purged fix-round-18 §18.1>):
+   //   Implementation sketch (to land at Phase-2 wiring; see docs/state/deferred-ac-registry.md):
    //   for(int i = 0; i < PositionsTotal(); i++) {
    //      ulong ticket = PositionGetTicket(i);
    //      if(!PositionSelectByTicket(ticket)) continue;
@@ -370,14 +370,14 @@ bool CPortfolioState::IsKnownMagic(int magic)
 //|                                                                  |
 //| TODO IMPL-007-getticketsforslot: implement body using            |
 //|   helpers/CommentParser.mqh::FilterTicketsByPrefix()             |
-//|   Deferred to <closed; ref purged fix-round-18 §18.1> (needs position ticket_ids[] from        |
+//|   Deferred to Phase-2 wiring; see docs/state/deferred-ac-registry.md (needs position ticket_ids[] from        |
 //|   Refresh() which is deferred + entry .mq5)                      |
 //+------------------------------------------------------------------+
 int CPortfolioState::GetTicketsForSlot(int magic, string slot_prefix,
                                        ulong &out_tickets[]) const
   {
    // TODO IMPL-007-getticketsforslot: filter via CommentParser per BR-1.2
-   //   Example body (to land at <closed; ref purged fix-round-18 §18.1>):
+   //   Example body (to land at Phase-2 wiring; see docs/state/deferred-ac-registry.md):
    //   SlotState *s = NULL;
    //   if(!m_map.TryGetValue(magic, s) || s == NULL) return 0;
    //   CCommentParser parser;
@@ -420,7 +420,7 @@ double CPortfolioState::TotalFloatingPL()
 //| helpers (Safe-port etc.)                                         |
 //|                                                                  |
 //| TODO IMPL-007-getslotcounts: implement slot_ids / count arrays   |
-//|   Deferred to <closed; ref purged fix-round-18 §18.1> (Safe-port orchestration)                |
+//|   Deferred to Phase-2 wiring; see docs/state/deferred-ac-registry.md (Safe-port orchestration)                |
 //+------------------------------------------------------------------+
 void CPortfolioState::GetSlotCounts(string &slot_ids[], int &counts[]) const
   {
