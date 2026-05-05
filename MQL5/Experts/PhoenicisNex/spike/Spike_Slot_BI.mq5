@@ -3,7 +3,7 @@
 //|                                      Copyright 2026, PhoenicisNex |
 //| G1 compile + SelfTest harness for IMPL-039 (Slot_BI derived class) |
 //|                                                                  |
-//| ⚠️ G4 critical fix per ADR-009 — Bucket B drift NFR-1.8.          |
+//| โ ๏ธ G4 critical fix per ADR-009 โ€” Bucket B drift NFR-1.8.          |
 //| BI = pyramid child of Slot B; shared MAGIC_B=214; comment "BI,". |
 //|                                                                  |
 //| Coverage:                                                         |
@@ -18,7 +18,7 @@
 //|                                                                  |
 //| Pattern: mirrors Spike_Slot_LX.mq5 / Spike_Slot_BR.mq5 minimal    |
 //| harness. IMPL-018 precedent: G2-G4 deferred; G1 + SelfTest = bar. |
-//| E-AC smoke + G4 attestation wire at Phase-2 wiring; see docs/state/deferred-ac-registry.md           |
+//| E-AC smoke + G4 attestation wire at Orchestrator wiring path (core/Orchestrator.mqh)           |
 //|   (RiskManager::OpenOrder) + 60-day Tester run with B+BI active   |
 //|   per IMPL-039 E-AC.                                              |
 //+------------------------------------------------------------------+
@@ -34,7 +34,7 @@
 CLogger  g_logger;
 
 //+------------------------------------------------------------------+
-//| OnInit — SelfTest: instantiate CSlotBI + verify 6-method contract |
+//| OnInit โ€” SelfTest: instantiate CSlotBI + verify 6-method contract |
 //+------------------------------------------------------------------+
 int OnInit()
   {
@@ -43,7 +43,7 @@ int OnInit()
    //--- Instantiate Slot BI (stack-allocated; no ownership transfer)
    CSlotBI  slot_bi;
 
-   //--- Inject minimum deps (only Logger; others NULL — spike does not
+   //--- Inject minimum deps (only Logger; others NULL โ€” spike does not
    //    dereference the 7 remaining service pointers in this test)
    slot_bi.Init(NULL, NULL, NULL, &g_logger, NULL, NULL, NULL, NULL);
 
@@ -62,7 +62,7 @@ int OnInit()
      }
 
    //--- Test 3: DependsOn() must return 0 (runtime-state dep via PortfolioState
-   //    query; CommentParser shared-magic disambig is internal — not a topology
+   //    query; CommentParser shared-magic disambig is internal โ€” not a topology
    //    dependency. Same precedent as Slot_LX vs Slot_L (IMPL-031).
    int deps[];
    int dep_count = slot_bi.DependsOn(deps);

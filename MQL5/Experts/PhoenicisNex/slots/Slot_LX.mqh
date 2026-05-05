@@ -1,36 +1,36 @@
 //+------------------------------------------------------------------+
-//| slots/Slot_LX.mqh — Slot LX derived class (IMPL-031)             |
+//| slots/Slot_LX.mqh โ€” Slot LX derived class (IMPL-031)             |
 //| Layer:   slots/ (depends on domain/; injects services via base)   |
 //| Magic:   211 (MAGIC_L per domain/EnumTypes.mqh; shared with L)    |
 //| SlotId:  "LX"                                                     |
 //| Comment: "LX,pyr,1"                                               |
 //|                                                                  |
-//| Source:  CodeWiki §3.L (pyramid-on-profitable variant)            |
-//|          TD-02 §5.4 (lot dispatch RiskManager::ComputeLot)         |
+//| Source:  CodeWiki ยง3.L (pyramid-on-profitable variant)            |
+//|          TD-02 ยง5.4 (lot dispatch RiskManager::ComputeLot)         |
 //|          ADR-002 (CSlotBase 6-method contract)                    |
-//|          ADR-012 (layer dependency — ห้าม #include slots/*)        |
+//|          ADR-012 (layer dependency โ€” เธซเนเธฒเธก #include slots/*)        |
 //|                                                                  |
 //| Pyramid logic (IMPL-031 MVP):                                     |
 //|   1. Own-no-active guard via GetTicketsForSlot(MAGIC_L,"LX,",...) |
-//|      — own LX count < InpLXMaxOrders required                     |
+//|      โ€” own LX count < InpLXMaxOrders required                     |
 //|   2. Parent L gate: GetTicketsForSlot(MAGIC_L,"L,",parent_tickets)|
-//|      — must have ≥ 1 parent L position ("L," prefix, NOT "LX,")  |
+//|      โ€” must have โฅ 1 parent L position ("L," prefix, NOT "LX,")  |
 //|   3. Select first L parent: PositionSelectByTicket(parent[0])     |
-//|      → compute profit_pips; pyramid only if >= InpLXPyramidGatePips|
+//|      โ’ compute profit_pips; pyramid only if >= InpLXPyramidGatePips|
 //|   4. Direction inheritance: same direction as profitable L parent  |
-//|      (BUY parent → BUY pyramid; SELL parent → SELL pyramid)       |
+//|      (BUY parent โ’ BUY pyramid; SELL parent โ’ SELL pyramid)       |
 //|                                                                  |
 //| Comment-prefix disambiguation ("LX," vs "L,"):                   |
 //|   MAGIC_L (211) is shared between L and LX. PortfolioState uses   |
 //|   CommentParser prefix filtering (per IMPL-008) to separate them: |
-//|   - GetTicketsForSlot(211, "L,",  ...) → parent L orders only     |
-//|   - GetTicketsForSlot(211, "LX,", ...) → own LX pyramid orders    |
+//|   - GetTicketsForSlot(211, "L,",  ...) โ’ parent L orders only     |
+//|   - GetTicketsForSlot(211, "LX,", ...) โ’ own LX pyramid orders    |
 //|   All LX OrderSend calls use comment prefix "LX,..." to guarantee |
 //|   correct separation. ManageExits iterates "LX," prefix only via  |
 //|   the same GetTicketsForSlot API (NOT raw order iteration).        |
 //|                                                                  |
 //| DependsOn() returns 0: LX depends on L's *runtime state* queried  |
-//|   via PortfolioState — NOT a topology dependency. CommentParser    |
+//|   via PortfolioState โ€” NOT a topology dependency. CommentParser    |
 //|   disambig is internal. Same precedent as G2 vs G (IMPL-026).     |
 //|                                                                  |
 //| P4 deferred (IMPL-062):                                          |
@@ -48,7 +48,7 @@
 #include "../inputs/Inputs_Slot_LX.mqh"
 
 //+------------------------------------------------------------------+
-//| CSlotLX — Slot LX derived class (ADR-002 CSlotBase contract)      |
+//| CSlotLX โ€” Slot LX derived class (ADR-002 CSlotBase contract)      |
 //|                                                                  |
 //| Pyramid role: enters a pyramid order when a parent L position     |
 //| (comment "L,") is sufficiently profitable. Both share MAGIC_L     |
@@ -65,7 +65,7 @@ private:
    //    `_PipsToPrice(pips)` and `_PipSize()` inherited from base.
 
    //--- Check whether LX already has active pyramid orders
-   //    Uses "LX," prefix — will NOT count parent L orders ("L,")
+   //    Uses "LX," prefix โ€” will NOT count parent L orders ("L,")
    bool              _HasActiveLXOrder(CPortfolioState &port) const
      {
       ulong tickets[];
@@ -73,7 +73,7 @@ private:
       return n >= InpLXMaxOrders;
      }
 
-   //--- Fetch parent L tickets (prefix "L," — excludes own "LX,")
+   //--- Fetch parent L tickets (prefix "L," โ€” excludes own "LX,")
    int               _GetParentLTickets(CPortfolioState &port, ulong &out_tickets[]) const
      {
       return port.GetTicketsForSlot(MAGIC_L, "L,", out_tickets);
@@ -106,14 +106,14 @@ public:
    // 6-method CSlotBase contract (ADR-002)
    //=================================================================
 
-   //--- 1. Magic() — returns MAGIC_L (211) per domain/EnumTypes.mqh
+   //--- 1. Magic() โ€” returns MAGIC_L (211) per domain/EnumTypes.mqh
    //    Shared with parent L (IMPL-030); CommentParser "LX," disambig.
    virtual int       Magic() const override { return MAGIC_L; }
 
-   //--- 2. SlotId() — "LX"; used by journal `slot_id` field
+   //--- 2. SlotId() โ€” "LX"; used by journal `slot_id` field
    virtual string    SlotId() const override { return "LX"; }
 
-   //--- 3. Evaluate() — entry pass; called per tick by Orchestrator
+   //--- 3. Evaluate() โ€” entry pass; called per tick by Orchestrator
    //    Pyramid gate: parent L profitable >= InpLXPyramidGatePips.
    virtual void      Evaluate(const MarketContext &ctx, CPortfolioState &port) override
      {
@@ -125,11 +125,11 @@ public:
          return;
 
       //--- Own-no-active guard: skip if LX pyramid already open
-      //    Uses "LX," prefix filter — "L," orders are NOT counted here
+      //    Uses "LX," prefix filter โ€” "L," orders are NOT counted here
       if(_HasActiveLXOrder(port))
          return;
 
-      //--- Parent L gate: need ≥ 1 parent L position ("L," prefix only)
+      //--- Parent L gate: need โฅ 1 parent L position ("L," prefix only)
       ulong parent_tickets[];
       int parent_count = _GetParentLTickets(port, parent_tickets);
       if(parent_count <= 0)
@@ -150,13 +150,13 @@ public:
       bool buy_signal  = (parent_type == POSITION_TYPE_BUY);
       bool sell_signal = (parent_type == POSITION_TYPE_SELL);
 
-      //--- Lot sizing via RiskManager (no direct CTrade — ADR-002 rule)
+      //--- Lot sizing via RiskManager (no direct CTrade โ€” ADR-002 rule)
       double balance = AccountInfoDouble(ACCOUNT_BALANCE);
       double lot     = m_risk.ComputeLot("LX", InpLXSlPips, balance);
       if(lot <= 0.0)
         {
          m_logger.Warn("Slot_LX", "zero_lot_skip", MAGIC_L,
-                       "ComputeLot returned 0 — skipping LX pyramid entry");
+                       "ComputeLot returned 0 โ€” skipping LX pyramid entry");
          return;
         }
 
@@ -170,10 +170,10 @@ public:
                                   : NormalizeDouble(price + sl_dist, digits);
       string           comment  = "LX,pyr,1";
 
-      //--- fix-round-12 § 12.8 — Phase 1 emits entry_signal Logger.Info as
+      //--- fix-round-12 ยง 12.8 โ€” Phase 1 emits entry_signal Logger.Info as
       //    the observable milestone; actual OrderSend lives in
       //    `RiskManager::OpenOrder` per `.claude/rules/ea.md` (IMPL-017 +
-      //    IMPL-062 5-yr regression). Log intent — observable milestone
+      //    IMPL-062 5-yr regression). Log intent โ€” observable milestone
       //    for E-AC [log-assertion].
       m_logger.Info("Slot_LX", buy_signal ? "entry_pyramid_buy" : "entry_pyramid_sell",
                     MAGIC_L,
@@ -184,14 +184,14 @@ public:
                                  lot, price, sl_price, comment));
 
       //--- CrossSlotCoordinator stub
-      if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (Phase-2 wiring; see docs/state/deferred-ac-registry.md) */)
+      if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (Orchestrator wiring path (core/Orchestrator.mqh)) */)
         {
          //--- Stub: LX pyramid coupling
-         //    wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md (cross-slot coupling per ea.md).
+         //    wires at Orchestrator wiring path (core/Orchestrator.mqh) (cross-slot coupling per ea.md).
         }
      }
 
-   //--- 4. ManageExits() — exit pass; runs in BOTH RUNNING and HALTED (ADR-010)
+   //--- 4. ManageExits() โ€” exit pass; runs in BOTH RUNNING and HALTED (ADR-010)
    //    Iterates own "LX," orders only via GetTicketsForSlot disambig.
    virtual void      ManageExits(CPortfolioState &port) override
      {
@@ -200,7 +200,7 @@ public:
       if(m_logger == NULL)
          return;
 
-      //--- Retrieve LX pyramid tickets via "LX," prefix — "L," orders excluded
+      //--- Retrieve LX pyramid tickets via "LX," prefix โ€” "L," orders excluded
       ulong tickets[];
       int n = port.GetTicketsForSlot(MAGIC_L, "LX,", tickets);
       if(n <= 0)
@@ -222,25 +222,25 @@ public:
             string pos_comment = PositionGetString(POSITION_COMMENT);
             m_logger.Info("Slot_LX", "exit_profit_gate", MAGIC_L,
                           StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f "
-                                       "comment=%s → close",
+                                       "comment=%s โ’ close",
                                        ticket, profit_pips, InpLXTpProfitPips,
                                        pos_comment));
 
-            //--- Phase-1 stub: logger-only milestone; broker close wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md per ea.md.
+            //--- Phase-1 stub: logger-only milestone; broker close wires at Orchestrator wiring path (core/Orchestrator.mqh) per ea.md.
            }
         }
      }
 
-   //--- 5. DependsOn() — LX depends on L's *runtime state* via PortfolioState query
-   //    Not a topology dependency — CommentParser disambig is internal (same as G2).
-   //    Returns 0 (independent topology) per MVP guidance in parallel context §3.
+   //--- 5. DependsOn() โ€” LX depends on L's *runtime state* via PortfolioState query
+   //    Not a topology dependency โ€” CommentParser disambig is internal (same as G2).
+   //    Returns 0 (independent topology) per MVP guidance in parallel context ยง3.
    virtual int       DependsOn(int &out_magics[]) override
      {
       ArrayResize(out_magics, 0);
       return 0;
      }
 
-   //--- 6. PendingState() — LX does not use pending sub-flow (IDLE default)
+   //--- 6. PendingState() โ€” LX does not use pending sub-flow (IDLE default)
    virtual EPendingState PendingState() const override
      {
       return PENDING_STATE_IDLE;

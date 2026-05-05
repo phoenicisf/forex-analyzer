@@ -1,21 +1,21 @@
 //+------------------------------------------------------------------+
-//| slots/Slot_K.mqh — Slot K derived class (IMPL-024)               |
+//| slots/Slot_K.mqh เนโฌโ€ Slot K derived class (IMPL-024)               |
 //| Layer:   slots/ (depends on domain/; injects services via base)   |
 //| Magic:   207 (MAGIC_K per domain/EnumTypes.mqh)                   |
 //| SlotId:  "K"                                                      |
 //| Comment: "K,layer,1"                                              |
 //|                                                                  |
-//| Source:  CodeWiki §3.5 (M-size MVP: 4 of 8 entry conditions)     |
-//|          TD-02 §5.4 (lot dispatch RiskManager::ComputeLot)        |
+//| Source:  CodeWiki เธขเธ3.5 (M-size MVP: 4 of 8 entry conditions)     |
+//|          TD-02 เธขเธ5.4 (lot dispatch RiskManager::ComputeLot)        |
 //|          ADR-002 (CSlotBase 6-method contract)                    |
-//|          ADR-012 (layer dependency — ห้าม #include slots/*)        |
+//|          ADR-012 (layer dependency เนโฌโ€ เน€เธเธเน€เธยเน€เธเธ’เน€เธเธ #include slots/*)        |
 //|                                                                  |
-//| M-size MVP scope (4 of 8 entry conditions per shared context §4): |
+//| M-size MVP scope (4 of 8 entry conditions per shared context เธขเธ4): |
 //|   1. No existing K order (PortfolioState count by magic)          |
 //|   2. iTime(D1,0) > m_last_order_d1_time (one K per day)           |
-//|      // CodeWiki §3.5 entry condition 2                           |
+//|      // CodeWiki เธขเธ3.5 entry condition 2                           |
 //|   3. Force crossover: isFICrossUp / isFICrossDw                   |
-//|      // CodeWiki §3.5 entry condition 3                           |
+//|      // CodeWiki เธขเธ3.5 entry condition 3                           |
 //|   4. Price outside Ichimoku cloud matches direction                |
 //|                                                                  |
 //| P4 deferred (IMPL-036):                                           |
@@ -34,7 +34,7 @@
 #include "../services/RiskManager.mqh"
 
 //+------------------------------------------------------------------+
-//| CSlotK — Slot K concrete derived class                           |
+//| CSlotK เนโฌโ€ Slot K concrete derived class                           |
 //|                                                                  |
 //| Entry logic: Force Index crossover + D1 once-per-day guard +     |
 //|   no existing K order + price outside Ichimoku cloud.             |
@@ -45,7 +45,7 @@
 class CSlotK : public CSlotBase
   {
 private:
-   //--- D1 once-per-day guard (CodeWiki §3.5 entry condition 2)
+   //--- D1 once-per-day guard (CodeWiki เธขเธ3.5 entry condition 2)
    //    Stores the D1 bar open time of the last filled K order.
    //    Compared against iTime(_Symbol, PERIOD_D1, 0) on each Evaluate tick.
    datetime          m_last_order_d1_time;
@@ -53,7 +53,7 @@ private:
    //--- Round-06 06.1: pip arithmetic via CSlotBase helpers
    //    `_PipsToPrice(pips)` inherited from base.
 
-   //--- Force crossover detection (CodeWiki §3.5 entry condition 3)
+   //--- Force crossover detection (CodeWiki เธขเธ3.5 entry condition 3)
    //    isFICrossUp = (F[1]>0.5 && F[2]>0 && F[3]<-0.2) || (F[1]>1 && F[2]<-0.2)
    //    isFICrossDw = mirror for SELL
    bool              _IsFICrossUp(const ForceFields &f) const
@@ -96,33 +96,33 @@ public:
    // 6-method CSlotBase contract (ADR-002)
    //=================================================================
 
-   //--- 1. Magic() — returns MAGIC_K (207) per domain/EnumTypes.mqh
+   //--- 1. Magic() เนโฌโ€ returns MAGIC_K (207) per domain/EnumTypes.mqh
    virtual int       Magic() const override { return MAGIC_K; }
 
-   //--- 2. SlotId() — used by journal record `slot_id` field
+   //--- 2. SlotId() เนโฌโ€ used by journal record `slot_id` field
    virtual string    SlotId() const override { return "K"; }
 
-   //--- 3. Evaluate() — entry pass; called per tick by Orchestrator
+   //--- 3. Evaluate() เนโฌโ€ entry pass; called per tick by Orchestrator
    //    Only invoked if EAState == RUNNING (HALTED skips per ADR-010).
-   //    M-size MVP: 4 of 8 CodeWiki §3.5 conditions.
+   //    M-size MVP: 4 of 8 CodeWiki เธขเธ3.5 conditions.
    virtual void      Evaluate(const MarketContext &ctx, CPortfolioState &port) override
      {
       if(!InpEnableSlotK)
          return;
 
       //--- Entry condition 1: no existing K order open
-      // CodeWiki §3.5 — max 1 K order (KExtra defer P4)
+      // CodeWiki เธขเธ3.5 เนโฌโ€ max 1 K order (KExtra defer P4)
       if(_CountKOrders(port) >= InpKMaxOrders)
          return;
 
       //--- Entry condition 2: one K per day (D1 timestamp guard)
-      // CodeWiki §3.5 entry condition 2
+      // CodeWiki เธขเธ3.5 entry condition 2
       datetime d1_bar_time = iTime(_Symbol, PERIOD_D1, 0);
       if(d1_bar_time <= m_last_order_d1_time)
          return;
 
       //--- Entry condition 3: Force crossover signal
-      // CodeWiki §3.5 entry condition 3 — isFICrossUp / isFICrossDw
+      // CodeWiki เธขเธ3.5 entry condition 3 เนโฌโ€ isFICrossUp / isFICrossDw
       bool fi_cross_up = _IsFICrossUp(ctx.force_h4);
       bool fi_cross_dw = _IsFICrossDw(ctx.force_h4);
       if(!fi_cross_up && !fi_cross_dw)
@@ -137,7 +137,7 @@ public:
       if(!buy_signal && !sell_signal)
          return;
 
-      //--- Lot sizing via RiskManager (no direct CTrade — ADR-002 rule)
+      //--- Lot sizing via RiskManager (no direct CTrade เนโฌโ€ ADR-002 rule)
       if(m_risk == NULL)
         {
          if(m_logger != NULL)
@@ -159,7 +159,7 @@ public:
       string           comment    = "K,layer,1";
 
       //--- Submit order via RiskManager (which wraps CTrade per ea.md)
-      //    RiskManager::OpenOrder wired at Phase-2 wiring; see docs/state/deferred-ac-registry.md Orchestrator skeleton.
+      //    RiskManager::OpenOrder wired at Orchestrator wiring path (core/Orchestrator.mqh).
       //    Until then: log intent + update D1 guard so SelfTest/smoke
       //    verifies the entry path without panicking on NULL CTrade.
       if(m_logger != NULL)
@@ -172,11 +172,11 @@ public:
       m_last_order_d1_time = d1_bar_time;
      }
 
-   //--- 4. ManageExits() — exit pass; runs in BOTH RUNNING and HALTED
+   //--- 4. ManageExits() เนโฌโ€ exit pass; runs in BOTH RUNNING and HALTED
    //    per ADR-010. Exit conditions: profit >= 20 pip + cloud touch.
    //    Uses canonical PortfolioState.GetTicketsForSlot + PositionSelectByTicket
    //    pattern (Slot_BR canonical) per ADR-005 + ADR-012. Open positions are
-   //    accessed via Position* APIs — Order* APIs would walk the pending-order
+   //    accessed via Position* APIs เนโฌโ€ Order* APIs would walk the pending-order
    //    list and miss market positions entirely.
    virtual void      ManageExits(CPortfolioState &port) override
      {
@@ -209,27 +209,27 @@ public:
             continue;
 
          //--- Exit condition 2: price touches Ichimoku cloud edge
-         //    Full cloud-touch check wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md when ctx
+         //    Full cloud-touch check wires at Orchestrator wiring path (core/Orchestrator.mqh) when ctx
          //    is passed to ManageExits. For MVP: close on profit gate alone
          //    when InpKTpProfitPips threshold met (sufficient for E-AC).
          if(m_logger != NULL)
             m_logger.Info("Slot_K", "exit_profit_gate", Magic(),
                           StringFormat("ticket=%I64u profit_pips=%.1f", ticket, profit_pips));
 
-         //--- Close order via RiskManager (CTrade wired at Phase-2 wiring; see docs/state/deferred-ac-registry.md)
+         //--- Close order via RiskManager (CTrade wired at Orchestrator wiring path (core/Orchestrator.mqh))
          //    Log intent only until wiring complete (same pattern as Evaluate).
         }
      }
 
-   //--- 5. DependsOn() — K is independent (no peer slot deps)
-   //    S → K post-close dependency deferred to P4 IMPL-036.
+   //--- 5. DependsOn() เนโฌโ€ K is independent (no peer slot deps)
+   //    S เนยโ€ K post-close dependency deferred to P4 IMPL-036.
    virtual int       DependsOn(int &out_magics[]) override
      {
       ArrayResize(out_magics, 0);
       return 0;
      }
 
-   //--- 6. PendingState() — K does not use pending sub-flow;
+   //--- 6. PendingState() เนโฌโ€ K does not use pending sub-flow;
    //    safe default PENDING_STATE_IDLE inherited from base (overridden
    //    here explicitly for documentation clarity).
    virtual EPendingState PendingState() const override

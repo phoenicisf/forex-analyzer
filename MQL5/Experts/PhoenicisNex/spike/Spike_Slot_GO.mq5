@@ -16,9 +16,9 @@
 //|   - SlotId() non-empty (not sentinel "")                          |
 //|                                                                   |
 //| Pattern: mirrors Spike_Slot_G2.mq5 stub shape (IMPL-026).         |
-//| NOTE: G2-G4 full entry+exit E-ACs wire at Phase-2 wiring; see docs/state/deferred-ac-registry.md     |
+//| NOTE: G2-G4 full entry+exit E-ACs wire at Orchestrator wiring path (core/Orchestrator.mqh)     |
 //|       (RiskManager::OpenOrder); smoke ini committed for PR contract|
-//|       per TD-02 §13.6 (see simulation/headless-tests/slot_GO_smoke.ini).|
+//|       per TD-02 ยง13.6 (see simulation/headless-tests/slot_GO_smoke.ini).|
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, PhoenicisNex"
 #property link      "https://phoenicisnex.com"
@@ -32,7 +32,7 @@
 CLogger  g_logger;
 
 //+------------------------------------------------------------------+
-//| OnInit — SelfTest for Slot GO contract                            |
+//| OnInit โ€” SelfTest for Slot GO contract                            |
 //+------------------------------------------------------------------+
 int OnInit()
   {
@@ -44,10 +44,10 @@ int OnInit()
    //--- Inject Logger only; other 7 service ptrs NULL in test harness
    slot_go.Init(NULL, NULL, NULL, &g_logger, NULL, NULL, NULL, NULL);
 
-   //--- Case 1: Magic() must return MAGIC_GO (209) — own magic, not shared
+   //--- Case 1: Magic() must return MAGIC_GO (209) โ€” own magic, not shared
    if(slot_go.Magic() != MAGIC_GO)
      {
-      Print("Spike_Slot_GO: FAIL case 1 — Magic()=", slot_go.Magic(),
+      Print("Spike_Slot_GO: FAIL case 1 โ€” Magic()=", slot_go.Magic(),
             " expected MAGIC_GO=", MAGIC_GO);
       return INIT_FAILED;
      }
@@ -55,7 +55,7 @@ int OnInit()
    //--- Case 2: SlotId() must return "GO"
    if(slot_go.SlotId() != "GO")
      {
-      Print("Spike_Slot_GO: FAIL case 2 — SlotId()='", slot_go.SlotId(),
+      Print("Spike_Slot_GO: FAIL case 2 โ€” SlotId()='", slot_go.SlotId(),
             "' expected 'GO'");
       return INIT_FAILED;
      }
@@ -65,7 +65,7 @@ int OnInit()
    int dep_count = slot_go.DependsOn(deps);
    if(dep_count != 0)
      {
-      Print("Spike_Slot_GO: FAIL case 3 — DependsOn()=", dep_count,
+      Print("Spike_Slot_GO: FAIL case 3 โ€” DependsOn()=", dep_count,
             " expected 0 (topology-independent)");
       return INIT_FAILED;
      }
@@ -73,7 +73,7 @@ int OnInit()
    //--- Case 4: PendingState() must return PENDING_STATE_IDLE (GO not in pending-flow list)
    if(slot_go.PendingState() != PENDING_STATE_IDLE)
      {
-      Print("Spike_Slot_GO: FAIL case 4 — PendingState()=", (int)slot_go.PendingState(),
+      Print("Spike_Slot_GO: FAIL case 4 โ€” PendingState()=", (int)slot_go.PendingState(),
             " expected PENDING_STATE_IDLE=", (int)PENDING_STATE_IDLE);
       return INIT_FAILED;
      }
@@ -81,7 +81,7 @@ int OnInit()
    //--- Case 5: Magic() is in valid range 200..220 (BR-1.1)
    if(slot_go.Magic() < 200 || slot_go.Magic() > 220)
      {
-      Print("Spike_Slot_GO: FAIL case 5 — Magic()=", slot_go.Magic(),
+      Print("Spike_Slot_GO: FAIL case 5 โ€” Magic()=", slot_go.Magic(),
             " outside BR-1.1 range [200..220]");
       return INIT_FAILED;
      }
@@ -89,12 +89,12 @@ int OnInit()
    //--- Case 6: SlotId() non-empty (not sentinel "")
    if(slot_go.SlotId() == "")
      {
-      Print("Spike_Slot_GO: FAIL case 6 — SlotId() returned sentinel \"\"");
+      Print("Spike_Slot_GO: FAIL case 6 โ€” SlotId() returned sentinel \"\"");
       return INIT_FAILED;
      }
 
    Print("[Phoenicis][SlotGO][ev=spike_self_test][result=pass] "
-         "6 cases passed — Magic=", slot_go.Magic(),
+         "6 cases passed โ€” Magic=", slot_go.Magic(),
          " SlotId=", slot_go.SlotId(),
          " DependsOn=", dep_count,
          " PendingState=", (int)slot_go.PendingState());

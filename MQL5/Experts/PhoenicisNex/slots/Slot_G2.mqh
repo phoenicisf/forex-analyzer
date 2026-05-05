@@ -1,30 +1,30 @@
 //+------------------------------------------------------------------+
-//| slots/Slot_G2.mqh — Slot G2 implementation (IMPL-026)            |
+//| slots/Slot_G2.mqh โ€” Slot G2 implementation (IMPL-026)            |
 //| Layer:   slots/ (inherits domain/CSlotBase; ADR-002 contract)     |
 //| Magic:   MAGIC_G = 208, shared with G (IMPL-025)                  |
 //|          CommentParser disambiguates "G2," vs "G," per BR-1.2     |
-//| Source:  CodeWiki §3.G2; TD-02 §5.4; ADR-002; ADR-012            |
+//| Source:  CodeWiki ยง3.G2; TD-02 ยง5.4; ADR-002; ADR-012            |
 //|                                                                   |
-//| M-size MVP — 3 of CodeWiki §3.G2 conditions:                     |
+//| M-size MVP โ€” 3 of CodeWiki ยง3.G2 conditions:                     |
 //|   1. No active G2 orders (magic 208 with "G2," prefix)            |
 //|   2. Force crossover in continuation range:                       |
-//|        BUY  = F[1]>0 ∧ F[2]>-0.2 (in range, not exhausted)       |
-//|        SELL = F[1]<0 ∧ F[2]<+0.2 (mirror)                         |
-//|   3. Price outside Ichimoku cloud (or near retest — bid/cloud edge)|
+//|        BUY  = F[1]>0 โง F[2]>-0.2 (in range, not exhausted)       |
+//|        SELL = F[1]<0 โง F[2]<+0.2 (mirror)                         |
+//|   3. Price outside Ichimoku cloud (or near retest โ€” bid/cloud edge)|
 //| Deferred to P4 IMPL-062: GPause / WPR-sanity / DeMarker /        |
 //|   Force-wave-span exhaustion / lot scaling when G already open    |
 //|                                                                   |
 //| Exit (ManageExits):                                               |
-//|   - Profit gate ≥ 30 pip (lighter than G's 50)                   |
+//|   - Profit gate โฅ 30 pip (lighter than G's 50)                   |
 //|   Stub: if(m_xslot != NULL && false /*IMPL-053*/) {...}           |
 //|   Real CCrossSlotCoordinator coupling = IMPL-053                  |
 //|                                                                   |
 //| Lot: RiskManager::ComputeLot("G2", InpG2SlPipsFloor, balance)    |
-//| Comment: "G2,F1,N,1,SL" per CodeWiki §3.G2 format                |
+//| Comment: "G2,F1,N,1,SL" per CodeWiki ยง3.G2 format                |
 //|                                                                   |
 //| ADR-012 include discipline:                                        |
-//|   ห้าม #include "slots/<other>.mqh"                               |
-//|   ห้าม #include "services/Logger.mqh" direct (injected)           |
+//|   เธซเนเธฒเธก #include "slots/<other>.mqh"                               |
+//|   เธซเนเธฒเธก #include "services/Logger.mqh" direct (injected)           |
 //|                                                                   |
 //| Shared-magic note: PortfolioState.GetByMagic(208) returns G+G2    |
 //| aggregate. GetTicketsForSlot(208, "G2,", tickets) filters own G2. |
@@ -40,7 +40,7 @@
 #include "../inputs/Inputs_Slot_G2.mqh"
 
 //+------------------------------------------------------------------+
-//| CSlotG2 — Slot G2 derived class (ADR-002 CSlotBase contract)      |
+//| CSlotG2 โ€” Slot G2 derived class (ADR-002 CSlotBase contract)      |
 //|                                                                   |
 //| Wave-helper role: lighter entry conditions + smaller lot factor   |
 //| than G. Both share MAGIC_G (208); comment prefix "G2," used in   |
@@ -67,31 +67,31 @@ public:
 
    //--- 6-method behavior contract (ADR-002; slot-abstraction-contract.yaml)
 
-   //--- 1. Magic — MAGIC_G = 208; shared with G (CommentParser disambig "G2,")
+   //--- 1. Magic โ€” MAGIC_G = 208; shared with G (CommentParser disambig "G2,")
    virtual int      Magic() const override { return MAGIC_G; }
 
-   //--- 2. SlotId — "G2"; used by journal slot_id field + comment prefix
+   //--- 2. SlotId โ€” "G2"; used by journal slot_id field + comment prefix
    virtual string   SlotId() const override { return "G2"; }
 
-   //--- 3. Evaluate — entry pass (FR-2.3); only called in EA_STATE_RUNNING
+   //--- 3. Evaluate โ€” entry pass (FR-2.3); only called in EA_STATE_RUNNING
    virtual void     Evaluate(const MarketContext &ctx, CPortfolioState &port) override;
 
-   //--- 4. ManageExits — exit pass; called in BOTH RUNNING + HALTED (ADR-010)
+   //--- 4. ManageExits โ€” exit pass; called in BOTH RUNNING + HALTED (ADR-010)
    virtual void     ManageExits(CPortfolioState &port) override;
 
-   //--- 5. DependsOn — G2 is independent (CommentParser disambig is internal, not topo dep)
+   //--- 5. DependsOn โ€” G2 is independent (CommentParser disambig is internal, not topo dep)
    virtual int      DependsOn(int &out_magics[]) override
      {
       ArrayResize(out_magics, 0);
       return 0;
      }
 
-   //--- 6. PendingState — G2 uses IDLE default (not in pending-flow list)
+   //--- 6. PendingState โ€” G2 uses IDLE default (not in pending-flow list)
    virtual EPendingState PendingState() const override { return PENDING_STATE_IDLE; }
   };
 
 //+------------------------------------------------------------------+
-//| _CloudHigh / _CloudLow — H4 Ichimoku cloud edge helpers           |
+//| _CloudHigh / _CloudLow โ€” H4 Ichimoku cloud edge helpers           |
 //+------------------------------------------------------------------+
 double CSlotG2::_CloudHigh(const MarketContext &ctx) const
   {
@@ -104,7 +104,7 @@ double CSlotG2::_CloudLow(const MarketContext &ctx) const
   }
 
 //+------------------------------------------------------------------+
-//| _IsPriceAboveCloud — bid > cloud_high                             |
+//| _IsPriceAboveCloud โ€” bid > cloud_high                             |
 //+------------------------------------------------------------------+
 bool CSlotG2::_IsPriceAboveCloud(const MarketContext &ctx) const
   {
@@ -112,7 +112,7 @@ bool CSlotG2::_IsPriceAboveCloud(const MarketContext &ctx) const
   }
 
 //+------------------------------------------------------------------+
-//| _IsPriceBelowCloud — ask < cloud_low                              |
+//| _IsPriceBelowCloud โ€” ask < cloud_low                              |
 //+------------------------------------------------------------------+
 bool CSlotG2::_IsPriceBelowCloud(const MarketContext &ctx) const
   {
@@ -120,8 +120,8 @@ bool CSlotG2::_IsPriceBelowCloud(const MarketContext &ctx) const
   }
 
 //+------------------------------------------------------------------+
-//| _HasActiveG2Order — check for open G2 orders via PortfolioState   |
-//| Uses GetTicketsForSlot(MAGIC_G, "G2,", tickets[]) — comment-disambig|
+//| _HasActiveG2Order โ€” check for open G2 orders via PortfolioState   |
+//| Uses GetTicketsForSlot(MAGIC_G, "G2,", tickets[]) โ€” comment-disambig|
 //+------------------------------------------------------------------+
 bool CSlotG2::_HasActiveG2Order(CPortfolioState &port) const
   {
@@ -131,13 +131,13 @@ bool CSlotG2::_HasActiveG2Order(CPortfolioState &port) const
   }
 
 //+------------------------------------------------------------------+
-//| _IsG2BuySignal — Force continuation range BUY (CodeWiki §3.G2)   |
+//| _IsG2BuySignal โ€” Force continuation range BUY (CodeWiki ยง3.G2)   |
 //|                                                                   |
 //| Lighter condition than G (wave-helper role):                      |
 //|   F[1] > InpG2FIContinuationMin (> 0.0)                          |
 //|   F[2] > InpG2FIContinuationLow (> -0.2, in continuation range)  |
 //|                                                                   |
-//| Meaning: Force is still positive but not exhausted — wave helper  |
+//| Meaning: Force is still positive but not exhausted โ€” wave helper  |
 //| enters after G has fired (continuation into the same wave).       |
 //+------------------------------------------------------------------+
 bool CSlotG2::_IsG2BuySignal(const MarketContext &ctx) const
@@ -145,12 +145,12 @@ bool CSlotG2::_IsG2BuySignal(const MarketContext &ctx) const
    double f1 = ctx.force_h4.f1;
    double f2 = ctx.force_h4.f2;
 
-   //--- Continuation range: F[1]>0 ∧ F[2]>-0.2 (still in wave, not reversed)
+   //--- Continuation range: F[1]>0 โง F[2]>-0.2 (still in wave, not reversed)
    return (f1 > InpG2FIContinuationMin && f2 > InpG2FIContinuationLow);
   }
 
 //+------------------------------------------------------------------+
-//| _IsG2SellSignal — Force continuation range SELL (mirror of BUY)  |
+//| _IsG2SellSignal โ€” Force continuation range SELL (mirror of BUY)  |
 //|   F[1] < -InpG2FIContinuationMin (< 0.0)                         |
 //|   F[2] < -InpG2FIContinuationLow (< +0.2)                        |
 //+------------------------------------------------------------------+
@@ -164,7 +164,7 @@ bool CSlotG2::_IsG2SellSignal(const MarketContext &ctx) const
   }
 
 //+------------------------------------------------------------------+
-//| Evaluate — Slot G2 entry pass (CodeWiki §3.G2 MVP)                |
+//| Evaluate โ€” Slot G2 entry pass (CodeWiki ยง3.G2 MVP)                |
 //|                                                                   |
 //| Entry conditions (3 of N for M-size MVP):                         |
 //|   1. InpEnableSlotG2 == true                                      |
@@ -214,20 +214,20 @@ void CSlotG2::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    if(lot <= 0.0)
      {
       m_logger.Warn("SlotG2", "zero_lot_skip", MAGIC_G,
-                    "ComputeLot returned 0 — skipping G2 entry");
+                    "ComputeLot returned 0 โ€” skipping G2 entry");
       return;
      }
 
-   //--- Compute SL price (broker-bound — base-class _NormalizeBrokerPrice)
+   //--- Compute SL price (broker-bound โ€” base-class _NormalizeBrokerPrice)
    double tp_price = 0.0;
    double sl_price = buySignal
                      ? _NormalizeBrokerPrice(ctx.ask - sl_pips * pip_size)
                      : _NormalizeBrokerPrice(ctx.bid + sl_pips * pip_size);
 
-   //--- Comment: "G2,F1,N,1,SL" per CodeWiki §3.G2 — disambig from "G,"
+   //--- Comment: "G2,F1,N,1,SL" per CodeWiki ยง3.G2 โ€” disambig from "G,"
    string comment = "G2,F1,N,1,SL";
 
-   //--- Build order request (route through RiskManager — ea.md: ห้าม instantiate CTrade direct)
+   //--- Build order request (route through RiskManager โ€” ea.md: เธซเนเธฒเธก instantiate CTrade direct)
    ENUM_ORDER_TYPE order_type = buySignal ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
    double price = buySignal ? ctx.ask : ctx.bid;
 
@@ -243,9 +243,9 @@ void CSlotG2::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    req.tp           = tp_price;
    req.comment      = comment;
    req.magic        = MAGIC_G;
-   req.type_filling = ORDER_FILLING_FOK;   // filling mode set per broker detection at Phase-2 wiring; see docs/state/deferred-ac-registry.md (RiskManager::OpenOrder)
+   req.type_filling = ORDER_FILLING_FOK;   // filling mode set per broker detection at Orchestrator wiring path (core/Orchestrator.mqh) (RiskManager::OpenOrder)
 
-   //--- fix-round-12 § 12.8 — Phase 1 emits entry_signal Logger.Info as
+   //--- fix-round-12 ยง 12.8 โ€” Phase 1 emits entry_signal Logger.Info as
    //    the observable milestone; actual OrderSend lives in
    //    `RiskManager::OpenOrder` per `.claude/rules/ea.md` (IMPL-017 +
    //    IMPL-062 5-yr regression).
@@ -255,26 +255,26 @@ void CSlotG2::Evaluate(const MarketContext &ctx, CPortfolioState &port)
                               (buySignal ? "BUY" : "SELL"), lot, sl_pips, price, sl_price, comment));
 
    //--- CrossSlotCoordinator stub
-   if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (Phase-2 wiring; see docs/state/deferred-ac-registry.md) */)
+   if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (Orchestrator wiring path (core/Orchestrator.mqh)) */)
      {
       //--- Stub: coupling to G-overload signal
-      //    wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md (cross-slot coupling per ea.md).
+      //    wires at Orchestrator wiring path (core/Orchestrator.mqh) (cross-slot coupling per ea.md).
      }
   }
 
 //+------------------------------------------------------------------+
-//| ManageExits — Slot G2 exit pass (lighter profit gate; 30 pip MVP) |
+//| ManageExits โ€” Slot G2 exit pass (lighter profit gate; 30 pip MVP) |
 //|                                                                   |
 //| Exit logic (MVP):                                                 |
 //|   1. Iterate G2 positions via GetTicketsForSlot(MAGIC_G, "G2,")  |
 //|   2. For each: compute unrealized profit in pips                  |
-//|   3. Profit gate ≥ InpG2TpProfitPips (30 pip default) → close    |
+//|   3. Profit gate โฅ InpG2TpProfitPips (30 pip default) โ’ close    |
 //+------------------------------------------------------------------+
 void CSlotG2::ManageExits(CPortfolioState &port)
   {
    if(m_logger == NULL) return;
 
-   //--- Retrieve G2 tickets (comment prefix "G2," — disambig from "G,")
+   //--- Retrieve G2 tickets (comment prefix "G2," โ€” disambig from "G,")
    ulong tickets[];
    int n = port.GetTicketsForSlot(MAGIC_G, "G2,", tickets);
    if(n <= 0) return;
@@ -301,19 +301,19 @@ void CSlotG2::ManageExits(CPortfolioState &port)
       else
          profit_pips = (open_price - cur_price) / pip_size;
 
-      //--- Profit gate: ≥ InpG2TpProfitPips (30 pip default — lighter than G's 50)
+      //--- Profit gate: โฅ InpG2TpProfitPips (30 pip default โ€” lighter than G's 50)
       if(profit_pips >= InpG2TpProfitPips)
         {
          m_logger.Info("SlotG2", "exit_profit_gate", MAGIC_G,
-                       StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f → close",
+                       StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f โ’ close",
                                     ticket, profit_pips, InpG2TpProfitPips));
 
          //--- Phase-1 stub: logger-only milestone; broker close wires at
-         //    Phase-2 wiring; see docs/state/deferred-ac-registry.md (RiskManager::OpenOrder) per ea.md.
+         //    Orchestrator wiring path (core/Orchestrator.mqh) (RiskManager::OpenOrder) per ea.md.
          //    Evidence for E-AC [log-assertion]: above Info log is the observable milestone.
         }
 
-      //--- CrossSlotCoordinator stub — deferred (IMPL-053)
+      //--- CrossSlotCoordinator stub โ€” deferred (IMPL-053)
       if(m_xslot != NULL && false /*IMPL-053*/)
         {
          //--- Stub: any G2 peak-based cross-slot coupling goes here (IMPL-053)

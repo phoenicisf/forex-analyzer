@@ -1,10 +1,10 @@
 //+------------------------------------------------------------------+
-//| slots/Slot_T.mqh — Slot T implementation (IMPL-035)              |
+//| slots/Slot_T.mqh โ€” Slot T implementation (IMPL-035)              |
 //| Layer:   slots/ (inherits domain/CSlotBase; ADR-002 contract)     |
 //| Magic:   MAGIC_T = 219                                            |
-//| Source:  CodeWiki §3 Slot T; ADR-002; ADR-008 (OQ-A3); ADR-012   |
+//| Source:  CodeWiki ยง3 Slot T; ADR-002; ADR-008 (OQ-A3); ADR-012   |
 //|                                                                   |
-//| M-size MVP — 3 of N CodeWiki §3.T conditions:                    |
+//| M-size MVP โ€” 3 of N CodeWiki ยง3.T conditions:                    |
 //|   1. No active T orders (magic 219 with "T," prefix)              |
 //|   2. MACD M10: histogram direction (hist > 0 BUY / <0 SELL)       |
 //|   3. ADX H4 dominance: adx > InpTAdxMin                           |
@@ -13,19 +13,19 @@
 //| Deferred to P4 IMPL-062+: advanced T filters / trailing exit      |
 //|                                                                   |
 //| Exit (ManageExits):                                               |
-//|   - Profit gate ≥ InpTTpProfitPips (45 pip default)               |
+//|   - Profit gate โฅ InpTTpProfitPips (45 pip default)               |
 //|                                                                   |
 //| Pending integration (ADR-008 / OQ-A3):                            |
 //|   - CPendingMachineRegistry PM_T; force-clear = PMR.TickAll       |
 //|   - InpForceClearT_Bars = 80 (Inputs_Pending.mqh)                 |
-//|   - Slot ห้าม call TickAll directly — Orchestrator step 8 owns it  |
+//|   - Slot เธซเนเธฒเธก call TickAll directly โ€” Orchestrator step 8 owns it  |
 //|                                                                   |
 //| Lot: RiskManager::ComputeLot("T", InpTSlPipsFloor, balance)       |
 //| Comment: "T,MA,N,1,SL" per CodeWiki comment format                |
 //|                                                                   |
 //| ADR-012 include discipline:                                        |
-//|   ห้าม #include "slots/<other>.mqh"                               |
-//|   ห้าม #include "services/Logger.mqh" direct (injected)           |
+//|   เธซเนเธฒเธก #include "slots/<other>.mqh"                               |
+//|   เธซเนเธฒเธก #include "services/Logger.mqh" direct (injected)           |
 //+------------------------------------------------------------------+
 #ifndef PHOENICISNEX_SLOTS_SLOT_T_MQH
 #define PHOENICISNEX_SLOTS_SLOT_T_MQH
@@ -39,11 +39,11 @@
 #include "../inputs/Inputs_Slot_T.mqh"
 
 //+------------------------------------------------------------------+
-//| CSlotT — Slot T derived class (ADR-002 CSlotBase contract)        |
+//| CSlotT โ€” Slot T derived class (ADR-002 CSlotBase contract)        |
 //|                                                                   |
 //| Uses T-Pending state machine (PM_T) to gate entry:               |
-//|   IDLE + base signal → EnterPending (await retest/confirm bar)    |
-//|   PENDING + trigger valid → place entry + TransitionExecuted      |
+//|   IDLE + base signal โ’ EnterPending (await retest/confirm bar)    |
+//|   PENDING + trigger valid โ’ place entry + TransitionExecuted      |
 //|   Force-clear (80 H4 bars): handled by PMR.TickAll in Orchestr.   |
 //+------------------------------------------------------------------+
 class CSlotT : public CSlotBase
@@ -63,27 +63,27 @@ public:
 
    //--- 6-method behavior contract (ADR-002; slot-abstraction-contract.yaml)
 
-   //--- 1. Magic — MAGIC_T = 219
+   //--- 1. Magic โ€” MAGIC_T = 219
    virtual int           Magic()  const override { return MAGIC_T; }
 
-   //--- 2. SlotId — "T"; used by journal slot_id field + comment prefix "T,"
+   //--- 2. SlotId โ€” "T"; used by journal slot_id field + comment prefix "T,"
    virtual string        SlotId() const override { return "T"; }
 
-   //--- 3. Evaluate — entry pass with T-Pending integration (FR-2.3)
+   //--- 3. Evaluate โ€” entry pass with T-Pending integration (FR-2.3)
    //       Called only in EA_STATE_RUNNING
    virtual void          Evaluate(const MarketContext &ctx, CPortfolioState &port) override;
 
-   //--- 4. ManageExits — exit pass; called in BOTH RUNNING + HALTED (ADR-010)
+   //--- 4. ManageExits โ€” exit pass; called in BOTH RUNNING + HALTED (ADR-010)
    virtual void          ManageExits(CPortfolioState &port) override;
 
-   //--- 5. DependsOn — T is topologically independent; PMR dep is shared service
+   //--- 5. DependsOn โ€” T is topologically independent; PMR dep is shared service
    virtual int           DependsOn(int &out_magics[]) override
      {
       ArrayResize(out_magics, 0);
       return 0;
      }
 
-   //--- 6. PendingState — delegate to PMR if wired; else IDLE (safe default)
+   //--- 6. PendingState โ€” delegate to PMR if wired; else IDLE (safe default)
    virtual EPendingState PendingState() const override
      {
       if(m_pending == NULL) return PENDING_STATE_IDLE;
@@ -92,7 +92,7 @@ public:
   };
 
 //+------------------------------------------------------------------+
-//| _HasActiveTOrder — check for open T orders via PortfolioState     |
+//| _HasActiveTOrder โ€” check for open T orders via PortfolioState     |
 //| Comment prefix "T," for disambiguation                            |
 //+------------------------------------------------------------------+
 bool CSlotT::_HasActiveTOrder(CPortfolioState &port) const
@@ -103,9 +103,9 @@ bool CSlotT::_HasActiveTOrder(CPortfolioState &port) const
   }
 
 //+------------------------------------------------------------------+
-//| _IsTBuyBaseSignal — base BUY signal for pending gate              |
+//| _IsTBuyBaseSignal โ€” base BUY signal for pending gate              |
 //|                                                                   |
-//| Conditions (MVP 3 of N CodeWiki §3.T):                            |
+//| Conditions (MVP 3 of N CodeWiki ยง3.T):                            |
 //|   1. MACD M10 histogram > threshold (momentum BUY)               |
 //|   2. ADX H4 dominance: adx > InpTAdxMin                           |
 //|   3. Stochastic H4 oversold: k_main < InpTStochOversold           |
@@ -119,7 +119,7 @@ bool CSlotT::_IsTBuyBaseSignal(const MarketContext &ctx) const
   }
 
 //+------------------------------------------------------------------+
-//| _IsTSellBaseSignal — base SELL signal for pending gate (mirror)   |
+//| _IsTSellBaseSignal โ€” base SELL signal for pending gate (mirror)   |
 //+------------------------------------------------------------------+
 bool CSlotT::_IsTSellBaseSignal(const MarketContext &ctx) const
   {
@@ -130,7 +130,7 @@ bool CSlotT::_IsTSellBaseSignal(const MarketContext &ctx) const
   }
 
 //+------------------------------------------------------------------+
-//| _IsTBuyTrigger — trigger condition to execute pending BUY         |
+//| _IsTBuyTrigger โ€” trigger condition to execute pending BUY         |
 //| Precondition retest: MACD signal line cross (hist still positive) |
 //+------------------------------------------------------------------+
 bool CSlotT::_IsTBuyTrigger(const MarketContext &ctx) const
@@ -141,7 +141,7 @@ bool CSlotT::_IsTBuyTrigger(const MarketContext &ctx) const
   }
 
 //+------------------------------------------------------------------+
-//| _IsTSellTrigger — trigger condition to execute pending SELL       |
+//| _IsTSellTrigger โ€” trigger condition to execute pending SELL       |
 //+------------------------------------------------------------------+
 bool CSlotT::_IsTSellTrigger(const MarketContext &ctx) const
   {
@@ -150,14 +150,14 @@ bool CSlotT::_IsTSellTrigger(const MarketContext &ctx) const
   }
 
 //+------------------------------------------------------------------+
-//| Evaluate — Slot T entry pass with T-Pending integration           |
+//| Evaluate โ€” Slot T entry pass with T-Pending integration           |
 //|                                                                   |
-//| T-Pending pattern (ADR-008 / OQ-A3 / shared context §4.3):       |
+//| T-Pending pattern (ADR-008 / OQ-A3 / shared context ยง4.3):       |
 //|   Phase A (base signal, not yet in pending):                      |
-//|     IDLE + base signal → EnterPending(PM_T, payload, bar_index)  |
+//|     IDLE + base signal โ’ EnterPending(PM_T, payload, bar_index)  |
 //|   Phase B (pending, trigger now valid):                           |
-//|     PENDING + trigger valid → place entry + TransitionExecuted    |
-//|   Force-clear: PMR.TickAll (Orchestrator step 8) — slot ห้าม poll |
+//|     PENDING + trigger valid โ’ place entry + TransitionExecuted    |
+//|   Force-clear: PMR.TickAll (Orchestrator step 8) โ€” slot เธซเนเธฒเธก poll |
 //+------------------------------------------------------------------+
 void CSlotT::Evaluate(const MarketContext &ctx, CPortfolioState &port)
   {
@@ -175,7 +175,7 @@ void CSlotT::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //--- Retrieve current pending state for PM_T
    EPendingState st = m_pending.GetState(PM_T);
 
-   //--- Phase A: IDLE — check base signal, enter pending if met
+   //--- Phase A: IDLE โ€” check base signal, enter pending if met
    if(st == PENDING_STATE_IDLE)
      {
       bool buyBase  = _IsTBuyBaseSignal(ctx);
@@ -183,7 +183,7 @@ void CSlotT::Evaluate(const MarketContext &ctx, CPortfolioState &port)
 
       if(!buyBase && !sellBase) return;
 
-      //--- Build pending payload (minimal JSON — full schema in state-persistence-schema.yaml § PendingMachine)
+      //--- Build pending payload (minimal JSON โ€” full schema in state-persistence-schema.yaml ยง PendingMachine)
       string dir     = buyBase ? "BUY" : "SELL";
       string payload = StringFormat("{\"dir\":\"%s\",\"sl_pips\":%.1f}", dir, InpTSlPipsFloor);
 
@@ -196,7 +196,7 @@ void CSlotT::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       return;
      }
 
-   //--- Phase B: PENDING — check trigger, place entry if valid
+   //--- Phase B: PENDING โ€” check trigger, place entry if valid
    if(st == PENDING_STATE_PENDING)
      {
       //--- Read payload to recover direction
@@ -217,7 +217,7 @@ void CSlotT::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       if(lot <= 0.0)
         {
          m_logger.Warn("SlotT", "zero_lot_skip", MAGIC_T,
-                       "ComputeLot returned 0 — skipping T entry");
+                       "ComputeLot returned 0 โ€” skipping T entry");
          return;
         }
 
@@ -227,14 +227,14 @@ void CSlotT::Evaluate(const MarketContext &ctx, CPortfolioState &port)
                         ? _NormalizeBrokerPrice(ctx.ask - sl_pips * pip_size)
                         : _NormalizeBrokerPrice(ctx.bid + sl_pips * pip_size);
 
-      //--- Comment: "T,MA,N,1,SL" per CodeWiki §3.T format
+      //--- Comment: "T,MA,N,1,SL" per CodeWiki ยง3.T format
       string comment = "T,MA,N,1,SL";
 
       //--- Submit order through RiskManager CTrade wrapper
-      //    ห้าม instantiate CTrade direct (ea.md + ADR-002)
-      //    fix-round-12 § 12.8 — Phase 1 emits entry_signal Info as the
+      //    เธซเนเธฒเธก instantiate CTrade direct (ea.md + ADR-002)
+      //    fix-round-12 ยง 12.8 โ€” Phase 1 emits entry_signal Info as the
       //    observable milestone; actual OrderSend wiring lives in
-      //    `RiskManager::OpenOrder` (Phase-2 wiring; see docs/state/deferred-ac-registry.md 5-yr regression).
+      //    `RiskManager::OpenOrder` (Orchestrator wiring path (core/Orchestrator.mqh) 5-yr regression).
       //    Observable E-AC milestone: emit entry_signal Info log.
       ENUM_ORDER_TYPE order_type = isBuy ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
 
@@ -250,7 +250,7 @@ void CSlotT::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       req.tp           = 0.0;    // TP = 0; profit gate managed in ManageExits
       req.comment      = comment;
       req.magic        = MAGIC_T;
-      req.type_filling = ORDER_FILLING_FOK;  // broker detection at Phase-2 wiring; see docs/state/deferred-ac-registry.md
+      req.type_filling = ORDER_FILLING_FOK;  // broker detection at Orchestrator wiring path (core/Orchestrator.mqh)
 
       if(m_logger != NULL)
          m_logger.Info("SlotT", "entry_signal", MAGIC_T,
@@ -262,17 +262,17 @@ void CSlotT::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       m_pending.TransitionExecuted(PM_T);
      }
 
-   //--- Phase C: EXECUTED — entry placed; pending machine will reset to IDLE
-   //    on next PMR.TickAll pass — no action needed in slot.
+   //--- Phase C: EXECUTED โ€” entry placed; pending machine will reset to IDLE
+   //    on next PMR.TickAll pass โ€” no action needed in slot.
   }
 
 //+------------------------------------------------------------------+
-//| ManageExits — Slot T exit pass (CodeWiki §3.T MVP)                |
+//| ManageExits โ€” Slot T exit pass (CodeWiki ยง3.T MVP)                |
 //|                                                                   |
 //| Exit logic (MVP):                                                 |
 //|   1. Iterate T positions via GetTicketsForSlot(MAGIC_T, "T,")    |
 //|   2. Compute unrealized profit in pips                            |
-//|   3. Profit gate ≥ InpTTpProfitPips (45 pip default) → close     |
+//|   3. Profit gate โฅ InpTTpProfitPips (45 pip default) โ’ close     |
 //+------------------------------------------------------------------+
 void CSlotT::ManageExits(CPortfolioState &port)
   {
@@ -305,15 +305,15 @@ void CSlotT::ManageExits(CPortfolioState &port)
       else
          profit_pips = (open_price - cur_price) / pip_size;
 
-      //--- Profit gate: ≥ InpTTpProfitPips → emit close signal
+      //--- Profit gate: โฅ InpTTpProfitPips โ’ emit close signal
       if(profit_pips >= InpTTpProfitPips)
         {
          m_logger.Info("SlotT", "exit_profit_gate", MAGIC_T,
-                       StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f → close",
+                       StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f โ’ close",
                                     ticket, profit_pips, InpTTpProfitPips));
 
          //--- Phase-1 stub: logger-only milestone; broker close wires at
-         //    Phase-2 wiring; see docs/state/deferred-ac-registry.md (RiskManager::OpenOrder) per ea.md.
+         //    Orchestrator wiring path (core/Orchestrator.mqh) (RiskManager::OpenOrder) per ea.md.
         }
      }
   }

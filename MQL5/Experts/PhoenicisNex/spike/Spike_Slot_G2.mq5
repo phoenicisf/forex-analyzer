@@ -8,16 +8,16 @@
 //|   - CSlotG2 instantiable + 6-method contract spot-check           |
 //|   - Magic() == MAGIC_G (208)                                       |
 //|   - SlotId() == "G2"                                              |
-//|   - DependsOn() returns 0 (independent — CommentParser disambig   |
+//|   - DependsOn() returns 0 (independent โ€” CommentParser disambig   |
 //|     "G2," vs "G," is internal, not a topology dependency)         |
 //|   - PendingState() == PENDING_STATE_IDLE                           |
 //|   - Magic() in BR-1.1 range [200..220]                            |
 //|   - SlotId() non-empty (not sentinel "")                          |
 //|                                                                   |
 //| Pattern: mirrors Spike_Slot_G.mq5 stub shape (IMPL-025).          |
-//| NOTE: G2-G4 full entry+exit E-ACs wire at Phase-2 wiring; see docs/state/deferred-ac-registry.md     |
+//| NOTE: G2-G4 full entry+exit E-ACs wire at Orchestrator wiring path (core/Orchestrator.mqh)     |
 //|       (RiskManager::OpenOrder); smoke ini committed for PR contract|
-//|       per TD-02 §13.6 (see simulation/headless-tests/slot_G2_smoke.ini).|
+//|       per TD-02 ยง13.6 (see simulation/headless-tests/slot_G2_smoke.ini).|
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, PhoenicisNex"
 #property link      "https://phoenicisnex.com"
@@ -31,7 +31,7 @@
 CLogger  g_logger;
 
 //+------------------------------------------------------------------+
-//| OnInit — SelfTest for Slot G2 contract                            |
+//| OnInit โ€” SelfTest for Slot G2 contract                            |
 //+------------------------------------------------------------------+
 int OnInit()
   {
@@ -43,18 +43,18 @@ int OnInit()
    //--- Inject Logger only; other 7 service ptrs NULL in test harness
    slot_g2.Init(NULL, NULL, NULL, &g_logger, NULL, NULL, NULL, NULL);
 
-   //--- Case 1: Magic() must return MAGIC_G (208) — shared with G per CommentParser pattern
+   //--- Case 1: Magic() must return MAGIC_G (208) โ€” shared with G per CommentParser pattern
    if(slot_g2.Magic() != MAGIC_G)
      {
-      Print("Spike_Slot_G2: FAIL case 1 — Magic()=", slot_g2.Magic(),
+      Print("Spike_Slot_G2: FAIL case 1 โ€” Magic()=", slot_g2.Magic(),
             " expected MAGIC_G=", MAGIC_G);
       return INIT_FAILED;
      }
 
-   //--- Case 2: SlotId() must return "G2" (not "G" — disambig critical)
+   //--- Case 2: SlotId() must return "G2" (not "G" โ€” disambig critical)
    if(slot_g2.SlotId() != "G2")
      {
-      Print("Spike_Slot_G2: FAIL case 2 — SlotId()='", slot_g2.SlotId(),
+      Print("Spike_Slot_G2: FAIL case 2 โ€” SlotId()='", slot_g2.SlotId(),
             "' expected 'G2'");
       return INIT_FAILED;
      }
@@ -64,7 +64,7 @@ int OnInit()
    int dep_count = slot_g2.DependsOn(deps);
    if(dep_count != 0)
      {
-      Print("Spike_Slot_G2: FAIL case 3 — DependsOn()=", dep_count,
+      Print("Spike_Slot_G2: FAIL case 3 โ€” DependsOn()=", dep_count,
             " expected 0 (independent)");
       return INIT_FAILED;
      }
@@ -72,7 +72,7 @@ int OnInit()
    //--- Case 4: PendingState() must return PENDING_STATE_IDLE (G2 not in pending-flow list)
    if(slot_g2.PendingState() != PENDING_STATE_IDLE)
      {
-      Print("Spike_Slot_G2: FAIL case 4 — PendingState()=", (int)slot_g2.PendingState(),
+      Print("Spike_Slot_G2: FAIL case 4 โ€” PendingState()=", (int)slot_g2.PendingState(),
             " expected PENDING_STATE_IDLE=", (int)PENDING_STATE_IDLE);
       return INIT_FAILED;
      }
@@ -80,7 +80,7 @@ int OnInit()
    //--- Case 5: Magic() is in valid range 200..220 (BR-1.1)
    if(slot_g2.Magic() < 200 || slot_g2.Magic() > 220)
      {
-      Print("Spike_Slot_G2: FAIL case 5 — Magic()=", slot_g2.Magic(),
+      Print("Spike_Slot_G2: FAIL case 5 โ€” Magic()=", slot_g2.Magic(),
             " outside BR-1.1 range [200..220]");
       return INIT_FAILED;
      }
@@ -88,12 +88,12 @@ int OnInit()
    //--- Case 6: SlotId() non-empty (not sentinel "")
    if(slot_g2.SlotId() == "")
      {
-      Print("Spike_Slot_G2: FAIL case 6 — SlotId() returned sentinel \"\"");
+      Print("Spike_Slot_G2: FAIL case 6 โ€” SlotId() returned sentinel \"\"");
       return INIT_FAILED;
      }
 
    Print("[Phoenicis][SlotG2][ev=spike_self_test][result=pass] "
-         "6 cases passed — Magic=", slot_g2.Magic(),
+         "6 cases passed โ€” Magic=", slot_g2.Magic(),
          " SlotId=", slot_g2.SlotId(),
          " DependsOn=", dep_count,
          " PendingState=", (int)slot_g2.PendingState());

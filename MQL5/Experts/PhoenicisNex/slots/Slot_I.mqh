@@ -1,25 +1,25 @@
 //+------------------------------------------------------------------+
-//| slots/Slot_I.mqh — Slot I implementation (IMPL-028)              |
+//| slots/Slot_I.mqh โ€” Slot I implementation (IMPL-028)              |
 //| Layer:   slots/ (inherits domain/CSlotBase; ADR-002 contract)     |
 //| Magic:   MAGIC_I = 216 (own; not shared)                          |
-//| Source:  CodeWiki §3.I; TD-02 §5.4; ADR-002; ADR-012             |
+//| Source:  CodeWiki ยง3.I; TD-02 ยง5.4; ADR-002; ADR-012             |
 //|                                                                   |
-//| S-size MVP — 3 of N CodeWiki §3.I conditions:                     |
-//|   1. Parasite gate: G must have ≥1 active "G," order              |
-//|      → port.GetTicketsForSlot(MAGIC_G, "G,", g_tickets) > 0       |
+//| S-size MVP โ€” 3 of N CodeWiki ยง3.I conditions:                     |
+//|   1. Parasite gate: G must have โฅ1 active "G," order              |
+//|      โ’ port.GetTicketsForSlot(MAGIC_G, "G,", g_tickets) > 0       |
 //|   2. Own-no-active guard: no existing "I," order                  |
-//|      → port.GetTicketsForSlot(MAGIC_I, "I,", own_tickets) == 0    |
+//|      โ’ port.GetTicketsForSlot(MAGIC_I, "I,", own_tickets) == 0    |
 //|   3. Direction inheritance from first G ticket + Fibonacci retrace |
 //|      price gate: price retraced to InpIFibLevel (0.5 default)     |
 //|      of recent InpILookbackBars range in G's direction             |
 //| Deferred to P4 IMPL-062: GPause / ADX confirmation / wave-spans   |
 //|                                                                    |
 //| Exit (ManageExits):                                               |
-//|   - Profit gate >= InpITpProfitPips (25 pip — shorter-horizon)    |
+//|   - Profit gate >= InpITpProfitPips (25 pip โ€” shorter-horizon)    |
 //|   Stub: if(m_xslot != NULL && false /*IMPL-053*/) {...}           |
 //|                                                                   |
 //| Lot: RiskManager::ComputeLot("I", InpISlPips, balance)            |
-//| Comment: "I,fib,1" per CodeWiki §3.I "I,..." pattern             |
+//| Comment: "I,fib,1" per CodeWiki ยง3.I "I,..." pattern             |
 //|                                                                   |
 //| Topology dependency:                                              |
 //|   DependsOn() returns 1, out_magics[0] = MAGIC_G                 |
@@ -27,8 +27,8 @@
 //|   Distinct from G2/LX which return 0 (internal disambig only)    |
 //|                                                                   |
 //| ADR-012 include discipline:                                        |
-//|   ห้าม #include "slots/<other>.mqh"                               |
-//|   ห้าม #include "services/Logger.mqh" direct (injected)           |
+//|   เธซเนเธฒเธก #include "slots/<other>.mqh"                               |
+//|   เธซเนเธฒเธก #include "services/Logger.mqh" direct (injected)           |
 //|   Cross-slot access via PortfolioState.GetTicketsForSlot() only   |
 //+------------------------------------------------------------------+
 #ifndef PHOENICISNEX_SLOTS_SLOT_I_MQH
@@ -42,7 +42,7 @@
 #include "../inputs/Inputs_Slot_I.mqh"
 
 //+------------------------------------------------------------------+
-//| CSlotI — Slot I derived class (ADR-002 CSlotBase contract)        |
+//| CSlotI โ€” Slot I derived class (ADR-002 CSlotBase contract)        |
 //|                                                                   |
 //| G-parasite Fibonacci pattern:                                     |
 //|   - Entry ONLY when G has an active open "G," position           |
@@ -73,19 +73,19 @@ public:
 
    //--- 6-method behavior contract (ADR-002; slot-abstraction-contract.yaml)
 
-   //--- 1. Magic — MAGIC_I = 216 (own; not shared)
+   //--- 1. Magic โ€” MAGIC_I = 216 (own; not shared)
    virtual int      Magic() const override { return MAGIC_I; }
 
-   //--- 2. SlotId — "I"; used by journal slot_id field + comment prefix
+   //--- 2. SlotId โ€” "I"; used by journal slot_id field + comment prefix
    virtual string   SlotId() const override { return "I"; }
 
-   //--- 3. Evaluate — entry pass (FR-2.3); only called in EA_STATE_RUNNING
+   //--- 3. Evaluate โ€” entry pass (FR-2.3); only called in EA_STATE_RUNNING
    virtual void     Evaluate(const MarketContext &ctx, CPortfolioState &port) override;
 
-   //--- 4. ManageExits — exit pass; called in BOTH RUNNING + HALTED (ADR-010)
+   //--- 4. ManageExits โ€” exit pass; called in BOTH RUNNING + HALTED (ADR-010)
    virtual void     ManageExits(CPortfolioState &port) override;
 
-   //--- 5. DependsOn — I is a G-parasite (topology dep on MAGIC_G)
+   //--- 5. DependsOn โ€” I is a G-parasite (topology dep on MAGIC_G)
    //       Returns 1; out_magics[0] = MAGIC_G
    //       Distinct from G2/LX (CommentParser disambig = internal, returns 0)
    virtual int      DependsOn(int &out_magics[]) override
@@ -95,13 +95,13 @@ public:
       return 1;
      }
 
-   //--- 6. PendingState — I uses IDLE default (not in pending-flow list)
+   //--- 6. PendingState โ€” I uses IDLE default (not in pending-flow list)
    virtual EPendingState PendingState() const override { return PENDING_STATE_IDLE; }
   };
 
 //+------------------------------------------------------------------+
-//| _HasActiveGOrder — check for open G parent orders via PortfolioState|
-//| Uses GetTicketsForSlot(MAGIC_G, "G,", tickets) — "G," prefix only  |
+//| _HasActiveGOrder โ€” check for open G parent orders via PortfolioState|
+//| Uses GetTicketsForSlot(MAGIC_G, "G,", tickets) โ€” "G," prefix only  |
 //| (not "G2," or other G-pool prefix)                                 |
 //+------------------------------------------------------------------+
 bool CSlotI::_HasActiveGOrder(CPortfolioState &port) const
@@ -112,8 +112,8 @@ bool CSlotI::_HasActiveGOrder(CPortfolioState &port) const
   }
 
 //+------------------------------------------------------------------+
-//| _HasActiveIOrder — check for own open I orders via PortfolioState  |
-//| Uses GetTicketsForSlot(MAGIC_I, "I,", tickets) — own "I," prefix  |
+//| _HasActiveIOrder โ€” check for own open I orders via PortfolioState  |
+//| Uses GetTicketsForSlot(MAGIC_I, "I,", tickets) โ€” own "I," prefix  |
 //+------------------------------------------------------------------+
 bool CSlotI::_HasActiveIOrder(CPortfolioState &port) const
   {
@@ -123,7 +123,7 @@ bool CSlotI::_HasActiveIOrder(CPortfolioState &port) const
   }
 
 //+------------------------------------------------------------------+
-//| _GetGDirection — retrieve direction of first active G order        |
+//| _GetGDirection โ€” retrieve direction of first active G order        |
 //| Returns POSITION_TYPE_BUY or POSITION_TYPE_SELL.                  |
 //| Caller must ensure _HasActiveGOrder() is true before calling.     |
 //+------------------------------------------------------------------+
@@ -140,7 +140,7 @@ ENUM_POSITION_TYPE CSlotI::_GetGDirection(CPortfolioState &port) const
   }
 
 //+------------------------------------------------------------------+
-//| _RangeHigh — highest high over InpILookbackBars bars              |
+//| _RangeHigh โ€” highest high over InpILookbackBars bars              |
 //| Uses iHigh() series (MarketContext snapshot: fallback to live)    |
 //+------------------------------------------------------------------+
 double CSlotI::_RangeHigh(const MarketContext &ctx) const
@@ -157,7 +157,7 @@ double CSlotI::_RangeHigh(const MarketContext &ctx) const
   }
 
 //+------------------------------------------------------------------+
-//| _RangeLow — lowest low over InpILookbackBars bars                 |
+//| _RangeLow โ€” lowest low over InpILookbackBars bars                 |
 //+------------------------------------------------------------------+
 double CSlotI::_RangeLow(const MarketContext &ctx) const
   {
@@ -173,15 +173,15 @@ double CSlotI::_RangeLow(const MarketContext &ctx) const
   }
 
 //+------------------------------------------------------------------+
-//| _IsFibRetraceReady — check if price retraced to InpIFibLevel      |
+//| _IsFibRetraceReady โ€” check if price retraced to InpIFibLevel      |
 //|                                                                   |
 //| For BUY (G is long, I Fibonacci continuation BUY):                |
 //|   fib_price = range_high - InpIFibLevel * (range_high - range_low)|
-//|   → I enters BUY when ask <= fib_price (price retraced to level)  |
+//|   โ’ I enters BUY when ask <= fib_price (price retraced to level)  |
 //|                                                                   |
 //| For SELL (G is short, I Fibonacci continuation SELL):             |
 //|   fib_price = range_low + InpIFibLevel * (range_high - range_low) |
-//|   → I enters SELL when bid >= fib_price                           |
+//|   โ’ I enters SELL when bid >= fib_price                           |
 //+------------------------------------------------------------------+
 bool CSlotI::_IsFibRetraceReady(const MarketContext &ctx,
                                  ENUM_POSITION_TYPE g_dir) const
@@ -189,7 +189,7 @@ bool CSlotI::_IsFibRetraceReady(const MarketContext &ctx,
    double range_high = _RangeHigh(ctx);
    double range_low  = _RangeLow(ctx);
 
-   //--- Insufficient range (flat / data not available) → skip
+   //--- Insufficient range (flat / data not available) โ’ skip
    if(range_high <= range_low) return false;
 
    double range_span = range_high - range_low;
@@ -213,17 +213,17 @@ bool CSlotI::_IsFibRetraceReady(const MarketContext &ctx,
   }
 
 //+------------------------------------------------------------------+
-//| Evaluate — Slot I entry pass (CodeWiki §3.I MVP)                  |
+//| Evaluate โ€” Slot I entry pass (CodeWiki ยง3.I MVP)                  |
 //|                                                                   |
 //| Entry conditions (3 of N for S-size MVP):                         |
 //|   1. InpEnableSlotI == true                                       |
-//|   2. G has ≥1 active "G," order (parasite gate)                   |
+//|   2. G has โฅ1 active "G," order (parasite gate)                   |
 //|   3. No active I orders (own-no-active guard)                     |
 //|   4. Direction inherited from G's first ticket                    |
 //|   5. Fibonacci retracement confirmation at InpIFibLevel           |
 //|                                                                   |
 //| Lot: RiskManager::ComputeLot("I", InpISlPips, balance)            |
-//| Comment: "I,fib,1" per CodeWiki §3.I                             |
+//| Comment: "I,fib,1" per CodeWiki ยง3.I                             |
 //+------------------------------------------------------------------+
 void CSlotI::Evaluate(const MarketContext &ctx, CPortfolioState &port)
   {
@@ -232,7 +232,7 @@ void CSlotI::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //--- Guard: service pointers must be wired (Composition Root via Init)
    if(m_risk == NULL || m_logger == NULL) return;
 
-   //--- Condition 1 (parasite gate): G must have ≥1 active "G," order
+   //--- Condition 1 (parasite gate): G must have โฅ1 active "G," order
    //    Cross-slot access via PortfolioState.GetTicketsForSlot (ADR-012)
    if(!_HasActiveGOrder(port)) return;
 
@@ -258,21 +258,21 @@ void CSlotI::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    if(lot <= 0.0)
      {
       m_logger.Warn("SlotI", "zero_lot_skip", MAGIC_I,
-                    "ComputeLot returned 0 — skipping I entry");
+                    "ComputeLot returned 0 โ€” skipping I entry");
       return;
      }
 
-   //--- Compute prices (broker-bound — base-class _NormalizeBrokerPrice)
+   //--- Compute prices (broker-bound โ€” base-class _NormalizeBrokerPrice)
    bool   isBuy    = (g_dir == POSITION_TYPE_BUY);
    double price    = isBuy ? ctx.ask : ctx.bid;
    double sl_price = isBuy
                      ? _NormalizeBrokerPrice(ctx.ask - sl_pips * pip_size)
                      : _NormalizeBrokerPrice(ctx.bid + sl_pips * pip_size);
 
-   //--- Comment: "I,fib,1" per CodeWiki §3.I "I,..." pattern
+   //--- Comment: "I,fib,1" per CodeWiki ยง3.I "I,..." pattern
    string comment = "I,fib,1";
 
-   //--- fix-round-12 § 12.8 — Phase 1 emits entry_signal Logger.Info as
+   //--- fix-round-12 ยง 12.8 โ€” Phase 1 emits entry_signal Logger.Info as
    //    the observable milestone; actual OrderSend lives in
    //    `RiskManager::OpenOrder` per `.claude/rules/ea.md` (IMPL-017 +
    //    IMPL-062 5-yr regression).
@@ -283,20 +283,20 @@ void CSlotI::Evaluate(const MarketContext &ctx, CPortfolioState &port)
                               InpIFibLevel, (g_dir == POSITION_TYPE_BUY ? "G_BUY" : "G_SELL")));
 
    //--- CrossSlotCoordinator stub
-   if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (Phase-2 wiring; see docs/state/deferred-ac-registry.md) */)
+   if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (Orchestrator wiring path (core/Orchestrator.mqh)) */)
      {
       //--- Stub: Fibonacci parasite coupling
-      //    wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md (cross-slot coupling per ea.md).
+      //    wires at Orchestrator wiring path (core/Orchestrator.mqh) (cross-slot coupling per ea.md).
      }
   }
 
 //+------------------------------------------------------------------+
-//| ManageExits — Slot I exit pass (shorter profit gate; 25 pip MVP)  |
+//| ManageExits โ€” Slot I exit pass (shorter profit gate; 25 pip MVP)  |
 //|                                                                   |
 //| Exit logic (MVP):                                                 |
 //|   1. Iterate I positions via GetTicketsForSlot(MAGIC_I, "I,")    |
 //|   2. For each: compute unrealized profit in pips                  |
-//|   3. Profit gate >= InpITpProfitPips (25 pip) → log close intent  |
+//|   3. Profit gate >= InpITpProfitPips (25 pip) โ’ log close intent  |
 //|                                                                   |
 //| Additional exit logic (P4 IMPL-062):                             |
 //|   - Close I when parent G position closes (orphan-guard)          |
@@ -333,23 +333,23 @@ void CSlotI::ManageExits(CPortfolioState &port)
       else
          profit_pips = (open_price - cur_price) / pip_size;
 
-      //--- Profit gate: >= InpITpProfitPips (25 pip — shorter-horizon Fibonacci target)
+      //--- Profit gate: >= InpITpProfitPips (25 pip โ€” shorter-horizon Fibonacci target)
       if(profit_pips >= InpITpProfitPips)
         {
          m_logger.Info("SlotI", "exit_profit_gate", MAGIC_I,
-                       StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f → close",
+                       StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f โ’ close",
                                     ticket, profit_pips, InpITpProfitPips));
 
          //--- Phase-1 stub: logger-only milestone; broker close wires at
-         //    Phase-2 wiring; see docs/state/deferred-ac-registry.md (RiskManager::OpenOrder) per ea.md.
+         //    Orchestrator wiring path (core/Orchestrator.mqh) (RiskManager::OpenOrder) per ea.md.
          //    Evidence for E-AC [log-assertion]: above Info log is the observable milestone.
         }
 
       //--- CrossSlotCoordinator stub
-      if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (Phase-2 wiring; see docs/state/deferred-ac-registry.md) */)
+      if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (Orchestrator wiring path (core/Orchestrator.mqh)) */)
         {
          //--- Stub: orphan-guard coupling (close I when parent G closes)
-         //    wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md (cross-slot coupling per ea.md).
+         //    wires at Orchestrator wiring path (core/Orchestrator.mqh) (cross-slot coupling per ea.md).
         }
      }
   }

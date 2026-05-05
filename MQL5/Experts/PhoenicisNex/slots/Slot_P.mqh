@@ -1,51 +1,51 @@
 //+------------------------------------------------------------------+
-//| slots/Slot_P.mqh — Slot P implementation (IMPL-034)              |
+//| slots/Slot_P.mqh โ€” Slot P implementation (IMPL-034)              |
 //| Layer:   slots/ (inherits domain/CSlotBase; ADR-002 contract)     |
 //| Magic:   MAGIC_P = 218                                            |
-//| Source:  CodeWiki §3.14 Slot P + §2.5 P_Extra; `04 § 4.4`;        |
+//| Source:  CodeWiki ยง3.14 Slot P + ยง2.5 P_Extra; `04 ยง 4.4`;        |
 //|          BR-6.4 (P legacy timeout); ADR-002; ADR-012.             |
 //|                                                                   |
-//| ⚠️ A7 risk note: E/N sub-mode semantic + transition rules verified|
-//|    against `04 § 4.4` (`docs/design-docs/04-data-flow.md`):       |
-//|       PSUB_N  = transient — mode-decision branch unresolved       |
-//|       PSUB_PX = Force fast-path (Force[1] > 0.1 AND diff_sl ≥ 200)|
+//| โ ๏ธ A7 risk note: E/N sub-mode semantic + transition rules verified|
+//|    against `04 ยง 4.4` (`docs/design-docs/04-data-flow.md`):       |
+//|       PSUB_N  = transient โ€” mode-decision branch unresolved       |
+//|       PSUB_PX = Force fast-path (Force[1] > 0.1 AND diff_sl โฅ 200)|
 //|       PSUB_PH = Hull/Bollinger default (diff_sl < 200)            |
 //|       PSUB_E  = Pyramid extension (P_Extra; comment "PI,...")     |
-//|    Lock-once semantic: once sub_mode in {PX,PH,E}, ห้าม flip.      |
-//|    Advanced trigger filters (CodeWiki §3.14 Hull structure /      |
+//|    Lock-once semantic: once sub_mode in {PX,PH,E}, เธซเนเธฒเธก flip.      |
+//|    Advanced trigger filters (CodeWiki ยง3.14 Hull structure /      |
 //|    recent-bar trigger lookback / band gating extremes / Fibonacci |
 //|    pyramid lot calc) deferred to P4 IMPL-062.                     |
 //|                                                                   |
 //| P-Pending uses legacy timeout (InpLegacyPBars = 70 H4 bars; BR-6.4)|
-//|   no ADR-008 force-clear — PMR.TickAll (Orchestrator step 8) owns |
+//|   no ADR-008 force-clear โ€” PMR.TickAll (Orchestrator step 8) owns |
 //|   timeout logic.                                                  |
 //|                                                                   |
-//| L-size MVP — 4 of N CodeWiki §3.14 entry conditions:              |
+//| L-size MVP โ€” 4 of N CodeWiki ยง3.14 entry conditions:              |
 //|   1. No active P orders ("P," prefix excluding "PI,")             |
 //|   2. ADX H4 dominance: adx > InpPAdxMin                           |
-//|   3. Bollinger boundary touch: BUY if bb_ratio ≤ 20, SELL if ≥ 80 |
+//|   3. Bollinger boundary touch: BUY if bb_ratio โค 20, SELL if โฅ 80 |
 //|   4. DI directional bias: di_plus > di_minus (BUY) or vice-versa  |
 //|                                                                   |
 //| Sub-mode decision branch (PENDING phase, sub_mode == N):          |
 //|   PX  if (force_h4.f1 magnitude > InpPForcePxGate                 |
-//|             AND diff_sl_pip   ≥ InpPDiffSlPxThreshold)            |
+//|             AND diff_sl_pip   โฅ InpPDiffSlPxThreshold)            |
 //|   PH  otherwise                                                   |
 //|                                                                   |
 //| Pyramid E path (own P active + parent profit gate met):           |
-//|   IDLE + own_P_active + parent profit_pips ≥ InpPPyramidGatePips  |
-//|     → direct OrderSend with comment "PI,MA,E,1,SL" (bypass PMR)   |
+//|   IDLE + own_P_active + parent profit_pips โฅ InpPPyramidGatePips  |
+//|     โ’ direct OrderSend with comment "PI,MA,E,1,SL" (bypass PMR)   |
 //|                                                                   |
-//| Comment format per `04 § 4.4`:                                    |
-//|   "P,MA,PX,1,SL"  — PX entry                                       |
-//|   "P,MA,PH,1,SL"  — PH entry                                       |
-//|   "PI,MA,E,1,SL"  — E pyramid extension entry                     |
+//| Comment format per `04 ยง 4.4`:                                    |
+//|   "P,MA,PX,1,SL"  โ€” PX entry                                       |
+//|   "P,MA,PH,1,SL"  โ€” PH entry                                       |
+//|   "PI,MA,E,1,SL"  โ€” E pyramid extension entry                     |
 //|                                                                   |
-//| Lot: m_risk.ComputeLot("P", sl_pips, balance) — sub-mode-agnostic |
+//| Lot: m_risk.ComputeLot("P", sl_pips, balance) โ€” sub-mode-agnostic |
 //|       (per-extension Fibonacci formula deferred to P4 IMPL-062)   |
 //|                                                                   |
 //| ADR-012 include discipline:                                        |
-//|   ห้าม #include "slots/<other>.mqh"                               |
-//|   ห้าม #include "services/Logger.mqh" direct (injected)           |
+//|   เธซเนเธฒเธก #include "slots/<other>.mqh"                               |
+//|   เธซเนเธฒเธก #include "services/Logger.mqh" direct (injected)           |
 //+------------------------------------------------------------------+
 #ifndef PHOENICISNEX_SLOTS_SLOT_P_MQH
 #define PHOENICISNEX_SLOTS_SLOT_P_MQH
@@ -59,7 +59,7 @@
 #include "../inputs/Inputs_Slot_P.mqh"
 
 //+------------------------------------------------------------------+
-//| CSlotP — Slot P derived class (ADR-002 CSlotBase contract)        |
+//| CSlotP โ€” Slot P derived class (ADR-002 CSlotBase contract)        |
 //|                                                                   |
 //| Uses P-Pending state machine (PM_P) with legacy timeout to gate   |
 //| primary entries; pyramid extension (E) bypasses PMR (depends on   |
@@ -88,20 +88,20 @@ public:
 
    //--- 6-method behavior contract (ADR-002; slot-abstraction-contract.yaml)
 
-   //--- 1. Magic — MAGIC_P = 218
+   //--- 1. Magic โ€” MAGIC_P = 218
    virtual int           Magic()  const override { return MAGIC_P; }
 
-   //--- 2. SlotId — "P"; used by journal slot_id field + comment prefix "P," / "PI,"
+   //--- 2. SlotId โ€” "P"; used by journal slot_id field + comment prefix "P," / "PI,"
    virtual string        SlotId() const override { return "P"; }
 
-   //--- 3. Evaluate — entry pass with P-Pending sub-mode resolution
+   //--- 3. Evaluate โ€” entry pass with P-Pending sub-mode resolution
    //       Called only in EA_STATE_RUNNING
    virtual void          Evaluate(const MarketContext &ctx, CPortfolioState &port) override;
 
-   //--- 4. ManageExits — exit pass; called in BOTH RUNNING + HALTED (ADR-010)
+   //--- 4. ManageExits โ€” exit pass; called in BOTH RUNNING + HALTED (ADR-010)
    virtual void          ManageExits(CPortfolioState &port) override;
 
-   //--- 5. DependsOn — P is topologically independent; PMR dep is shared service.
+   //--- 5. DependsOn โ€” P is topologically independent; PMR dep is shared service.
    //       Pyramid path consumes own portfolio state at runtime (not topology).
    virtual int           DependsOn(int &out_magics[]) override
      {
@@ -109,7 +109,7 @@ public:
       return 0;
      }
 
-   //--- 6. PendingState — delegate to PMR if wired; else IDLE (safe default)
+   //--- 6. PendingState โ€” delegate to PMR if wired; else IDLE (safe default)
    virtual EPendingState PendingState() const override
      {
       if(m_pending == NULL) return PENDING_STATE_IDLE;
@@ -118,9 +118,9 @@ public:
   };
 
 //+------------------------------------------------------------------+
-//| _HasActivePOrder — own primary "P," tickets (excludes "PI,")      |
+//| _HasActivePOrder โ€” own primary "P," tickets (excludes "PI,")      |
 //|                                                                   |
-//| StringFind("P,", "PI,...") → matches at i=0 then mismatches at    |
+//| StringFind("P,", "PI,...") โ’ matches at i=0 then mismatches at    |
 //| i=1 (',' vs 'I'); GetTicketsForSlot uses startsWith semantic so   |
 //| we must filter "PI," explicitly post-call to avoid double-counting|
 //| in pyramid scenario (precedent: Slot_BI.mqh line 89-95).          |
@@ -131,13 +131,13 @@ bool CSlotP::_HasActivePOrder(CPortfolioState &port, ulong &out_tickets[]) const
    int n = port.GetTicketsForSlot(MAGIC_P, "P,", all_tickets);
    ArrayResize(out_tickets, 0);
    if(n <= 0) return false;
-   //--- Filter out "PI," tickets — match against position comment via Select
+   //--- Filter out "PI," tickets โ€” match against position comment via Select
    int kept = 0;
    for(int i = 0; i < n; i++)
      {
       if(!PositionSelectByTicket(all_tickets[i])) continue;
       string c = PositionGetString(POSITION_COMMENT);
-      if(StringFind(c, "PI,") == 0) continue;        // pyramid extension — skip
+      if(StringFind(c, "PI,") == 0) continue;        // pyramid extension โ€” skip
       ArrayResize(out_tickets, kept + 1);
       out_tickets[kept] = all_tickets[i];
       kept++;
@@ -146,7 +146,7 @@ bool CSlotP::_HasActivePOrder(CPortfolioState &port, ulong &out_tickets[]) const
   }
 
 //+------------------------------------------------------------------+
-//| _HasActivePIOrder — own pyramid "PI," tickets only                |
+//| _HasActivePIOrder โ€” own pyramid "PI," tickets only                |
 //+------------------------------------------------------------------+
 bool CSlotP::_HasActivePIOrder(CPortfolioState &port) const
   {
@@ -156,7 +156,7 @@ bool CSlotP::_HasActivePIOrder(CPortfolioState &port) const
   }
 
 //+------------------------------------------------------------------+
-//| _IsPBuyBaseSignal — base BUY pending signal                       |
+//| _IsPBuyBaseSignal โ€” base BUY pending signal                       |
 //|   ADX dominance + bb_ratio low (price near lower band) + DI bull  |
 //+------------------------------------------------------------------+
 bool CSlotP::_IsPBuyBaseSignal(const MarketContext &ctx) const
@@ -168,7 +168,7 @@ bool CSlotP::_IsPBuyBaseSignal(const MarketContext &ctx) const
   }
 
 //+------------------------------------------------------------------+
-//| _IsPSellBaseSignal — mirror BUY                                   |
+//| _IsPSellBaseSignal โ€” mirror BUY                                   |
 //+------------------------------------------------------------------+
 bool CSlotP::_IsPSellBaseSignal(const MarketContext &ctx) const
   {
@@ -179,11 +179,11 @@ bool CSlotP::_IsPSellBaseSignal(const MarketContext &ctx) const
   }
 
 //+------------------------------------------------------------------+
-//| _IsPTriggerValid — pending trigger: price retraced toward bb_mid  |
+//| _IsPTriggerValid โ€” pending trigger: price retraced toward bb_mid  |
 //|                                                                   |
-//| Phase B trigger: after IDLE→PENDING (price was near band edge),   |
+//| Phase B trigger: after IDLEโ’PENDING (price was near band edge),   |
 //| trigger fires when bb_ratio crosses back toward middle band       |
-//| (BUY: ratio ≥ 30; SELL: ratio ≤ 70) confirming retracement.       |
+//| (BUY: ratio โฅ 30; SELL: ratio โค 70) confirming retracement.       |
 //+------------------------------------------------------------------+
 bool CSlotP::_IsPTriggerValid(const MarketContext &ctx, bool isBuy) const
   {
@@ -195,11 +195,11 @@ bool CSlotP::_IsPTriggerValid(const MarketContext &ctx, bool isBuy) const
   }
 
 //+------------------------------------------------------------------+
-//| _ComputeDiffSlPip — proxy for `_diffSL` per `04 § 4.4`             |
+//| _ComputeDiffSlPip โ€” proxy for `_diffSL` per `04 ยง 4.4`             |
 //|                                                                   |
 //| MVP proxy: Bollinger band width in pip units.                     |
-//| Wide band (≥ InpPDiffSlPxThreshold pip) → PX express path; tight  |
-//| band → PH default. CodeWiki §3.14 advanced calc deferred IMPL-062.|
+//| Wide band (โฅ InpPDiffSlPxThreshold pip) โ’ PX express path; tight  |
+//| band โ’ PH default. CodeWiki ยง3.14 advanced calc deferred IMPL-062.|
 //+------------------------------------------------------------------+
 double CSlotP::_ComputeDiffSlPip(const MarketContext &ctx) const
   {
@@ -211,9 +211,9 @@ double CSlotP::_ComputeDiffSlPip(const MarketContext &ctx) const
   }
 
 //+------------------------------------------------------------------+
-//| _ResolvePSubMode — sub-mode decision branch (lock-once semantic) |
+//| _ResolvePSubMode โ€” sub-mode decision branch (lock-once semantic) |
 //|                                                                   |
-//| PX  if (|f1| > InpPForcePxGate AND diff_sl_pip ≥ InpPDiffSlPxThreshold) |
+//| PX  if (|f1| > InpPForcePxGate AND diff_sl_pip โฅ InpPDiffSlPxThreshold) |
 //| PH  otherwise                                                     |
 //| (E is decided up-front by caller, never resolved here.)           |
 //+------------------------------------------------------------------+
@@ -226,12 +226,12 @@ EPSubMode CSlotP::_ResolvePSubMode(const MarketContext &ctx, double diff_sl_pip)
   }
 
 //+------------------------------------------------------------------+
-//| _ParentProfitPipsAtLeast — check own primary P parent profit gate |
+//| _ParentProfitPipsAtLeast โ€” check own primary P parent profit gate |
 //|                                                                   |
 //| Used by E (pyramid extension) path. Selects earliest-opened "P,"  |
 //| ticket (FIFO via PortfolioState.parent_tickets order) and returns |
-//| true iff its unrealized profit ≥ gate_pips. Direction inherits    |
-//| from parent (BUY parent → BUY pyramid).                           |
+//| true iff its unrealized profit โฅ gate_pips. Direction inherits    |
+//| from parent (BUY parent โ’ BUY pyramid).                           |
 //+------------------------------------------------------------------+
 bool CSlotP::_ParentProfitPipsAtLeast(CPortfolioState &port, double gate_pips,
                                       bool &out_isBuy, double &out_parent_open) const
@@ -263,13 +263,13 @@ bool CSlotP::_ParentProfitPipsAtLeast(CPortfolioState &port, double gate_pips,
   }
 
 //+------------------------------------------------------------------+
-//| _TpPipsForSubMode — pick exit profit gate from comment sub-mode   |
+//| _TpPipsForSubMode โ€” pick exit profit gate from comment sub-mode   |
 //|                                                                   |
-//| Comment format per `04 § 4.4`:                                    |
-//|   "P,MA,PX,..." → InpPTpPipsPx                                    |
-//|   "P,MA,PH,..." → InpPTpPipsPh                                    |
-//|   "PI,MA,E,..." → InpPTpPipsE                                     |
-//| Default (legacy/unknown comment) → InpPTpPipsPh (PH baseline).    |
+//| Comment format per `04 ยง 4.4`:                                    |
+//|   "P,MA,PX,..." โ’ InpPTpPipsPx                                    |
+//|   "P,MA,PH,..." โ’ InpPTpPipsPh                                    |
+//|   "PI,MA,E,..." โ’ InpPTpPipsE                                     |
+//| Default (legacy/unknown comment) โ’ InpPTpPipsPh (PH baseline).    |
 //+------------------------------------------------------------------+
 double CSlotP::_TpPipsForSubMode(const string &comment) const
   {
@@ -280,22 +280,22 @@ double CSlotP::_TpPipsForSubMode(const string &comment) const
   }
 
 //+------------------------------------------------------------------+
-//| Evaluate — Slot P entry pass with sub-mode resolution             |
+//| Evaluate โ€” Slot P entry pass with sub-mode resolution             |
 //|                                                                   |
-//| Path A — Pyramid extension (E sub-mode, bypass PMR):              |
-//|   IDLE + own_P_active + parent profit_pips ≥ InpPPyramidGatePips  |
-//|     → direct OrderSend "PI,MA,E,1,SL" (Slot_LX/Slot_BI precedent) |
+//| Path A โ€” Pyramid extension (E sub-mode, bypass PMR):              |
+//|   IDLE + own_P_active + parent profit_pips โฅ InpPPyramidGatePips  |
+//|     โ’ direct OrderSend "PI,MA,E,1,SL" (Slot_LX/Slot_BI precedent) |
 //|                                                                   |
-//| Path B — Primary P-Pending lifecycle:                             |
-//|   IDLE + base signal (no own P) → EnterPPending(PSUB_N, ...)      |
-//|   PENDING + sub_mode == N      → resolve PX/PH (lock-once)        |
-//|   PENDING + sub_mode in {PX,PH} + trigger valid → OrderSend       |
+//| Path B โ€” Primary P-Pending lifecycle:                             |
+//|   IDLE + base signal (no own P) โ’ EnterPPending(PSUB_N, ...)      |
+//|   PENDING + sub_mode == N      โ’ resolve PX/PH (lock-once)        |
+//|   PENDING + sub_mode in {PX,PH} + trigger valid โ’ OrderSend       |
 //|                                  + TransitionExecuted             |
 //|   Legacy timeout (70 H4 bars; BR-6.4): handled by PMR.TickAll     |
 //|                                  in Orchestrator step 8.          |
 //|                                                                   |
 //| NOTE: Phase-1 emits entry_signal Logger.Info; OrderSend wires at  |
-//|       Phase-2 wiring; see docs/state/deferred-ac-registry.md (RiskManager::OpenOrder) per ea.md.     |
+//|       Orchestrator wiring path (core/Orchestrator.mqh) (RiskManager::OpenOrder) per ea.md.     |
 //+------------------------------------------------------------------+
 void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
   {
@@ -304,7 +304,7 @@ void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //--- Guard: service pointers must be wired (Composition Root via Init)
    if(m_risk == NULL || m_logger == NULL) return;
 
-   //--- Path A: Pyramid extension (PSUB_E) — bypass PMR
+   //--- Path A: Pyramid extension (PSUB_E) โ€” bypass PMR
    //    Triggered when own primary P parent profit gate is met. One pyramid
    //    at a time (own "PI," guard).
    if(!_HasActivePIOrder(port))
@@ -313,17 +313,17 @@ void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       double parent_open  = 0.0;
       if(_ParentProfitPipsAtLeast(port, InpPPyramidGatePips, parent_isBuy, parent_open))
         {
-         //--- Compute pyramid SL: parent open ± fallback floor.
+         //--- Compute pyramid SL: parent open ยฑ fallback floor.
          //    Use canonical _PipsToPrice helper (Round 06 06.1 collapse) so
-         //    pip arithmetic stays at one site; guard ≤ 0 per NFR-5.1
-         //    surfacing — symmetric with ManageExits guard (review-round-07
+         //    pip arithmetic stays at one site; guard โค 0 per NFR-5.1
+         //    surfacing โ€” symmetric with ManageExits guard (review-round-07
          //    Finding 07.5; review-round-08 Finding 08.1 + 08.2).
          double sl_pips = InpPSlPipsFloor;
          double sl_dist = _PipsToPrice(sl_pips);
          if(sl_dist <= 0.0)
            {
             m_logger.Error("SlotP", "degenerate_pip_size", MAGIC_P,
-                           "Path A pyramid aborted — _PipsToPrice returned ≤ 0 (NFR-5.1 surfacing)");
+                           "Path A pyramid aborted โ€” _PipsToPrice returned โค 0 (NFR-5.1 surfacing)");
             return;   // Don't fall through to Path B; symbol metric corrupt this tick.
            }
          double price    = parent_isBuy ? ctx.ask : ctx.bid;
@@ -336,25 +336,25 @@ void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
          if(lot <= 0.0)
            {
             m_logger.Warn("SlotP", "zero_lot_skip_pyramid", MAGIC_P,
-                          "ComputeLot returned 0 — skipping E pyramid entry");
+                          "ComputeLot returned 0 โ€” skipping E pyramid entry");
            }
          else
            {
-            //--- fix-round-12 § 12.8 — Phase 1 emits entry_signal_pyramid
+            //--- fix-round-12 ยง 12.8 โ€” Phase 1 emits entry_signal_pyramid
             //    Logger.Info as the observable milestone; actual OrderSend
             //    lives in `RiskManager::OpenOrder` per `.claude/rules/ea.md`
-            //    (Phase-2 wiring; see docs/state/deferred-ac-registry.md 5-yr regression). Slot_BI / Slot_R
+            //    (Orchestrator wiring path (core/Orchestrator.mqh) 5-yr regression). Slot_BI / Slot_R
             //    follow the same pattern. (review-round-07 Finding 07.4)
             string comment = "PI,MA,E,1,SL";
             string dir_str = parent_isBuy ? "BUY" : "SELL";
             m_logger.Info("SlotP", "entry_signal_pyramid", MAGIC_P,
                           StringFormat("sub_mode=E dir=%s lot=%.2f sl_pips=%.1f "
                                        "price=%.5f sl=%.5f comment=%s parent_open=%.5f "
-                                       "(Phase 1 logger-only; OrderSend at Phase-2 wiring; see docs/state/deferred-ac-registry.md)",
+                                       "(Phase 1 logger-only; OrderSend at Orchestrator wiring path (core/Orchestrator.mqh))",
                                        dir_str, lot, sl_pips, price, sl_price,
                                        comment, parent_open));
            }
-         //--- Pyramid path complete this tick — primary lifecycle still runs below
+         //--- Pyramid path complete this tick โ€” primary lifecycle still runs below
         }
      }
 
@@ -367,7 +367,7 @@ void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
 
    EPendingState st = m_pending.GetState(PM_P);
 
-   //--- Phase A: IDLE — check base signal, enter pending with PSUB_N
+   //--- Phase A: IDLE โ€” check base signal, enter pending with PSUB_N
    if(st == PENDING_STATE_IDLE)
      {
       bool buyBase  = _IsPBuyBaseSignal(ctx);
@@ -377,21 +377,21 @@ void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       double diff_sl_pip = _ComputeDiffSlPip(ctx);
       double band_ratio  = ctx.bb_h4.bb_ratio;
 
-      //--- Reject degenerate diff_sl_pip (≤ 0): the signed-diff_sl encoding
-      //    cannot disambiguate +0.0 vs −0.0 (IEEE 754 `(-0.0 >= 0.0)` is
+      //--- Reject degenerate diff_sl_pip (โค 0): the signed-diff_sl encoding
+      //    cannot disambiguate +0.0 vs โ’0.0 (IEEE 754 `(-0.0 >= 0.0)` is
       //    true), so SELL with diff_sl_pip == 0 would round-trip as BUY.
       //    Skip pending entry this tick instead of corrupting direction.
       //    (review-round-08 Finding 08.4)
       if(diff_sl_pip <= 0.0)
         {
          m_logger.Warn("SlotP", "skip_idle_zero_diff_sl", MAGIC_P,
-                       StringFormat("diff_sl_pip=%.4f bb_top=%.5f bb_bot=%.5f — pending skipped",
+                       StringFormat("diff_sl_pip=%.4f bb_top=%.5f bb_bot=%.5f โ€” pending skipped",
                                     diff_sl_pip, ctx.bb_h4.bb_top, ctx.bb_h4.bb_bot));
          return;
         }
 
-      //--- Direction encoded via signed diff_sl (BUY ≥ 0, SELL < 0) per
-      //    state-persistence-schema.yaml § PendingMachineState_PVariant
+      //--- Direction encoded via signed diff_sl (BUY โฅ 0, SELL < 0) per
+      //    state-persistence-schema.yaml ยง PendingMachineState_PVariant
       //    diff_sl sign convention. Stays within canonical 3-field payload.
       //    (review-round-07 Finding 07.1 Option A + 07.2 EnterPPending helper)
       double signed_diff_sl = buyBase ? diff_sl_pip : -diff_sl_pip;
@@ -404,7 +404,7 @@ void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       return;
      }
 
-   //--- Phase B: PENDING — resolve sub-mode if N, then check trigger
+   //--- Phase B: PENDING โ€” resolve sub-mode if N, then check trigger
    if(st == PENDING_STATE_PENDING)
      {
       EPSubMode sub          = m_pending.GetPSubMode();
@@ -413,15 +413,15 @@ void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       bool      isBuy        = (signed_ds >= 0.0);
       double    band_rat     = m_pending.GetPBandRatio();
 
-      //--- Sub-mode resolution (lock-once): N → PX or PH
+      //--- Sub-mode resolution (lock-once): N โ’ PX or PH
       if(sub == PSUB_N || sub == PSUB_NONE)
         {
          EPSubMode resolved = _ResolvePSubMode(ctx, diff_sl_abs);
          string mode_str    = (resolved == PSUB_PX) ? "PX" : "PH";
 
-         //--- Mutate payload only — must NOT reset pending_started_bar:
+         //--- Mutate payload only โ€” must NOT reset pending_started_bar:
          //    BR-6.4 70-bar legacy timeout window keeps ticking from the
-         //    original IDLE→PENDING bar. Sub-mode lock is an internal
+         //    original IDLEโ’PENDING bar. Sub-mode lock is an internal
          //    payload mutation, not a timeout-relevant transition.
          //    (review-round-07 Finding 07.3 + canonical helper per 07.2)
          m_pending.OverwritePPayload(resolved, signed_ds, band_rat);
@@ -439,7 +439,7 @@ void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       //--- Compute SL distance: PX uses |diff_sl| from payload (snapshot at IDLE);
       //    PH uses input floor (default conservative).
       //    Use canonical _PipsToPrice helper (Round 06 06.1 collapse); guard
-      //    ≤ 0 per NFR-5.1 surfacing — symmetric with ManageExits guard
+      //    โค 0 per NFR-5.1 surfacing โ€” symmetric with ManageExits guard
       //    (review-round-07 Finding 07.5; review-round-08 Finding 08.1 + 08.2).
       double sl_pips = (sub == PSUB_PX) ? diff_sl_abs : InpPSlPipsFloor;
       if(sl_pips < InpPSlPipsFloor) sl_pips = InpPSlPipsFloor;   // floor guard
@@ -447,10 +447,10 @@ void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       if(sl_dist <= 0.0)
         {
          m_logger.Error("SlotP", "degenerate_pip_size", MAGIC_P,
-                        StringFormat("_PipsToPrice(%.1f) returned %.10f — primary entry "
+                        StringFormat("_PipsToPrice(%.1f) returned %.10f โ€” primary entry "
                                      "aborted; symbol metric corrupt (NFR-5.1 surfacing)",
                                      sl_pips, sl_dist));
-         Alert("[PhoenicisNex] Slot_P degenerate _PipSize() — primary entry aborted");
+         Alert("[PhoenicisNex] Slot_P degenerate _PipSize() โ€” primary entry aborted");
          return;
         }
 
@@ -459,7 +459,7 @@ void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       if(lot <= 0.0)
         {
          m_logger.Warn("SlotP", "zero_lot_skip", MAGIC_P,
-                       "ComputeLot returned 0 — skipping P entry");
+                       "ComputeLot returned 0 โ€” skipping P entry");
          return;
         }
 
@@ -471,7 +471,7 @@ void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       string sub_str = (sub == PSUB_PX) ? "PX" : "PH";
       string comment = StringFormat("P,MA,%s,1,SL", sub_str);
 
-      //--- fix-round-12 § 12.8 — Phase 1 emits entry_signal Logger.Info as
+      //--- fix-round-12 ยง 12.8 โ€” Phase 1 emits entry_signal Logger.Info as
       //    the observable milestone; actual OrderSend lives in
       //    `RiskManager::OpenOrder` per `.claude/rules/ea.md` (IMPL-017 +
       //    IMPL-062 5-yr regression). Slot_BI / Slot_R follow the same
@@ -479,45 +479,45 @@ void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       m_logger.Info("SlotP", "entry_signal", MAGIC_P,
                     StringFormat("sub_mode=%s dir=%s lot=%.2f sl_pips=%.1f "
                                  "price=%.5f sl=%.5f comment=%s "
-                                 "(Phase 1 logger-only; OrderSend at Phase-2 wiring; see docs/state/deferred-ac-registry.md)",
+                                 "(Phase 1 logger-only; OrderSend at Orchestrator wiring path (core/Orchestrator.mqh))",
                                  sub_str, (isBuy ? "BUY" : "SELL"), lot, sl_pips,
                                  price, sl_price, comment));
 
       m_pending.TransitionExecuted(PM_P);
      }
 
-   //--- Phase C: EXECUTED — entry placed; PMR.TickAll resets to IDLE.
+   //--- Phase C: EXECUTED โ€” entry placed; PMR.TickAll resets to IDLE.
   }
 
 //+------------------------------------------------------------------+
-//| ManageExits — Slot P exit pass with sub-mode-aware profit gate    |
+//| ManageExits โ€” Slot P exit pass with sub-mode-aware profit gate    |
 //|                                                                   |
 //| Iterates own P + PI tickets, picks profit-gate pip threshold via  |
 //| comment 3rd CSV field ("PX"/"PH"/"E"), emits exit_profit_gate     |
 //| log-intent on threshold breach. Real OrderClose deferred to       |
-//| Orchestrator wiring (Phase-2 wiring; see docs/state/deferred-ac-registry.md).                                  |
+//| Orchestrator wiring (Orchestrator wiring path (core/Orchestrator.mqh)).                                  |
 //+------------------------------------------------------------------+
 void CSlotP::ManageExits(CPortfolioState &port)
   {
    if(m_logger == NULL) return;
 
-   //--- "P," and "PI," need separate GetTicketsForSlot calls — startsWith
-   //    semantic excludes "PI," from "P," prefix-match (comment[1]='I'≠',').
+   //--- "P," and "PI," need separate GetTicketsForSlot calls โ€” startsWith
+   //    semantic excludes "PI," from "P," prefix-match (comment[1]='I'โ ',').
    ulong tickets_p[];
    int n_p = port.GetTicketsForSlot(MAGIC_P, "P,", tickets_p);
    ulong tickets_pi[];
    int n_pi = port.GetTicketsForSlot(MAGIC_P, "PI,", tickets_pi);
 
-   //--- Loud failure on degenerate symbol metric — exit pass aborted while
+   //--- Loud failure on degenerate symbol metric โ€” exit pass aborted while
    //    open positions remain unmanaged is a halt-class condition per NFR-5.1.
    //    (review-round-07 Finding 07.5)
    double pip_size = _PipSize();
    if(pip_size <= 0.0)
      {
       m_logger.Error("SlotP", "degenerate_pip_size", MAGIC_P,
-                     StringFormat("_PipSize() returned %.10f — exit pass aborted; "
+                     StringFormat("_PipSize() returned %.10f โ€” exit pass aborted; "
                                   "symbol metric corrupt (NFR-5.1 surfacing)", pip_size));
-      Alert("[PhoenicisNex] Slot_P degenerate _PipSize() — exit pass aborted");
+      Alert("[PhoenicisNex] Slot_P degenerate _PipSize() โ€” exit pass aborted");
       return;
      }
 
@@ -544,13 +544,13 @@ void CSlotP::ManageExits(CPortfolioState &port)
         {
          m_logger.Info("SlotP", "exit_profit_gate", MAGIC_P,
                        StringFormat("ticket=%I64u comment=%s profit_pips=%.1f "
-                                    ">= gate=%.1f → close",
+                                    ">= gate=%.1f โ’ close",
                                     ticket, c, profit_pips, gate));
-         //--- Phase-1 stub: logger-only milestone; broker close wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md per ea.md.
+         //--- Phase-1 stub: logger-only milestone; broker close wires at Orchestrator wiring path (core/Orchestrator.mqh) per ea.md.
         }
      }
 
-   //--- Process "PI," tickets (E pyramid extensions) — separate gate
+   //--- Process "PI," tickets (E pyramid extensions) โ€” separate gate
    for(int i = 0; i < n_pi; i++)
      {
       ulong ticket = tickets_pi[i];
@@ -570,9 +570,9 @@ void CSlotP::ManageExits(CPortfolioState &port)
         {
          m_logger.Info("SlotP", "exit_profit_gate_pyramid", MAGIC_P,
                        StringFormat("ticket=%I64u sub_mode=E profit_pips=%.1f "
-                                    ">= gate=%.1f → close",
+                                    ">= gate=%.1f โ’ close",
                                     ticket, profit_pips, InpPTpPipsE));
-         //--- Phase-1 stub: logger-only milestone; broker close wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md per ea.md.
+         //--- Phase-1 stub: logger-only milestone; broker close wires at Orchestrator wiring path (core/Orchestrator.mqh) per ea.md.
         }
      }
   }

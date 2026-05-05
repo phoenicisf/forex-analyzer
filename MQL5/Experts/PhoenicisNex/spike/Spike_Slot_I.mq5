@@ -9,16 +9,16 @@
 //|   - Magic() == MAGIC_I (216)                                       |
 //|   - SlotId() == "I"                                               |
 //|   - DependsOn() returns 1 AND deps[0] == MAGIC_G (208)            |
-//|     (parasite topology dependency — distinct from G2/LX which     |
+//|     (parasite topology dependency โ€” distinct from G2/LX which     |
 //|      return 0; I's dep is on a different magic = MAGIC_G)          |
 //|   - PendingState() == PENDING_STATE_IDLE                           |
 //|   - Magic() in BR-1.1 range [200..220]                            |
 //|   - SlotId() non-empty (not sentinel "")                          |
 //|                                                                   |
 //| Pattern: mirrors Spike_Slot_G2.mq5 shape (IMPL-026).              |
-//| NOTE: G2-G4 full entry+exit E-ACs wire at Phase-2 wiring; see docs/state/deferred-ac-registry.md     |
+//| NOTE: G2-G4 full entry+exit E-ACs wire at Orchestrator wiring path (core/Orchestrator.mqh)     |
 //|       (RiskManager::OpenOrder); smoke ini committed for PR contract|
-//|       per TD-02 §13.6 (see simulation/headless-tests/slot_I_smoke.ini).|
+//|       per TD-02 ยง13.6 (see simulation/headless-tests/slot_I_smoke.ini).|
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, PhoenicisNex"
 #property link      "https://phoenicisnex.com"
@@ -32,7 +32,7 @@
 CLogger  g_logger;
 
 //+------------------------------------------------------------------+
-//| OnInit — SelfTest for Slot I contract                             |
+//| OnInit โ€” SelfTest for Slot I contract                             |
 //+------------------------------------------------------------------+
 int OnInit()
   {
@@ -47,7 +47,7 @@ int OnInit()
    //--- Case 1: Magic() must return MAGIC_I (216)
    if(slot_i.Magic() != MAGIC_I)
      {
-      Print("Spike_Slot_I: FAIL case 1 — Magic()=", slot_i.Magic(),
+      Print("Spike_Slot_I: FAIL case 1 โ€” Magic()=", slot_i.Magic(),
             " expected MAGIC_I=", MAGIC_I);
       return INIT_FAILED;
      }
@@ -55,24 +55,24 @@ int OnInit()
    //--- Case 2: SlotId() must return "I"
    if(slot_i.SlotId() != "I")
      {
-      Print("Spike_Slot_I: FAIL case 2 — SlotId()='", slot_i.SlotId(),
+      Print("Spike_Slot_I: FAIL case 2 โ€” SlotId()='", slot_i.SlotId(),
             "' expected 'I'");
       return INIT_FAILED;
      }
 
    //--- Case 3: DependsOn() must return 1 AND deps[0] == MAGIC_G
-   //    (G-parasite topology dependency — not internal disambig like G2/LX)
+   //    (G-parasite topology dependency โ€” not internal disambig like G2/LX)
    int deps[];
    int dep_count = slot_i.DependsOn(deps);
    if(dep_count != 1)
      {
-      Print("Spike_Slot_I: FAIL case 3a — DependsOn()=", dep_count,
+      Print("Spike_Slot_I: FAIL case 3a โ€” DependsOn()=", dep_count,
             " expected 1 (G-parasite dep)");
       return INIT_FAILED;
      }
    if(deps[0] != MAGIC_G)
      {
-      Print("Spike_Slot_I: FAIL case 3b — deps[0]=", deps[0],
+      Print("Spike_Slot_I: FAIL case 3b โ€” deps[0]=", deps[0],
             " expected MAGIC_G=", MAGIC_G);
       return INIT_FAILED;
      }
@@ -80,7 +80,7 @@ int OnInit()
    //--- Case 4: PendingState() must return PENDING_STATE_IDLE (I not in pending-flow list)
    if(slot_i.PendingState() != PENDING_STATE_IDLE)
      {
-      Print("Spike_Slot_I: FAIL case 4 — PendingState()=", (int)slot_i.PendingState(),
+      Print("Spike_Slot_I: FAIL case 4 โ€” PendingState()=", (int)slot_i.PendingState(),
             " expected PENDING_STATE_IDLE=", (int)PENDING_STATE_IDLE);
       return INIT_FAILED;
      }
@@ -88,7 +88,7 @@ int OnInit()
    //--- Case 5: Magic() is in valid range 200..220 (BR-1.1)
    if(slot_i.Magic() < 200 || slot_i.Magic() > 220)
      {
-      Print("Spike_Slot_I: FAIL case 5 — Magic()=", slot_i.Magic(),
+      Print("Spike_Slot_I: FAIL case 5 โ€” Magic()=", slot_i.Magic(),
             " outside BR-1.1 range [200..220]");
       return INIT_FAILED;
      }
@@ -96,12 +96,12 @@ int OnInit()
    //--- Case 6: SlotId() non-empty (not sentinel "")
    if(slot_i.SlotId() == "")
      {
-      Print("Spike_Slot_I: FAIL case 6 — SlotId() returned sentinel \"\"");
+      Print("Spike_Slot_I: FAIL case 6 โ€” SlotId() returned sentinel \"\"");
       return INIT_FAILED;
      }
 
    Print("[Phoenicis][SlotI][ev=spike_self_test][result=pass] "
-         "6 cases passed — Magic=", slot_i.Magic(),
+         "6 cases passed โ€” Magic=", slot_i.Magic(),
          " SlotId=", slot_i.SlotId(),
          " DependsOn=", dep_count,
          " deps[0]=", deps[0],

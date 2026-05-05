@@ -65,7 +65,7 @@ private:
    //--- CachedScan storage (key→value, up to 10 entries — FR-8.1 300-bar scan cache)
    //    Eviction policy: FIFO (insertion-order). Cache hits do NOT refresh
    //    position → frequently-used key may be evicted before rare-but-recent.
-   //    True LRU upgrade tracked at IMPL-006-cachedscan (see Finding 01.6).
+   //    True LRU upgrade landed in IMPL-006 cachedscan (see Finding 01.6).
    string            m_scan_keys[10];
    double            m_scan_values[10];
    int               m_scan_count;

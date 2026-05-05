@@ -1,17 +1,17 @@
 //+------------------------------------------------------------------+
-//| Slot_H.mqh — Slot H (Fractal + Ichimoku Distance)  (IMPL-023)    |
+//| Slot_H.mqh โ€” Slot H (Fractal + Ichimoku Distance)  (IMPL-023)    |
 //| Layer:   slots/                                                   |
 //| Magic:   MAGIC_H = 205                                            |
 //| Comment: "H,fractal,1"                                            |
-//| Source:  PhoenicisN2.10_CodeWiki.md §3.4                          |
+//| Source:  PhoenicisN2.10_CodeWiki.md ยง3.4                          |
 //|          ADR-002 (CSlotBase contract)                             |
-//|          TD-02 §5.4 (lot sizing via RiskManager)                  |
+//|          TD-02 ยง5.4 (lot sizing via RiskManager)                  |
 //|                                                                   |
-//| M-size MVP entry conditions (4 of 12 from CodeWiki §3.4):         |
+//| M-size MVP entry conditions (4 of 12 from CodeWiki ยง3.4):         |
 //|   1. Max 2 H orders open (InpHMaxOrders)                          |
 //|   2. Same-bar cooldown (m_last_bar_entered != current H4 bar)     |
 //|   3. Fractal alignment at bar 2 or 3 (MarketContext.fractal_h4)   |
-//|   4. Ichimoku cloud distance ≤ 35 pip (InpHIchimokuMaxPips)       |
+//|   4. Ichimoku cloud distance โค 35 pip (InpHIchimokuMaxPips)       |
 //|                                                                   |
 //| Deferred to P4 IMPL-062:                                          |
 //|   ADX-cross filter / WPR filter / Bollinger filter / nerve-lot    |
@@ -29,13 +29,13 @@
 #include "../services/Logger.mqh"
 
 //+------------------------------------------------------------------+
-//| CSlotH — Slot H (Fractal + Ichimoku Distance)                    |
+//| CSlotH โ€” Slot H (Fractal + Ichimoku Distance)                    |
 //|                                                                   |
-//| Inherits: CSlotBase (ADR-002 contract — all 6 methods overridden)|
+//| Inherits: CSlotBase (ADR-002 contract โ€” all 6 methods overridden)|
 //| Services:  m_risk (lot sizing), m_logger (structured logging),   |
-//|            m_journal (trade event recording) — injected via Init()|
+//|            m_journal (trade event recording) โ€” injected via Init()|
 //| Note:      PortfolioState passed at tick (Evaluate/ManageExits)  |
-//|            not stored — slots must not cache port between ticks.  |
+//|            not stored โ€” slots must not cache port between ticks.  |
 //+------------------------------------------------------------------+
 class CSlotH : public CSlotBase
   {
@@ -52,7 +52,7 @@ private:
                               ENUM_POSITION_TYPE pos_type);
 
 public:
-   //--- Constructor — zero-init private state
+   //--- Constructor โ€” zero-init private state
                      CSlotH() : m_last_bar_entered(-1) {}
    virtual          ~CSlotH() {}
 
@@ -64,15 +64,15 @@ public:
    //--- SlotId(): returns "H" for journal slot_id disambiguation
    virtual string        SlotId() const override { return "H"; }
 
-   //--- Evaluate(): entry pass — called by Orchestrator per tick (FR-2.3)
+   //--- Evaluate(): entry pass โ€” called by Orchestrator per tick (FR-2.3)
    //    Only invoked when EAState == RUNNING (ADR-010 enforced by Orchestrator)
    virtual void          Evaluate(const MarketContext &ctx, CPortfolioState &port) override;
 
-   //--- ManageExits(): exit pass — called BEFORE Evaluate (BR-2.2)
+   //--- ManageExits(): exit pass โ€” called BEFORE Evaluate (BR-2.2)
    //    Runs in BOTH RUNNING and HALTED states (ADR-010)
    virtual void          ManageExits(CPortfolioState &port) override;
 
-   //--- DependsOn(): Slot H is independent — no peer slot deps
+   //--- DependsOn(): Slot H is independent โ€” no peer slot deps
    virtual int           DependsOn(int &out_magics[]) override
      {
       ArrayResize(out_magics, 0);
@@ -86,8 +86,8 @@ public:
 
 
 //+------------------------------------------------------------------+
-//| _HasFractalBuy — bar 2 or bar 3 has a lower fractal              |
-//| CodeWiki §3.4 condition 3: FractalPredicate(BUY) returns ≥ 0     |
+//| _HasFractalBuy โ€” bar 2 or bar 3 has a lower fractal              |
+//| CodeWiki ยง3.4 condition 3: FractalPredicate(BUY) returns โฅ 0     |
 //| Uses MarketContext.fractal_h4.has_lower / .lower_fractal          |
 //+------------------------------------------------------------------+
 bool CSlotH::_HasFractalBuy(const MarketContext &ctx) const
@@ -96,8 +96,8 @@ bool CSlotH::_HasFractalBuy(const MarketContext &ctx) const
   }
 
 //+------------------------------------------------------------------+
-//| _HasFractalSell — bar 2 or bar 3 has an upper fractal            |
-//| CodeWiki §3.4 condition 3: FractalPredicate(SELL) returns ≥ 0    |
+//| _HasFractalSell โ€” bar 2 or bar 3 has an upper fractal            |
+//| CodeWiki ยง3.4 condition 3: FractalPredicate(SELL) returns โฅ 0    |
 //+------------------------------------------------------------------+
 bool CSlotH::_HasFractalSell(const MarketContext &ctx) const
   {
@@ -105,8 +105,8 @@ bool CSlotH::_HasFractalSell(const MarketContext &ctx) const
   }
 
 //+------------------------------------------------------------------+
-//| _IchimokuDistanceOk — cloud edge distance ≤ InpHIchimokuMaxPips  |
-//| CodeWiki §3.4 condition 4: fractal vs cloud edge ≤ 35 pip        |
+//| _IchimokuDistanceOk โ€” cloud edge distance โค InpHIchimokuMaxPips  |
+//| CodeWiki ยง3.4 condition 4: fractal vs cloud edge โค 35 pip        |
 //| For BUY: price near/below cloud bottom; for SELL: near/above top  |
 //+------------------------------------------------------------------+
 bool CSlotH::_IchimokuDistanceOk(const MarketContext &ctx, bool is_buy) const
@@ -123,8 +123,8 @@ bool CSlotH::_IchimokuDistanceOk(const MarketContext &ctx, bool is_buy) const
   }
 
 //+------------------------------------------------------------------+
-//| _CountHOrders — count open positions tagged with "H," comment    |
-//| CodeWiki §3.4 condition 1: max 2 H orders                        |
+//| _CountHOrders โ€” count open positions tagged with "H," comment    |
+//| CodeWiki ยง3.4 condition 1: max 2 H orders                        |
 //| Uses canonical PortfolioState.GetTicketsForSlot per ADR-005 +    |
 //| ADR-012 (slot data goes through the central choke point).        |
 //+------------------------------------------------------------------+
@@ -135,13 +135,13 @@ int CSlotH::_CountHOrders(CPortfolioState &port) const
   }
 
 //+------------------------------------------------------------------+
-//| _TryExit — evaluate exit conditions on a single H position       |
+//| _TryExit โ€” evaluate exit conditions on a single H position       |
 //| Exit criteria (M-size MVP):                                       |
-//|   - Profit ≥ InpHTpMinPips (30 pip gate)                         |
+//|   - Profit โฅ InpHTpMinPips (30 pip gate)                         |
 //|   - OR order age > InpHMaxAgeBars H4 bars (8-bar age gate)        |
 //|                                                                   |
-//| Phase-1 stub: log-intent only — actual close goes through         |
-//| RiskManager wrapper at Phase-2 wiring; see docs/state/deferred-ac-registry.md (ea.md: ALL CTrade calls via     |
+//| Phase-1 stub: log-intent only โ€” actual close goes through         |
+//| RiskManager wrapper at Orchestrator wiring path (core/Orchestrator.mqh) (ea.md: ALL CTrade calls via     |
 //| RiskManager). Pattern mirrors 17 sibling slots (Slot_BR canonical)|
 //+------------------------------------------------------------------+
 void CSlotH::_TryExit(ulong ticket, double open_price, datetime open_time,
@@ -162,7 +162,7 @@ void CSlotH::_TryExit(ulong ticket, double open_price, datetime open_time,
    bool should_exit = (profit_pips >= InpHTpMinPips) || (age_bars > InpHMaxAgeBars);
    if(!should_exit) return;
 
-   //--- Phase-1 stub: log intent — m_risk.CloseOrder(ticket) wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md
+   //--- Phase-1 stub: log intent โ€” m_risk.CloseOrder(ticket) wires at Orchestrator wiring path (core/Orchestrator.mqh)
    //    Observable milestone for E-AC [log-assertion] when wired.
    if(m_logger != NULL)
       m_logger.Info("Slot_H", "exit_profit_gate", MAGIC_H,
@@ -171,7 +171,7 @@ void CSlotH::_TryExit(ulong ticket, double open_price, datetime open_time,
   }
 
 //+------------------------------------------------------------------+
-//| ManageExits — exit pass (BR-2.2: runs before Evaluate)           |
+//| ManageExits โ€” exit pass (BR-2.2: runs before Evaluate)           |
 //| Uses canonical PortfolioState.GetTicketsForSlot per ADR-005 +    |
 //| ADR-012 (slot data goes through the central choke point).        |
 //+------------------------------------------------------------------+
@@ -198,8 +198,8 @@ void CSlotH::ManageExits(CPortfolioState &port)
   }
 
 //+------------------------------------------------------------------+
-//| Evaluate — entry pass (FR-2.3; only in RUNNING state)            |
-//| M-size MVP: 4 conditions only (CodeWiki §3.4 conditions 1-4)      |
+//| Evaluate โ€” entry pass (FR-2.3; only in RUNNING state)            |
+//| M-size MVP: 4 conditions only (CodeWiki ยง3.4 conditions 1-4)      |
 //+------------------------------------------------------------------+
 void CSlotH::Evaluate(const MarketContext &ctx, CPortfolioState &port)
   {
@@ -222,7 +222,7 @@ void CSlotH::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //--- Condition 4: Ichimoku distance filter
    if(!_IchimokuDistanceOk(ctx, is_buy)) return;
 
-   //--- Lot sizing via RiskManager (slots ห้าม call CTrade ตรง — ADR-002)
+   //--- Lot sizing via RiskManager (slots เธซเนเธฒเธก call CTrade เธ•เธฃเธ โ€” ADR-002)
    double lot = 0.0;
    if(m_risk != NULL)
       lot = m_risk.ComputeLot("H", InpHSlPips,
@@ -237,15 +237,15 @@ void CSlotH::Evaluate(const MarketContext &ctx, CPortfolioState &port)
      }
 
    //--- Submit order via RiskManager wrapper (ea.md: ALL CTrade calls
-   //    through RiskManager — slots ห้าม instantiate CTrade ตรง).
-   //    Phase-1 stub: log intent only; m_risk.OpenOrderH(...) wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md.
+   //    through RiskManager โ€” slots เธซเนเธฒเธก instantiate CTrade เธ•เธฃเธ).
+   //    Phase-1 stub: log intent only; m_risk.OpenOrderH(...) wires at Orchestrator wiring path (core/Orchestrator.mqh).
    //    SL is computed (not naked 0) so when wiring lands the stop-loss is
    //    threaded into OrderSend; mirrors 17 sibling slots (e.g. Slot_B sl_price).
    ENUM_ORDER_TYPE order_type = is_buy ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
    string comment_str = "H,fractal,1";
 
    //--- Pip size via base-class helper (Round-06 06.1).
-   //    sl_price wrapped with _NormalizeBrokerPrice (Round-06 06.3) — broker
+   //    sl_price wrapped with _NormalizeBrokerPrice (Round-06 06.3) โ€” broker
    //    rejects sub-tick precision with TRADE_RETCODE_INVALID_STOPS (10016).
    double pip_size = _PipSize();
    double price    = is_buy ? SymbolInfoDouble(_Symbol, SYMBOL_ASK)
@@ -259,7 +259,7 @@ void CSlotH::Evaluate(const MarketContext &ctx, CPortfolioState &port)
                     StringFormat("lot=%.2f price=%.5f sl=%.5f bar=%d comment=%s",
                                  lot, price, sl_price, ctx.bar_index_h4, comment_str));
 
-   //--- Update cooldown bar — prevents re-entry on same H4 bar even when
+   //--- Update cooldown bar โ€” prevents re-entry on same H4 bar even when
    //    OrderSend wiring lands and the actual broker call may fail. Same
    //    semantic as updating m_last_order_d1_time after intent log in Slot_K.
    m_last_bar_entered = ctx.bar_index_h4;

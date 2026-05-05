@@ -9,8 +9,9 @@
 //|   • Real indicator buffers (CreateHandles guard)                  |
 //|   • Optional state.json fixture (Load guard)                      |
 //|   • Real broker positions (Refresh / TotalActivePositions)        |
-//| Therefore live OnInit/OnTick exercise is deferred to IMPL-060     |
-//| entry .mq5 + Tester run (registered as deferred-AC for IMPL-059). |
+//| Therefore live OnInit/OnTick exercise is delegated to             |
+//| PhoenicisNex.mq5 (IMPL-060 thin entry wrapper, commit 277cdb2)    |
+//| + Tester run (registered as deferred-AC for IMPL-059).            |
 //|                                                                   |
 //| What this spike DOES verify (G1 + structural):                    |
 //|   1. Orchestrator.mqh + SlotRegistry::RegisterAll body compile    |

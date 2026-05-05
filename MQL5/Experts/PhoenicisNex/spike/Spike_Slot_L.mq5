@@ -7,14 +7,14 @@
 //|   - CSlotL compiles cleanly (6-method contract)                   |
 //|   - Magic() returns MAGIC_L (211)                                  |
 //|   - SlotId() returns "L"                                           |
-//|   - DependsOn() returns 0 (independent — LX/S dep on L, not here) |
+//|   - DependsOn() returns 0 (independent โ€” LX/S dep on L, not here) |
 //|   - PendingState() returns PENDING_STATE_IDLE                      |
 //|   - Magic in valid BR-1.1 range [200..220]                         |
 //|   - SlotId non-empty                                               |
 //|                                                                  |
 //| Pattern: mirrors Spike_Slot_K.mq5 minimal harness.                |
 //| IMPL-018 precedent: G2-G4 deferred; G1 + SelfTest = closure bar.  |
-//| E-AC smoke wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md (RiskManager::OpenOrder)  |
+//| E-AC smoke wires at Orchestrator wiring path (core/Orchestrator.mqh) (RiskManager::OpenOrder)  |
 //|   per ea.md.                                                       |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, PhoenicisNex"
@@ -29,7 +29,7 @@
 CLogger  g_logger;
 
 //+------------------------------------------------------------------+
-//| OnInit — SelfTest: instantiate CSlotL + verify 6-method contract  |
+//| OnInit โ€” SelfTest: instantiate CSlotL + verify 6-method contract  |
 //+------------------------------------------------------------------+
 int OnInit()
   {
@@ -38,51 +38,51 @@ int OnInit()
    //--- Instantiate Slot L (stack-allocated; no ownership transfer)
    CSlotL  slot_l;
 
-   //--- Inject minimum deps (only Logger; others NULL — spike does not
+   //--- Inject minimum deps (only Logger; others NULL โ€” spike does not
    //    dereference the 7 remaining service pointers in this test)
    slot_l.Init(NULL, NULL, NULL, &g_logger, NULL, NULL, NULL, NULL);
 
    //--- Test 1: Magic() must return MAGIC_L (211)
    if(slot_l.Magic() != MAGIC_L)
      {
-      Print("Spike_Slot_L: FAIL — Magic() = ", slot_l.Magic(), " expected ", MAGIC_L);
+      Print("Spike_Slot_L: FAIL โ€” Magic() = ", slot_l.Magic(), " expected ", MAGIC_L);
       return INIT_FAILED;
      }
 
    //--- Test 2: SlotId() must return "L"
    if(slot_l.SlotId() != "L")
      {
-      Print("Spike_Slot_L: FAIL — SlotId() = '", slot_l.SlotId(), "' expected 'L'");
+      Print("Spike_Slot_L: FAIL โ€” SlotId() = '", slot_l.SlotId(), "' expected 'L'");
       return INIT_FAILED;
      }
 
-   //--- Test 3: DependsOn() must return 0 (independent — LX/S dep ON L, not here)
+   //--- Test 3: DependsOn() must return 0 (independent โ€” LX/S dep ON L, not here)
    int deps[];
    int dep_count = slot_l.DependsOn(deps);
    if(dep_count != 0)
      {
-      Print("Spike_Slot_L: FAIL — DependsOn() returned ", dep_count, " expected 0");
+      Print("Spike_Slot_L: FAIL โ€” DependsOn() returned ", dep_count, " expected 0");
       return INIT_FAILED;
      }
 
    //--- Test 4: PendingState() must return PENDING_STATE_IDLE
    if(slot_l.PendingState() != PENDING_STATE_IDLE)
      {
-      Print("Spike_Slot_L: FAIL — PendingState() = ", (int)slot_l.PendingState(), " expected PENDING_STATE_IDLE=0");
+      Print("Spike_Slot_L: FAIL โ€” PendingState() = ", (int)slot_l.PendingState(), " expected PENDING_STATE_IDLE=0");
       return INIT_FAILED;
      }
 
    //--- Test 5: Magic in valid BR-1.1 range [200..220]
    if(slot_l.Magic() < 200 || slot_l.Magic() > 220)
      {
-      Print("Spike_Slot_L: FAIL — Magic() = ", slot_l.Magic(), " out of BR-1.1 range [200..220]");
+      Print("Spike_Slot_L: FAIL โ€” Magic() = ", slot_l.Magic(), " out of BR-1.1 range [200..220]");
       return INIT_FAILED;
      }
 
    //--- Test 6: SlotId non-empty
    if(StringLen(slot_l.SlotId()) == 0)
      {
-      Print("Spike_Slot_L: FAIL — SlotId() is empty string");
+      Print("Spike_Slot_L: FAIL โ€” SlotId() is empty string");
       return INIT_FAILED;
      }
 

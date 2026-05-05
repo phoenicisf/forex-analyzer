@@ -1,29 +1,29 @@
 //+------------------------------------------------------------------+
-//| slots/Slot_GO.mqh — Slot GO implementation (IMPL-027)             |
+//| slots/Slot_GO.mqh โ€” Slot GO implementation (IMPL-027)             |
 //| Layer:   slots/ (inherits domain/CSlotBase; ADR-002 contract)     |
-//| Magic:   MAGIC_GO = 209 (own — not shared)                        |
+//| Magic:   MAGIC_GO = 209 (own โ€” not shared)                        |
 //|          Comment prefix "GO," in all OrderSend calls              |
-//| Source:  CodeWiki §3.GO; TD-02 §5.4; ADR-002; ADR-012            |
+//| Source:  CodeWiki ยง3.GO; TD-02 ยง5.4; ADR-002; ADR-012            |
 //|                                                                   |
-//| S-size MVP — header-only contract scaffold:                       |
+//| S-size MVP โ€” header-only contract scaffold:                       |
 //|   GO is a post-exit hook invoked sub-call only from G's           |
 //|   TriggerGOverload (BR-2.2). It is NOT iterated in main OnTick   |
 //|   slot topology. Evaluate() early-returns (sub-call only guard).  |
 //|   ManageExits: profit-gate close pattern mirroring Slot_G2.       |
 //|                                                                   |
-//| Activation: Phase-2 wiring; see docs/state/deferred-ac-registry.md (CrossSlotCoordinator wires G → GO call)   |
+//| Activation: Orchestrator wiring path (core/Orchestrator.mqh) (CrossSlotCoordinator wires G โ’ GO call)   |
 //|   Slot_G.mqh:392: TriggerGOverload currently stubbed false.       |
 //|                                                                   |
 //| Exit (ManageExits):                                               |
-//|   - Profit gate ≥ InpGOTpProfitPips (40 pip default)             |
+//|   - Profit gate โฅ InpGOTpProfitPips (40 pip default)             |
 //|   Stub: if(m_xslot != NULL && false /*IMPL-053*/) {...}           |
 //|                                                                   |
 //| Lot: RiskManager::ComputeLot("GO", InpGOSlPipsFloor, balance)    |
-//| Comment: "GO," prefix per CodeWiki §3.GO                          |
+//| Comment: "GO," prefix per CodeWiki ยง3.GO                          |
 //|                                                                   |
 //| ADR-012 include discipline:                                        |
-//|   ห้าม #include "slots/<other>.mqh"                               |
-//|   ห้าม #include "services/Logger.mqh" direct (injected)           |
+//|   เธซเนเธฒเธก #include "slots/<other>.mqh"                               |
+//|   เธซเนเธฒเธก #include "services/Logger.mqh" direct (injected)           |
 //+------------------------------------------------------------------+
 #ifndef PHOENICISNEX_SLOTS_SLOT_GO_MQH
 #define PHOENICISNEX_SLOTS_SLOT_GO_MQH
@@ -36,7 +36,7 @@
 #include "../inputs/Inputs_Slot_GO.mqh"
 
 //+------------------------------------------------------------------+
-//| CSlotGO — Slot GO derived class (ADR-002 CSlotBase contract)      |
+//| CSlotGO โ€” Slot GO derived class (ADR-002 CSlotBase contract)      |
 //|                                                                   |
 //| Post-exit hook role: activated sub-call only from G's             |
 //| TriggerGOverload (BR-2.2). Own magic MAGIC_GO=209; comment        |
@@ -58,32 +58,32 @@ public:
 
    //--- 6-method behavior contract (ADR-002; slot-abstraction-contract.yaml)
 
-   //--- 1. Magic — MAGIC_GO = 209 (own; not shared with any other slot)
+   //--- 1. Magic โ€” MAGIC_GO = 209 (own; not shared with any other slot)
    virtual int       Magic() const override { return MAGIC_GO; }
 
-   //--- 2. SlotId — "GO"; used by journal slot_id field + comment prefix
+   //--- 2. SlotId โ€” "GO"; used by journal slot_id field + comment prefix
    virtual string    SlotId() const override { return "GO"; }
 
-   //--- 3. Evaluate — sub-call only (not in main topo); early-return guard in Phase 1 MVP
+   //--- 3. Evaluate โ€” sub-call only (not in main topo); early-return guard in Phase 1 MVP
    virtual void      Evaluate(const MarketContext &ctx, CPortfolioState &port) override;
 
-   //--- 4. ManageExits — exit pass; called in BOTH RUNNING + HALTED (ADR-010)
+   //--- 4. ManageExits โ€” exit pass; called in BOTH RUNNING + HALTED (ADR-010)
    virtual void      ManageExits(CPortfolioState &port) override;
 
-   //--- 5. DependsOn — GO is independent in topology (sub-call activation is runtime, not topo dep)
+   //--- 5. DependsOn โ€” GO is independent in topology (sub-call activation is runtime, not topo dep)
    virtual int       DependsOn(int &out_magics[]) override
      {
       ArrayResize(out_magics, 0);
       return 0;
      }
 
-   //--- 6. PendingState — GO uses IDLE default (not in pending-flow list)
+   //--- 6. PendingState โ€” GO uses IDLE default (not in pending-flow list)
    virtual EPendingState PendingState() const override { return PENDING_STATE_IDLE; }
   };
 
 //+------------------------------------------------------------------+
-//| _HasActiveGOOrder — check for open GO orders via PortfolioState   |
-//| Uses GetTicketsForSlot(MAGIC_GO, "GO,", tickets[]) — own magic    |
+//| _HasActiveGOOrder โ€” check for open GO orders via PortfolioState   |
+//| Uses GetTicketsForSlot(MAGIC_GO, "GO,", tickets[]) โ€” own magic    |
 //+------------------------------------------------------------------+
 bool CSlotGO::_HasActiveGOOrder(CPortfolioState &port) const
   {
@@ -93,12 +93,12 @@ bool CSlotGO::_HasActiveGOOrder(CPortfolioState &port) const
   }
 
 //+------------------------------------------------------------------+
-//| Evaluate — Slot GO entry pass (sub-call only; early-return guard) |
+//| Evaluate โ€” Slot GO entry pass (sub-call only; early-return guard) |
 //|                                                                   |
 //| Phase 1 MVP: GO is invoked sub-call only from G's TriggerGOverload|
 //| (BR-2.2, currently stubbed false at Slot_G.mqh:392). This method |
 //| is NOT called from the main OnTick slot topo. The body early-     |
-//| returns until IMPL-053 activates TriggerGOverload → GO call.     |
+//| returns until IMPL-053 activates TriggerGOverload โ’ GO call.     |
 //|                                                                   |
 //| When IMPL-053 activates:                                          |
 //|   - Signal arrives from G's TriggerGOverload (overload echo)      |
@@ -108,15 +108,15 @@ bool CSlotGO::_HasActiveGOOrder(CPortfolioState &port) const
 void CSlotGO::Evaluate(const MarketContext &ctx, CPortfolioState &port)
   {
    //--- Sub-call guard: early-return when not enabled or service not wired
-   //    (Phase 1 MVP — real signal arrives from TriggerGOverload at Phase-2 wiring; see docs/state/deferred-ac-registry.md)
+   //    (Phase 1 MVP โ€” real signal arrives from TriggerGOverload at Orchestrator wiring path (core/Orchestrator.mqh))
    if(!InpEnableSlotGO) return;
    if(m_logger == NULL) return;
 
    //--- Own-active guard: max 1 GO order per InpGOMaxOrders
    if(_HasActiveGOOrder(port)) return;
 
-   //--- Phase-1 stub: no entry signal in main topo — TriggerGOverload sub-call
-   //    wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md (cross-slot coupling per ea.md).
+   //--- Phase-1 stub: no entry signal in main topo โ€” TriggerGOverload sub-call
+   //    wires at Orchestrator wiring path (core/Orchestrator.mqh) (cross-slot coupling per ea.md).
    //    Observable milestone for E-AC [log-assertion] once that wires:
    //
    //    double balance  = AccountInfoDouble(ACCOUNT_BALANCE);
@@ -125,21 +125,21 @@ void CSlotGO::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //    m_logger.Info("SlotGO", "entry_signal", MAGIC_GO,
    //                  StringFormat("lot=%.2f sl_pips=%.1f comment=%s", lot, InpGOSlPipsFloor, comment));
    //
-   //--- CrossSlotCoordinator stub: coupling from G → GO sub-call
-   if(m_xslot != NULL && false /* enable when TriggerGOverload wired (Phase-2 wiring; see docs/state/deferred-ac-registry.md) */)
+   //--- CrossSlotCoordinator stub: coupling from G โ’ GO sub-call
+   if(m_xslot != NULL && false /* enable when TriggerGOverload wired (Orchestrator wiring path (core/Orchestrator.mqh)) */)
      {
       //--- Stub: GO activation from G's TriggerGOverload
-      //    wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md (cross-slot coupling per ea.md).
+      //    wires at Orchestrator wiring path (core/Orchestrator.mqh) (cross-slot coupling per ea.md).
      }
   }
 
 //+------------------------------------------------------------------+
-//| ManageExits — Slot GO exit pass (profit-gate close; 40 pip MVP)   |
+//| ManageExits โ€” Slot GO exit pass (profit-gate close; 40 pip MVP)   |
 //|                                                                   |
 //| Exit logic (MVP, mirroring Slot_G2 pattern):                      |
 //|   1. Iterate GO positions via GetTicketsForSlot(MAGIC_GO, "GO,")  |
 //|   2. For each: compute unrealized profit in pips                  |
-//|   3. Profit gate ≥ InpGOTpProfitPips (40 pip default) → close    |
+//|   3. Profit gate โฅ InpGOTpProfitPips (40 pip default) โ’ close    |
 //+------------------------------------------------------------------+
 void CSlotGO::ManageExits(CPortfolioState &port)
   {
@@ -172,19 +172,19 @@ void CSlotGO::ManageExits(CPortfolioState &port)
       else
          profit_pips = (open_price - cur_price) / pip_size;
 
-      //--- Profit gate: ≥ InpGOTpProfitPips (40 pip default — between G's 50 and G2's 30)
+      //--- Profit gate: โฅ InpGOTpProfitPips (40 pip default โ€” between G's 50 and G2's 30)
       if(profit_pips >= InpGOTpProfitPips)
         {
          m_logger.Info("SlotGO", "exit_profit_gate", MAGIC_GO,
-                       StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f → close",
+                       StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f โ’ close",
                                     ticket, profit_pips, InpGOTpProfitPips));
 
          //--- Phase-1 stub: logger-only milestone; broker close wires at
-         //    Phase-2 wiring; see docs/state/deferred-ac-registry.md (RiskManager::OpenOrder) per ea.md.
+         //    Orchestrator wiring path (core/Orchestrator.mqh) (RiskManager::OpenOrder) per ea.md.
          //    Evidence for E-AC [log-assertion]: above Info log is the observable milestone.
         }
 
-      //--- CrossSlotCoordinator stub — deferred (IMPL-053)
+      //--- CrossSlotCoordinator stub โ€” deferred (IMPL-053)
       if(m_xslot != NULL && false /*IMPL-053*/)
         {
          //--- Stub: any GO peak-based cross-slot coupling goes here (IMPL-053)

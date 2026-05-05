@@ -1,33 +1,33 @@
 //+------------------------------------------------------------------+
-//| slots/Slot_BR.mqh — Slot BR implementation (IMPL-038)             |
+//| slots/Slot_BR.mqh โ€” Slot BR implementation (IMPL-038)             |
 //| Layer:   slots/ (inherits domain/CSlotBase; ADR-002 contract)     |
-//| Magic:   MAGIC_BR = 215 (own — not shared)                        |
+//| Magic:   MAGIC_BR = 215 (own โ€” not shared)                        |
 //|          Comment prefix "BR," in all OrderSend calls              |
-//| Source:  CodeWiki §3.18 Slot BR; BR-2.2; TD-02 §5.4;              |
+//| Source:  CodeWiki ยง3.18 Slot BR; BR-2.2; TD-02 ยง5.4;              |
 //|          ADR-002; ADR-012                                         |
 //|                                                                  |
-//| S-size MVP — header-only contract scaffold:                       |
+//| S-size MVP โ€” header-only contract scaffold:                       |
 //|   BR is an orphan exit-only spawn invoked sub-call only from      |
 //|   ExtraTakeProfit_B (Slot_B ManageExits) when a B parent closes.  |
-//|   Not iterated in main OnTick slot topology — Evaluate() early-   |
+//|   Not iterated in main OnTick slot topology โ€” Evaluate() early-   |
 //|   returns (sub-call only guard). ManageExits: profit-gate close   |
 //|   pattern mirroring Slot_GO.                                       |
 //|                                                                  |
-//| Activation: Phase-2 wiring; see docs/state/deferred-ac-registry.md (CrossSlotCoordinator wires Slot_B's        |
-//|   ManageExits BR-trigger stub `false /*IMPL-053*/` → TriggerBR    |
-//|   → BusinessLogic_BR equivalent on this slot).                    |
+//| Activation: Orchestrator wiring path (core/Orchestrator.mqh) (CrossSlotCoordinator wires Slot_B's        |
+//|   ManageExits BR-trigger stub `false /*IMPL-053*/` โ’ TriggerBR    |
+//|   โ’ BusinessLogic_BR equivalent on this slot).                    |
 //|                                                                  |
 //| Exit (ManageExits):                                               |
-//|   - Profit gate ≥ InpBRTpProfitPips (40 pip default)              |
+//|   - Profit gate โฅ InpBRTpProfitPips (40 pip default)              |
 //|                                                                  |
-//| DependsOn() returns 0 — sub-call activation is runtime, not topo: |
+//| DependsOn() returns 0 โ€” sub-call activation is runtime, not topo: |
 //|   Slot_B (parent) has its own DependsOn=0; BR depends ON B by     |
 //|   semantic but is invoked via CrossSlotCoordinator, not via the   |
 //|   Orchestrator's topo-sorted main pass. Same precedent as Slot_GO.|
 //|                                                                  |
 //| ADR-012 include discipline:                                        |
-//|   ห้าม #include "slots/<other>.mqh"                               |
-//|   ห้าม #include "services/Logger.mqh" direct (injected)           |
+//|   เธซเนเธฒเธก #include "slots/<other>.mqh"                               |
+//|   เธซเนเธฒเธก #include "services/Logger.mqh" direct (injected)           |
 //+------------------------------------------------------------------+
 #ifndef PHOENICISNEX_SLOTS_SLOT_BR_MQH
 #define PHOENICISNEX_SLOTS_SLOT_BR_MQH
@@ -40,10 +40,10 @@
 #include "../inputs/Inputs_Slot_BR.mqh"
 
 //+------------------------------------------------------------------+
-//| CSlotBR — Slot BR derived class (ADR-002 CSlotBase contract)      |
+//| CSlotBR โ€” Slot BR derived class (ADR-002 CSlotBase contract)      |
 //|                                                                   |
 //| Orphan exit-only spawn role: activated sub-call only from         |
-//| Slot_B ExtraTakeProfit_B → CrossSlotCoordinator::TriggerBR        |
+//| Slot_B ExtraTakeProfit_B โ’ CrossSlotCoordinator::TriggerBR        |
 //| (BR-2.2). Own magic MAGIC_BR=215; comment prefix "BR," in all     |
 //| OrderSend calls (no shared-magic ambiguity with B/BI MAGIC_B=214).|
 //|                                                                   |
@@ -80,19 +80,19 @@ public:
    // 6-method CSlotBase contract (ADR-002)
    //=================================================================
 
-   //--- 1. Magic — MAGIC_BR = 215 (own; not shared with any other slot)
+   //--- 1. Magic โ€” MAGIC_BR = 215 (own; not shared with any other slot)
    virtual int       Magic() const override { return MAGIC_BR; }
 
-   //--- 2. SlotId — "BR"; used by journal slot_id field + comment prefix
+   //--- 2. SlotId โ€” "BR"; used by journal slot_id field + comment prefix
    virtual string    SlotId() const override { return "BR"; }
 
-   //--- 3. Evaluate — sub-call only (not in main topo); early-return guard
+   //--- 3. Evaluate โ€” sub-call only (not in main topo); early-return guard
    virtual void      Evaluate(const MarketContext &ctx, CPortfolioState &port) override;
 
-   //--- 4. ManageExits — exit pass; called in BOTH RUNNING + HALTED (ADR-010)
+   //--- 4. ManageExits โ€” exit pass; called in BOTH RUNNING + HALTED (ADR-010)
    virtual void      ManageExits(CPortfolioState &port) override;
 
-   //--- 5. DependsOn — BR is independent in topology (sub-call activation runtime)
+   //--- 5. DependsOn โ€” BR is independent in topology (sub-call activation runtime)
    //    Same precedent as Slot_GO: the runtime dep on parent B is via
    //    CrossSlotCoordinator, not the Orchestrator's topo-sorted main pass.
    virtual int       DependsOn(int &out_magics[]) override
@@ -101,18 +101,18 @@ public:
       return 0;
      }
 
-   //--- 6. PendingState — BR uses IDLE default (not in pending-flow list)
+   //--- 6. PendingState โ€” BR uses IDLE default (not in pending-flow list)
    virtual EPendingState PendingState() const override { return PENDING_STATE_IDLE; }
   };
 
 //+------------------------------------------------------------------+
-//| Evaluate — Slot BR entry pass (sub-call only; early-return guard) |
+//| Evaluate โ€” Slot BR entry pass (sub-call only; early-return guard) |
 //|                                                                   |
 //| Phase 1 MVP: BR is invoked sub-call only from Slot_B ManageExits  |
 //| BR-trigger stub (`false /*IMPL-053*/` at Slot_B.mqh). This method |
 //| is NOT called from the main OnTick slot topo. The body early-     |
-//| returns until IMPL-053 activates Slot_B → CrossSlotCoordinator → |
-//| TriggerBR → BusinessLogic_BR equivalent.                          |
+//| returns until IMPL-053 activates Slot_B โ’ CrossSlotCoordinator โ’ |
+//| TriggerBR โ’ BusinessLogic_BR equivalent.                          |
 //|                                                                   |
 //| When IMPL-053 activates:                                          |
 //|   - Signal arrives from CrossSlotCoordinator (B-close orphan)     |
@@ -122,15 +122,15 @@ public:
 void CSlotBR::Evaluate(const MarketContext &ctx, CPortfolioState &port)
   {
    //--- Sub-call guard: early-return when not enabled or service not wired
-   //    (Phase 1 MVP — real signal arrives from TriggerBR at Phase-2 wiring; see docs/state/deferred-ac-registry.md)
+   //    (Phase 1 MVP โ€” real signal arrives from TriggerBR at Orchestrator wiring path (core/Orchestrator.mqh))
    if(!InpEnableSlotBR) return;
    if(m_logger == NULL) return;
 
    //--- Own-active guard: max InpBRMaxOrders BR orders simultaneously
    if(_CountBROrders(port) >= InpBRMaxOrders) return;
 
-   //--- Phase-1 stub: no entry signal in main topo — TriggerBR sub-call
-   //    wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md (cross-slot coupling per ea.md).
+   //--- Phase-1 stub: no entry signal in main topo โ€” TriggerBR sub-call
+   //    wires at Orchestrator wiring path (core/Orchestrator.mqh) (cross-slot coupling per ea.md).
    //    Observable milestone for E-AC [log-assertion] once that wires:
    //
    //    double balance  = AccountInfoDouble(ACCOUNT_BALANCE);
@@ -140,21 +140,21 @@ void CSlotBR::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //                  StringFormat("lot=%.2f sl_pips=%.1f comment=%s",
    //                               lot, InpBRSlPipsFloor, comment));
    //
-   //--- CrossSlotCoordinator stub: coupling from B → BR sub-call
-   if(m_xslot != NULL && false /* enable when TriggerBR wired per BR-2.2 (Phase-2 wiring; see docs/state/deferred-ac-registry.md) */)
+   //--- CrossSlotCoordinator stub: coupling from B โ’ BR sub-call
+   if(m_xslot != NULL && false /* enable when TriggerBR wired per BR-2.2 (Orchestrator wiring path (core/Orchestrator.mqh)) */)
      {
       //--- Stub: BR activation from B's ExtraTakeProfit_B
-      //    wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md (cross-slot coupling per ea.md).
+      //    wires at Orchestrator wiring path (core/Orchestrator.mqh) (cross-slot coupling per ea.md).
      }
   }
 
 //+------------------------------------------------------------------+
-//| ManageExits — Slot BR exit pass (profit-gate close; 40 pip MVP)   |
+//| ManageExits โ€” Slot BR exit pass (profit-gate close; 40 pip MVP)   |
 //|                                                                   |
 //| Exit logic (MVP, mirroring Slot_GO pattern):                      |
 //|   1. Iterate BR positions via GetTicketsForSlot(MAGIC_BR, "BR,")  |
 //|   2. For each: compute unrealized profit in pips                  |
-//|   3. Profit gate ≥ InpBRTpProfitPips (40 pip default) → close     |
+//|   3. Profit gate โฅ InpBRTpProfitPips (40 pip default) โ’ close     |
 //+------------------------------------------------------------------+
 void CSlotBR::ManageExits(CPortfolioState &port)
   {
@@ -184,7 +184,7 @@ void CSlotBR::ManageExits(CPortfolioState &port)
                           (open_price - cur_price);
       double profit_pips = _PriceDiffToPips(price_diff);
 
-      //--- Profit gate: ≥ InpBRTpProfitPips (40 pip default — orphan tier)
+      //--- Profit gate: โฅ InpBRTpProfitPips (40 pip default โ€” orphan tier)
       if(profit_pips >= InpBRTpProfitPips)
         {
          m_logger.Info("SlotBR", "exit_profit_gate", MAGIC_BR,
@@ -192,7 +192,7 @@ void CSlotBR::ManageExits(CPortfolioState &port)
                                     ticket, profit_pips, InpBRTpProfitPips));
 
          //--- Phase-1 stub: logger-only milestone; broker close wires at
-         //    Phase-2 wiring; see docs/state/deferred-ac-registry.md (RiskManager::OpenOrder) per ea.md.
+         //    Orchestrator wiring path (core/Orchestrator.mqh) (RiskManager::OpenOrder) per ea.md.
          //    Evidence for E-AC [log-assertion]: above Info log is the observable milestone.
         }
      }

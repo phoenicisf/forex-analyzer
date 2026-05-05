@@ -1,64 +1,64 @@
 //+------------------------------------------------------------------+
-//| slots/Slot_BI.mqh — Slot BI derived class (IMPL-039)              |
+//| slots/Slot_BI.mqh โ€” Slot BI derived class (IMPL-039)              |
 //| Layer:   slots/ (depends on domain/; injects services via base)   |
 //| Magic:   214 (MAGIC_B per domain/EnumTypes.mqh; shared with B)    |
 //| SlotId:  "BI"                                                     |
 //| Comment: "BI,pyr,1"                                               |
 //|                                                                  |
-//| Source:  CodeWiki §3.19 Slot BI (pyramid child of B)              |
-//|          ADR-009 (⚠️ G4 critical SL inheritance fix)              |
-//|          TD-02 §5.4 (lot dispatch RiskManager::ComputeLot)         |
+//| Source:  CodeWiki ยง3.19 Slot BI (pyramid child of B)              |
+//|          ADR-009 (โ ๏ธ G4 critical SL inheritance fix)              |
+//|          TD-02 ยง5.4 (lot dispatch RiskManager::ComputeLot)         |
 //|          ADR-002 (CSlotBase 6-method contract)                    |
-//|          ADR-012 (layer dependency — ห้าม #include slots/*)        |
+//|          ADR-012 (layer dependency โ€” เธซเนเธฒเธก #include slots/*)        |
 //|                                                                  |
-//| ⚠️ G4 critical fix per ADR-009 — Bucket B drift (NFR-1.8):         |
-//|   PhoenicisN2.10 baseline (CodeWiki §6.2 :20326 :20357) opened    |
-//|   BI orders with naked SL=0 → unbounded downside on adverse move. |
+//| โ ๏ธ G4 critical fix per ADR-009 โ€” Bucket B drift (NFR-1.8):         |
+//|   PhoenicisN2.10 baseline (CodeWiki ยง6.2 :20326 :20357) opened    |
+//|   BI orders with naked SL=0 โ’ unbounded downside on adverse move. |
 //|   This rewrite restores the contract: SL inherited from parent B's|
-//|   pip distance applied at BI entry price (Option A — earliest     |
+//|   pip distance applied at BI entry price (Option A โ€” earliest     |
 //|   B parent ticket = base risk anchor). Edge cases per ADR-009:    |
-//|     - No B parent active     → fallback InpBISlFallbackPips        |
-//|     - Parent SL == 0 (legacy)→ fallback InpBISlFallbackPips        |
-//|     - Direction-flip vs B    → MathAbs + sign by BI direction      |
-//|     - 5-digit precision      → CPipMath m_pip via _PipsToPrice()   |
+//|     - No B parent active     โ’ fallback InpBISlFallbackPips        |
+//|     - Parent SL == 0 (legacy)โ’ fallback InpBISlFallbackPips        |
+//|     - Direction-flip vs B    โ’ MathAbs + sign by BI direction      |
+//|     - 5-digit precision      โ’ CPipMath m_pip via _PipsToPrice()   |
 //|                                                                  |
-//| Pyramid logic (L-size MVP — mirrors Slot_LX precedent):           |
+//| Pyramid logic (L-size MVP โ€” mirrors Slot_LX precedent):           |
 //|   1. Own-no-active guard via GetTicketsForSlot(MAGIC_B,"BI,",...) |
 //|   2. Parent B gate: GetTicketsForSlot(MAGIC_B,"B,",parent_tickets)|
-//|      — must have ≥ 1 parent B position ("B," prefix, NOT "BI,")  |
+//|      โ€” must have โฅ 1 parent B position ("B," prefix, NOT "BI,")  |
 //|      "BI,..." does NOT start with "B," (StringFind mismatches at  |
-//|      index 1 — ',' vs 'I') so prefix filter is correct.           |
+//|      index 1 โ€” ',' vs 'I') so prefix filter is correct.           |
 //|   3. Select earliest B parent (parent_tickets[0]) per ADR-009     |
 //|      anchor semantic; compute parent SL pip distance.             |
 //|   4. Pyramid gate: parent B profit_pips >= InpBIPyramidGatePips   |
 //|   5. Direction inheritance: same direction as profitable B parent |
-//|   6. SL inheritance: bi_entry_price ± sl_distance_price per ADR-9 |
+//|   6. SL inheritance: bi_entry_price ยฑ sl_distance_price per ADR-9 |
 //|                                                                  |
 //| Comment-prefix disambiguation ("BI," vs "B,"):                   |
 //|   MAGIC_B (214) is shared between B and BI. PortfolioState uses   |
 //|   CommentParser prefix filtering (per IMPL-008) to separate them: |
-//|   - GetTicketsForSlot(214, "B,",  ...) → parent B orders only     |
-//|   - GetTicketsForSlot(214, "BI,", ...) → own BI pyramid orders    |
+//|   - GetTicketsForSlot(214, "B,",  ...) โ’ parent B orders only     |
+//|   - GetTicketsForSlot(214, "BI,", ...) โ’ own BI pyramid orders    |
 //|   Same precedent as Slot_LX vs Slot_L (IMPL-031).                |
 //|                                                                  |
 //| DependsOn() returns 0: BI depends on B's *runtime state* queried  |
-//|   via PortfolioState — NOT a topology dependency. Same precedent  |
+//|   via PortfolioState โ€” NOT a topology dependency. Same precedent  |
 //|   as Slot_LX (IMPL-031) + Slot_G2 (IMPL-026).                    |
 //|                                                                  |
 //| Spec deviation note (IMPL-039 S-AC #3 vs ADR-009):                |
 //|   S-AC text reads "OrderSend SL parameter = parent B's open price |
-//|   ± m_pip.ToPoints(parent_sl_pip) per direction" — but ADR-009    |
-//|   Option A locks BI.sl = BI.entry_price ± sl_distance_price       |
+//|   ยฑ m_pip.ToPoints(parent_sl_pip) per direction" โ€” but ADR-009    |
+//|   Option A locks BI.sl = BI.entry_price ยฑ sl_distance_price       |
 //|   (anchored at BI's own entry, not parent's open). Implementation |
 //|   follows ADR-009 (architectural primary). Pip arithmetic uses    |
 //|   _PipsToPrice() (CSlotBase helper, Round-06 06.1) which routes   |
 //|   through CPipMath when wired or canonical 5/3-digit fallback.    |
 //|                                                                  |
 //| P4 deferred (IMPL-062):                                          |
-//|   - ADR-009 Bollinger fallback (BBBot − 10 / BBTop + 10) — needs  |
+//|   - ADR-009 Bollinger fallback (BBBot โ’ 10 / BBTop + 10) โ€” needs  |
 //|     M15 BB indicator in MarketContext (MVP fallback = pip floor).  |
 //|   - signal_context journal field "sl_inherit=B_parent_<ticket>"   |
-//|     — needs Phase-2 wiring; see docs/state/deferred-ac-registry.md TradeJournal write wiring.                  |
+//|     โ€” needs Orchestrator wiring path (core/Orchestrator.mqh) TradeJournal write wiring.                  |
 //|   - Multi-level pyramid (> 1 BI add-on layer)                     |
 //+------------------------------------------------------------------+
 #ifndef PHOENICISNEX_SLOTS_SLOT_BI_MQH
@@ -72,11 +72,11 @@
 #include "../inputs/Inputs_Slot_BI.mqh"
 
 //+------------------------------------------------------------------+
-//| CSlotBI — Slot BI derived class (ADR-002 CSlotBase contract)      |
+//| CSlotBI โ€” Slot BI derived class (ADR-002 CSlotBase contract)      |
 //|                                                                  |
 //| Pyramid child of Slot B sharing MAGIC_B=214; comment prefix      |
 //| "BI," in all OrderSend calls disambiguates from parent B "B,".   |
-//| ⚠️ G4 SL inheritance fix per ADR-009 in Evaluate() entry path.   |
+//| โ ๏ธ G4 SL inheritance fix per ADR-009 in Evaluate() entry path.   |
 //+------------------------------------------------------------------+
 class CSlotBI : public CSlotBase
   {
@@ -85,7 +85,7 @@ private:
    //    `_PipsToPrice` / `_PriceToPips` / `_PipSize` inherited from base.
 
    //--- Check whether BI already has active pyramid orders
-   //    Uses "BI," prefix — will NOT count parent B orders ("B,")
+   //    Uses "BI," prefix โ€” will NOT count parent B orders ("B,")
    bool              _HasActiveBIOrder(CPortfolioState &port) const
      {
       ulong tickets[];
@@ -93,7 +93,7 @@ private:
       return n >= InpBIMaxOrders;
      }
 
-   //--- Fetch parent B tickets (prefix "B," — excludes own "BI,")
+   //--- Fetch parent B tickets (prefix "B," โ€” excludes own "BI,")
    //    StringFind("B,", "BI,...") returns -1 (mismatch at i=1: ',' vs 'I'),
    //    so prefix filter is correct under shared-magic CommentParser contract.
    int               _GetParentBTickets(CPortfolioState &port, ulong &out_tickets[]) const
@@ -125,15 +125,15 @@ public:
    // 6-method CSlotBase contract (ADR-002)
    //=================================================================
 
-   //--- 1. Magic() — returns MAGIC_B (214) per domain/EnumTypes.mqh
+   //--- 1. Magic() โ€” returns MAGIC_B (214) per domain/EnumTypes.mqh
    //    Shared with parent B (IMPL-037); CommentParser "BI," disambig.
    virtual int       Magic() const override { return MAGIC_B; }
 
-   //--- 2. SlotId() — "BI"; used by journal `slot_id` field
+   //--- 2. SlotId() โ€” "BI"; used by journal `slot_id` field
    virtual string    SlotId() const override { return "BI"; }
 
-   //--- 3. Evaluate() — entry pass; called per tick by Orchestrator.
-   //    ⚠️ G4 fix per ADR-009 — SL inherited from parent B pip distance.
+   //--- 3. Evaluate() โ€” entry pass; called per tick by Orchestrator.
+   //    โ ๏ธ G4 fix per ADR-009 โ€” SL inherited from parent B pip distance.
    virtual void      Evaluate(const MarketContext &ctx, CPortfolioState &port) override
      {
       if(!InpEnableSlotBI)
@@ -144,11 +144,11 @@ public:
          return;
 
       //--- Own-no-active guard: skip if BI pyramid already open
-      //    Uses "BI," prefix filter — "B," parent orders are NOT counted.
+      //    Uses "BI," prefix filter โ€” "B," parent orders are NOT counted.
       if(_HasActiveBIOrder(port))
          return;
 
-      //--- Parent B gate: need ≥ 1 parent B position ("B," prefix only)
+      //--- Parent B gate: need โฅ 1 parent B position ("B," prefix only)
       ulong parent_tickets[];
       int parent_count = _GetParentBTickets(port, parent_tickets);
       if(parent_count <= 0)
@@ -174,22 +174,22 @@ public:
       //--- Direction inheritance: same direction as profitable B parent
       bool buy_signal = (parent_type == POSITION_TYPE_BUY);
 
-      //--- Lot sizing via RiskManager (no direct CTrade — ADR-002 rule)
+      //--- Lot sizing via RiskManager (no direct CTrade โ€” ADR-002 rule)
       double balance = AccountInfoDouble(ACCOUNT_BALANCE);
       double lot     = m_risk.ComputeLot("BI", InpBISlFallbackPips, balance);
       if(lot <= 0.0)
         {
          m_logger.Warn("Slot_BI", "zero_lot_skip", MAGIC_B,
-                       "ComputeLot returned 0 — skipping BI pyramid entry");
+                       "ComputeLot returned 0 โ€” skipping BI pyramid entry");
          return;
         }
 
-      //--- ⚠️ G4 fix ADR-009 — SL inherited from parent B pip distance.
-      //    sl_distance_pip = |parent_open − parent_sl| in pips
-      //    Edge case fallbacks (per ADR-009 § Edge case fallbacks):
-      //      1. parent_sl == 0 (legacy pre-fix)        → InpBISlFallbackPips
-      //      2. computed sl_distance_pip == 0 (degen)  → InpBISlFallbackPips
-      //    Phase-1 MVP: Bollinger fallback (BBBot − 10 / BBTop + 10) deferred
+      //--- โ ๏ธ G4 fix ADR-009 โ€” SL inherited from parent B pip distance.
+      //    sl_distance_pip = |parent_open โ’ parent_sl| in pips
+      //    Edge case fallbacks (per ADR-009 ยง Edge case fallbacks):
+      //      1. parent_sl == 0 (legacy pre-fix)        โ’ InpBISlFallbackPips
+      //      2. computed sl_distance_pip == 0 (degen)  โ’ InpBISlFallbackPips
+      //    Phase-1 MVP: Bollinger fallback (BBBot โ’ 10 / BBTop + 10) deferred
       //    to IMPL-062 since M15 BB indicator not yet in MarketContext;
       //    pip floor preserves the "non-zero SL" G4 contract until then.
       double sl_distance_pip = 0.0;
@@ -209,7 +209,7 @@ public:
       double bi_entry      = buy_signal ? ctx.ask : ctx.bid;
       double sl_distance   = _PipsToPrice(sl_distance_pip);
 #ifdef DISABLE_G4_FIXES
-      double sl_price      = 0.0;   // pre-G4 naked SL (Bucket A baseline; ADR-009 documents the fix — original PhoenicisN2.10 had SL=0)
+      double sl_price      = 0.0;   // pre-G4 naked SL (Bucket A baseline; ADR-009 documents the fix โ€” original PhoenicisN2.10 had SL=0)
 #else
       double sl_price      = buy_signal
                              ? _NormalizeBrokerPrice(bi_entry - sl_distance)
@@ -217,19 +217,19 @@ public:
 #endif
       string comment       = "BI,pyr,1";
 
-      //--- fix-round-17 § 17.1 — attestation tag MUST follow active build
+      //--- fix-round-17 ยง 17.1 โ€” attestation tag MUST follow active build
       //    branch so Bucket A regression journal records do not falsely
       //    attest "G4 fix ADR-009" while running the pre-G4 naked-SL path.
 #ifdef DISABLE_G4_FIXES
-      string g4_tag = "(Bucket A — pre-G4 ADR-009 naked SL path)";
+      string g4_tag = "(Bucket A โ€” pre-G4 ADR-009 naked SL path)";
 #else
       string g4_tag = "(G4 fix ADR-009)";
 #endif
 
-      //--- fix-round-12 § 12.8 — Phase 1 emits entry_signal Logger.Info as
+      //--- fix-round-12 ยง 12.8 โ€” Phase 1 emits entry_signal Logger.Info as
       //    the observable milestone; actual OrderSend lives in
       //    `RiskManager::OpenOrder` per `.claude/rules/ea.md` (IMPL-017 +
-      //    IMPL-062 5-yr regression). Log intent — observable milestone for
+      //    IMPL-062 5-yr regression). Log intent โ€” observable milestone for
       //    E-AC [log-assertion] + [db-inspect] (sl_distance_pip > 0 invariant
       //    verifiable in journal via signal_context once RiskManager wires).
       m_logger.Info("Slot_BI", buy_signal ? "entry_pyramid_buy" : "entry_pyramid_sell",
@@ -243,9 +243,9 @@ public:
                                  sl_distance_pip, sl_inherit_tag, comment, g4_tag));
      }
 
-   //--- 4. ManageExits() — exit pass; runs in BOTH RUNNING and HALTED (ADR-010)
+   //--- 4. ManageExits() โ€” exit pass; runs in BOTH RUNNING and HALTED (ADR-010)
    //    Iterates own "BI," orders only via GetTicketsForSlot disambig (Slot B
-   //    refrains from touching BI tickets per Slot_B.mqh § ManageExits note).
+   //    refrains from touching BI tickets per Slot_B.mqh ยง ManageExits note).
    virtual void      ManageExits(CPortfolioState &port) override
      {
       if(!InpEnableSlotBI)
@@ -253,7 +253,7 @@ public:
       if(m_logger == NULL)
          return;
 
-      //--- Retrieve BI pyramid tickets via "BI," prefix — "B," orders excluded
+      //--- Retrieve BI pyramid tickets via "BI," prefix โ€” "B," orders excluded
       ulong tickets[];
       int n = port.GetTicketsForSlot(MAGIC_B, "BI,", tickets);
       if(n <= 0)
@@ -273,13 +273,13 @@ public:
             m_logger.Info("Slot_BI", "exit_profit_gate", MAGIC_B,
                           StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f -> close",
                                        ticket, profit_pips, InpBITpProfitPips));
-            //--- Phase-1 stub: logger-only milestone; broker close wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md per ea.md.
+            //--- Phase-1 stub: logger-only milestone; broker close wired through services/RiskManager.mqh (CTrade wrapper) per ea.md.
            }
         }
      }
 
-   //--- 5. DependsOn() — BI depends on B's runtime state via PortfolioState query
-   //    Not a topology dependency — CommentParser disambig is internal.
+   //--- 5. DependsOn() โ€” BI depends on B's runtime state via PortfolioState query
+   //    Not a topology dependency โ€” CommentParser disambig is internal.
    //    Same precedent as Slot_LX (IMPL-031) + Slot_G2 (IMPL-026).
    virtual int       DependsOn(int &out_magics[]) override
      {
@@ -287,7 +287,7 @@ public:
       return 0;
      }
 
-   //--- 6. PendingState() — BI does not use pending sub-flow (IDLE default)
+   //--- 6. PendingState() โ€” BI does not use pending sub-flow (IDLE default)
    virtual EPendingState PendingState() const override
      {
       return PENDING_STATE_IDLE;

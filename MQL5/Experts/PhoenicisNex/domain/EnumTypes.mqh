@@ -114,9 +114,8 @@ bool IsPhoenicisMagic(int magic)
 //          - spike/Spike_Orchestrator.mq5 § OnInit (G1 compile gate)
 //          - core/BootstrapValidator::RunDomainSelfTests (header-only;
 //            invoked once production Orchestrator wiring lands)
-//      • Phase 2 — production wire on live attach is deferred to
-//        Phase-2 wiring; see docs/state/deferred-ac-registry.md / IMPL-062 owner: Orchestrator::OnInit Phase B
-//        step 1 should call m_validator.RunDomainSelfTests() BEFORE
+//      • Production wire on live attach: core/Orchestrator.mqh::OnInit
+//        Phase B step 1 calls m_validator.RunDomainSelfTests() BEFORE
 //        ValidateSymbol so a live EURUSD H4 attach exercises this
 //        regression gate at first attach.
 bool IsPhoenicisMagicSelfTest()

@@ -63,9 +63,10 @@ protected:
    CCrossSlotCoordinator    *m_xslot;
 
    //--- Round-06 06.1: pip-arithmetic helper (ea.md mandate). Composition
-   //    Root (Phase-2 wiring; see docs/state/deferred-ac-registry.md) calls SetPipMath(); when NULL the protected
-   //    helpers fall back to inline 5/3-digit detection (single fallback
-   //    site eliminates the 19-way drift Finding 06.1 reported).
+   //    Root (core/Orchestrator.mqh::WireSlots step 4) calls SetPipMath();
+   //    when NULL the protected helpers fall back to inline 5/3-digit
+   //    detection (single fallback site eliminates the 19-way drift
+   //    Finding 06.1 reported).
    CPipMath                 *m_pip;
 
 public:
@@ -143,8 +144,9 @@ public:
 
 protected:
    //--- Round-06 06.1 — pip helpers shared by 19 derived slots. When
-   //    m_pip is wired (Phase-2 wiring; see docs/state/deferred-ac-registry.md Composition Root) the helpers route
-   //    through CPipMath; otherwise a SINGLE fallback site implements
+   //    m_pip is wired (set by core/Orchestrator.mqh::WireSlots after
+   //    CSlotBase::Init) the helpers route through CPipMath; otherwise
+   //    a SINGLE fallback site implements
    //    the canonical 5/3-digit detection (matches CPipMath::Init at
    //    helpers/PipMath.mqh:31). Slots ห้าม re-derive this expression.
 

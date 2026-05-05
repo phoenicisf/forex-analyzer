@@ -1,18 +1,18 @@
 //+------------------------------------------------------------------+
-//| Inputs_Slot_BI.mqh — per-slot input declarations for Slot BI     |
-//| Layer:  inputs/ (no service deps — pure input declarations)       |
-//| Slot:   BI — Magic MAGIC_B=214 (shared with parent B; comment    |
+//| Inputs_Slot_BI.mqh เนโฌโ€ per-slot input declarations for Slot BI     |
+//| Layer:  inputs/ (no service deps เนโฌโ€ pure input declarations)       |
+//| Slot:   BI เนโฌโ€ Magic MAGIC_B=214 (shared with parent B; comment    |
 //|         disambig "BI," vs "B,")                                   |
-//| Source: CodeWiki §3.19 Slot BI; ADR-009 (G4 SL inheritance fix); |
-//|         TD-02 §5.4; NFR-6.3 group annotation                      |
+//| Source: CodeWiki เธขเธ3.19 Slot BI; ADR-009 (G4 SL inheritance fix); |
+//|         TD-02 เธขเธ5.4; NFR-6.3 group annotation                      |
 //|                                                                  |
-//| L-size MVP — header-only G4 SL fix scaffold:                      |
+//| L-size MVP เนโฌโ€ header-only G4 SL fix scaffold:                      |
 //|   BI = pyramid child of Slot B sharing MAGIC_B=214; comment "BI,"|
-//|   ⚠️ G4 critical fix per ADR-009: BI orders open with SL inherited|
+//|   เนยย เนเธย G4 critical fix per ADR-009: BI orders open with SL inherited|
 //|   from parent B's pip distance applied at BI entry price (NOT     |
-//|   naked SL=0 per CodeWiki §6.2 :20326 :20357 baseline bug).      |
+//|   naked SL=0 per CodeWiki เธขเธ6.2 :20326 :20357 baseline bug).      |
 //|                                                                  |
-//| Real activation: Phase-2 wiring; see docs/state/deferred-ac-registry.md Composition Root + RiskManager        |
+//| Real activation: Orchestrator wiring path (core/Orchestrator.mqh) - Composition Root + RiskManager        |
 //|   OrderSend wiring + Tester run.                                  |
 //+------------------------------------------------------------------+
 #ifndef PHOENICISNEX_INPUTS_SLOT_BI_MQH

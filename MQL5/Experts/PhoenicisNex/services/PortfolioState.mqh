@@ -1,20 +1,20 @@
 //+------------------------------------------------------------------+
-//| PortfolioState.mqh — per-magic in-memory portfolio state        |
-//| Layer:   services/ — injected into slots via Orchestrator        |
-//| Source:  ADR-005, TD-02 §5.3 lines 535-575                      |
+//| PortfolioState.mqh เนโฌโ€ per-magic in-memory portfolio state        |
+//| Layer:   services/ เนโฌโ€ injected into slots via Orchestrator        |
+//| Source:  ADR-005, TD-02 เธขเธ5.3 lines 535-575                      |
 //|          BR-1.1 (17-magic invariant), BR-1.2 (comment prefix)   |
 //|          ADR-012 (5-layer include discipline)                    |
 //|                                                                  |
 //| Key contracts:                                                   |
-//|  • CHashMap<int, SlotState*> m_map — O(1) average GetByMagic    |
-//|  • RegisterAll() pre-populates 17 SlotState* entries (BR-1.1)   |
-//|  • GetByMagic() returns NULL + Warn for unregistered magic       |
-//|  • Refresh() stub — full PositionsTotal() loop deferred to       |
-//|    Phase-2 wiring; see docs/state/deferred-ac-registry.md (orchestrator wire-up) + IMPL-018+ (entry .mq5)    |
-//|  • ReleaseAll() deletes heap-allocated SlotState*               |
+//|  เนโฌเธ CHashMap<int, SlotState*> m_map เนโฌโ€ O(1) average GetByMagic    |
+//|  เนโฌเธ RegisterAll() pre-populates 17 SlotState* entries (BR-1.1)   |
+//|  เนโฌเธ GetByMagic() returns NULL + Warn for unregistered magic       |
+//|  เนโฌเธ Refresh() stub เนโฌโ€ full PositionsTotal() loop deferred to       |
+//|    Orchestrator wiring path (core/Orchestrator.mqh) + IMPL-018+ (entry .mq5)    |
+//|  เนโฌเธ ReleaseAll() deletes heap-allocated SlotState*               |
 //|                                                                  |
 //| 2-phase init: Init() called at Orchestrator OnInit step 5;       |
-//|   RegisterAll() called immediately after Init() — BootstrapVal  |
+//|   RegisterAll() called immediately after Init() เนโฌโ€ BootstrapVal  |
 //|   asserts MagicCount() == 17 (per ADR-005 + BR-1.1).            |
 //+------------------------------------------------------------------+
 #ifndef PHOENICISNEX_SERVICES_PORTFOLIOSTATE_MQH
@@ -25,7 +25,7 @@
 #include "../domain/SlotState.mqh"
 #include "Logger.mqh"
 
-// CommentParser is not included here — consumed by GetTicketsForSlot
+// CommentParser is not included here เนโฌโ€ consumed by GetTicketsForSlot
 // body when it lands (IMPL-007-getticketsforslot); forward-declare is
 // not needed since we only stub the method.
 
@@ -43,40 +43,40 @@ private:
    CHashMap<int, SlotState *> m_map;
 
    //--- Iteration order for Refresh / ReleaseAll (17 distinct magics)
-   //    ADR-005 § BR-1.1: 21 slots − 4 shared-magic pairs = 17 magics
+   //    ADR-005 เธขเธ BR-1.1: 21 slots เนยโ€ 4 shared-magic pairs = 17 magics
    int               m_magic_list[PHOENICISNEX_MAGIC_COUNT];
 
    //--- Count of registered magics (asserted == 17 by BootstrapValidator)
    int               m_magic_count;
 
-   //--- Injected logger (Composition Root — no global access)
+   //--- Injected logger (Composition Root เนโฌโ€ no global access)
    CLogger          *m_logger;
 
 public:
-   //--- Default constructor — zero-init (CHashMap has default ctor)
+   //--- Default constructor เนโฌโ€ zero-init (CHashMap has default ctor)
    CPortfolioState() : m_magic_count(0), m_logger(NULL) {}
 
    //--- Phase 1 init: store logger pointer + clear map
-   //    Called at Orchestrator OnInit step 5 (TD-02 §7.4)
+   //    Called at Orchestrator OnInit step 5 (TD-02 เธขเธ7.4)
    void              Init(CLogger *logger);
 
    //--- OnInit step 5 (immediately after Init): populate 17 entries
    //    Boot-time invariant: MagicCount() == 17 (ADR-005 + BR-1.1)
    void              RegisterAll();
 
-   //--- Invariant accessor — BootstrapValidator asserts == 17
+   //--- Invariant accessor เนโฌโ€ BootstrapValidator asserts == 17
    int               MagicCount() const { return m_magic_count; }
 
-   //--- OnTick step H: refresh aggregates from broker (~100 µs target)
-   //    Per ADR-005 § Refresh contract; broker query body completed at
-   //    Phase-2 wiring; see docs/state/deferred-ac-registry.md (Orchestrator) per impl-plan.
+   //--- OnTick step H: refresh aggregates from broker (~100 เธขเธ•s target)
+   //    Per ADR-005 เธขเธ Refresh contract; broker query body completed at
+   //    Orchestrator wiring path (core/Orchestrator.mqh) per impl-plan.
    void              Refresh();
 
-   //--- O(1) average slot accessor (ADR-005 — CHashMap lookup)
+   //--- O(1) average slot accessor (ADR-005 เนโฌโ€ CHashMap lookup)
    //    Returns NULL + Logger Warn for unregistered magic
    SlotState        *GetByMagic(int magic);
 
-   //--- Silent membership test — true iff `magic` was registered by
+   //--- Silent membership test เนโฌโ€ true iff `magic` was registered by
    //    RegisterAll(). Distinct from GetByMagic: no Logger Warn on miss.
    //    Use in hot loops (e.g. _AggregateWeakMetrics) that iterate
    //    PositionsTotal() and must skip foreign-EA positions without
@@ -99,15 +99,15 @@ public:
   }; // end class CPortfolioState
 
 //+------------------------------------------------------------------+
-//| Init — store logger pointer + clear map                          |
-//| Called at Orchestrator OnInit step 5 (TD-02 §7.4)               |
+//| Init เนโฌโ€ store logger pointer + clear map                          |
+//| Called at Orchestrator OnInit step 5 (TD-02 เธขเธ7.4)               |
 //+------------------------------------------------------------------+
 void CPortfolioState::Init(CLogger *logger)
   {
    // Defensive: if Init() is invoked a second time (MT5 re-init on input
-   // parameter change, or CleanupPartialInit → re-attempt), the prior round
+   // parameter change, or CleanupPartialInit เนยโ€ re-attempt), the prior round
    // left 17 heap-allocated SlotState* entries in m_map. m_map.Clear()
-   // alone drops references → leak (Finding 01.5 / ADR-005 lifecycle pairing).
+   // alone drops references เนยโ€ leak (Finding 01.5 / ADR-005 lifecycle pairing).
    if(m_magic_count > 0)
       ReleaseAll();   // delete each SlotState* + Clear() map + reset count
 
@@ -120,16 +120,16 @@ void CPortfolioState::Init(CLogger *logger)
   }
 
 //+------------------------------------------------------------------+
-//| RegisterAll — pre-populate 17 SlotState* entries                 |
+//| RegisterAll เนโฌโ€ pre-populate 17 SlotState* entries                 |
 //|                                                                  |
 //| BR-1.1: 21 active slots / 17 distinct magics (4 shared pairs):  |
-//|   200 → ["C","D"]  (MAGIC_CD)                                    |
-//|   208 → ["G","G2"] (MAGIC_G)                                     |
-//|   211 → ["L","LX"] (MAGIC_L)                                     |
-//|   214 → ["B","BI"] (MAGIC_B)                                     |
-//|   All other 13 → single-entry slot_ids[]                         |
+//|   200 เนยโ€ ["C","D"]  (MAGIC_CD)                                    |
+//|   208 เนยโ€ ["G","G2"] (MAGIC_G)                                     |
+//|   211 เนยโ€ ["L","LX"] (MAGIC_L)                                     |
+//|   214 เนยโ€ ["B","BI"] (MAGIC_B)                                     |
+//|   All other 13 เนยโ€ single-entry slot_ids[]                         |
 //|                                                                  |
-//| Heap-allocates each SlotState* — released by ReleaseAll().       |
+//| Heap-allocates each SlotState* เนโฌโ€ released by ReleaseAll().       |
 //| Magic audit list (verify vs EnumTypes.mqh):                      |
 //|   200, 201, 205, 206, 207, 208, 209, 210, 211,                   |
 //|   212, 213, 214, 215, 216, 217, 218, 219                         |
@@ -139,23 +139,23 @@ void CPortfolioState::RegisterAll()
    // --- Define 17 magics in iteration order (matches m_magic_list) ---
    // Source: domain/EnumTypes.mqh MAGIC_* constants + ADR-005 BR-1.1
    int magics[PHOENICISNEX_MAGIC_COUNT] = {
-      MAGIC_CD,  // 200 — C, D shared
-      MAGIC_F,   // 201 — F
-      MAGIC_H,   // 205 — H
-      MAGIC_J,   // 206 — J (⚠️ BR-7.2: ExtraTakeProfit_J iterates this)
-      MAGIC_K,   // 207 — K
-      MAGIC_G,   // 208 — G, G2 shared
-      MAGIC_GO,  // 209 — GO
-      MAGIC_M,   // 210 — M
-      MAGIC_L,   // 211 — L, LX shared
-      MAGIC_Q,   // 212 — Q
-      MAGIC_R,   // 213 — R
-      MAGIC_B,   // 214 — B, BI shared
-      MAGIC_BR,  // 215 — BR
-      MAGIC_I,   // 216 — I
-      MAGIC_S,   // 217 — S
-      MAGIC_P,   // 218 — P
-      MAGIC_T    // 219 — T
+      MAGIC_CD,  // 200 เนโฌโ€ C, D shared
+      MAGIC_F,   // 201 เนโฌโ€ F
+      MAGIC_H,   // 205 เนโฌโ€ H
+      MAGIC_J,   // 206 เนโฌโ€ J (เนยย เนเธย BR-7.2: ExtraTakeProfit_J iterates this)
+      MAGIC_K,   // 207 เนโฌโ€ K
+      MAGIC_G,   // 208 เนโฌโ€ G, G2 shared
+      MAGIC_GO,  // 209 เนโฌโ€ GO
+      MAGIC_M,   // 210 เนโฌโ€ M
+      MAGIC_L,   // 211 เนโฌโ€ L, LX shared
+      MAGIC_Q,   // 212 เนโฌโ€ Q
+      MAGIC_R,   // 213 เนโฌโ€ R
+      MAGIC_B,   // 214 เนโฌโ€ B, BI shared
+      MAGIC_BR,  // 215 เนโฌโ€ BR
+      MAGIC_I,   // 216 เนโฌโ€ I
+      MAGIC_S,   // 217 เนโฌโ€ S
+      MAGIC_P,   // 218 เนโฌโ€ P
+      MAGIC_T    // 219 เนโฌโ€ T
    };
 
    // Copy into m_magic_list for Refresh/ReleaseAll iteration
@@ -165,7 +165,7 @@ void CPortfolioState::RegisterAll()
      {
       int magic = magics[i];
 
-      // Heap-allocate SlotState — zero-initialized by MQL5
+      // Heap-allocate SlotState เนโฌโ€ zero-initialized by MQL5
       SlotState *s = new SlotState;
 
       // Set magic (denormalized for O(1) reverse lookup)
@@ -173,7 +173,7 @@ void CPortfolioState::RegisterAll()
       s.buy_count     = 0;
       s.sell_count    = 0;
       s.total_lots    = 0.0;
-      s.last_open_lot = 0.0;   // Finding 02.3 — populated by OnTradeTransaction at Phase-2 wiring; see docs/state/deferred-ac-registry.md
+      s.last_open_lot = 0.0;   // Finding 02.3 เนโฌโ€ populated by core/Orchestrator.mqh::OnTradeTransaction (line 791) เนยโ€ CPortfolioState::OnTradeTransaction
       s.total_profit  = 0.0;
       s.last_open_date = 0;
       s.pending_state  = PENDING_STATE_IDLE;
@@ -181,28 +181,28 @@ void CPortfolioState::RegisterAll()
       ArrayResize(s.ticket_ids, 0);
       ArrayResize(s.ticket_max_profit_pip, 0);
 
-      // Set slot_ids[] per shared-magic mapping (ADR-005 § Decision)
+      // Set slot_ids[] per shared-magic mapping (ADR-005 เธขเธ Decision)
       switch(magic)
         {
-         case 200:  // MAGIC_CD → ["C","D"]
+         case 200:  // MAGIC_CD เนยโ€ ["C","D"]
             ArrayResize(s.slot_ids, 2);
             s.slot_ids[0] = "C";
             s.slot_ids[1] = "D";
             break;
 
-         case 208:  // MAGIC_G → ["G","G2"]
+         case 208:  // MAGIC_G เนยโ€ ["G","G2"]
             ArrayResize(s.slot_ids, 2);
             s.slot_ids[0] = "G";
             s.slot_ids[1] = "G2";
             break;
 
-         case 211:  // MAGIC_L → ["L","LX"]
+         case 211:  // MAGIC_L เนยโ€ ["L","LX"]
             ArrayResize(s.slot_ids, 2);
             s.slot_ids[0] = "L";
             s.slot_ids[1] = "LX";
             break;
 
-         case 214:  // MAGIC_B → ["B","BI"]
+         case 214:  // MAGIC_B เนยโ€ ["B","BI"]
             ArrayResize(s.slot_ids, 2);
             s.slot_ids[0] = "B";
             s.slot_ids[1] = "BI";
@@ -263,7 +263,7 @@ void CPortfolioState::RegisterAll()
             break;
 
          default:
-            // Defensive: log unexpected magic — should never reach here
+            // Defensive: log unexpected magic เนโฌโ€ should never reach here
             ArrayResize(s.slot_ids, 0);
             if(m_logger != NULL)
                m_logger.Warn("portfolio", "register_unknown_magic", magic, "unexpected magic in RegisterAll");
@@ -275,7 +275,7 @@ void CPortfolioState::RegisterAll()
      }
 
    // Emit registration summary for log-assertion E-AC evidence
-   //   (consumer wired at Phase-2 wiring; see docs/state/deferred-ac-registry.md Orchestrator per impl-plan).
+   //   (consumer wired at Orchestrator wiring path (core/Orchestrator.mqh) per impl-plan).
    // Grep pattern: grep -E '\[Phoenicis\].*\[ev=portfolio_registered\]'
    if(m_logger != NULL)
       m_logger.Info("portfolio", "portfolio_registered", 0,
@@ -283,17 +283,17 @@ void CPortfolioState::RegisterAll()
   }
 
 //+------------------------------------------------------------------+
-//| Refresh — reset aggregates + TODO broker position loop           |
+//| Refresh เนโฌโ€ reset aggregates + TODO broker position loop           |
 //|                                                                  |
-//| ADR-005 § Refresh contract:                                      |
+//| ADR-005 เธขเธ Refresh contract:                                      |
 //|   Step 1: Reset per-entry aggregates (buy/sell count, lots, PL,  |
 //|            ticket arrays)                                         |
-//|   Step 2: PositionsTotal() loop — completed at Phase-2 wiring; see docs/state/deferred-ac-registry.md     |
+//|   Step 2: PositionsTotal() loop เนโฌโ€ completed at Orchestrator wiring path (core/Orchestrator.mqh)     |
 //|            (Orchestrator owner) per impl-plan.                    |
 //+------------------------------------------------------------------+
 void CPortfolioState::Refresh()
   {
-   // Step 1 — Reset aggregates per ADR-005 § Refresh contract step 1
+   // Step 1 เนโฌโ€ Reset aggregates per ADR-005 เธขเธ Refresh contract step 1
    for(int i = 0; i < m_magic_count; i++)
      {
       SlotState *s = NULL;
@@ -302,17 +302,17 @@ void CPortfolioState::Refresh()
          s.buy_count     = 0;
          s.sell_count    = 0;
          s.total_lots    = 0.0;
-         s.last_open_lot = 0.0;   // Finding 02.3 — reset; re-populated by step 2 broker loop
+         s.last_open_lot = 0.0;   // Finding 02.3 เนโฌโ€ reset; re-populated by step 2 broker loop
          s.total_profit  = 0.0;
          ArrayResize(s.ticket_ids, 0);
          ArrayResize(s.ticket_max_profit_pip, 0);
         }
      }
 
-   // TODO IMPL-007-refresh: full PositionsTotal() loop per ADR-005 § Refresh contract step 2
-   //   Deferred: requires entry .mq5 (IMPL-018+) + orchestrator wire-up (Phase-2 wiring; see docs/state/deferred-ac-registry.md)
+   // TODO IMPL-007-refresh: full PositionsTotal() loop per ADR-005 เธขเธ Refresh contract step 2
+   //   Deferred: requires entry .mq5 (IMPL-018+) + orchestrator wire-up (Orchestrator wiring path (core/Orchestrator.mqh))
    //
-   //   Implementation sketch (to land at Phase-2 wiring; see docs/state/deferred-ac-registry.md):
+   //   Implementation sketch (to land at Orchestrator wiring path (core/Orchestrator.mqh)):
    //   for(int i = 0; i < PositionsTotal(); i++) {
    //      ulong ticket = PositionGetTicket(i);
    //      if(!PositionSelectByTicket(ticket)) continue;
@@ -326,7 +326,7 @@ void CPortfolioState::Refresh()
    //      datetime open_t = (datetime)PositionGetInteger(POSITION_TIME);
    //      s.total_lots   += vol;
    //      s.total_profit += PositionGetDouble(POSITION_PROFIT);
-   //      // Finding 02.3 — last_open_lot = lot of latest-opened position in pool
+   //      // Finding 02.3 เนโฌโ€ last_open_lot = lot of latest-opened position in pool
    //      if(open_t >= s.last_open_date) { s.last_open_date = open_t; s.last_open_lot = vol; }
    //      int n = ArraySize(s.ticket_ids);
    //      ArrayResize(s.ticket_ids, n + 1);
@@ -337,7 +337,7 @@ void CPortfolioState::Refresh()
   }
 
 //+------------------------------------------------------------------+
-//| GetByMagic — O(1) average slot accessor (ADR-005 CHashMap)       |
+//| GetByMagic เนโฌโ€ O(1) average slot accessor (ADR-005 CHashMap)       |
 //| Returns: pointer to SlotState or NULL if not registered           |
 //| On NULL: Logger Warn "magic_not_registered" (S-AC requirement)   |
 //+------------------------------------------------------------------+
@@ -354,7 +354,7 @@ SlotState *CPortfolioState::GetByMagic(int magic)
   }
 
 //+------------------------------------------------------------------+
-//| IsKnownMagic — silent membership test (no Logger Warn on miss)   |
+//| IsKnownMagic เนโฌโ€ silent membership test (no Logger Warn on miss)   |
 //| Used by hot loops that must filter foreign-EA positions out of   |
 //| PositionsTotal() iteration without log spam (Finding 09.1).      |
 //+------------------------------------------------------------------+
@@ -365,19 +365,19 @@ bool CPortfolioState::IsKnownMagic(int magic)
   }
 
 //+------------------------------------------------------------------+
-//| GetTicketsForSlot — filter shared-magic positions by prefix       |
+//| GetTicketsForSlot เนโฌโ€ filter shared-magic positions by prefix       |
 //| Uses CCommentParser per BR-1.2 (longest-prefix match)            |
 //|                                                                  |
 //| TODO IMPL-007-getticketsforslot: implement body using            |
 //|   helpers/CommentParser.mqh::FilterTicketsByPrefix()             |
-//|   Deferred to Phase-2 wiring; see docs/state/deferred-ac-registry.md (needs position ticket_ids[] from        |
+//|   Deferred to Orchestrator wiring path (core/Orchestrator.mqh) (needs position ticket_ids[] from        |
 //|   Refresh() which is deferred + entry .mq5)                      |
 //+------------------------------------------------------------------+
 int CPortfolioState::GetTicketsForSlot(int magic, string slot_prefix,
                                        ulong &out_tickets[]) const
   {
    // TODO IMPL-007-getticketsforslot: filter via CommentParser per BR-1.2
-   //   Example body (to land at Phase-2 wiring; see docs/state/deferred-ac-registry.md):
+   //   Example body (to land at Orchestrator wiring path (core/Orchestrator.mqh)):
    //   SlotState *s = NULL;
    //   if(!m_map.TryGetValue(magic, s) || s == NULL) return 0;
    //   CCommentParser parser;
@@ -386,7 +386,7 @@ int CPortfolioState::GetTicketsForSlot(int magic, string slot_prefix,
   }
 
 //+------------------------------------------------------------------+
-//| TotalActivePositions — sum (buy_count + sell_count) across map   |
+//| TotalActivePositions เนโฌโ€ sum (buy_count + sell_count) across map   |
 //+------------------------------------------------------------------+
 int CPortfolioState::TotalActivePositions()
   {
@@ -401,7 +401,7 @@ int CPortfolioState::TotalActivePositions()
   }
 
 //+------------------------------------------------------------------+
-//| TotalFloatingPL — sum total_profit across all entries             |
+//| TotalFloatingPL เนโฌโ€ sum total_profit across all entries             |
 //+------------------------------------------------------------------+
 double CPortfolioState::TotalFloatingPL()
   {
@@ -416,11 +416,11 @@ double CPortfolioState::TotalFloatingPL()
   }
 
 //+------------------------------------------------------------------+
-//| GetSlotCounts — populate slot_ids[] + counts[] for cross-slot    |
+//| GetSlotCounts เนโฌโ€ populate slot_ids[] + counts[] for cross-slot    |
 //| helpers (Safe-port etc.)                                         |
 //|                                                                  |
 //| TODO IMPL-007-getslotcounts: implement slot_ids / count arrays   |
-//|   Deferred to Phase-2 wiring; see docs/state/deferred-ac-registry.md (Safe-port orchestration)                |
+//|   Deferred to Orchestrator wiring path (core/Orchestrator.mqh) (Safe-port orchestration)                |
 //+------------------------------------------------------------------+
 void CPortfolioState::GetSlotCounts(string &slot_ids[], int &counts[]) const
   {
@@ -430,9 +430,9 @@ void CPortfolioState::GetSlotCounts(string &slot_ids[], int &counts[]) const
   }
 
 //+------------------------------------------------------------------+
-//| ReleaseAll — delete heap-allocated SlotState entries              |
+//| ReleaseAll เนโฌโ€ delete heap-allocated SlotState entries              |
 //| Called at Orchestrator OnDeinit (CleanupPartialInit / normal)    |
-//| ADR-005: each SlotState* is new'd in RegisterAll → must delete    |
+//| ADR-005: each SlotState* is new'd in RegisterAll เนยโ€ must delete    |
 //+------------------------------------------------------------------+
 void CPortfolioState::ReleaseAll()
   {

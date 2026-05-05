@@ -1,28 +1,28 @@
 //+------------------------------------------------------------------+
-//| slots/Slot_L.mqh — Slot L derived class (IMPL-030)               |
+//| slots/Slot_L.mqh เนโฌโ€ Slot L derived class (IMPL-030)               |
 //| Layer:   slots/ (depends on domain/; injects services via base)   |
 //| Magic:   211 (MAGIC_L per domain/EnumTypes.mqh; shared with LX)   |
 //| SlotId:  "L"                                                      |
 //| Comment: "L,wave,1"                                               |
 //|                                                                  |
-//| Source:  CodeWiki §3.L (M-size MVP: 5 of N entry conditions)     |
-//|          TD-02 §5.4 (lot dispatch RiskManager::ComputeLot)        |
+//| Source:  CodeWiki เธขเธ3.L (M-size MVP: 5 of N entry conditions)     |
+//|          TD-02 เธขเธ5.4 (lot dispatch RiskManager::ComputeLot)        |
 //|          ADR-002 (CSlotBase 6-method contract)                    |
-//|          ADR-012 (layer dependency — ห้าม #include slots/*)        |
+//|          ADR-012 (layer dependency เนโฌโ€ เน€เธเธเน€เธยเน€เธเธ’เน€เธเธ #include slots/*)        |
 //|                                                                  |
-//| M-size MVP scope (5 of N CodeWiki §3.L conditions):              |
+//| M-size MVP scope (5 of N CodeWiki เธขเธ3.L conditions):              |
 //|   1. No existing L order (PortfolioState comment-prefix filter)   |
 //|   2. WPR wave signal: wpr_wave_signal derived (wpr_h4 + Ichimoku) |
-//|      // CodeWiki §3.L entry condition — WPR wave confirmation     |
+//|      // CodeWiki เธขเธ3.L entry condition เนโฌโ€ WPR wave confirmation     |
 //|   3. D1 Ichimoku trend filter: price location vs cloud            |
-//|      // CodeWiki §3.L entry condition — trend alignment           |
+//|      // CodeWiki เธขเธ3.L entry condition เนโฌโ€ trend alignment           |
 //|   4. ADX volatility gate: adx_h4.adx > InpLAdxThreshold          |
-//|      // CodeWiki §3.L entry condition — avoid low-volatility      |
+//|      // CodeWiki เธขเธ3.L entry condition เนโฌโ€ avoid low-volatility      |
 //|   5. WPR oversold/overbought threshold confirmation               |
-//|      // CodeWiki §3.L entry condition — momentum confirmation     |
+//|      // CodeWiki เธขเธ3.L entry condition เนโฌโ€ momentum confirmation     |
 //|                                                                  |
 //| LX/S coupling: IMPL-031 (LX pyramid) + IMPL-036 (S post-close)   |
-//|   depend on L — but those land at IMPL-031/036, NOT here.        |
+//|   depend on L เนโฌโ€ but those land at IMPL-031/036, NOT here.        |
 //|   DependsOn() returns 0 (independent).                           |
 //|                                                                  |
 //| P4 deferred (IMPL-062):                                          |
@@ -43,14 +43,14 @@
 #include "../services/RiskManager.mqh"
 
 //+------------------------------------------------------------------+
-//| CSlotL — Slot L concrete derived class                           |
+//| CSlotL เนโฌโ€ Slot L concrete derived class                           |
 //|                                                                  |
 //| Entry logic: WPR wave signal (wpr_wave_signal derived) +         |
 //|   D1 Ichimoku trend alignment + ADX volatility gate +            |
 //|   WPR threshold confirmation + no existing L order.              |
 //|                                                                  |
 //| Exit logic: profit >= InpLTpProfitPips (40 pip default).         |
-//| Comment prefix: "L," — LX uses "LX," (IMPL-031 disambiguation).  |
+//| Comment prefix: "L," เนโฌโ€ LX uses "LX," (IMPL-031 disambiguation).  |
 //+------------------------------------------------------------------+
 class CSlotL : public CSlotBase
   {
@@ -59,7 +59,7 @@ private:
    //    `_PipsToPrice(pips)` inherited from base.
 
    //--- Count open L orders via PortfolioState comment-prefix filter
-   //    MAGIC_L is shared with LX — filter by "L," prefix to own only.
+   //    MAGIC_L is shared with LX เนโฌโ€ filter by "L," prefix to own only.
    int               _CountLOrders(CPortfolioState &port) const
      {
       ulong tickets[];
@@ -73,10 +73,10 @@ private:
       double cloud_high = ctx.ichi_d1.cloud_high;
       double cloud_low  = ctx.ichi_d1.cloud_low;
       if(ctx.bid > cloud_high)
-         return +1;  // above cloud — BUY trend
+         return +1;  // above cloud เนโฌโ€ BUY trend
       if(ctx.bid < cloud_low)
-         return -1;  // below cloud — SELL trend
-      return 0;      // inside cloud — no clear trend
+         return -1;  // below cloud เนโฌโ€ SELL trend
+      return 0;      // inside cloud เนโฌโ€ no clear trend
      }
 
 public:
@@ -88,38 +88,38 @@ public:
    // 6-method CSlotBase contract (ADR-002)
    //=================================================================
 
-   //--- 1. Magic() — returns MAGIC_L (211) per domain/EnumTypes.mqh
+   //--- 1. Magic() เนโฌโ€ returns MAGIC_L (211) per domain/EnumTypes.mqh
    virtual int       Magic() const override { return MAGIC_L; }
 
-   //--- 2. SlotId() — used by journal record `slot_id` field
+   //--- 2. SlotId() เนโฌโ€ used by journal record `slot_id` field
    virtual string    SlotId() const override { return "L"; }
 
-   //--- 3. Evaluate() — entry pass; called per tick by Orchestrator
+   //--- 3. Evaluate() เนโฌโ€ entry pass; called per tick by Orchestrator
    //    Only invoked if EAState == RUNNING (HALTED skips per ADR-010).
-   //    M-size MVP: 5 of N CodeWiki §3.L conditions.
+   //    M-size MVP: 5 of N CodeWiki เธขเธ3.L conditions.
    virtual void      Evaluate(const MarketContext &ctx, CPortfolioState &port) override
      {
       if(!InpEnableSlotL)
          return;
 
       //--- Entry condition 1: no existing L order open
-      //    Uses comment-prefix "L," filter — LX orders (magic=211 + "LX,") excluded.
+      //    Uses comment-prefix "L," filter เนโฌโ€ LX orders (magic=211 + "LX,") excluded.
       if(_CountLOrders(port) >= InpLMaxOrders)
          return;
 
       //--- Entry condition 2: ADX volatility gate
-      //    CodeWiki §3.L — avoid low-volatility regime
+      //    CodeWiki เธขเธ3.L เนโฌโ€ avoid low-volatility regime
       if(ctx.adx_h4.adx < InpLAdxThreshold)
          return;
 
       //--- Entry condition 3: D1 Ichimoku trend filter
-      //    CodeWiki §3.L — align with higher-timeframe trend
+      //    CodeWiki เธขเธ3.L เนโฌโ€ align with higher-timeframe trend
       int trend_dir = _D1TrendDirection(ctx);
       if(trend_dir == 0)
-         return;  // price inside cloud — no trade
+         return;  // price inside cloud เนโฌโ€ no trade
 
       //--- Entry condition 4: WPR wave signal (derived, computed once per tick)
-      //    CodeWiki §3.L — wpr_wave_signal = RunCheckWPRWaveWithIchimoku2 result
+      //    CodeWiki เธขเธ3.L เนโฌโ€ wpr_wave_signal = RunCheckWPRWaveWithIchimoku2 result
       //    Must match trend direction
       if(!ctx.derived.wpr_wave_signal)
          return;
@@ -132,7 +132,7 @@ public:
       if(!buy_signal && !sell_signal)
          return;
 
-      //--- Lot sizing via RiskManager (no direct CTrade — ADR-002 rule)
+      //--- Lot sizing via RiskManager (no direct CTrade เนโฌโ€ ADR-002 rule)
       if(m_risk == NULL)
         {
          if(m_logger != NULL)
@@ -154,7 +154,7 @@ public:
       string           comment    = "L,wave,1";
 
       //--- Submit order via RiskManager (which wraps CTrade per ea.md)
-      //    RiskManager::OpenOrder wired at Phase-2 wiring; see docs/state/deferred-ac-registry.md Orchestrator skeleton.
+      //    RiskManager::OpenOrder wired at Orchestrator wiring path (core/Orchestrator.mqh).
       //    Until then: log intent so SelfTest/smoke verifies entry path
       //    without panicking on NULL CTrade.
       if(m_logger != NULL)
@@ -164,11 +164,11 @@ public:
                                     lot, price, sl_price, comment));
      }
 
-   //--- 4. ManageExits() — exit pass; runs in BOTH RUNNING and HALTED
+   //--- 4. ManageExits() เนโฌโ€ exit pass; runs in BOTH RUNNING and HALTED
    //    per ADR-010. Exit condition: profit >= InpLTpProfitPips.
    //    Uses canonical PortfolioState.GetTicketsForSlot + PositionSelectByTicket
    //    pattern (Slot_BR canonical) per ADR-005 + ADR-012. Open positions are
-   //    accessed via Position* APIs — Order* APIs would walk the pending-order
+   //    accessed via Position* APIs เนโฌโ€ Order* APIs would walk the pending-order
    //    list and miss market positions entirely.
    virtual void      ManageExits(CPortfolioState &port) override
      {
@@ -176,7 +176,7 @@ public:
          return;
 
       //--- Retrieve L tickets (shared magic MAGIC_L=211 with LX; "L," prefix
-      //    excludes LX per shared-magic disambig — GetTicketsForSlot returns
+      //    excludes LX per shared-magic disambig เนโฌโ€ GetTicketsForSlot returns
       //    only "L,..." comment matches, not "LX,...").
       ulong tickets[];
       int n = port.GetTicketsForSlot(MAGIC_L, "L,", tickets);
@@ -207,20 +207,20 @@ public:
                           StringFormat("ticket=%I64u profit_pips=%.1f",
                                        ticket, profit_pips));
 
-         //--- Close order via RiskManager (CTrade wired at Phase-2 wiring; see docs/state/deferred-ac-registry.md)
+         //--- Close order via RiskManager (CTrade wired at Orchestrator wiring path (core/Orchestrator.mqh))
          //    Log intent only until wiring complete (same pattern as Evaluate).
         }
      }
 
-   //--- 5. DependsOn() — L is independent (no peer slot deps)
-   //    LX + S depend ON L (reverse direction) — those land at IMPL-031/036.
+   //--- 5. DependsOn() เนโฌโ€ L is independent (no peer slot deps)
+   //    LX + S depend ON L (reverse direction) เนโฌโ€ those land at IMPL-031/036.
    virtual int       DependsOn(int &out_magics[]) override
      {
       ArrayResize(out_magics, 0);
       return 0;
      }
 
-   //--- 6. PendingState() — L does not use pending sub-flow;
+   //--- 6. PendingState() เนโฌโ€ L does not use pending sub-flow;
    //    safe default PENDING_STATE_IDLE (overridden here explicitly
    //    for documentation clarity per CSlotBase contract ADR-002).
    virtual EPendingState PendingState() const override

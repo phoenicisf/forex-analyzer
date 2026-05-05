@@ -5,7 +5,7 @@
 //|                                                                  |
 //| Coverage:                                                         |
 //|   - CSlotBR compiles cleanly (6-method contract)                  |
-//|   - Magic() returns MAGIC_BR (215, own — not shared)              |
+//|   - Magic() returns MAGIC_BR (215, own โ€” not shared)              |
 //|   - SlotId() returns "BR"                                         |
 //|   - DependsOn() returns 0 (sub-call only; orphan exit-only)       |
 //|   - PendingState() returns PENDING_STATE_IDLE                     |
@@ -14,7 +14,7 @@
 //|                                                                  |
 //| Pattern: mirrors Spike_Slot_B.mq5 / Spike_Slot_GO.mq5 minimal     |
 //| harness. IMPL-018 precedent: G2-G4 deferred; G1 + SelfTest = bar. |
-//| E-AC smoke wires at Phase-2 wiring; see docs/state/deferred-ac-registry.md (RiskManager::OpenOrder)  |
+//| E-AC smoke wires at Orchestrator wiring path (core/Orchestrator.mqh) (RiskManager::OpenOrder)  |
 //|   + CrossSlotCoordinator BR-trigger wiring (BR-2.2) per ea.md.    |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, PhoenicisNex"
@@ -29,7 +29,7 @@
 CLogger  g_logger;
 
 //+------------------------------------------------------------------+
-//| OnInit — SelfTest: instantiate CSlotBR + verify 6-method contract |
+//| OnInit โ€” SelfTest: instantiate CSlotBR + verify 6-method contract |
 //+------------------------------------------------------------------+
 int OnInit()
   {
@@ -38,7 +38,7 @@ int OnInit()
    //--- Instantiate Slot BR (stack-allocated; no ownership transfer)
    CSlotBR  slot_br;
 
-   //--- Inject minimum deps (only Logger; others NULL — spike does not
+   //--- Inject minimum deps (only Logger; others NULL โ€” spike does not
    //    dereference the 7 remaining service pointers in this test)
    slot_br.Init(NULL, NULL, NULL, &g_logger, NULL, NULL, NULL, NULL);
 
