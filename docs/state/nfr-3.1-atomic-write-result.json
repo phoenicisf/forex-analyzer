@@ -1,0 +1,23 @@
+﻿{
+    "schema_version":  1,
+    "task_id":  "IMPL-064",
+    "run_at":  "2026-05-05T08:52:27.6993931+07:00",
+    "trials":  100,
+    "dry_run":  false,
+    "terminal64":  "C:\\Program Files\\FBS MetaTrader 5ph\\terminal64.exe",
+    "ini_path":  "C:\\Users\\kritsana.ye\\AppData\\Roaming\\MetaQuotes\\Terminal\\A12EC900AF5AF5023ECB36F7FB72E396\\simulation\\headless-tests\\atomic_write_kill.ini",
+    "state_dir":  "C:\\Users\\kritsana.ye\\AppData\\Roaming\\MetaQuotes\\Tester\\A12EC900AF5AF5023ECB36F7FB72E396\\Agent-127.0.0.1-3000\\MQL5\\Files\\PhoenicisNex\\state",
+    "agent_subpath":  "Agent-127.0.0.1-3000",
+    "state_rel":  "PhoenicisNex/state",
+    "verdict":  "PASS",
+    "parse_pass":  100,
+    "parse_fail":  0,
+    "state_missing_tmp_present":  0,
+    "state_missing_tmp_missing":  0,
+    "startup_timeout_count":  0,
+    "failed_fast":  false,
+    "fail_fast_consecutive":  3,
+    "nfr_ref":  "NFR-3.1",
+    "adr_ref":  "ADR-007",
+    "note":  "All trials passed NFR-3.1 integrity check."
+}
