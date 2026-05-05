@@ -112,6 +112,11 @@
 #include "SlotRegistry.mqh"
 #include "EAState.mqh"
 
+//--- IMPL-065: NFR-2.1 tick latency probe (opt-in; zero overhead when symbol not defined)
+#ifdef ENABLE_TICK_LATENCY
+#include "../services/TickLatencyProbe.mqh"
+#endif
+
 //--- Inputs (Composition Root pattern owns Inp* visibility — ADR-012)
 #include "../inputs/Inputs_General.mqh"
 #include "../inputs/Inputs_TimeGates.mqh"
@@ -172,6 +177,11 @@ private:
    //      cannot reach an un-Init'd CircuitBreaker.
    bool                      m_teardown_done;
    bool                      m_init_complete;
+
+   //--- IMPL-065: NFR-2.1 per-stage tick latency probe (zero-cost unless ENABLE_TICK_LATENCY defined)
+#ifdef ENABLE_TICK_LATENCY
+   CTickLatencyProbe         m_tick_probe;
+#endif
 
 public:
                      COrchestrator()
@@ -370,6 +380,14 @@ int COrchestrator::OnInit()
                               m_registry.Count(),
                               m_portfolio.MagicCount(),
                               EnumToString(m_state_enum)));
+
+   //--- IMPL-065: NFR-2.1 — wire logger into tick latency probe (no-op when not defined)
+#ifdef ENABLE_TICK_LATENCY
+   m_tick_probe.Init(m_logger);
+   m_logger.Info("system", "tick_latency_probe_enabled", 0,
+                 "ENABLE_TICK_LATENCY active — stage timing ON (emit every 1000 ticks + final_deinit)");
+#endif
+
    // fix-round-11 § 11.3 — open trade-transaction surface only after Phase B/C
    // succeed, so close events arriving in the pre-OnInit window (MT5 broker
    // reconnect dispatching queued deals before WireServices completes) cannot
@@ -545,11 +563,26 @@ void COrchestrator::_TeardownAll()
 //+------------------------------------------------------------------+
 void COrchestrator::OnTick()
   {
+   //--- IMPL-065: NFR-2.1 — per-tick counter + periodic emit cadence
+#ifdef ENABLE_TICK_LATENCY
+   m_tick_probe.OnTickStart();
+   m_tick_probe.StageStart(TLPROBE_STAGE_REFRESH);
+#endif
+
    // 1. Refresh indicator buffers (~200 µs)
    m_indicators.Refresh();
 
+#ifdef ENABLE_TICK_LATENCY
+   m_tick_probe.StageEnd(TLPROBE_STAGE_REFRESH);
+   m_tick_probe.StageStart(TLPROBE_STAGE_CTX);
+#endif
+
    // 2. Build per-tick MarketContext snapshot (~50 µs)
    MarketContext ctx = m_ctx_builder.Build();
+
+#ifdef ENABLE_TICK_LATENCY
+   m_tick_probe.StageEnd(TLPROBE_STAGE_CTX);
+#endif
 
    // 3. Logger tick boundary (throttle window)
    m_logger.OnTickBoundary();
@@ -583,38 +616,74 @@ void COrchestrator::OnTick()
 
    // 7. PortfolioState refresh (~100 µs) — every tick (§ 10.5: state.json
    //    save at step 13 reads SlotState aggregates populated here).
+#ifdef ENABLE_TICK_LATENCY
+   m_tick_probe.StageStart(TLPROBE_STAGE_PORTFOLIO);
+#endif
    m_portfolio.Refresh();
+#ifdef ENABLE_TICK_LATENCY
+   m_tick_probe.StageEnd(TLPROBE_STAGE_PORTFOLIO);
+#endif
 
    // 8. PendingMachineRegistry tick — every tick (force-clear timeouts per
    //    ADR-008 must not freeze during morning window).
+#ifdef ENABLE_TICK_LATENCY
+   m_tick_probe.StageStart(TLPROBE_STAGE_PENDING);
+#endif
    m_pending.TickAll(ctx);
+#ifdef ENABLE_TICK_LATENCY
+   m_tick_probe.StageEnd(TLPROBE_STAGE_PENDING);
+#endif
 
    // 9. EXIT PASS (always runs — even in HALTED per ADR-010; m_xslot.m_halted
    //    already correct from step 5b).
+#ifdef ENABLE_TICK_LATENCY
+   m_tick_probe.StageStart(TLPROBE_STAGE_EXIT);
+#endif
    RunExitPass(ctx);
    m_xslot.RunForceCutloss(ctx);
    m_xslot.ExtraCheckFunction2();
    m_xslot.RunSafePort(ctx);
    m_xslot.RunOrderGroup2(ctx);
    m_xslot.RunCOverload(ctx);
+#ifdef ENABLE_TICK_LATENCY
+   m_tick_probe.StageEnd(TLPROBE_STAGE_EXIT);
+#endif
 
    // 10. Holiday block (after exit pass; before entry pass)
    bool holiday_block = m_time.HolidayBlock(ctx.tick_time, *m_portfolio);
 
    // 11. ENTRY PASS (skip in HALTED, morning-window, or any time-block).
+#ifdef ENABLE_TICK_LATENCY
+   m_tick_probe.StageStart(TLPROBE_STAGE_ENTRY);
+#endif
    if(!morning_block && !ShouldSkipEntryPass(ctx, monday_block, holiday_block))
      {
       RunEntryPass(ctx);
       m_xslot.RunEOverload(ctx);
      }
+#ifdef ENABLE_TICK_LATENCY
+   m_tick_probe.StageEnd(TLPROBE_STAGE_ENTRY);
+#endif
 
    // === housekeeping (always runs) ===
 
    // 12. PortfolioMonitor (~30 µs)
+#ifdef ENABLE_TICK_LATENCY
+   m_tick_probe.StageStart(TLPROBE_STAGE_MONITOR);
+#endif
    m_monitor.Update(AccountInfoDouble(ACCOUNT_EQUITY), ctx.tick_time);
+#ifdef ENABLE_TICK_LATENCY
+   m_tick_probe.StageEnd(TLPROBE_STAGE_MONITOR);
+#endif
 
    // 13. StatePersistence atomic save (~800 µs)
+#ifdef ENABLE_TICK_LATENCY
+   m_tick_probe.StageStart(TLPROBE_STAGE_SAVE);
+#endif
    m_state.Save(m_state_enum, m_halt_reason);
+#ifdef ENABLE_TICK_LATENCY
+   m_tick_probe.StageEnd(TLPROBE_STAGE_SAVE);
+#endif
 
    // 13b. Journal sustained-failure halt check (ADR-006 RPO contract — Claim 01.8)
    int consecutive_journal_fails = 0;
@@ -691,6 +760,11 @@ void COrchestrator::OnDeinit(const int reason)
       m_logger.Info("system", "deinit_cleanup", 0,
                     StringFormat("reason=%d state=%s",
                                  reason, EnumToString(m_state_enum)));
+
+   //--- IMPL-065: NFR-2.1 — flush final tick latency report before tear-down
+#ifdef ENABLE_TICK_LATENCY
+   m_tick_probe.FinalEmit();
+#endif
 
    // Final state save before tear-down — best-effort.
    if(m_state != NULL)
