@@ -22,9 +22,19 @@
 .PARAMETER Trials
     Number of kill trials to execute. Default: 100.
 
-.PARAMETER StateDir
-    Path (relative to repo root) to the PhoenicisNex state directory.
-    Default: 'MQL5/Files/PhoenicisNex/state'
+.PARAMETER StateRel
+    Sandbox-relative path under MQL5/Files/ that the spike writes to.
+    Default: 'PhoenicisNex/state' (matches atomic_write_kill.ini § [TesterInputs] InpStateFile prefix).
+    fix-round-13 § 13.1 — under headless Strategy Tester run, the spike's relative
+    FileOpen path resolves under the *Tester agent sandbox*, not the live-terminal
+    sandbox. The harness now constructs $AbsStateDir under the Tester tree so its
+    inspect path matches the spike's write path.
+
+.PARAMETER AgentSubpath
+    Strategy Tester agent subdirectory under <TesterDir>/<TerminalId>/.
+    Default: 'Agent-127.0.0.1-3000' (single-agent local backtest convention).
+    Override only if the local install uses a different agent (parallel optimisation
+    setups may use Agent-127.0.0.1-3001+).
 
 .PARAMETER IniPath
     Path (relative to repo root) to the Strategy Tester .ini file used per trial.
@@ -33,6 +43,12 @@
 .PARAMETER OriginFile
     Path to origin.txt containing the MT5 install root (e.g. "C:\Program Files\FBS MetaTrader 5ph").
     Default: 'origin.txt'
+
+.PARAMETER FailFastConsecutive
+    fix-round-13 § 13.4 — abort the trial loop with verdict=FAIL_FAST after this many
+    consecutive startup_timeout trials. Healthy runs may see 1-2 transient timeouts
+    (cold-bootstrap variance, history download); 3-in-a-row signals a path-binding
+    misconfiguration (Finding 13.1 class). Default: 3. Set to 0 to disable.
 
 .PARAMETER DryRun
     If specified, validate params + file existence + write test sidecar with verdict "DRY_RUN".
@@ -47,9 +63,14 @@
     pwsh -File simulation/scripts/atomic_write_kill_100.ps1 -DryRun -Trials 5
 
 .EXAMPLE
-    # Custom state dir + ini path
+    # Custom state-relative path + agent subpath (parallel-optimisation install)
+    # fix-round-13 § 13.1 renamed -StateDir → -StateRel; semantic also changed:
+    #   value is now sandbox-RELATIVE (under <TesterAgent>/MQL5/Files/), not
+    #   repo-relative under <RepoRoot>/. Default 'PhoenicisNex/state' is correct;
+    #   override only if .ini also points elsewhere.
     pwsh -File simulation/scripts/atomic_write_kill_100.ps1 -Trials 10 `
-         -StateDir 'MQL5/Files/PhoenicisNex/state' `
+         -StateRel 'PhoenicisNex/state' `
+         -AgentSubpath 'Agent-127.0.0.1-3001' `
          -IniPath 'simulation/headless-tests/atomic_write_kill.ini'
 
 .NOTES
@@ -61,10 +82,12 @@
 
 [CmdletBinding()]
 param(
-    [int]    $Trials     = 100,
-    [string] $StateDir   = 'MQL5/Files/PhoenicisNex/state',
-    [string] $IniPath    = 'simulation/headless-tests/atomic_write_kill.ini',
-    [string] $OriginFile = 'origin.txt',
+    [int]    $Trials                = 100,
+    [string] $StateRel              = 'PhoenicisNex/state',
+    [string] $AgentSubpath          = 'Agent-127.0.0.1-3000',
+    [string] $IniPath               = 'simulation/headless-tests/atomic_write_kill.ini',
+    [string] $OriginFile            = 'origin.txt',
+    [int]    $FailFastConsecutive   = 3,
     [switch] $DryRun
 )
 
@@ -74,11 +97,30 @@ $ErrorActionPreference = 'Stop'
 # ---------------------------------------------------------------------------
 # 0. Resolve paths
 # ---------------------------------------------------------------------------
+# $RepoRoot resolves to the MetaTrader 5 *terminal data directory* (the project
+# root sits inside <AppData>/Roaming/MetaQuotes/Terminal/<TerminalId>/), which
+# is also the live-chart sandbox parent.
 $RepoRoot     = $PSScriptRoot | Split-Path -Parent | Split-Path -Parent
-$AbsStateDir  = Join-Path $RepoRoot $StateDir
 $AbsIniPath   = Join-Path $RepoRoot $IniPath
 $AbsOrigin    = Join-Path $RepoRoot $OriginFile
 $SidecarPath  = Join-Path $RepoRoot 'docs/state/nfr-3.1-atomic-write-result.json'
+
+# fix-round-13 § 13.1 CRITICAL — Strategy Tester writes to a structurally
+# separate sandbox tree from the live terminal. Reference:
+# .agents/skills/mt5-headless-backtest/references/log-paths.md.
+#   Live terminal sandbox: <TerminalDataDir>/MQL5/Files/<rel>
+#   Tester agent sandbox:  <MetaQuotesRoot>/Tester/<TerminalId>/<AgentSubpath>/MQL5/Files/<rel>
+# The spike's FileOpen calls in Spike_AtomicWrite.mq5 carry no FILE_COMMON
+# flag, so they resolve under whichever sandbox the EA runs in. atomic_write_kill.ini
+# launches the spike via Strategy Tester, so writes land in the Tester agent
+# sandbox; the harness must inspect that same tree.
+$TerminalId      = Split-Path $RepoRoot -Leaf
+# <RepoRoot> = <MetaQuotesRoot>/Terminal/<TerminalId> — go up two levels to reach
+# <MetaQuotesRoot>, where the 'Tester' tree sits as a sibling of 'Terminal'.
+$MetaQuotesRoot  = Split-Path (Split-Path $RepoRoot -Parent) -Parent
+$TesterRoot      = Join-Path $MetaQuotesRoot 'Tester'
+$AgentRoot       = Join-Path (Join-Path $TesterRoot $TerminalId) $AgentSubpath
+$AbsStateDir     = Join-Path (Join-Path $AgentRoot 'MQL5/Files') $StateRel
 
 Write-Host "[atomic-write-kill] Resolving terminal64.exe from: $AbsOrigin"
 
@@ -113,6 +155,19 @@ if (-not (Test-Path $AbsIniPath)) {
     Write-Error ".ini file not found at '$AbsIniPath'. Commit simulation/headless-tests/atomic_write_kill.ini first."
 }
 
+# fix-round-13 § 13.1 — pre-flight check: warn if the Tester agent sandbox tree
+# does not yet exist on this install. MT5 lays down the tree on first headless
+# run, so the first 1-2 trials may startup-timeout before the directory appears
+# (subsequent trials work normally). If timeouts persist, the AgentSubpath
+# constant likely does not match this install (parallel-optimisation setups use
+# Agent-127.0.0.1-3001+).
+$AgentParent = Split-Path $AbsStateDir -Parent
+if (-not (Test-Path $AgentParent)) {
+    Write-Warning "[atomic-write-kill] Tester agent dir not found at '$AgentParent'."
+    Write-Warning "  MT5 creates this tree on first headless run; first trial may startup-timeout."
+    Write-Warning "  If timeouts persist, verify -AgentSubpath matches your install (default: Agent-127.0.0.1-3000)."
+}
+
 # ---------------------------------------------------------------------------
 # 3. DryRun - write sidecar + exit
 # ---------------------------------------------------------------------------
@@ -128,12 +183,16 @@ if ($DryRun) {
         terminal64     = $Terminal64
         ini_path       = $AbsIniPath
         state_dir      = $AbsStateDir
+        agent_subpath  = $AgentSubpath
+        state_rel      = $StateRel
         verdict        = 'DRY_RUN'
         parse_pass                = 0
         parse_fail                = 0
         state_missing_tmp_present = 0
         state_missing_tmp_missing = 0
         startup_timeout_count     = 0
+        failed_fast               = $false
+        fail_fast_consecutive     = $FailFastConsecutive
         note           = 'Dry-run only - param validation + file-existence check passed. Numeric run deferred to Tier 1.5 walk batch-2.'
     }
 
@@ -156,6 +215,12 @@ $state_missing_tmp_missing = 0
 #   show startup_timeout_count == 0; non-zero means the spike's write loop
 #   never started within 60s, so the kill window did not race a real write.
 $startup_timeout_count     = 0
+
+# fix-round-13 § 13.4 — track consecutive startup timeouts so the harness can
+#   fail-fast on systemic path-binding misconfiguration (Finding 13.1 class)
+#   instead of burning Trials × 60s of wall clock before the verdict prints.
+$consecutive_timeouts      = 0
+$failed_fast               = $false
 
 $StateJson    = Join-Path $AbsStateDir 'state.json'
 $StateTmp     = Join-Path $AbsStateDir 'state.json.tmp'
@@ -206,8 +271,29 @@ for ($i = 1; $i -le $Trials; $i++) {
             Remove-Item -Path $StateTmp -Force -ErrorAction SilentlyContinue
         }
         $startup_timeout_count++
+        $consecutive_timeouts++
+
+        # fix-round-13 § 13.4 — fail-fast on N consecutive startup_timeouts.
+        # 1-2 timeouts can be transient (cold boot, history download); 3-in-a-row
+        # signals systemic path-binding misconfiguration (Finding 13.1 class).
+        # Convert a 100-min FAIL discovery into a ~3-min discovery, same fail-closed.
+        if ($FailFastConsecutive -gt 0 -and $consecutive_timeouts -ge $FailFastConsecutive) {
+            Write-Warning "[atomic-write-kill] FAIL_FAST: $consecutive_timeouts consecutive startup timeouts at trial $i/$Trials. Aborting trial loop."
+            Write-Warning "  Likely cause: path-binding mismatch between harness inspect path and spike write path."
+            Write-Warning "  Audit: state dir inspected by harness = $AbsStateDir"
+            Write-Warning "  Audit: ini override path             = PhoenicisNex/state/state.json (relative under spike's runtime sandbox)"
+            Write-Warning "  Audit: spike runtime sandbox under headless Tester = <Tester>/<TerminalId>/$AgentSubpath/MQL5/Files/..."
+            Write-Warning "  Reference: .agents/skills/mt5-headless-backtest/references/log-paths.md (sandbox tree separation)."
+            $failed_fast = $true
+            break
+        }
         continue
     }
+
+    # fix-round-13 § 13.4 — successful poll resets the consecutive counter.
+    #   1-2 transient timeouts inside a healthy run are fine; only an unbroken
+    #   chain trips fail-fast.
+    $consecutive_timeouts = 0
 
     # 5c. Random sleep 50-500ms — now the window genuinely lands inside an
     #     active write iteration (paired with InpTotalWrites=100000 in the
@@ -267,8 +353,13 @@ $total   = $parse_pass + $parse_fail + $state_missing_tmp_present + $state_missi
 #   a write loop. startup_timeout_count > 0 means MT5 startup never produced
 #   a write target before deadline; that trial did NOT race a real atomic
 #   write and cannot count toward NFR-3.1 100/100.
-$isPass  = ($parse_fail -eq 0) -and ($total -eq $Trials) -and ($startup_timeout_count -eq 0)
-$verdict = if ($isPass) { 'PASS' } else { 'FAIL' }
+# fix-round-13 §13.4 — fail-fast aborts the loop early; total < Trials in that
+#   case, which the (-eq $Trials) clause already catches as FAIL. Verdict
+#   string distinguishes FAIL_FAST from FAIL for operator visibility.
+$isPass  = (-not $failed_fast) -and ($parse_fail -eq 0) -and ($total -eq $Trials) -and ($startup_timeout_count -eq 0)
+$verdict = if ($isPass)        { 'PASS' }
+           elseif ($failed_fast) { 'FAIL_FAST' }
+           else                  { 'FAIL' }
 
 Write-Host ""
 Write-Host "=========================================="
@@ -279,11 +370,14 @@ if (-not $isPass) {
     if ($parse_fail -gt 0) {
         Write-Warning "[atomic-write-kill] FAIL: $parse_fail trial(s) produced a non-parseable state.json - NFR-3.1 violated."
     }
-    if ($total -ne $Trials) {
+    if (-not $failed_fast -and $total -ne $Trials) {
         Write-Warning "[atomic-write-kill] FAIL: total outcomes ($total) != Trials ($Trials) - accounting error."
     }
     if ($startup_timeout_count -gt 0) {
         Write-Warning "[atomic-write-kill] FAIL: $startup_timeout_count trial(s) hit MT5 startup timeout (60s) without ever creating a write target - kill never raced an atomic write. Investigate terminal64.exe boot time or .ini path."
+    }
+    if ($failed_fast) {
+        Write-Warning "[atomic-write-kill] FAIL_FAST: aborted at $total/$Trials trial(s) after $FailFastConsecutive consecutive startup timeouts. Re-run with -FailFastConsecutive 0 to disable, or audit AgentSubpath / sandbox-tree binding (Finding 13.1)."
     }
 }
 
@@ -305,12 +399,16 @@ $sidecar = [ordered]@{
     terminal64                = $Terminal64
     ini_path                  = $AbsIniPath
     state_dir                 = $AbsStateDir
+    agent_subpath             = $AgentSubpath
+    state_rel                 = $StateRel
     verdict                   = $verdict
     parse_pass                = $parse_pass
     parse_fail                = $parse_fail
     state_missing_tmp_present = $state_missing_tmp_present
     state_missing_tmp_missing = $state_missing_tmp_missing
     startup_timeout_count     = $startup_timeout_count
+    failed_fast               = $failed_fast
+    fail_fast_consecutive     = $FailFastConsecutive
     nfr_ref                   = 'NFR-3.1'
     adr_ref                   = 'ADR-007'
     note                      = $sidecarNote

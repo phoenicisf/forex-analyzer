@@ -100,9 +100,52 @@ int OnInit()
    PrintFormat("[spike][ev=spike_start][total_writes=%d][kill_trials=%d]",
                InpTotalWrites, InpKillTrials);
 
-   // Cleanup any prior run artifacts
-   FileDelete(InpStateFile);
-   FileDelete(InpTmpFile);
+   //--- fix-round-13 § 13.3 — Cleanup is gated to the spike's known sandbox
+   //    prefix ("PhoenicisNex/spike/"). The original IMPL-046 contract owns
+   //    that prefix exclusively. When IMPL-064's atomic_write_kill.ini
+   //    redirects InpStateFile to the production state path
+   //    ("PhoenicisNex/state/state.json", owned by StatePersistence.mqh),
+   //    an unconditional FileDelete here would race the harness's inspect
+   //    semantics — and if a future fix to Finding 13.1 ever bridges the
+   //    Tester sandbox to the live-terminal sandbox (e.g. via FILE_COMMON),
+   //    the unconditional delete would silently destroy live operator state.
+   //    Inspect-path cleanup belongs to the harness owner (atomic_write_kill_100.ps1
+   //    line ~205, ~252-254), not to the spike's OnInit.
+   //
+   //    Path classification is logged unconditionally so an operator can audit
+   //    the safety property in real time via grep on '[spike][ev=path_guard]'.
+   //    R16 16.6 — directory-boundary check: the trailing "/" in the prefix
+   //    string forces an exact directory boundary, so neighbours like
+   //    "PhoenicisNex/spike-archive/" or "PhoenicisNex/state-backup/" cannot
+   //    false-positive (StringFind would not match at position 0). We additionally
+   //    require the path to end with "/state.json" (the only filename the harness
+   //    is allowed to mutate) — defence-in-depth against accidental refactor.
+   bool ends_with_state_json = (StringFind(InpStateFile, "/state.json") ==
+                                (int)StringLen(InpStateFile) - 11);
+   string path_class = "unknown";
+   if(ends_with_state_json)
+     {
+      if(StringFind(InpStateFile, "PhoenicisNex/spike/") == 0)
+         path_class = "sandbox";
+      else if(StringFind(InpStateFile, "PhoenicisNex/state/") == 0)
+         path_class = "production";
+     }
+   PrintFormat("[spike][ev=path_guard][class=%s][state=%s][tmp=%s]",
+               path_class, InpStateFile, InpTmpFile);
+
+   if(path_class == "sandbox")
+     {
+      // Spike-owned sandbox — cleanup is safe.
+      FileDelete(InpStateFile);
+      FileDelete(InpTmpFile);
+     }
+   else
+     {
+      // Production or unknown — defer to harness for cleanup. See
+      //   atomic_write_kill_100.ps1 (per-trial Remove-Item on $StateTmp).
+      PrintFormat("[spike][ev=cleanup_skipped][reason=non-spike-path][class=%s]",
+                  path_class);
+     }
 
    //--------------------------------------------------------------
    // PHASE 1 — TotalWrites normal atomic writes
@@ -189,9 +232,13 @@ int OnInit()
    PrintFormat("[spike][ev=spike_complete][p1_writes=%d][p1_parse_fails=%d][p2_kills=%d][p2_state_corrupt=%d][verdict=%s]",
                InpTotalWrites, phase1_parse_fails, InpKillTrials, phase2_state_corrupt, verdict);
 
-   // Cleanup live artifacts so next run starts clean
-   FileDelete(InpStateFile);
-   FileDelete(InpTmpFile);
+   // fix-round-13 § 13.3 — Cleanup live artifacts only if we own the prefix.
+   //   Same guard as OnInit start; see [ev=path_guard] above.
+   if(StringFind(InpStateFile, "PhoenicisNex/spike/") == 0)
+     {
+      FileDelete(InpStateFile);
+      FileDelete(InpTmpFile);
+     }
 
    return(INIT_SUCCEEDED);
 }
