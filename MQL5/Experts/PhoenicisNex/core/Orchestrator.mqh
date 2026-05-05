@@ -653,17 +653,23 @@ void COrchestrator::OnTick()
    bool holiday_block = m_time.HolidayBlock(ctx.tick_time, *m_portfolio);
 
    // 11. ENTRY PASS (skip in HALTED, morning-window, or any time-block).
-#ifdef ENABLE_TICK_LATENCY
-   m_tick_probe.StageStart(TLPROBE_STAGE_ENTRY);
-#endif
+   //     fix-round-17 § 17.2 — probe MUST live INSIDE the gate so STAGE_ENTRY
+   //     samples represent only "entry pass actually ran" ticks; otherwise
+   //     skipped-tick guard-check times (~single-digit µs) dilute the
+   //     bimodal distribution and false-pass NFR-2.1 ≤ 10% avg overhead.
+   //     Denominator for overhead-% is m_count[TLPROBE_STAGE_ENTRY], NOT
+   //     total OnTick invocations (see nfr-2.1-tick-latency.md § Scope).
    if(!morning_block && !ShouldSkipEntryPass(ctx, monday_block, holiday_block))
      {
+#ifdef ENABLE_TICK_LATENCY
+      m_tick_probe.StageStart(TLPROBE_STAGE_ENTRY);
+#endif
       RunEntryPass(ctx);
       m_xslot.RunEOverload(ctx);
-     }
 #ifdef ENABLE_TICK_LATENCY
-   m_tick_probe.StageEnd(TLPROBE_STAGE_ENTRY);
+      m_tick_probe.StageEnd(TLPROBE_STAGE_ENTRY);
 #endif
+     }
 
    // === housekeeping (always runs) ===
 

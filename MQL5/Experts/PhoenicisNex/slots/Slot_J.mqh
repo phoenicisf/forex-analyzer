@@ -211,9 +211,19 @@ void CSlotJ::ManageExits(CPortfolioState &port)
       //--- Profit gate: ≥ InpJTpProfitPips (40 pip default — symmetric with C/D/F)
       if(profit_pips >= InpJTpProfitPips)
         {
-         m_logger.Info("SlotJ", "exit_profit_gate", MAGIC_J,
-                       StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f → close (G4 fix BR-7.2)",
-                                    ticket, profit_pips, InpJTpProfitPips));
+         //--- fix-round-17 § 17.1 — log magic + attestation tag MUST follow the
+         //    active build branch so Bucket A regression journal records do not
+         //    falsely attest "G4 fix" while running the pre-G4 buggy path.
+#ifdef DISABLE_G4_FIXES
+         int    magic_for_log = MAGIC_F;   // tickets came from MAGIC_F iteration
+         string g4_tag        = "(Bucket A — pre-G4 BR-7.2 path)";
+#else
+         int    magic_for_log = MAGIC_J;
+         string g4_tag        = "(G4 fix BR-7.2)";
+#endif
+         m_logger.Info("SlotJ", "exit_profit_gate", magic_for_log,
+                       StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f → close %s",
+                                    ticket, profit_pips, InpJTpProfitPips, g4_tag));
 
          //--- Phase-1 stub: logger-only milestone; broker close wires at
          //    IMPL-017 / IMPL-062 (RiskManager::OpenOrder) per ea.md.

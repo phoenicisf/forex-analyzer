@@ -19,6 +19,18 @@
 //| NOT routed through TradeJournal — that would cause recursive     |
 //| timing pollution. Logger.Info path only (millisecond granularity |
 //| acceptable for a diagnostic report line).                        |
+//|                                                                   |
+//| Scope (fix-round-17 § 17.6) — 8 of TD-02 §7.2's 14 OnTick steps  |
+//| are timed: 1 (refresh), 2 (ctx_build), 7 (portfolio), 8 (pending),|
+//| 9 (exit_pass), 11 (entry_pass), 12 (monitor), 13 (state_save).   |
+//| Steps 3 (logger boundary), 4 (circuit breaker), 5 (indicator     |
+//| handle scan), 5b (xslot SetHalted), 6 (time gates), 10 (holiday  |
+//| block), 13b (journal sustained-fail), 14 (HALTED transition) are |
+//| OMITTED because each is < 10 µs typical (stub call / boolean     |
+//| evaluation / cached scan); their aggregate is dominated by the   |
+//| timed 8. NFR-2.1 overhead-% denominator = sum of timed stages    |
+//| ONLY. See `docs/state/nfr-2.1-tick-latency.md § Scope` for       |
+//| operator-drain expectations.                                     |
 //+------------------------------------------------------------------+
 #ifndef PHOENICISNEX_SERVICES_TICKLATENCYPROBE_MQH
 #define PHOENICISNEX_SERVICES_TICKLATENCYPROBE_MQH

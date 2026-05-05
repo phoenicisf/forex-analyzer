@@ -136,12 +136,13 @@ public:
    void                 RotateIfNeeded();
    void                 Close();
 
-   //--- IMPL-066: emit aggregated latency summary to Logger + sidecar JSON
-   //    Called at: (1) every 1000th write (periodic checkpoint during long
-   //    Tester runs) and (2) final emit in Close() (session summary).
-   //    Both triggers are complementary: periodic = early visibility;
-   //    final = complete session aggregate. NULL-guard on m_logger.
-   void                 EmitLatencyReport();
+   //--- IMPL-066: emit aggregated latency summary to Logger (+ sidecar JSON)
+   //    Called at: (1) every 1000th write — periodic, Logger-only (cheap).
+   //               (2) final emit in Close() — full Logger + sidecar JSON.
+   //    fix-round-17 § 17.4 — sidecar I/O (FileOpen/Write/Close ≈ 1–3 ms)
+   //    on the hot-path self-pollutes NFR-2.2 p95 measurement; gate sidecar
+   //    write to `emit_sidecar=true` (final emit only).
+   void                 EmitLatencyReport(bool emit_sidecar = true);
 
    bool                 ShouldHaltSustained(int &out_consecutive) const
      {
@@ -542,7 +543,11 @@ void CTradeJournal::TrackLatency(ulong elapsed_us, const string &event_type)
      }
    if(bucket < 0)
      {
-      if(m_evtype_used < 16)
+      //--- fix-round-17 § 17.5 — reserve bucket 15 for "_overflow"; populate
+      //    unique event_types into buckets 0..14 only. On first overflow,
+      //    initialise the overflow bucket cleanly (zero counters) and emit
+      //    one-time Warn so operator knows attribution drifted.
+      if(m_evtype_used < 15)
         {
          bucket = m_evtype_used;
          m_evtype_keys[bucket] = key;
@@ -550,17 +555,27 @@ void CTradeJournal::TrackLatency(ulong elapsed_us, const string &event_type)
         }
       else
         {
-         // overflow bucket: lump into "_overflow" (always at index 15 when full)
+         if(m_evtype_keys[15] != "_overflow")
+           {
+            if(m_logger != NULL)
+               m_logger.Warn("system", "journal_evtype_overflow", 0,
+                             StringFormat("event_type=%s does not fit; using _overflow bucket. "
+                                          "Bump JOURNAL_EVTYPE_BUCKETS or audit event_type taxonomy.",
+                                          key));
+            m_evtype_keys[15]     = "_overflow";
+            m_evtype_counts[15]   = 0;
+            m_evtype_total_us[15] = 0;
+           }
          bucket = 15;
-         m_evtype_keys[15] = "_overflow";
         }
      }
    m_evtype_counts[bucket]++;
    m_evtype_total_us[bucket] += elapsed_us;
 
-   //--- IMPL-066: periodic checkpoint every 1000 writes (trigger 1 of 2)
+   //--- IMPL-066: periodic checkpoint every 1000 writes (trigger 1 of 2).
+   //    fix-round-17 § 17.4 — Logger-only (no sidecar I/O on hot-path).
    if(m_latency_count % 1000 == 0)
-      EmitLatencyReport();
+      EmitLatencyReport(false);
   }
 
 //+------------------------------------------------------------------+
@@ -571,7 +586,7 @@ void CTradeJournal::TrackLatency(ulong elapsed_us, const string &event_type)
 //| Outputs:  Logger Info lines + sidecar latency-report-<ISO>.json  |
 //| NULL-guard: skips silently if m_logger == NULL or count == 0.     |
 //+------------------------------------------------------------------+
-void CTradeJournal::EmitLatencyReport()
+void CTradeJournal::EmitLatencyReport(bool emit_sidecar)
   {
    if(m_latency_count == 0)
       return;
@@ -610,8 +625,8 @@ void CTradeJournal::EmitLatencyReport()
         }
      }
 
-   //--- sidecar JSON report
-   if(EnsureDirectories())
+   //--- sidecar JSON report (fix-round-17 § 17.4 — gated to final emit only)
+   if(emit_sidecar && EnsureDirectories())
      {
       //--- build ISO timestamp for filename
       datetime now_s = TimeCurrent();

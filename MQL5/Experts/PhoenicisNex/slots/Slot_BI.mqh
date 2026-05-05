@@ -217,6 +217,15 @@ public:
 #endif
       string comment       = "BI,pyr,1";
 
+      //--- fix-round-17 § 17.1 — attestation tag MUST follow active build
+      //    branch so Bucket A regression journal records do not falsely
+      //    attest "G4 fix ADR-009" while running the pre-G4 naked-SL path.
+#ifdef DISABLE_G4_FIXES
+      string g4_tag = "(Bucket A — pre-G4 ADR-009 naked SL path)";
+#else
+      string g4_tag = "(G4 fix ADR-009)";
+#endif
+
       //--- fix-round-12 § 12.8 — Phase 1 emits entry_signal Logger.Info as
       //    the observable milestone; actual OrderSend lives in
       //    `RiskManager::OpenOrder` per `.claude/rules/ea.md` (IMPL-017 +
@@ -227,12 +236,11 @@ public:
                     MAGIC_B,
                     StringFormat("parent_ticket=%I64u parent_profit_pips=%.1f "
                                  "dir=%s lot=%.2f bi_entry=%.5f sl=%.5f "
-                                 "sl_distance_pip=%.1f %s comment=%s "
-                                 "(G4 fix ADR-009)",
+                                 "sl_distance_pip=%.1f %s comment=%s %s",
                                  parent_ticket, profit_pips,
                                  (buy_signal ? "BUY" : "SELL"),
                                  lot, bi_entry, sl_price,
-                                 sl_distance_pip, sl_inherit_tag, comment));
+                                 sl_distance_pip, sl_inherit_tag, comment, g4_tag));
      }
 
    //--- 4. ManageExits() — exit pass; runs in BOTH RUNNING and HALTED (ADR-010)
