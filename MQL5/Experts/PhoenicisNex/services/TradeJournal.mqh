@@ -3,6 +3,12 @@
 //| Layer:   services/ — append-only local journal per ADR-006      |
 //| Source:  TD-02 §5.5 / §9.5, ADR-006, FR-4.1, FR-4.3, NFR-2.2    |
 //+------------------------------------------------------------------+
+//| IMPL-066 extension (NFR-2.2 journal write latency measurement)  |
+//| Adds ≥200-sample ring buffer, running aggregates, per-event-type |
+//| breakdown map (linear-probe, 16 buckets), EmitLatencyReport()   |
+//| (periodic every 1000 writes + final at Close), and sidecar JSON |
+//| report at PhoenicisNex/journal/<mode>/latency-report-<ISO>.json |
+//+------------------------------------------------------------------+
 #ifndef PHOENICISNEX_SERVICES_TRADEJOURNAL_MQH
 #define PHOENICISNEX_SERVICES_TRADEJOURNAL_MQH
 
@@ -66,6 +72,20 @@ private:
    int                    m_overshoot_idx;
    int                    m_consecutive_failures;
 
+   //--- IMPL-066: NFR-2.2 ≥200-sample latency aggregates
+   ulong                  m_latency_total_us;
+   ulong                  m_latency_max_us;
+   int                    m_latency_count;
+   ulong                  m_latency_samples[200];    // ring buffer, last 200 elapsed_us
+   int                    m_latency_samples_idx;
+   int                    m_latency_samples_filled;  // clamps to ≤ 200
+
+   //--- IMPL-066: per-event-type breakdown (linear-probe map, max 16 buckets)
+   string                 m_evtype_keys[16];
+   int                    m_evtype_counts[16];
+   ulong                  m_evtype_total_us[16];
+   int                    m_evtype_used;
+
    CMarketContextBuilder *m_ctx_builder;
    CPortfolioState       *m_portfolio;
    CLogger               *m_logger;
@@ -85,9 +105,20 @@ public:
         m_portfolio(NULL),
         m_logger(NULL),
         m_state(NULL),
-        m_halt_sink(NULL)
+        m_halt_sink(NULL),
+        m_latency_total_us(0),
+        m_latency_max_us(0),
+        m_latency_count(0),
+        m_latency_samples_idx(0),
+        m_latency_samples_filled(0),
+        m_evtype_used(0)
      {
       ArrayInitialize(m_overshoot_window, 0);
+      ArrayInitialize(m_latency_samples, 0);
+      ArrayInitialize(m_evtype_counts, 0);
+      ArrayInitialize(m_evtype_total_us, 0);
+      for(int i = 0; i < 16; i++)
+         m_evtype_keys[i] = "";
      }
 
    void                 Init(CMarketContextBuilder *cb,
@@ -105,6 +136,13 @@ public:
    void                 RotateIfNeeded();
    void                 Close();
 
+   //--- IMPL-066: emit aggregated latency summary to Logger + sidecar JSON
+   //    Called at: (1) every 1000th write (periodic checkpoint during long
+   //    Tester runs) and (2) final emit in Close() (session summary).
+   //    Both triggers are complementary: periodic = early visibility;
+   //    final = complete session aggregate. NULL-guard on m_logger.
+   void                 EmitLatencyReport();
+
    bool                 ShouldHaltSustained(int &out_consecutive) const
      {
       out_consecutive = m_consecutive_failures;
@@ -117,7 +155,7 @@ private:
    string               BuildPortfolioSummary();
    void                 HandleWriteFailure(string reason);
    void                 ResetConsecutiveOnSuccess();
-   void                 TrackLatency(ulong elapsed_us);
+   void                 TrackLatency(ulong elapsed_us, const string &event_type);
 
    string               LiveDirectory() const;
    string               TesterDirectory() const;
@@ -150,6 +188,18 @@ void CTradeJournal::Init(CMarketContextBuilder *cb,
    m_overshoot_idx        = 0;
    m_consecutive_failures = 0;
    ArrayInitialize(m_overshoot_window, 0);
+   // IMPL-066: reset latency aggregates on re-init
+   m_latency_total_us      = 0;
+   m_latency_max_us        = 0;
+   m_latency_count         = 0;
+   m_latency_samples_idx   = 0;
+   m_latency_samples_filled= 0;
+   m_evtype_used           = 0;
+   ArrayInitialize(m_latency_samples, 0);
+   ArrayInitialize(m_evtype_counts, 0);
+   ArrayInitialize(m_evtype_total_us, 0);
+   for(int i = 0; i < 16; i++)
+      m_evtype_keys[i] = "";
   }
 
 //+------------------------------------------------------------------+
@@ -232,7 +282,7 @@ void CTradeJournal::WriteEvent(const JournalEvent &ev)
    FileFlush(m_handle);
    ulong ended_us = GetMicrosecondCount();
    ulong elapsed_us = (ended_us >= started_us) ? (ended_us - started_us) : 0;
-   TrackLatency(elapsed_us);
+   TrackLatency(elapsed_us, ev.event_type);
    ResetConsecutiveOnSuccess();
   }
 
@@ -255,10 +305,14 @@ void CTradeJournal::RotateIfNeeded()
   }
 
 //+------------------------------------------------------------------+
-//| Close — reset runtime handle/path state                          |
+//| Close — emit final latency report, then reset handle/path state  |
 //+------------------------------------------------------------------+
 void CTradeJournal::Close()
   {
+   // IMPL-066: final emit at session end (trigger 2 of 2)
+   if(m_latency_count > 0)
+      EmitLatencyReport();
+
    if(m_handle != INVALID_HANDLE)
      {
       FileFlush(m_handle);
@@ -445,15 +499,12 @@ void CTradeJournal::ResetConsecutiveOnSuccess()
       m_state.ResetJournalConsecutive();
   }
 
-void CTradeJournal::TrackLatency(ulong elapsed_us)
+void CTradeJournal::TrackLatency(ulong elapsed_us, const string &event_type)
   {
+   //--- PRESERVED: existing 10-write overshoot ring + warn-emit (Finding 03.10)
    m_overshoot_window[m_overshoot_idx] = elapsed_us;
    m_overshoot_idx = (m_overshoot_idx + 1) % JOURNAL_OVERSHOOT_WINDOW;
 
-   //--- NFR-2.2 = p99 within 5 ms over a 10-write window. Finding 03.10:
-   //    proxy p99 by counting overshoots in the ring; warn only when ≥2/10
-   //    (>10% tail) so a single transient overshoot (antivirus scan, disk
-   //    cache flush) does not flood the Logger.
    ulong threshold_us = (ulong)JOURNAL_WARN_LATENCY_MS * 1000;
    int overshoot_count = 0;
    for(int i = 0; i < JOURNAL_OVERSHOOT_WINDOW; i++)
@@ -465,6 +516,150 @@ void CTradeJournal::TrackLatency(ulong elapsed_us)
                     StringFormat("path=%s overshoots=%d/%d latest_ms=%llu threshold_ms=%d",
                                  m_active_path, overshoot_count, JOURNAL_OVERSHOOT_WINDOW,
                                  elapsed_us / 1000, JOURNAL_WARN_LATENCY_MS));
+
+   //--- IMPL-066: running aggregates for NFR-2.2 ≥200-sample measurement
+   m_latency_count++;
+   m_latency_total_us += elapsed_us;
+   if(elapsed_us > m_latency_max_us)
+      m_latency_max_us = elapsed_us;
+
+   //--- ring buffer of last 200 samples (for p95 estimation via sort)
+   m_latency_samples[m_latency_samples_idx] = elapsed_us;
+   m_latency_samples_idx = (m_latency_samples_idx + 1) % 200;
+   if(m_latency_samples_filled < 200)
+      m_latency_samples_filled++;
+
+   //--- per-event-type linear-probe map (max 16 buckets; overflow → "_overflow")
+   string key = (StringLen(event_type) > 0) ? event_type : "unknown";
+   int bucket = -1;
+   for(int i = 0; i < m_evtype_used; i++)
+     {
+      if(m_evtype_keys[i] == key)
+        {
+         bucket = i;
+         break;
+        }
+     }
+   if(bucket < 0)
+     {
+      if(m_evtype_used < 16)
+        {
+         bucket = m_evtype_used;
+         m_evtype_keys[bucket] = key;
+         m_evtype_used++;
+        }
+      else
+        {
+         // overflow bucket: lump into "_overflow" (always at index 15 when full)
+         bucket = 15;
+         m_evtype_keys[15] = "_overflow";
+        }
+     }
+   m_evtype_counts[bucket]++;
+   m_evtype_total_us[bucket] += elapsed_us;
+
+   //--- IMPL-066: periodic checkpoint every 1000 writes (trigger 1 of 2)
+   if(m_latency_count % 1000 == 0)
+      EmitLatencyReport();
+  }
+
+//+------------------------------------------------------------------+
+//| EmitLatencyReport — IMPL-066 NFR-2.2 summary emit               |
+//|                                                                   |
+//| Triggers: (1) every 1000th write (periodic, inside TrackLatency)  |
+//|           (2) final at Close() (complete session aggregate)       |
+//| Outputs:  Logger Info lines + sidecar latency-report-<ISO>.json  |
+//| NULL-guard: skips silently if m_logger == NULL or count == 0.     |
+//+------------------------------------------------------------------+
+void CTradeJournal::EmitLatencyReport()
+  {
+   if(m_latency_count == 0)
+      return;
+
+   //--- compute avg
+   ulong avg_us = m_latency_total_us / (ulong)m_latency_count;
+
+   //--- compute p95 via local copy + sort
+   ulong local_samples[];
+   int n = m_latency_samples_filled;
+   ArrayResize(local_samples, n);
+   for(int i = 0; i < n; i++)
+      local_samples[i] = m_latency_samples[i];
+   ArraySort(local_samples);
+   int p95_idx = (int)(0.95 * n);
+   if(p95_idx >= n)
+      p95_idx = n - 1;
+   ulong p95_us = (n > 0) ? local_samples[p95_idx] : 0;
+
+   //--- emit summary Logger line
+   if(m_logger != NULL)
+     {
+      m_logger.Info("system", "journal_latency_report", 0,
+                    StringFormat("writes=%d avg_us=%llu p95_us=%llu max_us=%llu",
+                                 m_latency_count, avg_us, p95_us, m_latency_max_us));
+
+      //--- per-event-type rows
+      for(int i = 0; i < m_evtype_used; i++)
+        {
+         ulong type_avg = (m_evtype_counts[i] > 0)
+                          ? (m_evtype_total_us[i] / (ulong)m_evtype_counts[i])
+                          : 0;
+         m_logger.Info("system", "journal_latency_by_type", 0,
+                       StringFormat("ev=%s writes=%d avg_us=%llu",
+                                    m_evtype_keys[i], m_evtype_counts[i], type_avg));
+        }
+     }
+
+   //--- sidecar JSON report
+   if(EnsureDirectories())
+     {
+      //--- build ISO timestamp for filename
+      datetime now_s = TimeCurrent();
+      MqlDateTime dt;
+      TimeToStruct(now_s, dt);
+      string iso_tag = StringFormat("%04d%02d%02d-%02d%02d%02d",
+                                    dt.year, dt.mon, dt.day,
+                                    dt.hour, dt.min, dt.sec);
+      string dir  = m_is_tester ? TesterDirectory() : LiveDirectory();
+      string path = dir + "/latency-report-" + iso_tag + ".json";
+
+      //--- build JSON body
+      CJsonWriter w;
+      w.Begin();
+      w.WriteInt("writes",   m_latency_count);
+      w.WriteInt("avg_us",   (long)avg_us);
+      w.WriteInt("p95_us",   (long)p95_us);
+      w.WriteInt("max_us",   (long)m_latency_max_us);
+      w.WriteInt("sample_n", m_latency_samples_filled);
+
+      //--- per-event-type array
+      string types_json = "[";
+      for(int i = 0; i < m_evtype_used; i++)
+        {
+         ulong type_avg = (m_evtype_counts[i] > 0)
+                          ? (m_evtype_total_us[i] / (ulong)m_evtype_counts[i])
+                          : 0;
+         if(i > 0)
+            types_json += ",";
+         types_json += StringFormat("{\"event_type\":\"%s\",\"writes\":%d,\"avg_us\":%llu}",
+                                    m_evtype_keys[i], m_evtype_counts[i], type_avg);
+        }
+      types_json += "]";
+      w.WriteRaw("by_event_type", types_json);
+      w.End();
+
+      int fh = FileOpen(path, FILE_WRITE | FILE_TXT | FILE_ANSI);
+      if(fh != INVALID_HANDLE)
+        {
+         FileWriteString(fh, w.ToString());
+         FileClose(fh);
+        }
+      else if(m_logger != NULL)
+        {
+         m_logger.Warn("system", "journal_latency_report_write_fail", 0,
+                       StringFormat("path=%s err=%d", path, GetLastError()));
+        }
+     }
   }
 
 //+------------------------------------------------------------------+
