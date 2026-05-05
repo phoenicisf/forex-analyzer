@@ -4,6 +4,24 @@
 
 ## Last completed action
 
+**IMPL-017 + IMPL-066 + IMPL-067 CLOSED 2026-05-05 — P4 QA verification authoring parallel batch (Sonnet 4.6 fan-out)**
+
+- **Trigger:** `/impl-task parallel` — orchestrator scanned P4 ready-task pool, proposed 3-task batch (IMPL-017 [S] sweep compat, IMPL-066 [S] journal latency, IMPL-067 [M] DST regression), HALT-ed for approval, fan-out to 3× general-purpose `andm-impl-engineer` subagents on Sonnet 4.6 in one message with disjoint SCOPE constraint per workflow §1.5.
+- **Pre-checks PASSED:** Phase Gate compliance (P4 = current open phase, all 3 tasks P4) ✅; Operator Action Registry empty ✅; Deferred-AC expiry scan — 0 expired rows (all 2026-05-17/18 vs today 2026-05-05) ✅; HEAD compile-clean from R16 fix-round closure ✅; working-tree-clean ✅.
+- **Race-prevention verified:** subagent file sets disjoint — IMPL-017 = `simulation/headless-tests/optimize_sweep_FID.ini` + `docs/state/inputs-optimization-compat.md`; IMPL-066 = `MQL5/Experts/PhoenicisNex/services/TradeJournal.mqh` (only MQL5/ touch) + `docs/state/nfr-2.2-journal-latency.md`; IMPL-067 = 10× `simulation/headless-tests/dst_*.ini` + `docs/state/nfr-7.3-dst-regression.md`. All 3 fragments returned `status: completed`.
+- **IMPL-017 (S [ea-qa] FR-1.3 sweep compat):** `optimize_sweep_FID.ini` (Optimization=2 + `[TesterInputs] InpFIDValue=10||10||5||20||N` → 3 combos {10,15,20}) + 170-LOC compat report enumerating 25 input files / **227 total inputs** (int=51 / double=124 / bool=26 / ENUM_*=1 / 0 string-color-datetime / 0 sinput-extern); NFR-4.3 PASS (227 ≥ 80) + NFR-6.2 PASS (100% sweep-compatible). 2/2 S-AC `[x]` + 1 E-AC deferred (sweep journal `[file-blob-check]`) → expiry 2026-05-19.
+- **IMPL-066 (S [ea-qa] journal latency NFR-2.2):** `services/TradeJournal.mqh` extended with 200-sample ring buffer + running aggregates (total/max/count) + per-event-type linear-probe map (16 buckets) + `EmitLatencyReport()` emitting `[ev=journal_latency_report]` Logger.Info + sidecar `journal/<live|tester>/latency-report-<ISO>.json` via CJsonWriter; trigger hook = periodic 1000-write checkpoint + final emit at `Close()`. Existing overshoot ring + `journal_write_slow` Warn logic preserved verbatim. **G1 PASS** (orchestrator-verified post fan-out): `Result: 0 errors, 0 warnings, 3844 ms elapsed`. 190-LOC `nfr-2.2-journal-latency.md` with 4-step protocol + 5-outcome pass matrix. 2/2 S-AC `[x]` + 2 E-AC deferred paired bundle (avg/p95 ≤ 5 ms `[log-assertion]` + zero halt-events `[db-inspect]`) → expiry 2026-05-19.
+- **IMPL-067 (M [ea-qa] DST regression NFR-7.3):** 10× `dst_<YYYY>_<mar|oct>.ini` (each ±3 days around DST Sunday 2021-2025) + ~250-LOC `nfr-7.3-dst-regression.md` with 10-row coverage matrix + per-AC expected behavior (AC-6.5.2 + AC-6.5.3) + 10-row PASS/FAIL matrix + operator runbook (~10-20 min wall-clock). 2/2 S-AC `[x]` + 1 E-AC deferred (TimeGate ±0 EET hour at each of 10 transitions `[log-assertion]` + `[db-inspect]`) → expiry 2026-05-19.
+- **Wall-clock telemetry:** subagent durations IMPL-017 ≈125s / IMPL-066 ≈299s / IMPL-067 ≈157s; serial sum ≈581s; parallel wall-clock ≈ slowest = 299s → **~49% wall-clock saving** (lower than IMPL-061 batch's 62% because IMPL-066 instrumentation extension was code-dense).
+- **State Reconciliation 3-file rule honored:** `impl-plan.md` (TL;DR + Phase Status snapshot P4 11/17→14/17 + Active count 43→47 + Mid-Phase Audit Log new 2026-05-05 row + Plan Staleness Sentinel 6→9 + Open Risk R-6 count update + Next Best Action checkboxes) + `overview.md § Impl Plan` row status string append + `current_handoff.md` (this section) + `deferred-ac-registry.md` (4 new Active rows).
+- **Files modified:** 1 source EDIT (`MQL5/Experts/PhoenicisNex/services/TradeJournal.mqh`) + 13 NEW (1 sweep ini + 10 DST ini + 3 reports) + 4 state docs (impl-plan / overview / current_handoff / deferred-ac-registry) + 1 gitignored shared context.
+- **Plan Staleness Sentinel: 9 closures since R07** (1 closure shy of 10-trigger ✅) but cumulative attack surface **strongly motivates `/impl-review all` R09 before next IMPL-NNN batch**. **Mid-Phase Audit P4 counter = 9** (≥ 5 trigger crossed twice over) — semantically satisfied by walk batch-2 for prior defect classes but new TradeJournal latency instrumentation + 10 DST ini + sweep ini unreviewed.
+- **Recommended next action:** `/impl-review all` R09 **THEN** IMPL-062 (HIGH Bucket A regression — 2-3 day deadline per R-7) **THEN** IMPL-063 + IMPL-065 **THEN** P4 Phase Gate close.
+
+---
+
+## Prior completed action — Code Review Fix Round 15
+
 **Code Review Fix Round 15 CLOSED 2026-05-05 — 4 findings accepted + 2 XS deferred (1 source defense-in-depth + 3 state/doc edits)**
 
 - **Trigger:** `/impl-review-fix review-round-15.md` — 4 findings (HIGH 1 / MEDIUM 1 / LOW 2) + 2 cross-service. **Accepted 4 + 2 XS deferred to Phase-2 backlog.**
