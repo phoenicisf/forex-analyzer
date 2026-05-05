@@ -269,6 +269,10 @@ bool CCircuitBreaker::CheckPingPong()
 //|  C) 2 close events 6 s apart, same (magic=202, dir=0) →          |
 //|     CheckPingPong must return false (no trigger, no near-miss)   |
 //|  D) 2 events different magics — no ping-pong (no pair match)     |
+//|  E) Pre-Init RecordOpen + RecordClose — buffer NOT mutated +     |
+//|     Print fallback emitted (fix-round-13 § 13.5 — guards the     |
+//|     dual-gate added in fix-round-12 § 12.6 against future        |
+//|     refactor regression. See RecordOpen / RecordClose comments). |
 //|                                                                  |
 //| Pseudo-trace (Case A):                                            |
 //|  Reset → RecordClose(200,0,T0) → RecordClose(200,0,T0+1)         |
@@ -363,6 +367,37 @@ bool CCircuitBreaker::SelfTest()
      }
    else
       Print("[CircuitBreaker][SelfTest][PASS] Case D: different-magic no-trigger as expected");
+
+   //--------------------------------------------------------------------
+   // Case E: pre-Init RecordOpen + RecordClose dropped — buffer NOT
+   //         mutated + Print fallback emitted (fix-round-13 § 13.5;
+   //         guards dual-gate added in fix-round-12 § 12.6).
+   //
+   //         Phase 2 IMPL-017 / IMPL-062 RiskManager wiring may dispatch
+   //         RecordOpen / RecordClose before Init() completes (e.g. via
+   //         broker-recovery OnTradeTransaction). The NULL-logger early-
+   //         return must keep the ring buffer untouched and emit a
+   //         Print-prefixed warning so an operator sees the dropped
+   //         event without losing m_count integrity.
+   //--------------------------------------------------------------------
+   CB_SELFTEST_RESET();
+   CLogger *saved_logger = m_logger;
+   m_logger = NULL;                          // simulate pre-Init state
+
+   RecordOpen(200, 0, t0);                   // expect: dropped, m_count == 0
+   RecordClose(200, 0, t0);                  // expect: dropped, m_count == 0
+
+   m_logger = saved_logger;                  // restore for tail of SelfTest
+
+   if(m_count != 0)
+     {
+      Print("[CircuitBreaker][SelfTest][FAIL] Case E:"
+            " pre-Init Record* mutated buffer (m_count=", m_count,
+            "), expected 0");
+      all_pass = false;
+     }
+   else
+      Print("[CircuitBreaker][SelfTest][PASS] Case E: pre-Init Record* dropped as expected");
 
    // Cleanup macro
 #undef CB_SELFTEST_RESET

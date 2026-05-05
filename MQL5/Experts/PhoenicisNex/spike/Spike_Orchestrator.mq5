@@ -37,6 +37,16 @@ int OnInit()
   {
    Print("[Phoenicis] Spike_Orchestrator: G1 compile gate + structural check");
 
+   //--- fix-round-13 § 13.6 — IsPhoenicisMagic SelfTest pinning the `||`
+   //    chain to MAGIC_* constants + the BR-3.6 foreign-EA gap (202/203/204).
+   //    Wired here because Orchestrator::OnTradeTransaction is the consumer
+   //    and EnumTypes.mqh is transitively included via slot includes.
+   if(!IsPhoenicisMagicSelfTest())
+     {
+      Print("[Phoenicis] Spike_Orchestrator: IsPhoenicisMagicSelfTest FAILED");
+      return INIT_FAILED;
+     }
+
    // Phase A only — heap-construct the 19 services + 4 core peers.
    //   We do NOT call OnInit() because Phase C ValidateSymbol /
    //   CreateHandles depend on a live EURUSD H4 chart with indicator data.

@@ -102,4 +102,66 @@ bool IsPhoenicisMagic(int magic)
        || magic == MAGIC_T;     // 219
   }
 
+//--- fix-round-13 § 13.6 — SelfTest pinning IsPhoenicisMagic to MAGIC_*
+//    constants and the foreign-EA gap (202/203/204) + boundary cases.
+//    Future MAGIC_* addition or removal that forgets to update the `||`
+//    chain above is caught here; a green SelfTest is the contract that
+//    PHOENICISNEX_MAGIC_COUNT, the MAGIC_* set, and IsPhoenicisMagic
+//    remain synchronized (see comment on IsPhoenicisMagic).
+//
+//    Wiring status (per fix-round-14 § 14.3 honesty pass):
+//      • Phase 1 — spike-only:
+//          - spike/Spike_Orchestrator.mq5 § OnInit (G1 compile gate)
+//          - core/BootstrapValidator::RunDomainSelfTests (header-only;
+//            invoked once production Orchestrator wiring lands)
+//      • Phase 2 — production wire on live attach is deferred to
+//        IMPL-053..060 / IMPL-062 owner: Orchestrator::OnInit Phase B
+//        step 1 should call m_validator.RunDomainSelfTests() BEFORE
+//        ValidateSymbol so a live EURUSD H4 attach exercises this
+//        regression gate at first attach.
+bool IsPhoenicisMagicSelfTest()
+  {
+   bool ok = true;
+
+   //--- Registered set — all 17 magics must return true.
+   if(!IsPhoenicisMagic(MAGIC_CD)) { Print("[EnumTypes][SelfTest][FAIL] IsPhoenicisMagic(CD=200)=false"); ok = false; }
+   if(!IsPhoenicisMagic(MAGIC_F))  { Print("[EnumTypes][SelfTest][FAIL] IsPhoenicisMagic(F=201)=false");  ok = false; }
+   if(!IsPhoenicisMagic(MAGIC_H))  { Print("[EnumTypes][SelfTest][FAIL] IsPhoenicisMagic(H=205)=false");  ok = false; }
+   if(!IsPhoenicisMagic(MAGIC_J))  { Print("[EnumTypes][SelfTest][FAIL] IsPhoenicisMagic(J=206)=false");  ok = false; }
+   if(!IsPhoenicisMagic(MAGIC_K))  { Print("[EnumTypes][SelfTest][FAIL] IsPhoenicisMagic(K=207)=false");  ok = false; }
+   if(!IsPhoenicisMagic(MAGIC_G))  { Print("[EnumTypes][SelfTest][FAIL] IsPhoenicisMagic(G=208)=false");  ok = false; }
+   if(!IsPhoenicisMagic(MAGIC_GO)) { Print("[EnumTypes][SelfTest][FAIL] IsPhoenicisMagic(GO=209)=false"); ok = false; }
+   if(!IsPhoenicisMagic(MAGIC_M))  { Print("[EnumTypes][SelfTest][FAIL] IsPhoenicisMagic(M=210)=false");  ok = false; }
+   if(!IsPhoenicisMagic(MAGIC_L))  { Print("[EnumTypes][SelfTest][FAIL] IsPhoenicisMagic(L=211)=false");  ok = false; }
+   if(!IsPhoenicisMagic(MAGIC_Q))  { Print("[EnumTypes][SelfTest][FAIL] IsPhoenicisMagic(Q=212)=false");  ok = false; }
+   if(!IsPhoenicisMagic(MAGIC_R))  { Print("[EnumTypes][SelfTest][FAIL] IsPhoenicisMagic(R=213)=false");  ok = false; }
+   if(!IsPhoenicisMagic(MAGIC_B))  { Print("[EnumTypes][SelfTest][FAIL] IsPhoenicisMagic(B=214)=false");  ok = false; }
+   if(!IsPhoenicisMagic(MAGIC_BR)) { Print("[EnumTypes][SelfTest][FAIL] IsPhoenicisMagic(BR=215)=false"); ok = false; }
+   if(!IsPhoenicisMagic(MAGIC_I))  { Print("[EnumTypes][SelfTest][FAIL] IsPhoenicisMagic(I=216)=false");  ok = false; }
+   if(!IsPhoenicisMagic(MAGIC_S))  { Print("[EnumTypes][SelfTest][FAIL] IsPhoenicisMagic(S=217)=false");  ok = false; }
+   if(!IsPhoenicisMagic(MAGIC_P))  { Print("[EnumTypes][SelfTest][FAIL] IsPhoenicisMagic(P=218)=false");  ok = false; }
+   if(!IsPhoenicisMagic(MAGIC_T))  { Print("[EnumTypes][SelfTest][FAIL] IsPhoenicisMagic(T=219)=false");  ok = false; }
+
+   //--- Unregistered gap magics in the [200..219] range — must return false
+   //    (BR-3.6 foreign-EA filter). 202/203/204 fall between MAGIC_F=201 and
+   //    MAGIC_H=205; a plain range check would let foreign-EA close events
+   //    feed the CircuitBreaker ring buffer.
+   if(IsPhoenicisMagic(202)) { Print("[EnumTypes][SelfTest][FAIL] IsPhoenicisMagic(202)=true"); ok = false; }
+   if(IsPhoenicisMagic(203)) { Print("[EnumTypes][SelfTest][FAIL] IsPhoenicisMagic(203)=true"); ok = false; }
+   if(IsPhoenicisMagic(204)) { Print("[EnumTypes][SelfTest][FAIL] IsPhoenicisMagic(204)=true"); ok = false; }
+
+   //--- Boundary checks.
+   if(IsPhoenicisMagic(199)) { Print("[EnumTypes][SelfTest][FAIL] IsPhoenicisMagic(199)=true (below range)"); ok = false; }
+   if(IsPhoenicisMagic(220)) { Print("[EnumTypes][SelfTest][FAIL] IsPhoenicisMagic(220)=true (Slot U deleted per OQ-8)"); ok = false; }
+   if(IsPhoenicisMagic(0))   { Print("[EnumTypes][SelfTest][FAIL] IsPhoenicisMagic(0)=true (zero)"); ok = false; }
+   if(IsPhoenicisMagic(-1))  { Print("[EnumTypes][SelfTest][FAIL] IsPhoenicisMagic(-1)=true (negative)"); ok = false; }
+
+   if(ok)
+      Print("[EnumTypes][SelfTest] IsPhoenicisMagic: 17 registered + 6 negative cases PASSED");
+   else
+      Print("[EnumTypes][SelfTest] IsPhoenicisMagic: one or more cases FAILED — see above");
+
+   return ok;
+  }
+
 #endif // PHOENICISNEX_DOMAIN_ENUMTYPES_MQH
