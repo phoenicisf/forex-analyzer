@@ -32,11 +32,21 @@
 #include "../inputs/Inputs_Pending.mqh"   // IMPL-012 ✅
 #include "../inputs/Inputs_Logging.mqh"   // IMPL-012 ✅
 
+// Per-slot input headers needed for ValidateSlotInputs (R15 Finding 15.1).
+// Only Inputs_Slot_S participates in the discrete-set check today; other
+// per-slot inputs are continuous numerics already covered by Guards 1-39
+// in ValidateInputs OR are slot-internal (no boot-time invariant).
+#include "../inputs/Inputs_Slot_S.mqh"   // R15 15.1 — InpSPercentTp ∈ {5,10,15}
+
 // Forward declarations — opaque pointers only; no deref in this file.
 // Full class definitions land at IMPL-005 (IndicatorService) and IMPL-007
 // (PortfolioState). ValidateInputs does NOT deref these pointers.
 class CIndicatorService;
 class CPortfolioState;
+
+// EnumTypes provides IsPhoenicisMagicSelfTest() — header-only, invoked
+// from RunDomainSelfTests below (per fix-round-14 § 14.3).
+#include "../domain/EnumTypes.mqh"
 
 //+------------------------------------------------------------------+
 //| CBootstrapValidator                                              |
@@ -70,7 +80,8 @@ public:
    //    boot-time alerts must NEVER be throttled per NFR-5.1 + security.md §Halt).
    //    Called from Orchestrator::Init Phase C (TD-02 §7.4 line 1654):
    //      if (!m_validator.ValidateInputs()) return INIT_FAILED;
-   //    CleanupPartialInit deferred to IMPL-053+ (orchestrator owner).
+   //    CleanupPartialInit ownership: completed at IMPL-053..060 (Orchestrator)
+   //    per impl-plan.
    bool ValidateInputs() const;
 
    //--- FR-1.2 + BR-9.1 — symbol whitelist (IMPL-016 body; stub returns true)
@@ -81,6 +92,26 @@ public:
 
    //--- BR-1.1 invariant — exactly 17 distinct magics (ADR-005)
    bool ValidateSlotRegistry(int observed_count, int expected_count) const;
+
+   //--- fix-round-14 § 14.3 — domain-SelfTest umbrella (currently wraps
+   //    IsPhoenicisMagicSelfTest; future SelfTests for CommentParser /
+   //    JsonWriter / etc. land here per XS-14.2 backlog).
+   //
+   //    Phase 1 caller: spike-only (Spike_Orchestrator already invokes
+   //    IsPhoenicisMagicSelfTest directly; once the Orchestrator OnInit
+   //    Phase B wire is added — Phase 2, IMPL-053..060 / IMPL-062 owner —
+   //    that path will call this umbrella instead of the raw helper).
+   //    Header-only method; no production caller yet. See EnumTypes.mqh
+   //    § "Wiring status" for the honest spike-vs-production matrix.
+   bool RunDomainSelfTests() const;
+
+   //--- R15 15.1 — per-slot input discrete-set / range invariants.
+   //    Distinct from ValidateInputs (which targets cross-slot inputs in
+   //    Inputs_General/TimeGates/Pending/Logging). Currently enforces:
+   //      • InpSPercentTp ∈ {5, 10, 15} per BR-4.1 (FIX-001 defense-in-depth)
+   //    Future per-slot discrete-set inputs land here. Called from
+   //    Orchestrator::OnInit Phase C between ValidateInputs and ValidateSymbol.
+   bool ValidateSlotInputs() const;
   };
 
 //+------------------------------------------------------------------+
@@ -534,6 +565,75 @@ bool CBootstrapValidator::ValidateSlotRegistry(int observed_count,
                       observed_count, expected_count));
       return false;
      }
+   return true;
+  }
+
+//+------------------------------------------------------------------+
+//| RunDomainSelfTests — umbrella for domain-layer SelfTests          |
+//|                                                                  |
+//| Currently wraps IsPhoenicisMagicSelfTest (per fix-round-13 § 13.6 |
+//| body + fix-round-14 § 14.3 wiring honesty).                       |
+//|                                                                  |
+//| Caller contract:                                                  |
+//|   - Phase 1: spike harnesses already invoke the underlying tests  |
+//|     directly (Spike_Orchestrator → IsPhoenicisMagicSelfTest);     |
+//|     this umbrella exists so Phase 2 production OnInit can call    |
+//|     the umbrella once instead of N separate SelfTests.            |
+//|   - Phase 2: Orchestrator::OnInit Phase B step 1 will call:       |
+//|         if(!m_validator.RunDomainSelfTests()) return INIT_FAILED; |
+//|     before ValidateSymbol. (Owner: IMPL-053..060 / IMPL-062.)     |
+//|                                                                  |
+//| Failure path: per-SelfTest body Prints `[SelfTest][FAIL] …` lines |
+//| identifying which case failed; this method emits one              |
+//| ErrorBypassThrottle so the boot-time alert path also fires        |
+//| (NFR-5.1 + ADR-011 boot-time bypass).                             |
+//+------------------------------------------------------------------+
+bool CBootstrapValidator::RunDomainSelfTests() const
+  {
+   if(!IsPhoenicisMagicSelfTest())
+     {
+      m_logger.ErrorBypassThrottle("system", "domain_selftest_fail", 0,
+         "IsPhoenicisMagicSelfTest reported one or more failures —"
+         " see prior [EnumTypes][SelfTest][FAIL] lines");
+      return false;
+     }
+   //--- room for future SelfTests (CommentParser / JsonWriter / etc.)
+   //    per XS-14.2 backlog (Phase 2 IMPL-NNN bulk wire-up).
+   return true;
+  }
+
+//+------------------------------------------------------------------+
+//| ValidateSlotInputs — per-slot input discrete-set / range checks   |
+//|                                                                  |
+//| Defense-in-depth against operator-driven regression of FIX-001    |
+//| defect class (per-tick `[ev=s_pct_tp_invalid]` ERROR + zero-lot   |
+//| Slot S orders) when MT5 input dialog or Strategy Tester           |
+//| optimization sweep sets InpSPercentTp outside the BR-4.1 set       |
+//| {5, 10, 15} (per R15 Finding 15.1).                                |
+//|                                                                  |
+//| Tolerance 0.001 mirrors RiskManager::_ComputeLotForS consumer at   |
+//| services/RiskManager.mqh:402-415 — keep in sync if either side     |
+//| changes.                                                          |
+//|                                                                  |
+//| Fail path (consistent with ValidateInputs Guard pattern):         |
+//|   ErrorBypassThrottle("system","invalid_input",0,…) per ADR-011  |
+//|   boot-time bypass + return false → Orchestrator INIT_FAILED.     |
+//+------------------------------------------------------------------+
+bool CBootstrapValidator::ValidateSlotInputs() const
+  {
+   // R15 15.1 — InpSPercentTp must be one of {5, 10, 15} per BR-4.1.
+   if(MathAbs(InpSPercentTp - 5.0)  >= 0.001 &&
+      MathAbs(InpSPercentTp - 10.0) >= 0.001 &&
+      MathAbs(InpSPercentTp - 15.0) >= 0.001)
+     {
+      m_logger.ErrorBypassThrottle("system", "invalid_input", 0,
+         StringFormat("InpSPercentTp=%.4f outside valid set {5,10,15} per BR-4.1; "
+                      "Slot S would emit s_pct_tp_invalid every tick + "
+                      "non-functional (FIX-001 defect class regression)",
+                      InpSPercentTp));
+      return false;
+     }
+   //--- room for future per-slot discrete-set inputs (XS-15.1 Phase-2 audit).
    return true;
   }
 

@@ -30,6 +30,9 @@ input int    InpSMaxOrders           = 1;       // Max simultaneous S orders
 input double InpSAdxMin              = 20.0;    // ADX minimum threshold for volatility gate (H4)
 input double InpSWprOversold         = -80.0;   // WPR oversold threshold for BUY signal (H4)
 input double InpSWprOverbought       = -20.0;   // WPR overbought threshold for SELL signal (H4)
-input double InpSPercentTp           = 10.0;    // percent_tp ∈ {5, 10, 15} per BR-4.1; default 10 per CodeWiki §3.S
+input double InpSPercentTp           = 10.0;    // percent_tp MUST be one of {5, 10, 15} per BR-4.1
+                                                 // (BootstrapValidator::ValidateSlotInputs fails INIT_FAILED on violation
+                                                 //  — R15 Finding 15.1 defense vs FIX-001 defect class regression);
+                                                 // default 10 per CodeWiki §3.S
 
 #endif // PHOENICISNEX_INPUTS_SLOT_S_MQH

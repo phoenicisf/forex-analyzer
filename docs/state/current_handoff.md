@@ -4,6 +4,125 @@
 
 ## Last completed action
 
+**Code Review Fix Round 15 CLOSED 2026-05-05 — 4 findings accepted + 2 XS deferred (1 source defense-in-depth + 3 state/doc edits)**
+
+- **Trigger:** `/impl-review-fix review-round-15.md` — 4 findings (HIGH 1 / MEDIUM 1 / LOW 2) + 2 cross-service. **Accepted 4 + 2 XS deferred to Phase-2 backlog.**
+- **15.1 HIGH (BootstrapValidator::ValidateSlotInputs umbrella):** added `ValidateSlotInputs() const` to `core/BootstrapValidator.mqh` — checks InpSPercentTp ∈ {5, 10, 15} per BR-4.1 via tolerance 0.001 (mirrors RiskManager._ComputeLotForS consumer at 402-415); ErrorBypassThrottle on fail per ADR-011 boot-bypass; `core/Orchestrator.mqh:312` Phase C wires the call between ValidateInputs and ValidateSymbol with `validate_slot_inputs` CleanupPartialInit tag; `inputs/Inputs_Slot_S.mqh:33` comment now self-documents the discrete set + cites the validator. Closes operator-driven regression of FIX-001 defect class (per-tick `[ev=s_pct_tp_invalid]` + zero-lot Slot S) when MT5 input dialog or Strategy Tester optimization sweep sets the input outside the valid set. Future per-slot discrete-set inputs land in this umbrella per XS-15.1 Phase-2 backlog.
+- **15.2 MEDIUM (registry partial-drain narrative propagation):** appended "Partially resolved 2026-05-05 via Tier 1.5 walk batch-2" annotation to `docs/state/deferred-ac-registry.md` Active rows IMPL-007 (log-assertion clause drained — `magics registered: 17` captured; db-inspect half pending IMPL-062 broker reconcile) + IMPL-049 boot-cold (5 enter_pending + 4 transition_executed events C/M/T/Q/P captured; kill+reload threshold needs longer window) + IMPL-049 file-blob-check (not drained — 3-day window insufficient to cross any force-clear threshold; still gated on IMPL-062) + IMPL-052 (state_corrupt_starting_fresh first-run path drained; HALTED-restart synthetic fixture not exercised). Mirrors IMPL-022 G4 attestation row precedent. All rows stay Active per Dim #11 partial-drain handling.
+- **15.3 LOW (Plan Staleness Sentinel 7→6 revert):** reverted "7 closures since R07 review (+1 walk drain)" → "6 closures since R07 review (IMPL-060 + IMPL-FIX-001 + IMPL-FIX-002 + IMPL-061 + IMPL-064 + IMPL-068)" across `impl-plan.md` line 9 TL;DR + line 55 Next Best Action + `current_handoff.md` line 49 + `overview.md` line 20. Cited `.claude/rules/workflow.md § Phase 5 Closure mechanical gates` Gate #4 + fix-round-10 Plan Staleness precedent — fix-rounds + walk drains are review-loop / E-AC residue cleanup artifacts, not new IMPL-NNN closures. (Sentinel section line 1778 was already correct at 6; only the parallel-narrative TL;DR + handoff + overview status string were inflated.)
+- **15.4 LOW (walk-summary System Load Context):** appended "System Load Context (informational)" subsection to `docs/state/_session-handoff/tier-1.5-walk-2026-05-05/walk-summary.md` documenting batch-1/2 wall-clock context (cold/warm cache + concurrent activity) + methodology advisory for IMPL-065/066 NFR-2.x latency E-ACs (≥3 sessions + median p99 + GetMicrosecondCount instrumentation over wall-clock outer loop). Becomes template for future Tier 1.5 walk artifacts (XS-15.2 — canonicalize in `.claude/rules/testing.md` when IMPL-065/066 land).
+- **XS-15.1 (Phase-2 backlog):** broader inputs/ audit for discrete-set semantics — verified via grep that no other current input is enum-as-int (`InpKMode`/`InpPSubMode` cited by reviewer don't exist; continuous numerics covered by Guards 1-39). Open as Phase-2 IMPL-NNN ticket if/when new discrete-set inputs land.
+- **XS-15.2 (Phase-2 backlog):** canonicalize Result-Table fill pattern in `.claude/rules/testing.md` / `andm-impl-engineer/SKILL.md`; trigger naturally at IMPL-065/066/067 result-table authoring time.
+- **G1 ✅ MetaEditor64 /compile /log:** `Result: 0 errors, 0 warnings, 3844 ms elapsed`.
+- **Phase 5 mechanical gates 1+9 verified:** forbidden-pattern grep on `impl-plan.md` = 0 hits ✅; originating R15 finding 15.3 pattern grep on `docs/state/` = 0 hits ✅; broader-class grep `deferred to IMPL-053(\+| |\.|$)` on `MQL5/Experts/PhoenicisNex` = 0 hits ✅ (R14 strengthened gate holding).
+- **Plan Staleness Sentinel:** 6 closures since R07 review unchanged (review-round + fix-round commits don't increment counter; no new IMPL-NNN ACs ticked) — within 10-closure threshold ✅. R09 advisory still motivates next `/impl-review all` before next IMPL-NNN batch.
+- **Files modified:** 3 source (`core/BootstrapValidator.mqh` + `core/Orchestrator.mqh` + `inputs/Inputs_Slot_S.mqh`) + 4 state/doc (`docs/state/deferred-ac-registry.md` + `docs/state/impl-plan.md` + `docs/state/overview.md` + `docs/state/_session-handoff/tier-1.5-walk-2026-05-05/walk-summary.md`).
+- **State Reconciliation 3-file rule honored:** `impl-plan.md` (TL;DR Sentinel + Next Best Action + Mid-Phase Audit Log new row for fix-round-15) + `overview.md` (Sentinel + Last Updated 2026-05-04→2026-05-05 + status string append) + `current_handoff.md` (Sentinel revert at line 49 + this new "Last completed action" section).
+- **Output:** `docs/code-review/fix-round-15.md`.
+- **Recommended next action:** `/impl-review all` R09 (cross-slot + Orchestrator + entry .mq5 + 2 FIX commits + 3 QA pipeline + walk batch-2 evidence + fix-round-15 defense-in-depth = significant accumulated attack surface) **THEN** start IMPL-062 (Bucket A regression — IMPL-061 baseline ✅ unblocked) to begin draining the IMPL-068 5-yr regression bundle + 24 P3 slot 60-day deferrals before 2026-05-17/18 expiry cycle.
+
+---
+
+## Prior completed action
+
+**Tier 1.5 Exploratory Walk batch-2 CLOSED 2026-05-05 — 4 deferred-AC rows drained + NFR-3.1 atomic-write live-kill verified + 2 FIX defects empirically resolved**
+
+- **Trigger:** Engineer-driven `andm-impl-engineer` session per CLAUDE.md §1 PhoenicisNex Tier 1.5 definition (no GUI; walk = headless backtest + Tester log + journal audit). User invocation: "act @.agents/agents/andm-impl-engineer.md to Run Tier 1.5 Exploratory Walk batch-2".
+- **Pre-conditions:** Foreground MT5 closed; FIX-001 + FIX-002 + IMPL-064 harness commits already merged (4110a78 + a290d7a + 41ffdd6); G1 recompile on PhoenicisNex.mq5 → Result: 0 errors, 0 warnings, 3895 ms.
+- **G3 — bootstrap_smoke.ini rerun (post-FIX merge):**
+  - Wall-clock: 9:05.786 (vs batch-1's 6:50.521; 304,418 ticks / 18 bars)
+  - Raw Tester log: 224 MB (vs batch-1's 629 MB → **−64% volume**)
+  - `[ERROR]` count: **0** (was tens of thousands of `s_pct_tp_invalid`)
+  - `[WARN]` count: **1** (only first-run `state_corrupt_starting_fresh`; was tens of thousands of `clamp_applied`)
+  - SlotS `entry_signal` count: **216,671** with `lot=2.90` (clamped at `max_lot_ratio=2.9`, NOT floor-clamped to 0.01)
+  - state.json schema-valid: 35 fields / 11 sub-objects / 17 slot_states magics / 8 pending_machines / journal_metrics.write_failures=0 / logger_metrics.throttled_alert_count=0
+- **G4 — atomic_write_kill_100.ps1 -Trials 100 (IMPL-064 numeric verdict):**
+  - Wall-clock: 34.3s (≈340ms/trial; well under 60s startup-timeout cap)
+  - Verdict: **PASS** — `parse_pass=100, parse_fail=0, state_missing_tmp_present=0, state_missing_tmp_missing=0, startup_timeout_count=0, failed_fast=false`
+  - NFR-3.1 live-kill contract verified against ADR-007 Option A (write-temp + NTFS rename) under `Stop-Process -Force` mid-write
+  - Sidecar: `docs/state/nfr-3.1-atomic-write-result.json` (schema_version=1)
+- **Drained deferred-AC rows (4 fully):**
+  - **IMPL-009** (P1) — `pip_math_init digit_multiplier=10` captured at OnInit ✅
+  - **IMPL-FIX-001** (P3 / HIGH) — zero ERROR + 216,671 SlotS entry_signal events with lot=2.90 ✅
+  - **IMPL-FIX-002** (P2 / MEDIUM) — zero `clamp_applied` (DEBUG demoted; OR-clause-1 satisfied) ✅
+  - **IMPL-064** (P4) — verdict=PASS 100/100 ✅
+- **Partially drained (kept Active with updated narrative — log-assertion drained, db-inspect needs real broker fills):**
+  - IMPL-007 (magics registered: 17 ✓; broker reconcile needs real positions)
+  - IMPL-049 (5 enter_pending + 4 transition_executed events for C/M/T/Q/P; force-clear needs longer window)
+  - IMPL-052 (state_corrupt_starting_fresh first-run path drained; HALTED-restart synthetic fixture not exercised)
+- **NOT drained (gating remains):**
+  - IMPL-008 / IMPL-011 (ENABLE_SELFTEST flag-gated; not enabled in bootstrap_smoke.ini)
+  - IMPL-012 / IMPL-013 / IMPL-014 (input dialog probe needs live MT5 chart attach; Strategy Tester uses defaults)
+  - IMPL-019..039 (60-day backtest prerequisite; deferred to IMPL-062/063)
+  - IMPL-022 / IMPL-039 G4 attestation journal evidence (need real broker fills; 3-day $1000 deposit produced 0 fills, final balance unchanged)
+  - IMPL-053..058 (cross-slot synthetic fixtures `cross_slot_*.ini` deferred to IMPL-059+ runnable surface)
+  - IMPL-068 (paired bundle gated on IMPL-062/063 5-yr regression journal records)
+- **No new defects discovered.** Both prior batch-1 defects empirically verified resolved.
+- **State propagation (3-file rule per CLAUDE.md §6):**
+  - `docs/state/deferred-ac-registry.md` — 4 rows moved Active → Resolved table; IMPL-009 / IMPL-FIX-001 / IMPL-FIX-002 / IMPL-064 strikethrough'd in Active + appended in Resolved with walk artifact path
+  - `docs/state/impl-plan.md` — TL;DR (Active count 47→43; Resolved 1→5; Last updated 2026-05-04→2026-05-05; new last action) + Phase Status Snapshot (P2 + P3 + P4 Tier 1.5 column updated batch-2 PASSED) + Open Risks R-6 (PARTIALLY MITIGATED) + Next Best Action (Tier 1.5 walk batch-2 ☐→☑)
+  - `docs/state/overview.md` — Impl Tasks row prefix + date 2026-05-04→2026-05-05 + new closure narrative
+  - `docs/state/nfr-3.1-atomic-write-result.md` — Status `PENDING NUMERIC RUN` → `✅ PASS` + § 5 Result Table filled (placeholder TBD → actual counts) + observations subsection
+- **Walk artifact:**
+  - `docs/state/_session-handoff/tier-1.5-walk-2026-05-05/walk-summary.md` (~7 KB; full execution + drain table + verdict)
+  - `docs/state/_session-handoff/tier-1.5-walk-2026-05-05/abridged-tester-log.txt` (~6.5 KB; init + pending events + entry_signal samples + Tester verdict)
+  - Walk validity ≤14d per CLAUDE.md §1 → expires 2026-05-19
+- **Plan Staleness Sentinel:** 6 closures since R07 review unchanged (walk batch-2 drained 4 E-AC residues but zero new IMPL-NNN closures; per `.claude/rules/workflow.md § Phase 5 Closure mechanical gates` Gate #4 + fix-round-10 precedent fix-rounds + walks are not counted) — within 10-closure threshold ✅. R09 advisory unchanged (cumulative attack surface still motivates `/impl-review all`).
+- **Recommended next action:** `/impl-review all` R09 (cross-slot + Orchestrator + entry .mq5 + 2 FIX commits + 3 QA pipeline + walk batch-2 evidence) **THEN** start IMPL-062 (Bucket A regression — IMPL-061 baseline ✅ unblocked) to begin draining the IMPL-068 5-yr regression bundle + 24 P3 slot 60-day deferrals.
+
+---
+
+## Prior completed action
+
+**Code Review Fix Round 14 CLOSED 2026-05-04 — broader-class IMPL-053 sweep + SelfTest wiring + workflow.md gate #9 strengthened**
+
+- **Trigger:** `/impl-review-fix review-round-14.md` — 4 findings (HIGH 1 / MEDIUM 2 / LOW 1) + 3 cross-service. **Accepted 4 + 2 XS** + 1 deferred (XS-14.2 → Phase 2 backlog) + 1 subsumed (XS-14.3 → 14.3).
+- **Substantive fixes:**
+  - **14.1 HIGH** — broader-class IMPL-053 sweep: 23 stale `deferred to IMPL-053` sites repo-wide rewritten across 14 files (10 in `slots/`, 3 in `services/`, 1 in `core/`, 9 in `spike/`). Canonical Phase-1 wording: cross-slot trigger stubs → "wires at IMPL-017 / IMPL-062 (cross-slot coupling per ea.md)"; service-side header/loop stubs → "completed at IMPL-053..060 (Orchestrator) per impl-plan"; spike-file E-AC headers → "E-AC smoke wires at IMPL-017 / IMPL-062 (RiskManager::OpenOrder)". Closes the next-coarser-granularity recurrence of R12 § 12.8 → R13 § 13.2 (literal `IMPL-053+` regex was scope-narrower than the defect class).
+  - **14.2 MEDIUM** — new `MQL5/Experts/PhoenicisNex/spike/Spike_CircuitBreaker.mq5` (~70 LOC, mirrors `Spike_PendingMachineRegistry` invocation pattern). Logger init → CircuitBreaker init → SelfTest call. Closes operationally-inert gap from R13 § 13.5 — Cases A–E (including Case E pre-Init guard) now have a runnable G1 attach path; the regression gate that R13 motivated actually deploys.
+  - **14.3 MEDIUM** — `domain/EnumTypes.mqh:111-122` rewrites misleading "Wire from `BootstrapValidator::ValidateAll()`" comment with honest "Wiring status" matrix (Phase 1: spike-only via Spike_Orchestrator + new RunDomainSelfTests umbrella header / Phase 2: production wire deferred to IMPL-053..060 / IMPL-062 owner). `core/BootstrapValidator.mqh` adds `RunDomainSelfTests()` umbrella method (header-only, wraps `IsPhoenicisMagicSelfTest` + emits ErrorBypassThrottle on fail, room for future SelfTests). Chose review's Part 2 fallback option to avoid tangling R14 with Orchestrator boot-sequence changes; production-wire-from-Orchestrator deferred to IMPL-053..060 / IMPL-062 named owner.
+  - **14.4 LOW** — `simulation/scripts/atomic_write_kill_100.ps1` doc cleanup: removed duplicate `.PARAMETER Trials` block (lines 25-26 stub leftover from fix-round-13 § 13.4 edit) + rewrote `.EXAMPLE` block to use `-StateRel 'PhoenicisNex/state'` + `-AgentSubpath 'Agent-127.0.0.1-3001'` (post-13.1 rename + semantic shift to sandbox-relative). Operator copy-paste of `Get-Help -Examples` output no longer hits param-binding error or path-prefix-doubling trap.
+- **Cross-service:**
+  - **XS-14.1** — strengthened `.claude/rules/workflow.md § Phase 5 Closure mechanical gates § Gate #9` with **clause (b) broadest-class regex requirement**. Previously the gate ran only the originating finding's literal pattern (e.g. `IMPL-053\+` against `slots/`); now also requires a defect-class regex (e.g. `deferred to IMPL-053(\+| |\.|$)` against the whole tree). Non-zero hit on (b) forces engineer to expand the sweep or explicitly scope-out non-target sites. Breaks the R12 § 12.8 → R13 § 13.2 → R14 § 14.1 next-coarser-granularity recurrence chain at fix-round commit boundary instead of next-R-cycle.
+  - **XS-14.2** — deferred to Phase-2 IMPL-NNN ticket. Bulk SelfTest wiring backlog: `helpers/CommentParser::SelfTest`, `helpers/JsonWriter::SelfTest`, `services/PortfolioMonitor::SelfTest`, `services/RiskManager::SelfTest` are all defined-but-uncalled. Review explicitly framed as "structurally orthogonal" — out of R14 fix scope.
+  - **XS-14.3** — subsumed by 14.3. The `EnumTypes.mqh` comment claim about `BootstrapValidator::ValidateAll()` is closed; TD-02 §7.4 mirror update tracked as `/amend td` follow-up advisory (not blocking R14).
+- **Files modified:** 16 — 14 source for 14.1 (Slot_BR/F/G2/GO/I/J/LX/S + BootstrapValidator + PortfolioState + RiskManager + Spike_Slot_B/BR/BI/G2/GO/I/L/LX) + 1 spike new (Spike_CircuitBreaker.mq5) + EnumTypes.mqh + BootstrapValidator.mqh (also for 14.3) + atomic_write_kill_100.ps1 + workflow.md.
+- **G1 compile (4-gate Definition of Done):** 3/3 PASS — `PhoenicisNex.ex5` regenerated 19:38 (entry transitively pulls all updated headers); `Spike_CircuitBreaker.ex5` newly created 19:39 (23,080 bytes, new spike); `Spike_Orchestrator.ex5` regenerated 19:39 (transitively pulls updated EnumTypes + BootstrapValidator). MetaEditor in this version omits `.compile.log` on warning-free builds (per `mt5-log-reader` SKILL § Wine note); `.ex5` mtime is canonical evidence — compile errors prevent `.ex5` output. G2/G3/G4 deferred to Tier 1.5 walk batch-2 per IMPL-064 deferred-AC E-AC#1 (expiry 2026-05-18).
+- **Post-fix grep gate #9 (both clauses):**
+  - (a) Literal-pattern (originating from R13 § 13.2): `grep -rE "deferred to IMPL-053\+|deferred to Orchestrator wiring|deferred to orchestrator wiring|schema lock deferred to IMPL-053" MQL5/Experts/PhoenicisNex/slots` → **0 hits** ✅
+  - (b) Broadest-class (R14 § 14.1 strengthened gate): `grep -rE "deferred to IMPL-053(\+| |\.|$)" MQL5/Experts/PhoenicisNex` → **0 hits** ✅
+  - Forbidden-pattern grep on impl-plan.md (gate #1): 0 hits ✅
+- **Output:** `docs/code-review/fix-round-14.md`. Plan Staleness Sentinel = 7 closures since R07 (review-round + fix-round commits don't increment counter; no IMPL-NNN ACs ticked) — within 10-closure threshold ✅.
+- **Recommendation:** Ready for Tier 1.5 walk batch-2 OR R15 review — operator's choice. R13's structural-vs-operational gap (SelfTest defined but uncalled) is now closed; R12-R14 closure-narrative-vs-actual-sweep recurrence chain is structurally prevented at gate #9 (a)+(b). Operator invocation order for Tier 1.5 walk: `pwsh -File simulation/scripts/atomic_write_kill_100.ps1 -DryRun -Trials 5 -Verbose` (sanity check on doc-clean .EXAMPLE) → `... -Trials 5 -Verbose` (Tester-tree validation) → `... -Trials 100` (full IMPL-064 NFR-3.1 contract closure).
+
+---
+
+## Previous completed action
+
+**Code Review Fix Round 13 CLOSED 2026-05-04 — post-fix-round-12 next-coarser-recurrence sweep + Phase 5 mechanical gate #9 added**
+
+- **Trigger:** `/impl-review-fix review-round-13.md` — 6 findings (CRITICAL 1 / HIGH 1 / MEDIUM 2 / LOW 2) + 3 cross-service. **Accepted 6 + 2 XS** + 1 deferred (XS-13.3 → IMPL-062 schema yaml).
+- **Substantive fixes:**
+  - **13.1 CRITICAL** — `simulation/scripts/atomic_write_kill_100.ps1` `$AbsStateDir` resolves under Tester agent sandbox (`<MetaQuotesRoot>/Tester/<TerminalId>/Agent-127.0.0.1-3000/MQL5/Files/PhoenicisNex/state`) — was resolving under live Terminal sandbox (R12 fix only repaired relative path, not sandbox tree). New `-StateRel` / `-AgentSubpath` params + pre-flight `Test-Path` warn.
+  - **13.2 HIGH** — 23 stale `deferred to IMPL-053+` / `Orchestrator wiring` / `schema lock deferred to IMPL-053+` sites swept across 17 slot files (Slot_BI/F/D/GO/G2/C/BR/J/S/I/M/Q/R/T/LX/K/P). Canonical wording: `logger-only milestone; broker close wires at IMPL-017 / IMPL-062 (RiskManager::OpenOrder) per ea.md`. Slot_P file-header banner replaced with single-line pointer. Post-fix grep: 0 hits ✅.
+  - **13.3 MEDIUM** — `Spike_AtomicWrite::OnInit` cleanup gated to `PhoenicisNex/spike/` prefix + `[ev=path_guard][class=sandbox|production|unknown]` audit log; defends against per-trial production-state destruction if 13.1 ever bridged to live sandbox via FILE_COMMON.
+  - **13.4 MEDIUM** — `-FailFastConsecutive=3` aborts trial loop after 3 consecutive `startup_timeout` trials → 100-min FAIL → 3-min FAIL_FAST verdict; sidecar gains `failed_fast` + `fail_fast_consecutive` fields. Compatible with Tier 1.5 walk 30-min budget.
+  - **13.5 LOW** — `CCircuitBreaker::SelfTest` Case E (pre-Init RecordOpen/Close → buffer NOT mutated + Print fallback emitted) added; guards dual-gate added in fix-round-12 § 12.6 against future refactor regression.
+  - **13.6 LOW** — `IsPhoenicisMagicSelfTest()` free function in `domain/EnumTypes.mqh` (17 registered + 6 negative cases inc. BR-3.6 foreign-EA gap 202/203/204 + boundaries 199/220/0/-1); wired into `spike/Spike_Orchestrator.mq5 § OnInit`.
+- **Cross-service:**
+  - **XS-13.1** — closed by 13.1 implementation; `docs/state/nfr-3.1-atomic-write-result.md § 2.3.1/2/3` rewritten to document MQL5 per-mode sandbox separation + spike cleanup guard + harness fail-fast circuit.
+  - **XS-13.2** — `.claude/rules/workflow.md § Phase 5 Closure mechanical gates` gained **gate #9 (post-fix grep verification)** — would have caught R13.2 + R13.5 + R13.6 at R12 commit boundary; failure-escalation row bumped 8 → 9 gates.
+  - **XS-13.3** — deferred to IMPL-062 (`docs/api-specs/baseline-per-slot-schema.yaml` companion file lands when 5-yr regression code shapes the consumer interface).
+- **Files modified:** 23 (17 slots + `domain/EnumTypes.mqh` + `services/CircuitBreaker.mqh` + `spike/Spike_AtomicWrite.mq5` + `spike/Spike_Orchestrator.mq5` + `simulation/scripts/atomic_write_kill_100.ps1` + `docs/state/nfr-3.1-atomic-write-result.md` + `.claude/rules/workflow.md`).
+- **G1 compile (4-gate Definition of Done):** 3/3 PASS — `PhoenicisNex.mq5` 0err/0warn/3731 ms · `Spike_AtomicWrite.mq5` 0err/0warn/432 ms · `Spike_Orchestrator.mq5` 0err/0warn/621 ms. G2/G3/G4 deferred to Tier 1.5 walk batch-2 per IMPL-064 deferred-AC E-AC#1 (`[boot-cold]` + `[file-blob-check]`, expiry 2026-05-18).
+- **DryRun smoke:** `powershell.exe -File atomic_write_kill_100.ps1 -DryRun -Trials 5` resolves `state_dir = <MetaQuotesRoot>/Tester/<TerminalId>/Agent-127.0.0.1-3000/MQL5/Files/PhoenicisNex/state` ✅ (sandbox-tree binding correct); sidecar contains new `agent_subpath` / `state_rel` / `failed_fast` / `fail_fast_consecutive` fields.
+- **Output:** `docs/code-review/fix-round-13.md`. Plan Staleness Sentinel = 7 closures since R07 (R13 fix-round counted as +1) — within 10-closure threshold ✅.
+- **Recommendation:** Ready for Tier 1.5 walk batch-2. Operator invocation order: `pwsh -File simulation/scripts/atomic_write_kill_100.ps1 -Trials 5 -Verbose` (Tester-tree sanity check) → `pwsh -File simulation/scripts/atomic_write_kill_100.ps1 -Trials 100` (full IMPL-064 NFR-3.1 contract closure).
+
+---
+
+## Earlier completed action — IMPL-061 + IMPL-064 + IMPL-068
+
 **IMPL-061 + IMPL-064 + IMPL-068 CLOSED 2026-05-04 (parallel batch) — P4 QA chain authoring pass** — `/impl-task parallel` 3-subagent fan-out under Phase Gate Override 2026-05-03 Path A.
 
 - **Batch:** 3 disjoint `[ea-qa]` subagents on Sonnet 4.6 (general-purpose persona = `andm-impl-engineer` SKILL via Slim-Onboarding directive + shared context file `docs/state/_parallel-context/impl-task-parallel-20260504-1640.md`). Orchestrator: Opus 4.7 main session.

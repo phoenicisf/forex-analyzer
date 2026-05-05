@@ -311,6 +311,8 @@ int COrchestrator::OnInit()
    // === Phase C — validation + recovery (8 guards, each with Cleanup) ==
    if(!m_validator.ValidateInputs())
      { CleanupPartialInit("validate_inputs");        return INIT_FAILED; }
+   if(!m_validator.ValidateSlotInputs())                // R15 15.1
+     { CleanupPartialInit("validate_slot_inputs");    return INIT_FAILED; }
    if(!m_validator.ValidateSymbol())
      { CleanupPartialInit("validate_symbol");        return INIT_FAILED; }
    if(!m_validator.DetectDigitMultiplier())
