@@ -177,7 +177,11 @@ void CSlotJ::ManageExits(CPortfolioState &port)
    //    prefix "J,"). The original bug iterated MAGIC_F (=201) which never
    //    matched J tickets, so no take-profit gate was ever evaluated for J.
    ulong tickets[];
+#ifdef DISABLE_G4_FIXES
+   int n = port.GetTicketsForSlot(MAGIC_F, "J,", tickets);   // pre-G4 buggy behavior (Bucket A baseline — BR-7.2; MAGIC_F was the original bug)
+#else
    int n = port.GetTicketsForSlot(MAGIC_J, "J,", tickets);   // G4 fix BR-7.2
+#endif
    if(n <= 0) return;
 
    //--- Pip size via base-class helper (Round-06 06.1) — also fixes the

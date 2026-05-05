@@ -208,9 +208,13 @@ public:
       //--- BI entry price + SL anchored at BI entry per ADR-009 Option A.
       double bi_entry      = buy_signal ? ctx.ask : ctx.bid;
       double sl_distance   = _PipsToPrice(sl_distance_pip);
+#ifdef DISABLE_G4_FIXES
+      double sl_price      = 0.0;   // pre-G4 naked SL (Bucket A baseline; ADR-009 documents the fix — original PhoenicisN2.10 had SL=0)
+#else
       double sl_price      = buy_signal
                              ? _NormalizeBrokerPrice(bi_entry - sl_distance)
-                             : _NormalizeBrokerPrice(bi_entry + sl_distance);
+                             : _NormalizeBrokerPrice(bi_entry + sl_distance);   // G4 fix per ADR-009
+#endif
       string comment       = "BI,pyr,1";
 
       //--- fix-round-12 § 12.8 — Phase 1 emits entry_signal Logger.Info as
