@@ -209,8 +209,8 @@ public:
             continue;
 
          //--- Exit condition 2: price touches Ichimoku cloud edge
-         //    Full cloud-touch check deferred to IMPL-053+ when ctx is
-         //    passed to ManageExits. For MVP: close on profit gate alone
+         //    Full cloud-touch check wires at IMPL-017 / IMPL-062 when ctx
+         //    is passed to ManageExits. For MVP: close on profit gate alone
          //    when InpKTpProfitPips threshold met (sufficient for E-AC).
          if(m_logger != NULL)
             m_logger.Info("Slot_K", "exit_profit_gate", Magic(),

@@ -15,9 +15,9 @@
 //|   - SlotId() non-empty (not sentinel "")                          |
 //|                                                                   |
 //| Pattern: mirrors Spike_Slot_G.mq5 stub shape (IMPL-025).          |
-//| NOTE: G2-G4 full entry+exit E-ACs deferred to IMPL-053+           |
-//|       Orchestrator wiring (smoke ini committed for PR contract per |
-//|       TD-02 §13.6; see simulation/headless-tests/slot_G2_smoke.ini)|
+//| NOTE: G2-G4 full entry+exit E-ACs wire at IMPL-017 / IMPL-062     |
+//|       (RiskManager::OpenOrder); smoke ini committed for PR contract|
+//|       per TD-02 §13.6 (see simulation/headless-tests/slot_G2_smoke.ini).|
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, PhoenicisNex"
 #property link      "https://phoenicisnex.com"

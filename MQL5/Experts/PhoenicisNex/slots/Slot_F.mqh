@@ -132,9 +132,10 @@ void CSlotF::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //--- Own-active guard: max 1 F order at a time per InpFMaxOrders
    if(_HasActiveFOrder(port)) return;
 
-   //--- Phase 1 stub: no entry signal in main topo —
-   //    OpenOrderCD (CD-chain) activates at IMPL-053 via CrossSlotCoordinator.
-   //    Observable E-AC milestone for [log-assertion] when IMPL-053 wires sub-call:
+   //--- Phase-1 stub: no entry signal in main topo —
+   //    OpenOrderCD (CD-chain) sub-call wires at IMPL-017 / IMPL-062
+   //    (cross-slot coupling per ea.md) via CrossSlotCoordinator.
+   //    Observable E-AC milestone for [log-assertion] once that wires:
    //
    //    double balance  = AccountInfoDouble(ACCOUNT_BALANCE);
    //    double base_lot = m_risk.ComputeLot("F", InpFSlPipsFloor, balance);
@@ -144,10 +145,11 @@ void CSlotF::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //                  StringFormat("lot=%.2f sl_pips=%.1f comment=%s",
    //                               lot, InpFSlPipsFloor, comment));
    //
-   //--- CrossSlotCoordinator stub (IMPL-053): coupling from CD → F sub-call
-   if(m_xslot != NULL && false /*IMPL-053: enable when OpenOrderCD chain wired*/)
+   //--- CrossSlotCoordinator stub: coupling from CD → F sub-call
+   if(m_xslot != NULL && false /* enable when OpenOrderCD chain wired (IMPL-017 / IMPL-062) */)
      {
-      //--- Stub: F activation from CD's OpenOrderCD deferred to IMPL-053
+      //--- Stub: F activation from CD's OpenOrderCD
+      //    wires at IMPL-017 / IMPL-062 (cross-slot coupling per ea.md).
      }
   }
 
@@ -197,8 +199,8 @@ void CSlotF::ManageExits(CPortfolioState &port)
                        StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f → close",
                                     ticket, profit_pips, InpFTpProfitPips));
 
-         //--- Phase-1 stub: OrderClose deferred to IMPL-053+ orchestrator wiring.
-         //    Real CD-chain coupled exit (if any) wires at IMPL-053 alongside F entry.
+         //--- Phase-1 stub: logger-only milestone; broker close wires at
+         //    IMPL-017 / IMPL-062 (RiskManager::OpenOrder) per ea.md.
         }
      }
   }

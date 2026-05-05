@@ -14,8 +14,8 @@
 //|                                                                  |
 //| Pattern: mirrors Spike_Slot_B.mq5 / Spike_Slot_GO.mq5 minimal     |
 //| harness. IMPL-018 precedent: G2-G4 deferred; G1 + SelfTest = bar. |
-//| E-AC smoke deferred to IMPL-053+ Orchestrator wiring +            |
-//|   CrossSlotCoordinator BR-trigger wiring (BR-2.2).                |
+//| E-AC smoke wires at IMPL-017 / IMPL-062 (RiskManager::OpenOrder)  |
+//|   + CrossSlotCoordinator BR-trigger wiring (BR-2.2) per ea.md.    |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, PhoenicisNex"
 #property link      "https://phoenicisnex.com"

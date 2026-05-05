@@ -261,7 +261,7 @@ public:
             m_logger.Info("Slot_BI", "exit_profit_gate", MAGIC_B,
                           StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f -> close",
                                        ticket, profit_pips, InpBITpProfitPips));
-            //--- Phase-1 stub: OrderSend close deferred to IMPL-053+
+            //--- Phase-1 stub: logger-only milestone; broker close wires at IMPL-017 / IMPL-062 per ea.md.
            }
         }
      }

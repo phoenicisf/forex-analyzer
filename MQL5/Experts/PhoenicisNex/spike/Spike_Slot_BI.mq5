@@ -18,9 +18,9 @@
 //|                                                                  |
 //| Pattern: mirrors Spike_Slot_LX.mq5 / Spike_Slot_BR.mq5 minimal    |
 //| harness. IMPL-018 precedent: G2-G4 deferred; G1 + SelfTest = bar. |
-//| E-AC smoke + G4 attestation deferred to IMPL-053+ Orchestrator    |
-//|   wiring + RiskManager OrderSend + 60-day Tester run with B+BI    |
-//|   active per IMPL-039 E-AC.                                       |
+//| E-AC smoke + G4 attestation wire at IMPL-017 / IMPL-062           |
+//|   (RiskManager::OpenOrder) + 60-day Tester run with B+BI active   |
+//|   per IMPL-039 E-AC.                                              |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, PhoenicisNex"
 #property link      "https://phoenicisnex.com"

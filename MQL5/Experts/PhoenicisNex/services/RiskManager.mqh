@@ -436,8 +436,9 @@ double CRiskManager::_ComputeLotForK(double balance, double extra)
 //| Runs WITHOUT a live CPortfolioState (m_portfolio stays NULL for  |
 //| test instance) — J/BI/I parent-read paths are verified to return |
 //| 0.0 + Warn gracefully rather than crash. Full parent-read smoke  |
-//| deferred to IMPL-053+ orchestrator wiring per header-only        |
-//| precedent (IMPL-005/007/011).                                    |
+//| completed at IMPL-053..060 (Orchestrator) per impl-plan; this    |
+//| SelfTest covers the header-only structural surface (IMPL-005/    |
+//| 007/011 precedent).                                              |
 //|                                                                  |
 //| Double comparison: MathAbs(a-b) < 1e-9 per ea.md Critical Gotcha.|
 //+------------------------------------------------------------------+

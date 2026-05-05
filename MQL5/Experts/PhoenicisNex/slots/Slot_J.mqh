@@ -133,9 +133,10 @@ void CSlotJ::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //--- Own-active guard: max InpJMaxOrders simultaneous J orders
    if(_HasActiveJOrder(port)) return;
 
-   //--- Phase 1 stub: no entry signal in main topo —
-   //    CD-follower activation at IMPL-053 via CrossSlotCoordinator.
-   //    Observable E-AC milestone for [log-assertion] when IMPL-053 wires sub-call:
+   //--- Phase-1 stub: no entry signal in main topo —
+   //    CD-follower sub-call wires at IMPL-017 / IMPL-062
+   //    (cross-slot coupling per ea.md) via CrossSlotCoordinator.
+   //    Observable E-AC milestone for [log-assertion] once that wires:
    //
    //    double balance = AccountInfoDouble(ACCOUNT_BALANCE);
    //    double lot     = m_risk.ComputeLot("J", InpJSlPipsFloor, balance);
@@ -144,10 +145,11 @@ void CSlotJ::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //                  StringFormat("lot=%.2f sl_pips=%.1f comment=%s",
    //                               lot, InpJSlPipsFloor, comment));
    //
-   //--- CrossSlotCoordinator stub (IMPL-053): coupling from CD-entry → J follower
-   if(m_xslot != NULL && false /*IMPL-053: enable when CrossSlotCoordinator wires CD→J*/)
+   //--- CrossSlotCoordinator stub: coupling from CD-entry → J follower
+   if(m_xslot != NULL && false /* enable when CrossSlotCoordinator wires CD→J (IMPL-017 / IMPL-062) */)
      {
-      //--- Stub: J activation from CD-entry event deferred to IMPL-053
+      //--- Stub: J activation from CD-entry event
+      //    wires at IMPL-017 / IMPL-062 (cross-slot coupling per ea.md).
      }
   }
 
@@ -209,7 +211,8 @@ void CSlotJ::ManageExits(CPortfolioState &port)
                        StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f → close (G4 fix BR-7.2)",
                                     ticket, profit_pips, InpJTpProfitPips));
 
-         //--- Phase-1 stub: OrderClose deferred to IMPL-053+ orchestrator wiring.
+         //--- Phase-1 stub: logger-only milestone; broker close wires at
+         //    IMPL-017 / IMPL-062 (RiskManager::OpenOrder) per ea.md.
          //    G4 fix attestation: this code path is reached for MAGIC_J tickets
          //    (the original bug iterated MagicF and never reached here for J).
         }

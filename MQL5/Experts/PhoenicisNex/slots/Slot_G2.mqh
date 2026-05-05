@@ -243,7 +243,7 @@ void CSlotG2::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    req.tp           = tp_price;
    req.comment      = comment;
    req.magic        = MAGIC_G;
-   req.type_filling = ORDER_FILLING_FOK;   // filling mode set per broker detection at IMPL-053+
+   req.type_filling = ORDER_FILLING_FOK;   // filling mode set per broker detection at IMPL-017 / IMPL-062 (RiskManager::OpenOrder)
 
    //--- fix-round-12 § 12.8 — Phase 1 emits entry_signal Logger.Info as
    //    the observable milestone; actual OrderSend lives in
@@ -254,10 +254,11 @@ void CSlotG2::Evaluate(const MarketContext &ctx, CPortfolioState &port)
                  StringFormat("dir=%s lot=%.2f sl_pips=%.1f price=%.5f sl=%.5f comment=%s",
                               (buySignal ? "BUY" : "SELL"), lot, sl_pips, price, sl_price, comment));
 
-   //--- CrossSlotCoordinator stub (IMPL-053)
-   if(m_xslot != NULL && false /*IMPL-053: enable when CrossSlotCoordinator declared*/)
+   //--- CrossSlotCoordinator stub
+   if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (IMPL-017 / IMPL-062) */)
      {
-      //--- Stub: coupling to G-overload signal deferred to IMPL-053
+      //--- Stub: coupling to G-overload signal
+      //    wires at IMPL-017 / IMPL-062 (cross-slot coupling per ea.md).
      }
   }
 
@@ -307,7 +308,8 @@ void CSlotG2::ManageExits(CPortfolioState &port)
                        StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f → close",
                                     ticket, profit_pips, InpG2TpProfitPips));
 
-         //--- Phase-1 stub: OrderSend close deferred to IMPL-053+ orchestrator wiring.
+         //--- Phase-1 stub: logger-only milestone; broker close wires at
+         //    IMPL-017 / IMPL-062 (RiskManager::OpenOrder) per ea.md.
          //    Evidence for E-AC [log-assertion]: above Info log is the observable milestone.
         }
 

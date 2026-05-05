@@ -205,7 +205,7 @@ void CSlotC::Evaluate(const MarketContext &ctx, CPortfolioState &port)
 
       if(!buyBase && !sellBase) return;
 
-      //--- Build pending payload (minimal JSON — schema lock deferred to IMPL-053+)
+      //--- Build pending payload (minimal JSON — full schema in state-persistence-schema.yaml § PendingMachine)
       string dir     = buyBase ? "BUY" : "SELL";
       string payload = StringFormat("{\"dir\":\"%s\",\"sl_pips\":%.1f}", dir, InpCSlPipsFloor);
 
@@ -336,8 +336,8 @@ void CSlotC::ManageExits(CPortfolioState &port)
                        StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f → close",
                                     ticket, profit_pips, InpCTpProfitPips));
 
-         //--- Close via CTrade route (IMPL-053+ wiring)
-         //    Phase-1 stub: log intent; OrderClose deferred to Orchestrator wiring.
+         //--- Phase-1 stub: logger-only milestone; broker close wires at
+         //    IMPL-017 / IMPL-062 (RiskManager::OpenOrder) per ea.md.
         }
      }
   }

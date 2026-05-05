@@ -245,10 +245,11 @@ void CSlotS::Evaluate(const MarketContext &ctx, CPortfolioState &port)
                               lot, InpSSlPips, price, sl_price, comment,
                               ctx.adx_h4.adx, ctx.wpr_h4.wpr, trend_dir));
 
-   //--- CrossSlotCoordinator stub (IMPL-053)
-   if(m_xslot != NULL && false /*IMPL-053: enable when CrossSlotCoordinator declared*/)
+   //--- CrossSlotCoordinator stub
+   if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (IMPL-017 / IMPL-062) */)
      {
-      //--- Stub: S post-close coupling deferred to IMPL-053
+      //--- Stub: S post-close coupling
+      //    wires at IMPL-017 / IMPL-062 (cross-slot coupling per ea.md).
      }
   }
 
@@ -302,14 +303,16 @@ void CSlotS::ManageExits(CPortfolioState &port)
                        StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f → close",
                                     ticket, profit_pips, InpSTpProfitPips));
 
-         //--- Phase-1 stub: OrderSend close deferred to IMPL-053+ orchestrator wiring.
+         //--- Phase-1 stub: logger-only milestone; broker close wires at
+         //    IMPL-017 / IMPL-062 (RiskManager::OpenOrder) per ea.md.
          //    Evidence for E-AC [log-assertion]: above Info log is the observable milestone.
         }
 
-      //--- CrossSlotCoordinator stub — deferred (IMPL-053)
-      if(m_xslot != NULL && false /*IMPL-053*/)
+      //--- CrossSlotCoordinator stub
+      if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (IMPL-017 / IMPL-062) */)
         {
-         //--- Stub: orphan-guard coupling deferred to IMPL-053
+         //--- Stub: orphan-guard coupling
+         //    wires at IMPL-017 / IMPL-062 (cross-slot coupling per ea.md).
         }
      }
   }

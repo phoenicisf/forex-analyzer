@@ -68,7 +68,8 @@ public:
    int               MagicCount() const { return m_magic_count; }
 
    //--- OnTick step H: refresh aggregates from broker (~100 µs target)
-   //    Per ADR-005 § Refresh contract; broker query deferred to IMPL-053+
+   //    Per ADR-005 § Refresh contract; broker query body completed at
+   //    IMPL-053..060 (Orchestrator) per impl-plan.
    void              Refresh();
 
    //--- O(1) average slot accessor (ADR-005 — CHashMap lookup)
@@ -273,7 +274,8 @@ void CPortfolioState::RegisterAll()
       m_magic_count++;
      }
 
-   // Emit registration summary for log-assertion E-AC evidence (deferred to IMPL-053+)
+   // Emit registration summary for log-assertion E-AC evidence
+   //   (consumer wired at IMPL-053..060 Orchestrator per impl-plan).
    // Grep pattern: grep -E '\[Phoenicis\].*\[ev=portfolio_registered\]'
    if(m_logger != NULL)
       m_logger.Info("portfolio", "portfolio_registered", 0,
@@ -286,8 +288,8 @@ void CPortfolioState::RegisterAll()
 //| ADR-005 § Refresh contract:                                      |
 //|   Step 1: Reset per-entry aggregates (buy/sell count, lots, PL,  |
 //|            ticket arrays)                                         |
-//|   Step 2: PositionsTotal() loop — deferred to IMPL-053+          |
-//|            (needs entry .mq5 IMPL-018+ + orchestrator wire-up)   |
+//|   Step 2: PositionsTotal() loop — completed at IMPL-053..060     |
+//|            (Orchestrator owner) per impl-plan.                    |
 //+------------------------------------------------------------------+
 void CPortfolioState::Refresh()
   {

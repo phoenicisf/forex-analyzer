@@ -294,9 +294,8 @@ double CSlotP::_TpPipsForSubMode(const string &comment) const
 //|   Legacy timeout (70 H4 bars; BR-6.4): handled by PMR.TickAll     |
 //|                                  in Orchestrator step 8.          |
 //|                                                                   |
-//| NOTE: All OrderSend submissions are Phase-1 stubs — actual        |
-//|       broker call deferred to IMPL-053+ Orchestrator wiring per   |
-//|       slot precedent (Slot_R IMPL-033 + sibling slots).           |
+//| NOTE: Phase-1 emits entry_signal Logger.Info; OrderSend wires at  |
+//|       IMPL-017 / IMPL-062 (RiskManager::OpenOrder) per ea.md.     |
 //+------------------------------------------------------------------+
 void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
   {
@@ -547,7 +546,7 @@ void CSlotP::ManageExits(CPortfolioState &port)
                        StringFormat("ticket=%I64u comment=%s profit_pips=%.1f "
                                     ">= gate=%.1f → close",
                                     ticket, c, profit_pips, gate));
-         //--- Phase-1 stub: OrderClose deferred to Orchestrator wiring.
+         //--- Phase-1 stub: logger-only milestone; broker close wires at IMPL-017 / IMPL-062 per ea.md.
         }
      }
 
@@ -573,7 +572,7 @@ void CSlotP::ManageExits(CPortfolioState &port)
                        StringFormat("ticket=%I64u sub_mode=E profit_pips=%.1f "
                                     ">= gate=%.1f → close",
                                     ticket, profit_pips, InpPTpPipsE));
-         //--- Phase-1 stub: OrderClose deferred to Orchestrator wiring.
+         //--- Phase-1 stub: logger-only milestone; broker close wires at IMPL-017 / IMPL-062 per ea.md.
         }
      }
   }

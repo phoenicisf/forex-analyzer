@@ -14,7 +14,8 @@
 //|                                                                  |
 //| Pattern: mirrors Spike_Slot_K.mq5 minimal harness.                |
 //| IMPL-018 precedent: G2-G4 deferred; G1 + SelfTest = closure bar.  |
-//| E-AC smoke deferred to IMPL-053+ orchestrator wiring.             |
+//| E-AC smoke wires at IMPL-017 / IMPL-062 (RiskManager::OpenOrder)  |
+//|   per ea.md.                                                       |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, PhoenicisNex"
 #property link      "https://phoenicisnex.com"

@@ -206,8 +206,8 @@ void CSlotD::ManageExits(CPortfolioState &port)
                        StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f → close",
                                     ticket, profit_pips, InpCTpProfitPips));
 
-         //--- Phase-1 stub: OrderClose deferred to IMPL-053+ orchestrator wiring.
-         //    Real CD-pair exit (ExtraTakeProfit_CD analog) wires at IMPL-062.
+         //--- Phase-1 stub: logger-only milestone; broker close wires at
+         //    IMPL-017 / IMPL-062 (RiskManager::OpenOrder) per ea.md.
         }
      }
   }

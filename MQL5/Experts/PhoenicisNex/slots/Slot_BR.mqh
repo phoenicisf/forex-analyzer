@@ -129,8 +129,9 @@ void CSlotBR::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //--- Own-active guard: max InpBRMaxOrders BR orders simultaneously
    if(_CountBROrders(port) >= InpBRMaxOrders) return;
 
-   //--- Phase 1 stub: no entry signal in main topo — TriggerBR activates at IMPL-053
-   //    Observable milestone for E-AC [log-assertion] when IMPL-053 wires the sub-call:
+   //--- Phase-1 stub: no entry signal in main topo — TriggerBR sub-call
+   //    wires at IMPL-017 / IMPL-062 (cross-slot coupling per ea.md).
+   //    Observable milestone for E-AC [log-assertion] once that wires:
    //
    //    double balance  = AccountInfoDouble(ACCOUNT_BALANCE);
    //    double lot      = m_risk.ComputeLot("BR", InpBRSlPipsFloor, balance);
@@ -139,10 +140,11 @@ void CSlotBR::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //                  StringFormat("lot=%.2f sl_pips=%.1f comment=%s",
    //                               lot, InpBRSlPipsFloor, comment));
    //
-   //--- CrossSlotCoordinator stub (IMPL-053): coupling from B → BR sub-call
-   if(m_xslot != NULL && false /*IMPL-053: enable when TriggerBR wired (BR-2.2)*/)
+   //--- CrossSlotCoordinator stub: coupling from B → BR sub-call
+   if(m_xslot != NULL && false /* enable when TriggerBR wired per BR-2.2 (IMPL-017 / IMPL-062) */)
      {
-      //--- Stub: BR activation from B's ExtraTakeProfit_B deferred to IMPL-053
+      //--- Stub: BR activation from B's ExtraTakeProfit_B
+      //    wires at IMPL-017 / IMPL-062 (cross-slot coupling per ea.md).
      }
   }
 
@@ -189,7 +191,8 @@ void CSlotBR::ManageExits(CPortfolioState &port)
                        StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f -> close",
                                     ticket, profit_pips, InpBRTpProfitPips));
 
-         //--- Phase-1 stub: OrderSend close deferred to IMPL-053+ orchestrator wiring.
+         //--- Phase-1 stub: logger-only milestone; broker close wires at
+         //    IMPL-017 / IMPL-062 (RiskManager::OpenOrder) per ea.md.
          //    Evidence for E-AC [log-assertion]: above Info log is the observable milestone.
         }
      }

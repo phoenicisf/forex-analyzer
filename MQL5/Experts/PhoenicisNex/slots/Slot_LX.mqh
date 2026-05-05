@@ -183,10 +183,11 @@ public:
                                  (buy_signal ? "BUY" : "SELL"),
                                  lot, price, sl_price, comment));
 
-      //--- CrossSlotCoordinator stub (IMPL-053)
-      if(m_xslot != NULL && false /*IMPL-053: enable when CrossSlotCoordinator declared*/)
+      //--- CrossSlotCoordinator stub
+      if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (IMPL-017 / IMPL-062) */)
         {
-         //--- Stub: LX pyramid coupling deferred to IMPL-053
+         //--- Stub: LX pyramid coupling
+         //    wires at IMPL-017 / IMPL-062 (cross-slot coupling per ea.md).
         }
      }
 
@@ -225,7 +226,7 @@ public:
                                        ticket, profit_pips, InpLXTpProfitPips,
                                        pos_comment));
 
-            //--- Phase-1 stub: OrderSend close deferred to IMPL-053+
+            //--- Phase-1 stub: logger-only milestone; broker close wires at IMPL-017 / IMPL-062 per ea.md.
            }
         }
      }
