@@ -52,6 +52,9 @@ private:
    ENUM_ORDER_TYPE_FILLING m_filling_mode;
    bool                    m_filling_detected;
 
+   //--- NO_MONEY anti-spam latch (IMPL-FIX-005) — log once per session, then silence
+   bool                    m_margin_warn_logged;
+
    //--- Per-slot helpers for formulas requiring external state
    //    J reads CD parent; BI reads B parent; I reads G parent
    double            _ComputeLotForJ(double extra);
@@ -72,7 +75,8 @@ public:
         m_logger(NULL),
         m_journal(NULL),
         m_filling_mode(ORDER_FILLING_FOK),
-        m_filling_detected(false)
+        m_filling_detected(false),
+        m_margin_warn_logged(false)
      {}
 
    //--- Init เนโฌโ€ store all params and dependency pointers
@@ -742,6 +746,28 @@ bool CRiskManager::OpenOrder(MqlTradeRequest &req, string slot_id)
    //--- Override broker-bound fields (slot pre-built logical req; we own physical dispatch)
    req.type_filling = m_filling_mode;
    req.deviation    = 20;       // 2 pip tolerance for FBS-Real EURUSD; conservative
+
+   //--- IMPL-FIX-005: pre-flight margin guard (anti-spam for NO_MONEY storm)
+   //    Without this, slots without pending state (G/G2/S/T independent-entry path)
+   //    retry every tick when signal valid + balance exhausted → 31k+ NO_MONEY in 44s smoke.
+   //    Strategy: OrderCalcMargin → compare with ACCOUNT_MARGIN_FREE → skip silently if insufficient.
+   //    First skip per session emits one Warn log; subsequent skips are silent (no log spam).
+   double req_margin = 0.0;
+   if(OrderCalcMargin(req.type, req.symbol, req.volume, req.price, req_margin))
+     {
+      double free_margin = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
+      if(req_margin > free_margin)
+        {
+         if(!m_margin_warn_logged)
+           {
+            m_logger.Warn(slot_id, "order_skipped_no_margin", (int)req.magic,
+                          StringFormat("required=%.2f free=%.2f lot=%.2f — subsequent skips silenced this session",
+                                       req_margin, free_margin, req.volume));
+            m_margin_warn_logged = true;
+           }
+         return false;
+        }
+     }
 
    //--- Submit via raw OrderSend (no CTrade dep — slim service-layer dispatcher)
    MqlTradeResult res = {};
