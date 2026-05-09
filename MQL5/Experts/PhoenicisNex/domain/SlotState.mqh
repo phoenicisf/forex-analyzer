@@ -35,7 +35,7 @@ public:
    double        total_lots;              // running aggregate of all open positions in slot pool
    double        last_open_lot;           // lot size of MOST-RECENTLY-OPENED position (BR-4.1 J/I/BI parent-lot
                                           // formula: J = LastBuyLots2*0.23, I = LastGLots*..., BI = 0.236*B-last).
-                                          // Populated by core/Orchestrator.mqh::OnTradeTransaction (line 791) → CPortfolioState::OnTradeTransaction handler.
+                                          // Populated by core/Orchestrator.mqh::OnTradeTransaction handler → CPortfolioState::OnTradeTransaction.
                                           // Default 0.0 — RiskManager._ComputeLotForJ/BI/I emit Warn + return 0
                                           // when this is 0 (Finding 02.3 fail-loud — surfaces unwired path).
    double        total_profit;            // floating P/L

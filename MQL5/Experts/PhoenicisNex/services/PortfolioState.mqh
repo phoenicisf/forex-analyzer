@@ -173,7 +173,7 @@ void CPortfolioState::RegisterAll()
       s.buy_count     = 0;
       s.sell_count    = 0;
       s.total_lots    = 0.0;
-      s.last_open_lot = 0.0;   // Finding 02.3 เนโฌโ€ populated by core/Orchestrator.mqh::OnTradeTransaction (line 791) เนยโ€ CPortfolioState::OnTradeTransaction
+      s.last_open_lot = 0.0;   // Finding 02.3 เนโฌโ€ populated by core/Orchestrator.mqh::OnTradeTransaction handler เนยโ€ CPortfolioState::OnTradeTransaction
       s.total_profit  = 0.0;
       s.last_open_date = 0;
       s.pending_state  = PENDING_STATE_IDLE;

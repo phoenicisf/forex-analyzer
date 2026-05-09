@@ -123,7 +123,7 @@ public:
 //| StringFind("P,", "PI,...") โ’ matches at i=0 then mismatches at    |
 //| i=1 (',' vs 'I'); GetTicketsForSlot uses startsWith semantic so   |
 //| we must filter "PI," explicitly post-call to avoid double-counting|
-//| in pyramid scenario (precedent: Slot_BI.mqh line 89-95).          |
+//| in pyramid scenario (precedent: Slot_BI.mqh::_HasActiveBIOrder).  |
 //+------------------------------------------------------------------+
 bool CSlotP::_HasActivePOrder(CPortfolioState &port, ulong &out_tickets[]) const
   {

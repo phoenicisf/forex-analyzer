@@ -612,7 +612,7 @@ bool CBootstrapValidator::RunDomainSelfTests() const
 //| {5, 10, 15} (per R15 Finding 15.1).                                |
 //|                                                                  |
 //| Tolerance 0.001 mirrors RiskManager::_ComputeLotForS consumer at   |
-//| services/RiskManager.mqh:402-415 เนโฌโ€ keep in sync if either side     |
+//| services/RiskManager.mqh::_ComputeLotForS body เนโฌโ€ keep in sync if either side     |
 //| changes.                                                          |
 //|                                                                  |
 //| Fail path (consistent with ValidateInputs Guard pattern):         |

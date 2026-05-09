@@ -12,7 +12,8 @@
 //|   ManageExits: profit-gate close pattern mirroring Slot_G2.       |
 //|                                                                   |
 //| Activation: Orchestrator wiring path (core/Orchestrator.mqh) (CrossSlotCoordinator wires G โ’ GO call)   |
-//|   Slot_G.mqh:392: TriggerGOverload currently stubbed false.       |
+//|   Slot_G.mqh — grep marker "IMPL-053: enable when TriggerGOverload  |
+//|   declared"; TriggerGOverload currently stubbed false.            |
 //|                                                                   |
 //| Exit (ManageExits):                                               |
 //|   - Profit gate โฅ InpGOTpProfitPips (40 pip default)             |
@@ -96,7 +97,8 @@ bool CSlotGO::_HasActiveGOOrder(CPortfolioState &port) const
 //| Evaluate โ€” Slot GO entry pass (sub-call only; early-return guard) |
 //|                                                                   |
 //| Phase 1 MVP: GO is invoked sub-call only from G's TriggerGOverload|
-//| (BR-2.2, currently stubbed false at Slot_G.mqh:392). This method |
+//| (BR-2.2, currently stubbed false at Slot_G.mqh — grep marker     |
+//| "IMPL-053: enable when TriggerGOverload declared"). This method  |
 //| is NOT called from the main OnTick slot topo. The body early-     |
 //| returns until IMPL-053 activates TriggerGOverload โ’ GO call.     |
 //|                                                                   |

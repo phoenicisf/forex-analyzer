@@ -152,8 +152,9 @@ protected:
    //    slot post-RegisterAll", via per-slot SetPipMath()) the helpers
    //    route through CPipMath; otherwise
    //    a SINGLE fallback site implements
-   //    the canonical 5/3-digit detection (matches CPipMath::Init at
-   //    helpers/PipMath.mqh:31). Slots ห้าม re-derive this expression.
+   //    the canonical 5/3-digit detection (matches CPipMath::Init body
+   //    in helpers/PipMath.mqh — grep marker "BR-9.3: 5-digit EURUSD
+   //    broker"). Slots ห้าม re-derive this expression.
 
    //--- Returns price delta for 1 pip (5-digit broker → 0.00010).
    double            _PipSize() const

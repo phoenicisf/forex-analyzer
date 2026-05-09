@@ -196,8 +196,10 @@ public:
 
                     ~COrchestrator()
      {
-      // fix-round-11 § 11.1 — value-typed global path (PhoenicisNex.mq5:41)
-      // invokes this dtor AFTER MT5's OnDeinit already ran _TeardownAll.
+      // fix-round-11 § 11.1 — value-typed global path (PhoenicisNex.mq5
+      // — grep marker "Single global composition root"; declaration:
+      // `COrchestrator g_orchestrator;`) invokes this dtor AFTER MT5's
+      // OnDeinit already ran _TeardownAll.
       // Skip dtor-fallback emit when teardown already completed; only fire
       // if dtor reaches us with services still live (true partial-init crash
       // where OnDeinit never ran — original safety-net intent).
