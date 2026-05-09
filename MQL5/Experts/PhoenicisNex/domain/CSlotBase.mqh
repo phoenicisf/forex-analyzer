@@ -65,7 +65,8 @@ protected:
    //--- Round-06 06.1: pip-arithmetic helper (ea.md mandate). Composition
    //    Root calls SetPipMath() on every registered slot in
    //    core/Orchestrator.mqh::OnInit Phase B post-RegisterAll loop
-   //    (line 365-369: `for(i=0; i<m_registry.Count(); i++) s.SetPipMath(m_pip)`).
+   //    (grep marker: "wire CPipMath into every slot post-RegisterAll";
+   //    body: `for(i=0; i<m_registry.Count(); i++) s.SetPipMath(m_pip)`).
    //    When NULL the protected helpers fall back to inline 5/3-digit
    //    detection (single fallback site eliminates the 19-way drift
    //    Finding 06.1 reported).
@@ -147,8 +148,9 @@ public:
 protected:
    //--- Round-06 06.1 — pip helpers shared by 19 derived slots. When
    //    m_pip is wired (set by core/Orchestrator.mqh::OnInit Phase B
-   //    post-RegisterAll loop at line 365-369, via per-slot SetPipMath())
-   //    the helpers route through CPipMath; otherwise
+   //    post-RegisterAll loop — grep marker "wire CPipMath into every
+   //    slot post-RegisterAll", via per-slot SetPipMath()) the helpers
+   //    route through CPipMath; otherwise
    //    a SINGLE fallback site implements
    //    the canonical 5/3-digit detection (matches CPipMath::Init at
    //    helpers/PipMath.mqh:31). Slots ห้าม re-derive this expression.
