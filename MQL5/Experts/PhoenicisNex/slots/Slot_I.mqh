@@ -286,7 +286,7 @@ void CSlotI::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (Orchestrator wiring path (core/Orchestrator.mqh)) */)
      {
       //--- Stub: Fibonacci parasite coupling
-      //    wires at Orchestrator wiring path (core/Orchestrator.mqh) (cross-slot coupling per ea.md).
+      //    wires through core/Orchestrator.mqh (cross-slot coupling per ea.md).
      }
   }
 
@@ -349,7 +349,7 @@ void CSlotI::ManageExits(CPortfolioState &port)
       if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (Orchestrator wiring path (core/Orchestrator.mqh)) */)
         {
          //--- Stub: orphan-guard coupling (close I when parent G closes)
-         //    wires at Orchestrator wiring path (core/Orchestrator.mqh) (cross-slot coupling per ea.md).
+         //    wires through core/Orchestrator.mqh (cross-slot coupling per ea.md).
         }
      }
   }

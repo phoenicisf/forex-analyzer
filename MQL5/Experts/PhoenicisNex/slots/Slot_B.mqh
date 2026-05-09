@@ -206,7 +206,7 @@ public:
       string           comment    = "B,anti,1";
 
       //--- Submit order via RiskManager (which wraps CTrade per ea.md)
-      //    RiskManager::OpenOrder wired at Orchestrator wiring path (core/Orchestrator.mqh).
+      //    RiskManager::OpenOrder wired through core/Orchestrator.mqh.
       //    Until then: log intent so SelfTest/smoke verifies entry path
       //    without panicking on NULL CTrade.
       if(m_logger != NULL)
@@ -264,7 +264,7 @@ public:
                           StringFormat("ticket=%I64u profit_pips=%.1f",
                                        ticket, profit_pips));
 
-         //--- Phase-1 stub: m_risk.CloseOrder(ticket) wires at Orchestrator wiring path (core/Orchestrator.mqh)
+         //--- Phase-1 stub: m_risk.CloseOrder(ticket) wires through core/Orchestrator.mqh
          //    Post-close BR-trigger hook (BR-2.2 orphan exit-only spawn);
          //    fires AFTER OrderClose returns per CodeWiki เธขเธ3.18 contract.
          //    Gated `false` keeps G1 compile clean per Slot_G precedent.

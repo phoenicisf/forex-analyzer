@@ -162,7 +162,7 @@ void CSlotH::_TryExit(ulong ticket, double open_price, datetime open_time,
    bool should_exit = (profit_pips >= InpHTpMinPips) || (age_bars > InpHMaxAgeBars);
    if(!should_exit) return;
 
-   //--- Phase-1 stub: log intent โ€” m_risk.CloseOrder(ticket) wires at Orchestrator wiring path (core/Orchestrator.mqh)
+   //--- Phase-1 stub: log intent โ€” m_risk.CloseOrder(ticket) wires through core/Orchestrator.mqh
    //    Observable milestone for E-AC [log-assertion] when wired.
    if(m_logger != NULL)
       m_logger.Info("Slot_H", "exit_profit_gate", MAGIC_H,
@@ -238,7 +238,7 @@ void CSlotH::Evaluate(const MarketContext &ctx, CPortfolioState &port)
 
    //--- Submit order via RiskManager wrapper (ea.md: ALL CTrade calls
    //    through RiskManager โ€” slots เธซเนเธฒเธก instantiate CTrade เธ•เธฃเธ).
-   //    Phase-1 stub: log intent only; m_risk.OpenOrderH(...) wires at Orchestrator wiring path (core/Orchestrator.mqh).
+   //    Phase-1 stub: log intent only; m_risk.OpenOrderH(...) wires through core/Orchestrator.mqh.
    //    SL is computed (not naked 0) so when wiring lands the stop-loss is
    //    threaded into OrderSend; mirrors 17 sibling slots (e.g. Slot_B sl_price).
    ENUM_ORDER_TYPE order_type = is_buy ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;

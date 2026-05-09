@@ -546,7 +546,7 @@ void CSlotP::ManageExits(CPortfolioState &port)
                        StringFormat("ticket=%I64u comment=%s profit_pips=%.1f "
                                     ">= gate=%.1f โ’ close",
                                     ticket, c, profit_pips, gate));
-         //--- Phase-1 stub: logger-only milestone; broker close wires at Orchestrator wiring path (core/Orchestrator.mqh) per ea.md.
+         //--- Phase-1 stub: logger-only milestone; broker close wires through core/Orchestrator.mqh per ea.md.
         }
      }
 
@@ -572,7 +572,7 @@ void CSlotP::ManageExits(CPortfolioState &port)
                        StringFormat("ticket=%I64u sub_mode=E profit_pips=%.1f "
                                     ">= gate=%.1f โ’ close",
                                     ticket, profit_pips, InpPTpPipsE));
-         //--- Phase-1 stub: logger-only milestone; broker close wires at Orchestrator wiring path (core/Orchestrator.mqh) per ea.md.
+         //--- Phase-1 stub: logger-only milestone; broker close wires through core/Orchestrator.mqh per ea.md.
         }
      }
   }

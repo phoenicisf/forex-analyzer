@@ -134,7 +134,7 @@ void CSlotJ::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    if(_HasActiveJOrder(port)) return;
 
    //--- Phase-1 stub: no entry signal in main topo โ€”
-   //    CD-follower sub-call wires at Orchestrator wiring path (core/Orchestrator.mqh)
+   //    CD-follower sub-call wires through core/Orchestrator.mqh
    //    (cross-slot coupling per ea.md) via CrossSlotCoordinator.
    //    Observable E-AC milestone for [log-assertion] once that wires:
    //
@@ -149,7 +149,7 @@ void CSlotJ::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    if(m_xslot != NULL && false /* enable when CrossSlotCoordinator wires CDโ’J (Orchestrator wiring path (core/Orchestrator.mqh)) */)
      {
       //--- Stub: J activation from CD-entry event
-      //    wires at Orchestrator wiring path (core/Orchestrator.mqh) (cross-slot coupling per ea.md).
+      //    wires through core/Orchestrator.mqh (cross-slot coupling per ea.md).
      }
   }
 

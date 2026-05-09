@@ -187,7 +187,7 @@ public:
       if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (Orchestrator wiring path (core/Orchestrator.mqh)) */)
         {
          //--- Stub: LX pyramid coupling
-         //    wires at Orchestrator wiring path (core/Orchestrator.mqh) (cross-slot coupling per ea.md).
+         //    wires through core/Orchestrator.mqh (cross-slot coupling per ea.md).
         }
      }
 
@@ -226,7 +226,7 @@ public:
                                        ticket, profit_pips, InpLXTpProfitPips,
                                        pos_comment));
 
-            //--- Phase-1 stub: logger-only milestone; broker close wires at Orchestrator wiring path (core/Orchestrator.mqh) per ea.md.
+            //--- Phase-1 stub: logger-only milestone; broker close wires through core/Orchestrator.mqh per ea.md.
            }
         }
      }

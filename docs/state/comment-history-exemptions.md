@@ -27,11 +27,11 @@ grep -rE "<dynamic-closed-task-pattern>" MQL5/ simulation/ \
 
 > **Format:** `<repo-relative-path>:<line>:<task-id>:<justification>` — one row per site.
 >
-> **First-pass population (2026-05-05):** the ~86 banner-style sites cited in fix-round-19 §19.2 Partial-Accept — historical sub-pass attribution comments. Engineer pass deferred to next maintenance round; until populated, Gate #9d falls back to the manual narrative-justification path used in fix-round-19 §19.2.
+> **First-pass population (2026-05-05):** the ~86 banner-style sites cited in fix-round-19 §19.2 Partial-Accept — historical sub-pass attribution comments. **Tracked under IMPL-FIX-004** (per fix-round-21 §21.3 / review-round-21 Finding 21.3 MEDIUM Option B) — `docs/state/deferred-ac-registry.md` Active row, owner Kritsana, opened 2026-05-05, expires 2026-05-19. Until populated, Gate #9d falls back to the manual narrative-justification path used in fix-round-19 §19.2 (this fallback path is now an explicitly-tracked deferral, not a silent placeholder).
 
 | File | Line | Task ref | Justification |
 |------|------|----------|---------------|
-| _(manifest seeded; first-pass enumeration deferred to next maintenance window)_ | | | |
+| _(populate work tracked under IMPL-FIX-004; deferred-ac-registry row Active until 2026-05-19)_ | | | |
 
 ## Cross-references
 

@@ -130,7 +130,7 @@ void CSlotBR::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    if(_CountBROrders(port) >= InpBRMaxOrders) return;
 
    //--- Phase-1 stub: no entry signal in main topo โ€” TriggerBR sub-call
-   //    wires at Orchestrator wiring path (core/Orchestrator.mqh) (cross-slot coupling per ea.md).
+   //    wires through core/Orchestrator.mqh (cross-slot coupling per ea.md).
    //    Observable milestone for E-AC [log-assertion] once that wires:
    //
    //    double balance  = AccountInfoDouble(ACCOUNT_BALANCE);
@@ -144,7 +144,7 @@ void CSlotBR::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    if(m_xslot != NULL && false /* enable when TriggerBR wired per BR-2.2 (Orchestrator wiring path (core/Orchestrator.mqh)) */)
      {
       //--- Stub: BR activation from B's ExtraTakeProfit_B
-      //    wires at Orchestrator wiring path (core/Orchestrator.mqh) (cross-slot coupling per ea.md).
+      //    wires through core/Orchestrator.mqh (cross-slot coupling per ea.md).
      }
   }
 

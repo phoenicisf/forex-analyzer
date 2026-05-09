@@ -18,7 +18,7 @@
 //|                                                                  |
 //| Pattern: mirrors Spike_Slot_LX.mq5 / Spike_Slot_BR.mq5 minimal    |
 //| harness. IMPL-018 precedent: G2-G4 deferred; G1 + SelfTest = bar. |
-//| E-AC smoke + G4 attestation wire at Orchestrator wiring path (core/Orchestrator.mqh)           |
+//| E-AC smoke + G4 attestation wire through core/Orchestrator.mqh           |
 //|   (RiskManager::OpenOrder) + 60-day Tester run with B+BI active   |
 //|   per IMPL-039 E-AC.                                              |
 //+------------------------------------------------------------------+

@@ -249,7 +249,7 @@ void CSlotS::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (Orchestrator wiring path (core/Orchestrator.mqh)) */)
      {
       //--- Stub: S post-close coupling
-      //    wires at Orchestrator wiring path (core/Orchestrator.mqh) (cross-slot coupling per ea.md).
+      //    wires through core/Orchestrator.mqh (cross-slot coupling per ea.md).
      }
   }
 
@@ -312,7 +312,7 @@ void CSlotS::ManageExits(CPortfolioState &port)
       if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (Orchestrator wiring path (core/Orchestrator.mqh)) */)
         {
          //--- Stub: orphan-guard coupling
-         //    wires at Orchestrator wiring path (core/Orchestrator.mqh) (cross-slot coupling per ea.md).
+         //    wires through core/Orchestrator.mqh (cross-slot coupling per ea.md).
         }
      }
   }

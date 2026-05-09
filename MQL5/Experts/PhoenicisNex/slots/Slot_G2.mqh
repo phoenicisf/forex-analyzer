@@ -258,7 +258,7 @@ void CSlotG2::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (Orchestrator wiring path (core/Orchestrator.mqh)) */)
      {
       //--- Stub: coupling to G-overload signal
-      //    wires at Orchestrator wiring path (core/Orchestrator.mqh) (cross-slot coupling per ea.md).
+      //    wires through core/Orchestrator.mqh (cross-slot coupling per ea.md).
      }
   }
 

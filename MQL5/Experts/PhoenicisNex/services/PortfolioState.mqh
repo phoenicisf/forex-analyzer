@@ -275,7 +275,7 @@ void CPortfolioState::RegisterAll()
      }
 
    // Emit registration summary for log-assertion E-AC evidence
-   //   (consumer wired at Orchestrator wiring path (core/Orchestrator.mqh) per impl-plan).
+   //   (consumer wired through core/Orchestrator.mqh per impl-plan).
    // Grep pattern: grep -E '\[Phoenicis\].*\[ev=portfolio_registered\]'
    if(m_logger != NULL)
       m_logger.Info("portfolio", "portfolio_registered", 0,

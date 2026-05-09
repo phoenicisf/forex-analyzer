@@ -16,7 +16,7 @@
 //|   - SlotId() non-empty (not sentinel "")                          |
 //|                                                                   |
 //| Pattern: mirrors Spike_Slot_G2.mq5 stub shape (IMPL-026).         |
-//| NOTE: G2-G4 full entry+exit E-ACs wire at Orchestrator wiring path (core/Orchestrator.mqh)     |
+//| NOTE: G2-G4 full entry+exit E-ACs wire through core/Orchestrator.mqh     |
 //|       (RiskManager::OpenOrder); smoke ini committed for PR contract|
 //|       per TD-02 ยง13.6 (see simulation/headless-tests/slot_GO_smoke.ini).|
 //+------------------------------------------------------------------+

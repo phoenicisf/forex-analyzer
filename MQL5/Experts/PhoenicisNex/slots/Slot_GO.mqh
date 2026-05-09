@@ -116,7 +116,7 @@ void CSlotGO::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    if(_HasActiveGOOrder(port)) return;
 
    //--- Phase-1 stub: no entry signal in main topo โ€” TriggerGOverload sub-call
-   //    wires at Orchestrator wiring path (core/Orchestrator.mqh) (cross-slot coupling per ea.md).
+   //    wires through core/Orchestrator.mqh (cross-slot coupling per ea.md).
    //    Observable milestone for E-AC [log-assertion] once that wires:
    //
    //    double balance  = AccountInfoDouble(ACCOUNT_BALANCE);
@@ -129,7 +129,7 @@ void CSlotGO::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    if(m_xslot != NULL && false /* enable when TriggerGOverload wired (Orchestrator wiring path (core/Orchestrator.mqh)) */)
      {
       //--- Stub: GO activation from G's TriggerGOverload
-      //    wires at Orchestrator wiring path (core/Orchestrator.mqh) (cross-slot coupling per ea.md).
+      //    wires through core/Orchestrator.mqh (cross-slot coupling per ea.md).
      }
   }
 
