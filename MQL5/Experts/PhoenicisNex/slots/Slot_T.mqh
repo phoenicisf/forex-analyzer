@@ -258,6 +258,9 @@ void CSlotT::Evaluate(const MarketContext &ctx, CPortfolioState &port)
                                     (isBuy ? "BUY" : "SELL"), lot, sl_pips, price, sl_price,
                                     comment));
 
+      //--- IMPL-FIX-003: submit broker order via RiskManager.OpenOrder wrapper (ea.md mandate)
+      m_risk.OpenOrder(req, "T");
+
       //--- Transition PMR to EXECUTED state (force-clear counter resets)
       m_pending.TransitionExecuted(PM_T);
      }

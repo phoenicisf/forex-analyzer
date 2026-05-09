@@ -245,6 +245,9 @@ void CSlotS::Evaluate(const MarketContext &ctx, CPortfolioState &port)
                               lot, InpSSlPips, price, sl_price, comment,
                               ctx.adx_h4.adx, ctx.wpr_h4.wpr, trend_dir));
 
+   //--- IMPL-FIX-003: submit broker order via RiskManager.OpenOrder wrapper (ea.md mandate)
+   m_risk.OpenOrder(req, "S");
+
    //--- CrossSlotCoordinator stub
    if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (Orchestrator wiring path (core/Orchestrator.mqh)) */)
      {

@@ -24,6 +24,7 @@
 
 #include "Logger.mqh"
 #include "PortfolioState.mqh"
+#include "TradeJournal.mqh"
 #include "../domain/EnumTypes.mqh"
 #include "../domain/SlotState.mqh"
 
@@ -45,6 +46,11 @@ private:
    //--- Injected dependencies (Composition Root per ADR-002)
    CPortfolioState  *m_portfolio;   // for J/BI/I formulas requiring parent slot read
    CLogger          *m_logger;
+   CTradeJournal    *m_journal;     // optional; SetJournal() injects; OpenOrder writes entry record on success (IMPL-FIX-003)
+
+   //--- OrderSend filling-mode cache (IMPL-FIX-003) — detect once, reuse
+   ENUM_ORDER_TYPE_FILLING m_filling_mode;
+   bool                    m_filling_detected;
 
    //--- Per-slot helpers for formulas requiring external state
    //    J reads CD parent; BI reads B parent; I reads G parent
@@ -63,7 +69,10 @@ public:
       : m_main_risk_ratio(1.0),
         m_limit_max_lot_size_ratio(2.9),
         m_portfolio(NULL),
-        m_logger(NULL)
+        m_logger(NULL),
+        m_journal(NULL),
+        m_filling_mode(ORDER_FILLING_FOK),
+        m_filling_detected(false)
      {}
 
    //--- Init เนโฌโ€ store all params and dependency pointers
@@ -88,6 +97,19 @@ public:
    //--- SelfTest เนโฌโ€ validates เนยเธ…6 cases; safe to call with m_portfolio=NULL
    //    (J/BI/I parent-read paths skipped when portfolio NULL เนโฌโ€ documented)
    static bool SelfTest();
+
+   //--- Optional TradeJournal injection (IMPL-FIX-003) — Orchestrator wires after both Init() calls
+   //    NULL = journal not wired; OpenOrder still emits Logger order_sent/order_failed but skips WriteEvent
+   void              SetJournal(CTradeJournal *journal) { m_journal = journal; }
+
+   //--- OpenOrder (IMPL-FIX-003) — submit broker OrderSend through ea.md-mandated wrapper
+   //    Slot pre-builds MqlTradeRequest req with action/symbol/volume/type/price/sl/tp/comment/magic;
+   //    RiskManager overrides type_filling (detected once) + deviation, calls OrderSend, handles result.
+   //    On TRADE_RETCODE_DONE: emit Logger.Info(slot_id, "order_sent") + WriteEvent(entry record) if
+   //                           m_journal != NULL → return true.
+   //    Else:                  emit Logger.Error(slot_id, "order_failed", rc+desc+lot+price) → return false.
+   //    Slot ห้าม instantiate CTrade ตรง per ea.md; here we use raw OrderSend (no CTrade dep).
+   bool              OpenOrder(MqlTradeRequest &req, string slot_id);
 
   }; // end class CRiskManager
 
@@ -670,6 +692,102 @@ bool CRiskManager::SelfTest()
 
    Print("[Phoenicis][RiskManager][ev=risk_manager_self_test][result=pass] 9 cases passed");
    return true;
+  }
+
+//+------------------------------------------------------------------+
+//| OpenOrder (IMPL-FIX-003) — broker OrderSend wrapper per ea.md   |
+//|                                                                  |
+//| Slots ห้าม instantiate CTrade ตรง — they pre-build               |
+//| MqlTradeRequest req with action/symbol/volume/type/price/sl/tp/  |
+//| comment/magic; this method overrides type_filling (detected once |
+//| via SymbolInfoInteger SYMBOL_FILLING_MODE) + deviation, then      |
+//| calls raw OrderSend (no CTrade dep). Result handling:             |
+//|   TRADE_RETCODE_DONE → Logger.Info(slot_id, "order_sent")         |
+//|                       + WriteEvent if m_journal wired → return T  |
+//|   else              → Logger.Error(slot_id, "order_failed")       |
+//|                       (no journal write on fail) → return F      |
+//|                                                                  |
+//| FBS-Real EURUSD typically supports IOC + FOK; SYMBOL_FILLING_RETURN|
+//| is the conservative fallback. Detection happens lazily on first   |
+//| call so terminal startup ordering is not constrained.             |
+//|                                                                  |
+//| Discovery: Tier 1.5 walk batch-3 2026-05-09 — EA emitted 322k    |
+//| ev=entry_signal events but ZERO ev=order_sent (final balance     |
+//| unchanged at $1000); root cause = this method was never built.    |
+//+------------------------------------------------------------------+
+bool CRiskManager::OpenOrder(MqlTradeRequest &req, string slot_id)
+  {
+   if(m_logger == NULL)
+     {
+      Print("[Phoenicis][RiskManager][ev=order_skipped] logger NULL ห้าม OpenOrder");
+      return false;
+     }
+
+   //--- Detect filling mode once (broker symbol property) and cache
+   if(!m_filling_detected)
+     {
+      uint fm = (uint)SymbolInfoInteger(_Symbol, SYMBOL_FILLING_MODE);
+      if((fm & SYMBOL_FILLING_IOC) != 0)
+         m_filling_mode = ORDER_FILLING_IOC;
+      else if((fm & SYMBOL_FILLING_FOK) != 0)
+         m_filling_mode = ORDER_FILLING_FOK;
+      else
+         m_filling_mode = ORDER_FILLING_RETURN;
+      m_filling_detected = true;
+      m_logger.Info("RiskManager", "filling_mode_detected", 0,
+                    StringFormat("symbol=%s fm=0x%X selected=%s",
+                                 _Symbol, fm, EnumToString(m_filling_mode)));
+     }
+
+   //--- Override broker-bound fields (slot pre-built logical req; we own physical dispatch)
+   req.type_filling = m_filling_mode;
+   req.deviation    = 20;       // 2 pip tolerance for FBS-Real EURUSD; conservative
+
+   //--- Submit via raw OrderSend (no CTrade dep — slim service-layer dispatcher)
+   MqlTradeResult res = {};
+   bool sent = OrderSend(req, res);
+
+   if(sent && res.retcode == TRADE_RETCODE_DONE)
+     {
+      m_logger.Info(slot_id, "order_sent", (int)req.magic,
+                    StringFormat("ticket=%I64u dir=%s lot=%.2f price=%.5f sl=%.5f comment=%s",
+                                 res.order, EnumToString(req.type), req.volume,
+                                 req.price, req.sl, req.comment));
+
+      //--- Journal entry record (if injected via SetJournal)
+      if(m_journal != NULL)
+        {
+         JournalEvent ev;
+         ev.timestamp_seconds      = TimeCurrent();
+         ev.timestamp_microseconds = (ulong)((GetMicrosecondCount()) % 1000000);
+         ev.event_type             = "entry";
+         ev.slot_id                = slot_id;
+         ev.magic                  = (int)req.magic;
+         ev.ticket_id              = res.order;
+         ev.symbol                 = req.symbol;
+         ev.order_type             = EnumToString(req.type);
+         ev.lot                    = req.volume;
+         ev.price                  = req.price;
+         ev.sl                     = req.sl;
+         ev.tp                     = req.tp;
+         ev.comment                = req.comment;
+         ev.signal_context         = "";
+         ev.triggering_function    = "";
+         ev.parent_ticket_id       = 0;
+         ev.halt_reason            = "";
+         ev.pending_age_bars       = 0;
+         m_journal.WriteEvent(ev);
+        }
+      return true;
+     }
+   else
+     {
+      m_logger.Error(slot_id, "order_failed", (int)req.magic,
+                     StringFormat("rc=%u sent=%s lot=%.2f price=%.5f sl=%.5f comment=%s deal=%I64u",
+                                  res.retcode, (sent ? "true" : "false"),
+                                  req.volume, req.price, req.sl, req.comment, res.deal));
+      return false;
+     }
   }
 
 #endif // PHOENICISNEX_SERVICES_RISKMANAGER_MQH

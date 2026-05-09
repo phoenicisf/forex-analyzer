@@ -298,6 +298,7 @@ int COrchestrator::OnInit()
    m_ctx_builder.Init(m_indicators, m_logger);                                     // step 7  (D-1)
    m_risk.Init(InpMainRiskRatio, InpLimitMaxLotSizeRatio, m_portfolio, m_logger);  // step 8
    m_journal.Init(m_ctx_builder, m_portfolio, m_logger, m_state);                  // step 9
+   m_risk.SetJournal(GetPointer(m_journal));                                       // step 9a — IMPL-FIX-003 entry-record write hook
    m_breaker.Init(m_logger);                                                        // step 10
    m_time.Init(InpMorningWindowMinutes, InpMondaySpreadThreshold,
                InpHolidayStartMonth, InpHolidayStartDay,

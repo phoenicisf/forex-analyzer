@@ -254,6 +254,9 @@ void CSlotG2::Evaluate(const MarketContext &ctx, CPortfolioState &port)
                  StringFormat("dir=%s lot=%.2f sl_pips=%.1f price=%.5f sl=%.5f comment=%s",
                               (buySignal ? "BUY" : "SELL"), lot, sl_pips, price, sl_price, comment));
 
+   //--- IMPL-FIX-003: submit broker order via RiskManager.OpenOrder wrapper (ea.md mandate)
+   m_risk.OpenOrder(req, "G2");
+
    //--- CrossSlotCoordinator stub
    if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (Orchestrator wiring path (core/Orchestrator.mqh)) */)
      {
