@@ -4,6 +4,24 @@
 
 ## Last completed action
 
+**Code Review Fix Round 24 CLOSED 2026-05-09 — methodology-only round (extend Gate #9 clause (h) exemption regex + author clause (i))**
+
+- **Trigger:** `/impl-review-fix review-round-24.md` — 2 findings (MEDIUM 1 / LOW 1). Verify-only sweep + R23-mandated termination test surfaced 4th axis on chain (R12→R24): exemption regex itself was scope-narrower than its intent, returning 5 surviving non-exempt-by-regex hits that fix-round-23 §23.1 had hand-classified as exempt. **Accepted 2/2** (1 actioned, 1 narrative-only).
+- **24.1 MEDIUM (Gate #9 clause (h) exemption regex extended):** Replaced narrow exemption `(TD-02 §|ADR-[0-9]+ §|TD-02 line|ADR-[0-9]+ line)` with extended form covering 4 missed classes: (α) merged `TD-02 (§|line)` + `ADR-[0-9]+ (§|line)`; (β) bare-§ doc anchor ` § X.Y line ` (catches `(per § 7.4 line 1659)` form); (γ) spec-yaml anchors `(trade-journal-schema|state-persistence-schema|slot-abstraction-contract).yaml`; (δ) TA-indicator false-positive filter `MACD|Signal|EMA|SMA|RSI line`. **Authored clause (i) exemption-regex tree-wide verifiability** as inline meta-rule — exemption regexes used inside Gate #9 verification post-conditions MUST themselves be tree-wide-verifiable; surviving hits MUST either extend the regex (with attestation) or be enumerated as scope-out exceptions in the fix-round narrative (no narrative-only hand-classification). Footer "Why this is here" appended with R24 paragraph documenting the 4-axis chain {catalog (R20) + destination (R21) + anchor (R22-R23) + exemption-regex (R24)}.
+- **24.2 LOW (R23 §23.1 site #3 narrative-precision):** No action — already self-corrected in fix-round-23 verdict-table cell ("function actually IS at line 791 today"). Methodology note adopted: future review rounds invoking clause (h) MUST classify surviving hits as {realized-drift / text-violation / compliant} with explicit per-category counts.
+- **Verification (post-fix combined regex, tree-wide):** 1 surviving hit at `core/BootstrapValidator.mqh:81` — mojibake'd `§` byte sequence (`od -c` shows `340 271 200 340 270 230 340 270 202 340 271 200 340 270 230 302 207` Thai chars + `` control, instead of UTF-8 `\xc2\xa7` for `§`). Enumerated as scope-out per clause (i)(b): latent file-transcoding defect across 5 files (`core/BootstrapValidator.mqh`, `inputs/Inputs_Slot_BI.mqh`, `inputs/Inputs_Slot_BR.mqh`, `inputs/Inputs_Slot_GO.mqh`, `services/CircuitBreaker.mqh`); reviewer's footnote claim "on UTF-8 terminal this site IS exempt" is incorrect — corruption is in file content, not terminal rendering. Flagged for separate cleanup ticket.
+- **Termination test outcome:** Gate #9 clauses (a)-(g) verify clean tree-wide simultaneously ✅; clause (h) returns 5→0 exempt-by-regex hits + 1 scope-justified hit ✅; clause (i) verifies the verification mechanism itself ✅. R12→R24 chain extends to 4-axis termination; R25 verify-only sweep should re-run full meta-grep over (a)-(i) to declare chain termination.
+- **Phase 5 mechanical gates:** Gate #1 forbidden-pattern (n/a — no plan changes); Gate #5 overview.md sync ✅; Gate #9 clauses (a)-(i) ✅; Gate #11 working-tree clean (post-commit). Gate #10 stash-clean G1 n/a (no source code changes; rule edit in `.claude/rules/workflow.md` not compiled).
+- **No source code changes** — methodology-only round.
+- **Plan Staleness Sentinel:** unchanged from R09 advisory (fix-round commits don't increment IMPL-NNN closure counter).
+- **Files modified:** `.claude/rules/workflow.md` (Gate #9 clause (h) extended exemption regex + R24 strengthening narrative + new clause (i) + footer R24 paragraph) + `docs/state/overview.md` (Impl Plan row status string append) + `docs/state/current_handoff.md` (this section) + `docs/code-review/fix-round-24.md` (NEW report).
+- **Output:** `docs/code-review/fix-round-24.md`.
+- **Recommended next action:** `/impl-review all` R25 verify-only sweep to confirm 4-axis termination; OR proceed with IMPL-062 (Bucket A regression) per prior R09 advisory queue.
+
+---
+
+## Prior completed action — IMPL-017 + IMPL-066 + IMPL-067 P4 QA verification authoring parallel batch
+
 **IMPL-017 + IMPL-066 + IMPL-067 CLOSED 2026-05-05 — P4 QA verification authoring parallel batch (Sonnet 4.6 fan-out)**
 
 - **Trigger:** `/impl-task parallel` — orchestrator scanned P4 ready-task pool, proposed 3-task batch (IMPL-017 [S] sweep compat, IMPL-066 [S] journal latency, IMPL-067 [M] DST regression), HALT-ed for approval, fan-out to 3× general-purpose `andm-impl-engineer` subagents on Sonnet 4.6 in one message with disjoint SCOPE constraint per workflow §1.5.
