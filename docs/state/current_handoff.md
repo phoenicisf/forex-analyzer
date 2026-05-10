@@ -4,6 +4,49 @@
 
 ## Last completed action
 
+**🔴 IMPL-FIX-006 root cause IDENTIFIED + task block AUTHORED 2026-05-10 — RiskManager.ComputeLot dimensional formula bug (R-8 closed pending implementation)**
+
+- **Trigger:** user said "do it" to recommended next action ("Open IMPL-FIX-006 root-cause investigation").
+- **Investigation method:** parallel inspection of (1) rewrite `services/RiskManager.mqh::ComputeLot` body lines 191-237; (2) rewrite per-slot private variants `_ComputeLotForJ/_BI/_I/_S/_K` lines 302-457; (3) legacy 22k-LOC `MQL5/Experts/PhoenicisN2.10_stable.mq5` to find `CalculateLotSize` call sites (~80 hits across 17137-21826); (4) `MQL5/Libraries/LibCommon1.1.mq5:835` where `CalculateLotSize` body lives (file referenced from legacy mq5 line 20 `#include "./..//Libraries//LibCommon1.1.mq5"`); (5) authoritative spec `docs/foundation-input-sources/PhoenicisN2.10_CodeWiki.md` § 4.1 lines 767-826.
+- **Root cause confirmed (CRITICAL):** rewrite `CRiskManager::ComputeLot(slot_id, sl_pips, balance, extra_multiplier)` body is **dimensionally wrong** — produces riskMoney (USD), not lots. Formula path:
+  ```
+  base   = balance × m_main_risk_ratio                          (line 194)
+  G2:    result = base × 0.15 × 0.7 × extra_multiplier           (line 205)
+  stepped = _StepRound(result)                                  (line 228)
+  clamped = ClampLot(stepped, slot_id)                          (line 229)
+  ```
+  For Balance=$1000 + m_main_risk_ratio=1.0 + Slot_G2 + sl_pips=77 → **result = $105 USD assigned as lot count → clamped to MAX 2.90 cap**.
+  The `sl_pips` parameter (line 191 signature) is consumed **only at line 234** (`Logger.Debug` format string `"slot=%s sl_pips=%.1f raw=%.4f stepped=%.4f clamped=%.4f"`) — NEVER divided into the result. Same pattern across `_ComputeLotForS` (line 444 `balance × factor`) + `_ComputeLotForK` (line 456 `balance × m_main_risk_ratio × 0.20 × extra`); both also ignore sl_pips.
+- **Legacy formula (correct, from `MQL5/Libraries/LibCommon1.1.mq5:835`):**
+  ```mql5
+  double lotSize = (AccountInfoDouble(ACCOUNT_BALANCE) * riskPercentage / 100) / (stopLossPips * Point());
+  lotSize = (lotSize * Point()) / DigitMultipier;
+  return NormalizeDouble(lotSize, 2);
+  // Simplifies to: lots = riskMoney / (slPips × pipValue) where pipValue = Point × DigitMultipier
+  ```
+  For Balance=$1000 + RiskPct=10 + slPips=77 + DigitMultipier=10 (5-digit broker) → **lots ≈ 0.13** ✅.
+- **CodeWiki §4.1 spec (lines 769-826) confirms LegacyCalculateLotSize is the authoritative formula** + per-slot riskPercent + helper trim multipliers (G2=10.5%, C=15%, M=0.8× computed, Q=0.8× pyramid, etc.). Spec is unambiguous; rewrite is a translation defect, not an architectural deviation.
+- **Slots affected (17 of 21):** C/D/F/G/G2/GO/M/L/LX/Q/R/P/T/B/BR/H + indirect K/S via `_ComputeLotForK/_ComputeLotForS`. **Slots already correct (3 of 21):** J/BI/I — these use parent-anchored `last_open_lot × fibonacci_pct` which produces lot-units directly (last_open_lot is populated from MT5 deal.volume which IS in lots).
+- **Decision matrix outcome:** **Option (a) code fix in IMPL-FIX-006 ticket** — NOT `/backtrack sd` (no ADR governs ComputeLot formula); NOT `/backtrack ba` (CodeWiki §4.1 + LibCommon implementation are unambiguous; rewrite simply mistranslated).
+- **Secondary concern (Slot_G2 race):** `_HasActiveG2Order` gate at `slots/Slot_G2.mqh:186` worked 6,728 of 6,731 evaluations correctly (0.04% miss rate). The 3 misses produced 3 same-magic fills in 21 sec (16:00:00, 16:00:02, 16:00:21). Likely race condition between `OrderSend` success + MT5 dispatching `OnTradeTransaction` + PortfolioState populator wiring. Becomes moot post-FIX-006 (with proper lot=0.1-0.2 range, 3 simultaneous fills consume only ~$70 margin, not exhausting $1000). **Demoted from primary concern to monitor-during-FIX-006-G3-retry.** Open IMPL-FIX-007 only if observable drift after FIX-006.
+- **Tertiary concern (entry-signal aggressiveness):** REFUTED. The 12,409 entry_signal events in 17 hours = ~12/min normal evaluation rate × 21 slots × tick frequency (Model=4 real ticks ~1-2 ticks/sec). The Print event count is `entry_signal` (Print log only, not OrderSend attempts) — does not indicate aggressive firing.
+- **IMPL-FIX-006 task block authored at `docs/state/impl-plan.md` line 1544 (L-XL size, P2+P3 spans):**
+  - **S-AC scope:** add `_PipValue()` helper, rewrite ComputeLot body to divide riskMoney by (sl_pips × pipValue) for 17 direct-lot slots, update `_ComputeLotForS/_K` signatures to accept sl_pips, thread through Slot_S/Slot_K Evaluate call sites, parent-anchored variants J/BI/I unchanged, G1 + G2 smoke verifying lot=0.10-0.20 range
+  - **E-AC scope:** G3 5-yr regression `regression_5yr_no_g4.ini` runs to 2025-12-31 (no day-1 halt); Bucket A drift ≤ 25% NFR-1.1; per-slot deviation ≤ 10% NFR-1.6; lot scales empirically with balance during compounding (spot-check 5+ journal entries at Q1-2021 vs Q4-2024 timestamps)
+  - **Risk:** high — touches 17+ slots' risk math; Mitigation: SelfTest extension with truth-table per slot before live verification
+  - **Closes:** R-8 once 5-yr regression passes; **Unblocks:** IMPL-062/066/068 numeric drain + IMPL-063 Bucket B + P4 Tier 2 Phase Gate + MVP delivery NFR-1.1 acceptance signal
+- **State reconciliation 2026-05-10 (this session):**
+  - `docs/state/impl-plan.md`: TL;DR 🔴 entry for IMPL-FIX-006 root cause + spec citations (above the prior run #1 entry); Open Risks R-8 marker updated to "ROOT CAUSE IDENTIFIED, IMPL-FIX-006 OPEN" with full investigation outcome paragraph (hypothesis (a) confirmed, (b) demoted, (c) refuted); Next Best Action checklist: ☑ root-cause investigation completed, ☐ `/impl-task IMPL-FIX-006` implementation, ☐ secondary G2-race monitoring; Phase Status Snapshot row P4 status string appended "IMPL-FIX-006 root cause IDENTIFIED + task block AUTHORED 2026-05-10"; IMPL-FIX-005 closure note updated with post-IMPL-062-run-#1 understanding (smoke calibration assumption was partially wrong — formula bug surfaces also at 5-yr scale); IMPL-FIX-006 task block authored at line 1544.
+  - `docs/state/overview.md` row 19 (Impl Plan): hypothesis space paragraph updated with investigation outcome + decision; row 20 (Impl Tasks): pending pointer updated to `/impl-task IMPL-FIX-006`.
+  - This `current_handoff.md` section.
+- **Phase 5 mechanical gates (Phase 5 Closure 11-gate sweep per workflow.md):** Gate #1 forbidden-pattern (no `[x]` + "deferred to operator-runtime" introduced — investigation outcome recorded as new task block + Open Risk update) ✅; Gate #2 TL;DR ↔ registry recount (no registry rows added/moved this commit; counts unchanged 48 Active / 6 Resolved) ✅; Gate #3 TL;DR ↔ matrix denominator (P4 16/17 unchanged — IMPL-FIX-006 is a fix-ticket not an IMPL-NNN closure) ✅; Gate #4 Sentinel counter (0 IMPL-NNN closures since R25 — investigation does not increment) ✅; Gate #5 overview.md sync (rows 19+20 propagated) ✅; Gate #6 file integrity (TBD verify); Gate #7 Phase Status Snapshot Notes sweep (P4 row status updated) ✅; Gate #8 narrative-section freshness (Open Risks R-8 + Next Best Action both refreshed) ✅; Gate #9 post-fix grep (n/a — investigation, not a fix-round); Gate #10 stash-clean G1 (n/a — no source code changes this turn — only docs); Gate #11 working-tree clean post-closure (will commit + verify).
+- **Plan Staleness Sentinel:** unchanged at 0 IMPL-NNN closures since R25. Investigation does not count.
+- **Recommended next action:** **`/impl-task IMPL-FIX-006`** — implement formula fix per task block at impl-plan line 1544: (1) add `_PipValue()` helper computing `SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE) × pip_helper.DigitMultipier()`; (2) rewrite ComputeLot body for 17 direct-lot slots — `riskMoney = balance × m_main_risk_ratio × per_slot_pct × extra_multiplier`, then `result = riskMoney / (sl_pips × pipValue)`, then `_StepRound + ClampLot`; (3) update `_ComputeLotForS(percent_tp, sl_pips)` + `_ComputeLotForK(balance, extra, sl_pips)` signatures + thread through Slot_S/Slot_K call sites; (4) parent-anchored J/BI/I unchanged; (5) extend SelfTest with truth-table per slot (e.g., `_AssertEq(rm.ComputeLot("G2", 77.0, 1000.0, 1.0), 0.13, 1e-2)`); (6) G1 + G2 smoke + G3 5-yr regression (~30-60 min) to verify Bucket A drift ≤ 25% NFR-1.1.
+
+---
+
+## Prior completed action — IMPL-062 5-yr Bucket A regression run #1 FAILED 2026-05-10 — R-8 day-1 stop-out cascade defect
+
 **🔴 IMPL-062 5-yr Bucket A regression run #1 FAILED 2026-05-10 — NEW R-8 day-1 stop-out cascade defect (engineer-driven attempt; default .ex5 restored)**
 
 - **Trigger:** user said "yes go" to recommended next action ("Operator session for IMPL-062 + IMPL-066 + IMPL-068 numeric drain") after state reconciliation commit `45bba53` landed.
