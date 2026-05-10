@@ -4,6 +4,48 @@
 
 ## Last completed action
 
+**🔴 IMPL-062 5-yr Bucket A regression run #1 FAILED 2026-05-10 — NEW R-8 day-1 stop-out cascade defect (engineer-driven attempt; default .ex5 restored)**
+
+- **Trigger:** user said "yes go" to recommended next action ("Operator session for IMPL-062 + IMPL-066 + IMPL-068 numeric drain") after state reconciliation commit `45bba53` landed.
+- **Pre-flight check:** Confirmed baseline used **$1,000 + 1:500** (verified `docs/foundation-input-sources/ReportTester-25045474.html` — `Initial Deposit: 1 000.00 / Leverage: 1:500`). Therefore current `regression_5yr_no_g4.ini` Deposit=1000 already correct — the "bump to $1M (baseline parity)" recommendation in IMPL-FIX-003 closure note + Next Best Action was incorrect (likely misread of the lot=2.90 vs $1000 smoke calibration mismatch). **Did NOT bump deposit** — kept $1000 for true baseline parity.
+- **Execution:**
+  - Injected `#define DISABLE_G4_FIXES` after `#property tester_no_cache` block in `PhoenicisNex.mq5`; G1 compile via MetaEditor 10:26:03 PASS 0err/0warn/4330 ms; `.ex5` = 306,697 bytes (DISABLE_G4_FIXES build = 158 bytes larger than default due to #ifdef branches).
+  - Launch attempt #1 at 10:28:00 — FAILED (network drop at 10:28:03.715 → tick download canceled → "no history data" → terminal exit code 0 in 4.7 s); root cause: connection blip + ShutdownTerminal=1 + Tester aborts tick download on disconnect.
+  - Launch attempt #2 at 10:31:21 — succeeded; tick history download completed 1.0 s; Tester started 10:31:25 testing 2021.01.01 → 2025.12.31 with deposit $1000 + leverage 1:500; EA `[ev=init_ok] handles=24 slots=21 magics=17 state=EA_STATE_RUNNING` captured at 10:31:31.928.
+- **Backtest outcome:** **Failed at simulated day 1** — Tester halted at **2021-01-04 17:10:00 EET** (17 simulated hours, 5 H4 bars, 71,110 ticks generated). Wall-clock 0:01:26.807. Final balance **$512.80** from $1000 deposit. `OnTester result 512.8`.
+- **Position chronology:** 5 actual `order_sent` events captured (vs 12,409 entry_signal Print events ≈ 12/min):
+  | Time (sim) | Ticket | Slot | Dir | Lot | Price | SL |
+  |-----------|--------|------|-----|-----|-------|-----|
+  | 00:29:22 | #2 | C | BUY | 2.90 | 1.22401 | 1.21901 |
+  | 00:29:22 | (skipped — Slot_M FIX-005 latch) | — | — | 2.90 | required 709.93 vs free 263.97 — anti-spam ✅ |
+  | 14:57:35 | #3 | Q | SELL | 2.90 | 1.23040 | 1.23540 |
+  | 16:00:00 | #4 | G2 | BUY | 2.90 | 1.23025 | 1.22000 |
+  | 16:00:02 | #5 | G2 | BUY | 2.90 | 1.23022 | 1.22001 |
+  | 16:00:21 | #6 | G2 | BUY | 2.90 | 1.23039 | 1.22000 |
+  | 17:10:00 | stop_out cascade #2/#4/#6 | — | — | — | closed at ~1.22763 |
+  | 17:10:00 | end_of_test #3/#5 | — | — | — | closed at ~1.22763–1.22773 |
+  P&L attribution: #2 (Slot_C +$1,050 win) + #3 (Slot_Q +$774 win) + #4 (Slot_G2 −$760) + #5 (−$751) + #6 (−$800) = net **−$487** → balance $1000 → $512.80 ✅ matches Tester verdict.
+- **Why this is a Bucket A drift signal (CRITICAL):** baseline reached $24,271,276.63 over 2021-01-01 → 2025-12-31 with same $1000 + 1:500 setup. Rewrite blew up at simulated day 1 → cannot complete the 5-yr run → Bucket A drift ≈ 100% (target ≤ 25% per NFR-1.1). The defect is **upstream of IMPL-FIX-005 margin guard** (which fired correctly with 1× `order_skipped_no_margin` Slot_M latch + 0 `order_failed` retry storm).
+- **Hypothesis space (R-8):**
+  1. RiskManager.ComputeLot consistently produces lot=2.90 (MAX_LOT cap) on $1000 balance — baseline likely scales lot to risk-per-trade % (cf. FIX-002 closure: "216,671 SlotS entry_signal events with lot=2.90 (clamped at max_lot_ratio... NOT floor-clamped to 0.01)" suggests rewrite consistently hits upper cap).
+  2. Slot_G2 lacks anti-pyramid gate (3 same-magic BUY fills at 1.23022/1.23025/1.23039 in 21 seconds before 276-pip drawdown).
+  3. Entry-signal predicates fire too aggressively vs CodeWiki §3/§5 (12,409 entry_signal events in 17 hours = ~12/min — MarketContextBuilder + per-slot Evaluate predicates may match CodeWiki literal but produce stronger entry rate due to ADR-004 single-tick MarketContext snapshot semantics).
+- **Restoration:** removed `#define DISABLE_G4_FIXES` from `PhoenicisNex.mq5`; recompiled at 10:36:32 PASS 0err/0warn/4144 ms; `.ex5` = 306,498 bytes (default G4-fixes ON build per ADR-009 + BR-7.2). Working tree is back to commit `45bba53` HEAD source surface.
+- **State reconciliation 2026-05-10 (this session):**
+  - `docs/state/impl-plan.md`: TL;DR 🔴 header for run #1 failure + Last updated narrative refreshed; IMPL-062 task block E-AC clauses annotated with "RUN #1 FAILED" closure note + evidence link; new **R-8 Open Risk** added; Next Best Action checklist: numeric drain row demoted to ❌ FAILED + new IMPL-FIX-006 row added as primary investigation pivot.
+  - `docs/state/overview.md` row 19 (Impl Plan): full failure paragraph + hypothesis space + IMPL-062/066/068 BLOCKED status; row 20 (Impl Tasks): pending pointer changed from "deposit-bump $1M+" to "IMPL-FIX-006 root-cause investigation".
+  - This `current_handoff.md` section.
+- **Evidence files:**
+  - `docs/state/_session-handoff/IMPL-062-evidence-20260510.md` (12 KB structured analysis: TL;DR + config + Tester verdict + event counts + position chronology + root cause hypothesis + Bucket A drift quantification + recommended path forward)
+  - `docs/state/_session-handoff/IMPL-062-attempted-run-20260510-abridged.txt` (2.5 MB / 12,968 lines — UTF-8 decoded full Tester run log; preserved per Tier 1.5 walk audit-trail convention)
+- **Phase 5 mechanical gates (Phase 5 Closure 11-gate sweep per workflow.md):** Gate #1 forbidden-pattern (no `[x]` + "deferred to operator-runtime" introduced — failure recorded as new finding R-8 + IMPL-FIX-006 placeholder) ✅; Gate #2 TL;DR ↔ registry recount (no registry rows added/moved this commit) ✅; Gate #3 TL;DR ↔ matrix denominator (P4 16/17 unchanged — no closure) ✅; Gate #4 Sentinel counter (0 IMPL-NNN closures since R25 — failure run is not a closure) ✅; Gate #5 overview.md sync (rows 19+20 propagated) ✅; Gate #6 file integrity (1 `## End of Plan` marker — TBD verify); Gate #7 Phase Status Snapshot Notes sweep (P4 row Notes column unchanged — TBD append "Run #1 FAILED" note); Gate #8 narrative-section freshness (Open Risks R-8 added; Next Best Action checklist refreshed) ✅; Gate #9 post-fix grep (n/a — not a fix-round); Gate #10 stash-clean G1 — `.ex5` IS the committed-source build (post-restore commit `45bba53` HEAD source surface); Gate #11 working-tree clean post-closure (will commit + verify).
+- **Plan Staleness Sentinel:** unchanged at 0 IMPL-NNN closures since R25. Failure run does not count.
+- **Recommended next action:** **Open IMPL-FIX-006 root-cause investigation** — engineer (or sub-agent via `/impl-task IMPL-FIX-006` once authored) inspects: (1) `services/RiskManager.mqh::ComputeLot` formula on $1000 balance — confirm whether lot=2.90 is invariant or balance-scaled; compare vs CodeWiki §3 risk-management math; (2) Slot_G2 Evaluate predicates — locate any anti-pyramid gate (cooldown timer, position-count check, or M5/M15 confirmation filter) — verify rewrite respects it; (3) entry-signal aggressiveness — compare per-slot Evaluate predicates against CodeWiki §5 line-by-line; flag any slot where rewrite emits entry_signal at higher rate than spec implies. Decision matrix: (a) lot-sizing fix in `RiskManager.ComputeLot` → IMPL-FIX-006 implementation ticket; (b) ADR change → `/backtrack sd`; (c) BA scope gap → `/backtrack ba`. **Blocks:** IMPL-062 + IMPL-066 + IMPL-068 numeric drain; P4 Tier 2 Phase Gate; MVP delivery acceptance signal.
+
+---
+
+## Prior completed action — Tier 1.5 walk batch-3 PASSED + IMPL-FIX-003/005 CLOSED + state reconciliation CLOSED 2026-05-10
+
 **Tier 1.5 walk batch-3 PASSED + IMPL-FIX-003/005 CLOSED + state reconciliation CLOSED 2026-05-10**
 
 - **Trigger:** Tier 1.5 Exploratory Walk batch-3 nominated 2026-05-09 21:54 (smoke) → 2026-05-10 01:07 (10/10 batch complete) per CLAUDE.md §1 Tier 1.5 protocol; specifically scoped to drain IMPL-067 DST regression deferred-AC + structurally validate IMPL-062/065/066/068 toolchain post-tick-download.

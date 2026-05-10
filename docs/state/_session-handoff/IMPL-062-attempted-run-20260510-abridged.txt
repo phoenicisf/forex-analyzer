@@ -1,0 +1,86 @@
+==== IMPL-062 5-yr Bucket A regression run #1 — abridged Tester log ====
+==== Source: Tester/logs/20260510.log (delta from baseline 1,150,252,774) ====
+==== Decoded: 12968 lines / 2523648 bytes ====
+==== Filter: init + order_sent/skipped/failed + stop_out + deinit + Tester verdict ====
+
+---- INIT (first 30 lines) ----
+PJ	0	10:31:22.746	Tester	Cloud servers switched off
+GL	0	10:31:24.034	Tester	"PhoenicisNex\PhoenicisNex.ex5" X64
+PH	0	10:31:24.160	Tester	EURUSD: history data begins from 2016.01.10 00:00
+KN	0	10:31:24.165	Tester	EURUSD: preliminary downloading of history ticks started, it may take quite a long time
+JR	0	10:31:25.179	Tester	EURUSD: preliminary downloading of history ticks completed, 89 bytes in 0:00:01.016 (0.09 Kb/sec)
+PP	0	10:31:25.179	Tester	EURUSD: ticks data begins from 2021.01.04 00:00
+OI	0	10:31:25.179	Tester	EURUSD: history data begins from 2016.01.10 00:00
+DR	0	10:31:25.179	Tester	EURUSD: ticks data begins from 2021.01.04 00:00
+JN	0	10:31:25.187	Core 01	agent process started on 127.0.0.1:3000
+II	0	10:31:25.187	Core 01	connecting to 127.0.0.1:3000
+FH	0	10:31:25.704	Core 01	connected
+MN	0	10:31:25.711	Core 01	authorized (agent build 5833)
+KH	0	10:31:25.719	Tester	EURUSD,H4 (FBS-Real): testing of Experts\PhoenicisNex\PhoenicisNex.ex5 from 2021.01.01 00:00 to 2025.12.31 00:00
+JE	0	10:31:25.730	Core 01	common synchronization completed
+JR	0	10:31:25.741	Core 01	EURUSD: ticks synchronized already [43 bytes]
+IH	0	10:31:31.928	Core 01	MetaTester 5 started on 127.0.0.1:3000
+CR	0	10:31:31.928	Core 01	cloud network mode is off
+PF	0	10:31:31.928	Core 01	initialization finished
+CS	0	10:31:31.928	Core 01	login (build 5833)
+CH	0	10:31:31.928	Core 01	16516 bytes of account info loaded
+JK	0	10:31:31.928	Core 01	1478 bytes of tester parameters loaded
+IK	0	10:31:31.928	Core 01	116420 bytes of input parameters loaded
+FN	0	10:31:31.928	Core 01	2680 bytes of symbols list loaded (581 symbols)
+HD	0	10:31:31.928	Core 01	expert file added: Experts\PhoenicisNex\PhoenicisNex.ex5. 306697 bytes loaded
+HS	0	10:31:31.928	Core 01	program file added: Indicators\Examples\ZigZag.ex5. 13896 bytes loaded
+FR	0	10:31:31.928	Core 01	15243 Mb available, 190 blocks set for ticks generating
+RH	0	10:31:31.928	Core 01	initial deposit 1000.00 USD, leverage 1:500
+ER	0	10:31:31.928	Core 01	successfully initialized
+LJ	0	10:31:31.928	Core 01	319 Kb of total initialization data received
+CM	0	10:31:31.928	Core 01	AMD Ryzen 7 7840HS w/ Radeon 780M, 31938 MB
+
+---- All order_sent events (5 total) ----
+HJ	0	10:31:38.031	Core 01	2021.01.04 00:29:22   [Phoenicis][2021-01-04 00:29:22.213][INFO][slot=C][ev=order_sent][magic=200] ticket=2 dir=ORDER_TYPE_BUY lot=2.90 price=1.22401 sl=1.21901 comment=C,MA,N,1,SL
+II	0	10:32:39.091	Core 01	2021.01.04 14:57:35   [Phoenicis][2021-01-04 14:57:35.976][INFO][slot=Q][ev=order_sent][magic=212] ticket=3 dir=ORDER_TYPE_SELL lot=2.90 price=1.23040 sl=1.23540 comment=Q,MA,N,1,SL
+ME	0	10:32:45.199	Core 01	2021.01.04 16:00:00   [Phoenicis][2021-01-04 16:00:00.941][INFO][slot=G2][ev=order_sent][magic=208] ticket=4 dir=ORDER_TYPE_BUY lot=2.90 price=1.23025 sl=1.22000 comment=G2,F1,N,1,SL
+NO	0	10:32:45.199	Core 01	2021.01.04 16:00:02   [Phoenicis][2021-01-04 16:00:02.949][INFO][slot=G2][ev=order_sent][magic=208] ticket=5 dir=ORDER_TYPE_BUY lot=2.90 price=1.23022 sl=1.22001 comment=G2,F1,N,1,SL
+PG	0	10:32:45.199	Core 01	2021.01.04 16:00:21   [Phoenicis][2021-01-04 16:00:21.037][INFO][slot=G2][ev=order_sent][magic=208] ticket=6 dir=ORDER_TYPE_BUY lot=2.90 price=1.23039 sl=1.22000 comment=G2,F1,N,1,SL
+
+---- All order_skipped_no_margin events (1 total) ----
+DL	0	10:31:38.031	Core 01	2021.01.04 00:29:22   [Phoenicis][2021-01-04 00:29:22.213][WARN][slot=M][ev=order_skipped_no_margin][magic=210] required=709.93 free=263.97 lot=2.90 — subsequent skips silenced this session
+
+---- All order_failed events (0 — anti-spam ✅) ----
+(none expected)
+
+---- All broker stop_out events ----
+ED	3	10:32:52.540	Core 01	2021.01.04 17:10:00   position stop out triggered at 17.99% [#2 buy 2.9 EURUSD 1.22401 sl: 1.21901]
+QL	3	10:32:52.540	Core 01	2021.01.04 17:10:00   position stop out triggered at 17.99% [#4 buy 2.9 EURUSD 1.23025 sl: 1.22000]
+JD	3	10:32:52.540	Core 01	2021.01.04 17:10:00   position stop out triggered at 17.99% [#6 buy 2.9 EURUSD 1.23039 sl: 1.22000]
+
+---- All broker deal events ----
+DQ	0	10:31:38.031	Core 01	2021.01.04 00:29:22   deal performed [#2 buy 2.9 EURUSD at 1.22401]
+EK	0	10:32:39.091	Core 01	2021.01.04 14:57:35   deal performed [#3 sell 2.9 EURUSD at 1.23040]
+QQ	0	10:32:45.199	Core 01	2021.01.04 16:00:00   deal performed [#4 buy 2.9 EURUSD at 1.23025]
+OH	0	10:32:45.199	Core 01	2021.01.04 16:00:02   deal performed [#5 buy 2.9 EURUSD at 1.23022]
+EO	0	10:32:45.199	Core 01	2021.01.04 16:00:21   deal performed [#6 buy 2.9 EURUSD at 1.23039]
+HD	0	10:32:52.540	Core 01	2021.01.04 17:10:00   deal performed [#7 sell 2.9 EURUSD at 1.22763]
+KL	0	10:32:52.540	Core 01	2021.01.04 17:10:00   deal performed [#8 sell 2.9 EURUSD at 1.22763]
+RD	0	10:32:52.540	Core 01	2021.01.04 17:10:00   deal performed [#9 sell 2.9 EURUSD at 1.22763]
+JN	0	10:32:52.540	Core 01	2021.01.04 17:10:00   deal performed [#10 sell 2.9 EURUSD at 1.22763]
+FK	0	10:32:52.540	Core 01	2021.01.04 17:10:00   deal performed [#11 buy 2.9 EURUSD at 1.22773]
+
+---- Position close events ----
+ED	3	10:32:52.540	Core 01	2021.01.04 17:10:00   position stop out triggered at 17.99% [#2 buy 2.9 EURUSD 1.22401 sl: 1.21901]
+QL	3	10:32:52.540	Core 01	2021.01.04 17:10:00   position stop out triggered at 17.99% [#4 buy 2.9 EURUSD 1.23025 sl: 1.22000]
+JD	3	10:32:52.540	Core 01	2021.01.04 17:10:00   position stop out triggered at 17.99% [#6 buy 2.9 EURUSD 1.23039 sl: 1.22000]
+JO	0	10:32:52.540	Core 01	2021.01.04 17:10:00   position closed due end of test at 1.22763 [#5 buy 2.9 EURUSD 1.23022 sl: 1.22001]
+DG	0	10:32:52.540	Core 01	2021.01.04 17:10:00   position closed due end of test at 1.22773 [#3 sell 2.9 EURUSD 1.23040 sl: 1.23540]
+
+---- EA deinit + journal latency ----
+KM	0	10:32:52.540	Core 01	2021.01.04 17:10:00   [Phoenicis][2021-01-04 17:10:00.670][INFO][slot=system][ev=deinit_cleanup][magic=0] reason=1 state=EA_STATE_RUNNING
+RO	0	10:32:52.540	Core 01	2021.01.04 17:10:00   [Phoenicis][2021-01-04 17:10:00.671][INFO][slot=system][ev=journal_latency_report][magic=0] writes=5 avg_us=25 p95_us=59 max_us=59
+JF	0	10:32:52.540	Core 01	2021.01.04 17:10:00   [Phoenicis][2021-01-04 17:10:00.671][INFO][slot=system][ev=journal_latency_by_type][magic=0] ev=entry writes=5 avg_us=25
+
+---- Tester final verdict ----
+NR	0	10:32:52.540	Core 01	final balance 512.80 USD
+EF	0	10:32:52.540	Core 01	OnTester result 512.8
+LQ	3	10:32:52.540	Core 01	stop out occurred on 0% of testing interval
+QE	0	10:32:52.540	Core 01	EURUSD,H4: 71110 ticks, 5 bars generated. Environment synchronized in 0:00:00.020. Test passed in 0:01:26.807 (including ticks preprocessing 0:00:11.921).
+RL	0	10:32:52.540	Core 01	4435 Mb memory used including 49 Mb of history data, 4352 Mb of tick data
+GL	0	10:32:52.559	Tester	automatical testing finished
