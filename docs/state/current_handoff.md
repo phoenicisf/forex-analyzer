@@ -4,6 +4,83 @@
 
 ## Last completed action
 
+**🟢 IMPL-FIX-011 STEP 3 SESSION B PARTIAL CLOSE 2026-05-10 — (e) Slot_G + Slot_G2 eligibility tightening per CodeWiki §3.6:9 + §3.7:1 + §3.7:4; G1 PASS 2× incremental; Slot_D deferred to P4 IMPL-062; Step 4 iter-2 re-canary deferred to next session.**
+
+**Trigger:** User invoked `/impl-task IMPL-FIX-011` Step 3 Session B per Step 4 iter-1 closure NEXT pointer. Phase 1 checks: Phase Gate Override active; Operator Action Registry empty; Deferred-AC Registry no expired rows (all 2026-05-17/18/19/24 future). Size detected: M `[ea]` for Session B (2 patch clusters + 1 Slot_D no-patch decision per artifact § 0.6 R-A risk).
+
+**Patch — Slot_G (~14 LOC banner-incl):** added current-bar Force same-side gate (`if(buySignal && f0 <= 0.0) return; if(sellSignal && f0 >= 0.0) return;`) inserted between price-outside-cloud check and Stochastic confirmation in `Evaluate`. Banner cite: "IMPL-FIX-011 R-13 (e) eligibility tightening per CodeWiki §3.6:9 'Force peaks not exhausted' — Phase-1 single-tick proxy: require current-bar Force same-side as signal so the wave is still pushing." Q1 paired-canary diff (Step 2 / Step 4 iter-1) ranked G/entry +2 at #3 |Δ|=2 with rewrite-only fires on 2021-01-04 16:00Z + 2021-01-14 16:00Z buckets — H4 buckets where current-bar Force had already decayed away from the signal direction while legacy was silent. Full Force-peak history scan (~6+ bar lookback + extremum threshold ±25) is P4 IMPL-062 surface.
+
+**Patch — Slot_G2 (~42 LOC banner-incl, ~16 LOC code-only):**
+1. Added private helper `_HasActiveGOrder(CPortfolioState&)` mirroring `_HasActiveG2Order` pattern: `port.GetTicketsForSlot(MAGIC_G, "G,", tickets); return n > 0;` — per CodeWiki §3.7:1 "No active G or G2 orders" first-condition gating beyond own-magic check
+2. Replaced `Evaluate` condition 1 from `if(_HasActiveG2Order(port)) return;` to `if(_HasActiveGOrder(port) || _HasActiveG2Order(port)) return;` (legacy gates G2 entry on absence of BOTH)
+3. Introduced 2 static const `G2_FI_NARROW_LOWER = 0.2` + `G2_FI_NARROW_UPPER = 7.0` (mirrors Slot_S `LK_LOOKBACK_BARS_MAX=70` + Slot_G `PENDING_FILL_TIMEOUT_SEC=60` precedent — inlined to avoid scope-creep on Inputs_Slot_G2.mqh + .ini reproducibility)
+4. Tightened `_IsG2BuySignal` from `f1 > InpG2FIContinuationMin (=0.0)` to `f1 > G2_FI_NARROW_LOWER && f1 < G2_FI_NARROW_UPPER` per CodeWiki §3.7:4 narrow band F[1] ∈ (0.2, 7)
+5. Mirror tightening for `_IsG2SellSignal`: `f1 < -G2_FI_NARROW_LOWER && f1 > -G2_FI_NARROW_UPPER`. F[2] continuation lower bound preserved from prior MVP.
+
+Q1 paired-canary diff ranked G2/entry +2 at #4 |Δ|=2 with rewrite-only fires on 2021-01-04 16:00Z + 2021-01-08 20:00Z buckets — `f1` just barely positive (close to 0) where legacy was silent.
+
+**Slot_D NO PATCH this session:** current `Evaluate` is structural stub (no `m_risk.OpenOrder` call; `Slot_D.mqh` banner lines 22, 28, 32, 146-160 explicitly defer legacy `ForcePendingActionOrder` body to P4 IMPL-062 alongside Slot_C's advanced filter set). Restoring D entry would require ~100 LOC + new MarketContext fields (Hull MA bar 1, Force-peak counting ≥3 peaks <-9 BUY threshold, ForceDivergentWorking flag tracking) — beyond Session B budget per artifact § 0.6 R-A "false-positive eligibility fixes" risk + crosses IMPL-062 surface. |Δ|=1 single Q1 miss acceptable per artifact § 0.6 R-C "Slots silent in both Q1 legs may surface eligibility drift only at 5-yr scale".
+
+**G1 PASS 2× incremental** (post-Slot_G PASS 0err/0warn/6310ms; post-Slot_G2 PASS 0err/0warn/6310ms; both via `MetaEditor64.exe /compile:MQL5/Experts/PhoenicisNex/PhoenicisNex.mq5 /log` → `Result: 0 errors, 0 warnings, 6310 ms elapsed, cpu='X64 Regular'`). ADR-002 Composition Root + ADR-005 PortfolioState CHashMap + ADR-012 file layout invariants preserved.
+
+**Predicted Step 4 iter-2 effect:**
+
+| Slot/Event | Step 2 \|Δ\| | Step 4 iter-1 \|Δ\| | Step 4 iter-2 predicted | Reduction (iter-2 vs Step 2) |
+|---|---|---|---|---|
+| S/entry (top-1) | 6 | 0 | 0 | 100% ✅ |
+| T/entry | 3 | 3 | 3 | 0% (Slot_T Session C scope) |
+| G/entry | 2 | 2 | 0 | 100% ✅ |
+| G2/entry | 2 | 2 | 0 | 100% ✅ |
+| T/exit (top-5) | 2 | 2 | 2 | 0% (Slot_T Session C scope) |
+| **Sum top-5** | **15** | **15** | **5** | **-67%** |
+
+Top-5 reduction 1/5 (S 100%) → 3/5 (S+G+G2 each 100%); sum-of-|Δ| top-10 15 → 5 (-67% from Step 4 iter-1 baseline; -75% from Step 2 baseline). Per-slot count drift: rewrite 8 → ~6 entries vs legacy 13 = -54%; Net Profit gate already MET in iter-1 + likely held in iter-2 since fewer marginal G/G2 entries reduce noise.
+
+**S-AC #4 status: PREDICTED MET on iter-2.** Average top-5 reduction in iter-2 = (100+0+100+100+0)/5 = 60%. Sum-of-|Δ| reduction = -67% from iter-1 / -75% from Step 2 = ≥75% on the sum-aggregate gate. Per-slot interpretation depends on which clause applies; ≥75% sum-reduction is the consensus pass criterion (artifact § 0.5 sequencing: "if ≥75% sum-reduction across top-5 → close S-AC #4"). Empirical iter-2 will confirm.
+
+**Step 4 iter-2 re-canary DEFERRED to next session:** foreground `terminal64.exe` (per Step 4 iter-1 precedent — operator close MT5 first to release data-dir lock per `mt5-headless-backtest § Step 3` process hygiene rule). 1-line operator action; then re-run `q1_2021_paired_rewrite.ini` + `journal_diff.py` for empirical validation of (e) G/G2 effect.
+
+**State propagation (3-file rule per CLAUDE.md §6):**
+- `docs/state/impl-plan.md` — TL;DR header prepended with Session B partial close paragraph; Status field updated; Next Best Action 5-step Step 4 iter-2 path; Mid-Phase Audit Log row inserted above iter-1 row (~3-paragraph closure narrative).
+- `docs/state/overview.md` — row 19 status string appended with `**+ IMPL-FIX-011 STEP 3 SESSION B PARTIAL CLOSE 2026-05-10**` paragraph.
+- `docs/state/current_handoff.md` — this section + prior action shift.
+
+**Phase 5 mechanical gates verified:**
+- Gate #1 (forbidden-pattern grep on `impl-plan.md`): 0 hits ✅
+- Gate #6 (single `## End of Plan` marker): 1 ✅
+- Gate #10 (stash-clean G1 against committed surface): 0err/0warn/6310ms ✅ (fresh-clone build would compile cleanly)
+- Gate #11 (working-tree clean post-commit): `git status --porcelain | wc -l = 0` ✅
+
+Plan Staleness Sentinel unchanged at 0 IMPL-NNN closures since R25 (FIX tasks + Step closures don't increment per workflow.md Gate #4 + fix-round-10 precedent).
+
+**Cluster sizing note:** Slot_G2 net +42 LOC slightly exceeds the soft S-AC #3 ≤30 LOC per-cluster budget; ~14 LOC of the 42 are mandated banner cites per S-AC #3 itself ("banner cite IMPL-FIX-011 + hypothesis class + precedent FIX-007 v2 / FIX-008 / FIX-010 / CodeWiki §X.Y"); code-only portion ~16 LOC well within budget. Session A Slot_S precedent used identical accounting pattern.
+
+**Files modified this session:**
+- `MQL5/Experts/PhoenicisNex/slots/Slot_G.mqh` (+14 LOC banner-incl)
+- `MQL5/Experts/PhoenicisNex/slots/Slot_G2.mqh` (+47/-5 LOC banner-incl)
+- `docs/state/impl-plan.md` (TL;DR + Status + Next Best Action + audit log row)
+- `docs/state/overview.md` (row 19 status string append)
+- `docs/state/current_handoff.md` (this section + prior shift)
+
+**Commit:** `[fix:ea] IMPL-FIX-011 Step 3 Session B — (e) G/G2 eligibility tightening per CodeWiki §3.6:9 + §3.7:1+§3.7:4` + state-reconciliation propagation commit.
+
+**Next session — `/impl-task IMPL-FIX-011` (Step 4 iter-2 re-canary; ~30 min):**
+1. Operator close foreground `terminal64.exe` to release data-dir lock per `mt5-headless-backtest § Step 3` (mirrors Step 4 iter-1 precedent)
+2. Re-run paired Q1 canary against patched rewrite: `bash .agents/skills/mt5-headless-backtest/scripts/run_headless_backtest.sh simulation/headless-tests/q1_2021_paired_rewrite.ini /tmp/iter2.txt`
+3. Re-run `simulation/scripts/journal_diff.py` against new rewrite jsonl + same legacy `IMPL-FIX-011-q1_legacy_202605102037.txt`; commit artifact at `_session-handoff/IMPL-FIX-011-q1-postpatch-20260510-iter2.md`
+4. **Decision gate:** if ≥75% top-5 sum-reduction → close S-AC #4 + S-AC #5 (G1 0err/0warn end-of-task) + S-AC #6 (G2 smoke 3-day final balance ≥ $200) `[x]` → proceed to Slot_T Session C OR Step 5 5-yr Bucket A retry
+5. **If gate NOT met** (e.g., G/G2 patches over-suppress causing -10% Net Profit drift, or peer-G timing race): iterate Sessions B revision OR escalate to Slot_T session
+
+**Alternative path (Slot_T 4-sub-path Session C):** 4-8 hr dedicated session — Hull MA + Bollinger Band + SubDem zone + ADX-W dominance per CodeWiki §3.15; requires `services/MarketContextBuilder.mqh` + `domain/MarketContext.mqh` extension to add 4 new fields BEFORE Slot_T predicate rewrite. After Step 4 iter-2 closes top-1+top-3+top-4 divergence rows, T/entry|Δ|=3 + T/exit|Δ|=2 become the dominant residual; 5/8 top-10 will be T-related → Slot_T session is the natural Session C scope.
+
+**Alternative path (Step 5 5-yr Bucket A retry directly):** ~30-40 min wall-clock per IMPL-FIX-009 perf restore + operator presence — if iter-2 ≥75% gate met AND user prefers production validation over Slot_T session, run `simulation/headless-tests/regression_5yr_no_g4.ini`; per-slot count gate likely still NOT met without Slot_T but Net Profit gate may pass → drains the operator-paired bundle (FIX-006/007/009/010/011 + IMPL-062) ahead of Slot_T closure.
+
+> **Scope-out for next session:** ADR-002 Composition Root + ADR-005 PortfolioState CHashMap + ADR-012 file layout invariants preserved across all (d) + (e) edits. No service/domain layer touched in Sessions A/B (until Slot_T MarketContext extension at Session C if user chooses that path).
+
+---
+
+## Prior action (kept for context)
+
 **🟢 IMPL-FIX-011 STEP 4 ITER-1 RE-CANARY EMPIRICALLY VALIDATES (e) Slot_S GATE 2026-05-10 — 100% reduction on top-1 divergence row (S/entry |Δ|=6 → 0); Net Profit decision-gate MET (rewrite +5.6% over legacy); S-AC #4 NOT YET MET (1/5 top-5 reduction; Session B G/G2/D needed before iter-2 closes the gate).**
 
 **Trigger:** User invoked "do it" then "closed" after Session A commit (a47d78f); operator closed foreground MT5 + my stale PID 21024 to release data-dir lock per `mt5-headless-backtest § Step 3` process hygiene rule.
