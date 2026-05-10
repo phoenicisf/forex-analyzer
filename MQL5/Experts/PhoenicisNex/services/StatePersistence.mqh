@@ -87,8 +87,14 @@ private:
    //    state.json every tick = 60M atomic writes per 5-yr H4 backtest =
    //    ~13 hours of file I/O. Throttle to once per H4 bar in tester only;
    //    live mode unchanged (per-tick atomic write preserved).
-   //    Always saves on halt transition (ea_state != RUNNING) and OnDeinit.
+   //    Always saves on halt transition (state-change predicate forces
+   //    save whenever ea_state differs from m_last_save_state) and OnDeinit.
+   //    IMPL-FIX-009: m_last_save_state field added to extend throttle to
+   //    HALTED state (predicate was previously gated on ea_state==RUNNING,
+   //    which left ~1M post-halt ticks doing full atomic write — see
+   //    docs/state/_session-handoff/IMPL-FIX-009-profile-baseline-20260510.md).
    datetime          m_last_save_bar_time;
+   EEAState          m_last_save_state;
 
    //--- Private serialization helpers
    string            SerializeAll(EEAState ea_state, string halt_reason) const;
@@ -122,7 +128,8 @@ public:
         m_journal_write_failures(0), m_journal_consecutive_failures(0),
         m_journal_last_failure_ts(0), m_journal_last_failure_reason(""),
         m_logger_throttled_count(0), m_logger_last_throttle_event(""),
-        m_dirty(false), m_last_save_bar_time(0)
+        m_dirty(false), m_last_save_bar_time(0),
+        m_last_save_state(EA_STATE_RUNNING)
      {
       for(int i = 0; i < PM_COUNT; i++)
         {
@@ -267,13 +274,20 @@ bool CStatePersistence::Save(EEAState ea_state, string halt_reason)
    //    saving state.json per tick is the dominant wall-clock cost
    //    (5-yr backtest 12hr est vs ~40-60min historical baseline).
    //    Live mode unchanged: every tick still writes for crash recovery.
-   //    Halt transitions ALWAYS save (capture halt reason + final state).
-   if(MQLInfoInteger(MQL_TESTER) && ea_state == EA_STATE_RUNNING)
+   //    IMPL-FIX-009: predicate widened to throttle ALL tester ticks
+   //    (was: only RUNNING). HALTED+HALTED_STABLE were bypassing throttle
+   //    → ~1M post-halt ticks did full atomic write per Q1 canary baseline
+   //    (state_save 932µs avg × 1M = 933 sec, dominated 22:48 wall-clock).
+   //    State-change forces save (RUNNING→HALTED captures halt reason);
+   //    bar-change forces save (per-bar recovery granularity preserved).
+   //    Live mode (`!MQL_TESTER`) still saves every tick unchanged.
+   if(MQLInfoInteger(MQL_TESTER))
      {
       datetime cur_bar = iTime(_Symbol, _Period, 0);
-      if(cur_bar == m_last_save_bar_time)
-         return true;  // bar unchanged + EA running normally - skip
+      if(cur_bar == m_last_save_bar_time && ea_state == m_last_save_state)
+         return true;  // bar AND state both unchanged - skip
       m_last_save_bar_time = cur_bar;
+      m_last_save_state    = ea_state;
      }
 
    if(m_portfolio == NULL)

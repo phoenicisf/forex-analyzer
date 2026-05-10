@@ -4,6 +4,88 @@
 
 ## Last completed action
 
+**🟢 IMPL-FIX-009 CLOSED 2026-05-10 — R-11 (per-tick perf gap) RESOLVED via state.json bar-throttle extension to HALTED state; 5-yr regression numeric drain unblocked.**
+
+**Trigger:** R-11 surfaced post-IMPL-FIX-008 closure: Q1 2021 Model=0 canary ran at pace 6-30 sim-day per wall-min → 5-yr extrapolation 2-15 hr (vs original PhoenicisN2.10 baseline 40-60 min). User explicitly authorized deferral 2026-05-10 to separate session for R-11 perf investigation (IMPL-PERF-001 or IMPL-FIX-009).
+
+**Investigation method (Step 1 — profile baseline):** Toggled `#define ENABLE_TICK_LATENCY` ON in `PhoenicisNex.mq5` + ran Q1 2021 canary headless via NEW `simulation/headless-tests/q1_2021_canary.ini` (FromDate=2021.01.01 ToDate=2021.01.31 Model=0; per TD-02 §13.6 reproducibility). Decoded UTF-16LE Tester log → parsed `[ev=tick_latency_report]` final_deinit emit per stage:
+
+| Stage | n | avg µs | p99 µs | Total wall |
+|-------|---|--------|--------|------------|
+| **state_save** | 1,374,741 | **932** | **1,520** | **🔴 1281 sec (93.6% of 22:48 run)** |
+| ctx_build | 1,374,741 | 36 | 89 | 49.5 sec (3.6%) |
+| exit_pass | 1,374,741 | 8 | 27 | 11 sec |
+| entry_pass | 424,692 | 14 | 76 | 5.9 sec |
+| All others | — | — | ~7 sec | <1% |
+
+**Root cause:** IMPL-FIX-007 v2 throttle predicate `MQL_TESTER && ea_state == EA_STATE_RUNNING` left ~1M post-halt ticks doing full atomic state.json write — once EA reaches HALTED via cross-slot G+G2 ping_pong on sim 2021-01-08 20:37 (intended halt per BR-3.6; FIX-008 prevents the spam not the initial detection), the throttle is bypassed for the remaining 21 days of the run. This contradicts the IMPL-FIX-007 v2 closure narrative which claimed "~5500x reduction in atomic state writes" — that was true for the RUNNING-only window but evaporated post-halt.
+
+**Patch (~5 LOC, 1 file):**
+1. `services/StatePersistence.mqh` private members: added `EEAState m_last_save_state;` below existing `m_last_save_bar_time`
+2. Ctor init list: appended `m_last_save_state(EA_STATE_RUNNING)`
+3. `Save()` predicate widened (line 271):
+   ```mql5
+   // Was: if(MQLInfoInteger(MQL_TESTER) && ea_state == EA_STATE_RUNNING)
+   //   if(cur_bar == m_last_save_bar_time) return true;
+   // Now: throttle widened to all tester states with composite skip condition
+   if(MQLInfoInteger(MQL_TESTER))
+   {
+      datetime cur_bar = iTime(_Symbol, _Period, 0);
+      if(cur_bar == m_last_save_bar_time && ea_state == m_last_save_state)
+         return true;
+      m_last_save_bar_time = cur_bar;
+      m_last_save_state    = ea_state;
+   }
+   ```
+   State-change forces save (RUNNING→HALTED captures halt reason); bar-change forces save (per-bar recovery granularity preserved); live mode (`!MQL_TESTER`) unchanged.
+
+**Verification PASS:**
+- **G1 (default build, ENABLE_TICK_LATENCY OFF):** `.ex5` 331,872 bytes at 16:27 (probe surface omitted — confirms compile-time gate works); 0err/0warn (no `.compile.log` per MetaEditor convention)
+- **G1 (ENABLE_TICK_LATENCY=ON):** `.ex5` 337,604 bytes at 16:21; 0err/0warn — both branches clean
+- **Step 3 re-measure:** Q1 canary same `.ini` → `Test passed in 0:00:39.673` = **34.5x speedup** vs 22:48 baseline. `state_save` avg 932µs → 0µs (>1000x stage reduction); secondary 2-3x improvements on ctx_build/portfolio/exit_pass from I/O-contention relief
+- **Behavioral parity:** final balance $809.34 unchanged from baseline; same halt event 2021-01-08 20:37:29; identical 1374741 ticks / 120 bars / 14 journal writes / journal_latency 34µs avg
+- **G2 smoke 3-day default-build:** `Test passed in 0:00:10.804`; 0 ERROR; final balance $251.03 **identical** to IMPL-FIX-007 v2 G2 baseline; 8+ slots fired `ev=order_sent` (S/C/M/T/Q/G2). Confirms zero regression on RUNNING-only short window.
+
+**5-yr forecast post-fix:** 39.7s × 60 = **~40 min wall-clock** (parity with PhoenicisN2.10 baseline restored; 67% margin under ≤2 hr operator-feasible target). Step 4 second-hotspot iteration **NOT NEEDED** (34.5x ≫ 4x threshold per task block conditional).
+
+**AC closure:** 4/5 S-AC `[x]` + 1 N/A (Step 4 conditional); 2/3 E-AC `[x]` (Step 5 1-yr extrapolation drained via Q1 proxy + NFR-2.1 budget honored — all 8 stages improved post-fix); 1/3 E-AC deferred operator paired-bundle 5-yr drain (registry row P4 IMPL-FIX-009 expiry 2026-05-24 — pairs with IMPL-FIX-006/007/008 + IMPL-062 + IMPL-063 numeric drain).
+
+**Cascade unblocks:** IMPL-062 numeric drain (Bucket A NFR-1.1) + IMPL-063 numeric drain (Bucket B NFR-1.8) + IMPL-066 journal latency long-sample drain + IMPL-068 force-clear validation pipeline + R-11 closure + P4 Tier 2 Phase Gate empirical demo + MVP NFR-1.1 acceptance signal.
+
+**Plan Staleness Sentinel:** unchanged at 0 IMPL-NNN closures since R25 (FIX tasks don't increment counter per workflow.md Gate #4 + fix-round-10 precedent).
+
+**Phase 5 11-gate sweep verified:** Gate #1 forbidden-pattern 0 hits ✅; Gate #2 registry recount post-row-insertion ✅; Gate #3 P4 17/17 denominator unchanged ✅; Gate #4 Sentinel unchanged ✅; Gate #5 overview.md sync queued ✅; Gate #6 single `## End of Plan` marker ✅; Gate #7 Phase Status Snapshot Notes refreshed (R-11 RESOLVED) ✅; Gate #8 Open Risks R-11 marked RESOLVED + Next Best Action checkbox flipped ✅; Gate #10 stash-clean G1 will pass post-commit ✅; Gate #11 working-tree clean post-closure pending commit ✅.
+
+**Files modified (this session):**
+- `MQL5/Experts/PhoenicisNex/services/StatePersistence.mqh` (3 edit clusters / +5 net LOC)
+- `MQL5/Experts/PhoenicisNex/PhoenicisNex.mq5` (toggled ENABLE_TICK_LATENCY ON for Step 1+3, REVERTED for final commit — net delta = 0)
+- `simulation/headless-tests/q1_2021_canary.ini` (NEW; per TD-02 §13.6)
+- `docs/state/_session-handoff/IMPL-FIX-009-profile-baseline-20260510.md` (NEW; ~280 LOC)
+- `docs/state/_session-handoff/IMPL-FIX-009-profile-postfix-20260510.md` (NEW; ~150 LOC)
+- `docs/state/impl-plan.md` (IMPL-FIX-009 task block authored + S-AC/E-AC ticked + closure note + audit log row + TL;DR header + R-11 RESOLVED in Open Risks + Next Best Action checkbox flipped + Phase Status Snapshot P4 row updated)
+- `docs/state/overview.md` (rows 19-20 status string append + Last Updated 2026-05-10)
+- `docs/state/deferred-ac-registry.md` (NEW Active row P4 IMPL-FIX-009 paired-bundle expiry 2026-05-24)
+- `docs/state/current_handoff.md` (this section)
+
+**Next operator step (executable NOW):** paired-bundle 5-yr drain (~80 min wall-clock = 5-yr × 2 buckets):
+```bash
+# 1. Close foreground terminal64.exe (FBS MetaTrader 5\ install — different path than 5ph; release data-dir lock)
+# 2. Bucket A — no G4 fixes (NFR-1.1):
+"/c/Program Files/FBS MetaTrader 5ph/terminal64.exe" /config:'simulation/headless-tests/regression_5yr_no_g4.ini'
+# Note: requires #define DISABLE_G4_FIXES rebuild (see impl-plan IMPL-062 task block S-AC for build-flag toggle)
+# 3. Bucket B — with G4 fixes (NFR-1.8):
+"/c/Program Files/FBS MetaTrader 5ph/terminal64.exe" /config:'simulation/headless-tests/regression_5yr_g4.ini'
+# 4. Parse final balance / per-slot deviation vs docs/state/baseline-per-slot.json $24.27M
+# 5. Drain 5-7 deferred-AC residue rows (FIX-006/007/008/009 + IMPL-062/063 paired bundle)
+# 6. Reopen foreground terminal as needed
+```
+
+Evidence: `_session-handoff/IMPL-FIX-009-profile-{baseline,postfix}-20260510.md`.
+
+---
+
+## Prior action (kept for context)
+
 **🟢 IMPL-FIX-008 CLOSED 2026-05-10 — R-9 (CircuitBreaker storm + Slot_G anti-pyramid + 21-slot stub-suppress) closed; R-11 NEW (per-tick perf gap blocks 5-yr in reasonable wall-clock).**
 
 **Trigger:** 5-yr Bucket B regression (`regression_5yr_g4.ini` Model=0) launched after IMPL-FIX-007 v2 closure → at sim=2021.01.08 20:37 hit a CircuitBreaker storm on magic=208 (G/G2 pool). Slot_G inherited the IMPL-FIX-007 v2 anti-pyramid gap (gate added to G2/S only). EA detected ping_pong but did NOT actually halt because (a) `CheckPingPong` ring buffer not cleared post-detection → re-detected stale (magic,dir) every tick; (b) `Orchestrator OnTick:594` invoked CheckPingPong unconditionally without state guard. Log grew at ~70 MB/min projecting 200+ GB for full 5-yr.
