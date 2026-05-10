@@ -35,4 +35,11 @@ input double InpGOverloadForceMin   = 15.0;    // Force threshold to trigger GOv
 input double InpGOverloadAdxMin     = 49.0;    // ADX threshold to trigger GOverload — BR-8.4 (stub)
 input double InpGOverloadMaxOffset  = 20.0;    // Min maxOffset pip to trigger GOverload — BR-8.4 (stub)
 
+//--- IMPL-FIX-011 Session C — §3.6:9/11/12 history-based predicates
+input int    InpGForcePeakMaxAbove11 = 3;      // §3.6:9 ≤ this many bars in 8-bar window with |Force|>11 (peaks not exhausted)
+input int    InpGBBHistWindow        = 15;     // §3.6:11 BB-history scan window (last N bars; ≤15 hard cap)
+input int    InpGBBHistMinBelow      = 1;      // §3.6:11 minimum bars satisfying BBTop < IchiMax (BUY) — Phase-1 conservative; legacy "any 15-bar BBTop<IchiMax presence" at min ≥1
+input double InpGDemRollingThreshBuy = 175.0;  // §3.6:12 BUY pending if rolling DEM sum × 100 ≥ this
+input double InpGDemRollingThreshSell= 25.0;   // §3.6:12 SELL pending if rolling DEM sum × 100 ≤ this
+
 #endif // PHOENICISNEX_INPUTS_SLOT_G_MQH

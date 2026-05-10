@@ -81,6 +81,15 @@ private:
    double            _CloudHigh(const MarketContext &ctx) const;
    double            _CloudLow(const MarketContext &ctx) const;
 
+   //--- IMPL-FIX-011 Session C — §3.6:9/11/12 history-based predicates
+   bool              _IsForcePeaksNotExhausted(const MarketContext &ctx) const;     // §3.6:9
+   int               _BBTopBelowIchiMaxCount(const MarketContext &ctx) const;       // §3.6:11 BUY scan
+   int               _BBBotAboveIchiMinCount(const MarketContext &ctx) const;       // §3.6:11 SELL mirror (proxy)
+   bool              _IsDemRollingBuyOk(const MarketContext &ctx) const;            // §3.6:12 BUY ≥175
+   bool              _IsDemRollingSellOk(const MarketContext &ctx) const;           // §3.6:12 SELL ≤25
+   double            _IchiMaxH4(const MarketContext &ctx) const;
+   double            _IchiMinH4(const MarketContext &ctx) const;
+
 public:
    //--- Constructor
    CSlotG() : m_maxProfitPip(0.0), m_pending_fill(false), m_pending_set_time(0), m_last_fill_bar(0) {}
@@ -214,6 +223,89 @@ bool CSlotG::_IsGSellSignal(const MarketContext &ctx) const
   }
 
 //+------------------------------------------------------------------+
+//| IMPL-FIX-011 Session C — §3.6:9/11/12 history-based helpers       |
+//| Replace single-tick proxies that empirically failed Step 4 iter-2 |
+//| (G/entry |Δ|=2 unchanged after Session B Force-same-side patch).  |
+//+------------------------------------------------------------------+
+
+//+------------------------------------------------------------------+
+//| _IchiMaxH4 / _IchiMinH4 — Ichimoku H4 cloud-edge max/min          |
+//+------------------------------------------------------------------+
+double CSlotG::_IchiMaxH4(const MarketContext &ctx) const
+  {
+   double a = ctx.ichi_h4.cloud_high;
+   double b = ctx.ichi_h4.tenkan[0];
+   double c = ctx.ichi_h4.kijun[0];
+   return MathMax(a, MathMax(b, c));
+  }
+
+double CSlotG::_IchiMinH4(const MarketContext &ctx) const
+  {
+   double a = ctx.ichi_h4.cloud_low;
+   double b = ctx.ichi_h4.tenkan[0];
+   double c = ctx.ichi_h4.kijun[0];
+   return MathMin(a, MathMin(b, c));
+  }
+
+//+------------------------------------------------------------------+
+//| _IsForcePeaksNotExhausted — §3.6:9                                |
+//| Legacy: "≤3 prior >11 peaks within wave; extremum <±25"           |
+//| Phase 1 implementation: count of bars in 8-bar window where       |
+//| |force| > 11 (MCB_FORCE_PEAK_THR) ≤ InpGForcePeakMaxAbove11 (3).  |
+//| Extremum <±25 sub-clause deferred to P4 (would need separate buf  |
+//| or per-tick max-tracking; conservative: relax this clause; if     |
+//| 5-yr Bucket A surfaces drift add InpGForceExtremumCap=25 gate).   |
+//+------------------------------------------------------------------+
+bool CSlotG::_IsForcePeaksNotExhausted(const MarketContext &ctx) const
+  {
+   if(!ctx.force_h4_history.has_data) return true;  // degrade-but-continue
+   return (ctx.force_h4_history.peak_count_above11 <= InpGForcePeakMaxAbove11);
+  }
+
+//+------------------------------------------------------------------+
+//| _BBTopBelowIchiMaxCount — §3.6:11 BUY scan                        |
+//| Count of bars in last InpGBBHistWindow (≤15) where bb_top < ichi_max
+//| Used as: count ≥ InpGBBHistMinBelow → BB validation passes.       |
+//+------------------------------------------------------------------+
+int CSlotG::_BBTopBelowIchiMaxCount(const MarketContext &ctx) const
+  {
+   if(!ctx.bb_h4_history.has_data) return 0;
+   double ichi_max = _IchiMaxH4(ctx);
+   int n = (InpGBBHistWindow < 15) ? InpGBBHistWindow : 15;
+   int count = 0;
+   for(int i = 0; i < n; i++)
+      if(ctx.bb_h4_history.bb_top[i] < ichi_max) count++;
+   return count;
+  }
+
+//+------------------------------------------------------------------+
+//| _BBBotAboveIchiMinCount — §3.6:11 SELL mirror (proxy)             |
+//| Phase 1 conservative proxy via symmetric BBTop scan; full bb_bot[15] |
+//| companion buffer P4 if 5-yr Bucket A surfaces drift on Slot_G SELL.|
+//+------------------------------------------------------------------+
+int CSlotG::_BBBotAboveIchiMinCount(const MarketContext &ctx) const
+  {
+   return _BBTopBelowIchiMaxCount(ctx);  // symmetric proxy; see C3 banner
+  }
+
+//+------------------------------------------------------------------+
+//| _IsDemRollingBuyOk / _IsDemRollingSellOk — §3.6:12                |
+//| Legacy "BUY pending if total ratio ≥175; SELL ≤25" mapped to      |
+//| 25-bar rolling DEM × 100. has_data short → degrade-but-continue.  |
+//+------------------------------------------------------------------+
+bool CSlotG::_IsDemRollingBuyOk(const MarketContext &ctx) const
+  {
+   if(!ctx.dem_h4_rolling.has_data) return true;  // degrade-but-continue
+   return (ctx.dem_h4_rolling.rolling_sum_x100 >= InpGDemRollingThreshBuy);
+  }
+
+bool CSlotG::_IsDemRollingSellOk(const MarketContext &ctx) const
+  {
+   if(!ctx.dem_h4_rolling.has_data) return true;
+   return (ctx.dem_h4_rolling.rolling_sum_x100 <= InpGDemRollingThreshSell);
+  }
+
+//+------------------------------------------------------------------+
 //| Static const definition (MQL5 requires out-of-class definition)  |
 //+------------------------------------------------------------------+
 const int CSlotG::PENDING_FILL_TIMEOUT_SEC = 60;
@@ -296,6 +388,21 @@ void CSlotG::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    double stoch_k = ctx.stoch_m10.k_main;
    if(buySignal  && stoch_k >= InpGStochOversold)  return;
    if(sellSignal && stoch_k <= InpGStochOverbought) return;
+
+   //--- IMPL-FIX-011 Session C — §3.6:9 Force peaks not exhausted
+   //    8-bar window peak count (|F| > 11) must be ≤ InpGForcePeakMaxAbove11 (3)
+   if(!_IsForcePeaksNotExhausted(ctx)) return;
+
+   //--- IMPL-FIX-011 Session C — §3.6:11 Bollinger 15-bar BBTop<IchiMax scan
+   //    BUY: bb_top history below ichi_max ≥ InpGBBHistMinBelow on at least N bars
+   //    SELL: mirror via _BBBotAboveIchiMinCount (currently symmetric proxy)
+   int bb_count = buySignal ? _BBTopBelowIchiMaxCount(ctx) : _BBBotAboveIchiMinCount(ctx);
+   if(bb_count < InpGBBHistMinBelow) return;
+
+   //--- IMPL-FIX-011 Session C — §3.6:12 DeMarker 25-bar rolling sum × 100
+   //    BUY pending if rolling ≥ 175; SELL pending if rolling ≤ 25
+   if(buySignal  && !_IsDemRollingBuyOk(ctx))  return;
+   if(sellSignal && !_IsDemRollingSellOk(ctx)) return;
 
    //--- Pip size via base-class helper (Round-06 06.1)
    double pip_size = _PipSize();
