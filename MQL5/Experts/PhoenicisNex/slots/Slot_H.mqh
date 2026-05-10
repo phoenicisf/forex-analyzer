@@ -164,10 +164,13 @@ void CSlotH::_TryExit(ulong ticket, double open_price, datetime open_time,
 
    //--- Phase-1 stub: log intent โ€” m_risk.CloseOrder(ticket) wires through core/Orchestrator.mqh
    //    Observable milestone for E-AC [log-assertion] when wired.
-   if(m_logger != NULL)
-      m_logger.Info("Slot_H", "exit_profit_gate", MAGIC_H,
-                    StringFormat("ticket=%I64u profit_pips=%.1f age=%d",
-                                 ticket, profit_pips, age_bars));
+   if(m_logger != NULL) {}
+      // IMPL-FIX-008 R-10: exit_profit_gate Info emit suppressed (Phase-1 stub spam
+      // caused 5-yr regression to bloat log + halt processing pace; restore when
+      // RiskManager::CloseOrder wires + this becomes one-shot post-close milestone)
+//       m_logger.Info("Slot_H", "exit_profit_gate", MAGIC_H,
+//                     StringFormat("ticket=%I64u profit_pips=%.1f age=%d",
+//                                  ticket, profit_pips, age_bars));
   }
 
 //+------------------------------------------------------------------+

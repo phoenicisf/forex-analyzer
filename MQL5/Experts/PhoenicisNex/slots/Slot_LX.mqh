@@ -220,11 +220,14 @@ public:
          if(profit_pips >= InpLXTpProfitPips)
            {
             string pos_comment = PositionGetString(POSITION_COMMENT);
-            m_logger.Info("Slot_LX", "exit_profit_gate", MAGIC_L,
-                          StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f "
-                                       "comment=%s โ’ close",
-                                       ticket, profit_pips, InpLXTpProfitPips,
-                                       pos_comment));
+            // IMPL-FIX-008 R-10: exit_profit_gate Info emit suppressed (Phase-1 stub spam
+            // caused 5-yr regression to bloat log + halt processing pace; restore when
+            // RiskManager::CloseOrder wires + this becomes one-shot post-close milestone)
+//             m_logger.Info("Slot_LX", "exit_profit_gate", MAGIC_L,
+//                           StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f "
+//                                        "comment=%s โ’ close",
+//                                        ticket, profit_pips, InpLXTpProfitPips,
+//                                        pos_comment));
 
             //--- Phase-1 stub: logger-only milestone; broker close wires through core/Orchestrator.mqh per ea.md.
            }

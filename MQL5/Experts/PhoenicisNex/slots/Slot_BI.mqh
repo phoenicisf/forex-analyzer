@@ -270,9 +270,12 @@ public:
          //--- Exit condition: BI pyramid profit >= InpBITpProfitPips (30 pip)
          if(profit_pips >= InpBITpProfitPips)
            {
-            m_logger.Info("Slot_BI", "exit_profit_gate", MAGIC_B,
-                          StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f -> close",
-                                       ticket, profit_pips, InpBITpProfitPips));
+            // IMPL-FIX-008 R-10: exit_profit_gate Info emit suppressed (Phase-1 stub spam
+            // caused 5-yr regression to bloat log + halt processing pace; restore when
+            // RiskManager::CloseOrder wires + this becomes one-shot post-close milestone)
+//             m_logger.Info("Slot_BI", "exit_profit_gate", MAGIC_B,
+//                           StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f -> close",
+//                                        ticket, profit_pips, InpBITpProfitPips));
             //--- Phase-1 stub: logger-only milestone; broker close wired through services/RiskManager.mqh (CTrade wrapper) per ea.md.
            }
         }

@@ -187,9 +187,12 @@ void CSlotBR::ManageExits(CPortfolioState &port)
       //--- Profit gate: โฅ InpBRTpProfitPips (40 pip default โ€” orphan tier)
       if(profit_pips >= InpBRTpProfitPips)
         {
-         m_logger.Info("SlotBR", "exit_profit_gate", MAGIC_BR,
-                       StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f -> close",
-                                    ticket, profit_pips, InpBRTpProfitPips));
+         // IMPL-FIX-008 R-10: exit_profit_gate Info emit suppressed (Phase-1 stub spam
+         // caused 5-yr regression to bloat log + halt processing pace; restore when
+         // RiskManager::CloseOrder wires + this becomes one-shot post-close milestone)
+//          m_logger.Info("SlotBR", "exit_profit_gate", MAGIC_BR,
+//                        StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f -> close",
+//                                     ticket, profit_pips, InpBRTpProfitPips));
 
          //--- Phase-1 stub: logger-only milestone; broker close wires at
          //    Orchestrator wiring path (core/Orchestrator.mqh) (RiskManager::OpenOrder) per ea.md.

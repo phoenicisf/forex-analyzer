@@ -311,9 +311,12 @@ void CSlotQ::ManageExits(CPortfolioState &port)
       //--- Profit gate: โฅ InpQTpProfitPips โ’ emit close signal
       if(profit_pips >= InpQTpProfitPips)
         {
-         m_logger.Info("SlotQ", "exit_profit_gate", MAGIC_Q,
-                       StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f โ’ close",
-                                    ticket, profit_pips, InpQTpProfitPips));
+         // IMPL-FIX-008 R-10: exit_profit_gate Info emit suppressed (Phase-1 stub spam
+         // caused 5-yr regression to bloat log + halt processing pace; restore when
+         // RiskManager::CloseOrder wires + this becomes one-shot post-close milestone)
+//          m_logger.Info("SlotQ", "exit_profit_gate", MAGIC_Q,
+//                        StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f โ’ close",
+//                                     ticket, profit_pips, InpQTpProfitPips));
 
          //--- Phase-1 stub: logger-only milestone; broker close wires at
          //    Orchestrator wiring path (core/Orchestrator.mqh) (RiskManager::OpenOrder) per ea.md.

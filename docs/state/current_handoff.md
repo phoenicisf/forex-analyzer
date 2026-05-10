@@ -4,6 +4,40 @@
 
 ## Last completed action
 
+**🟢 IMPL-FIX-008 CLOSED 2026-05-10 — R-9 (CircuitBreaker storm + Slot_G anti-pyramid + 21-slot stub-suppress) closed; R-11 NEW (per-tick perf gap blocks 5-yr in reasonable wall-clock).**
+
+**Trigger:** 5-yr Bucket B regression (`regression_5yr_g4.ini` Model=0) launched after IMPL-FIX-007 v2 closure → at sim=2021.01.08 20:37 hit a CircuitBreaker storm on magic=208 (G/G2 pool). Slot_G inherited the IMPL-FIX-007 v2 anti-pyramid gap (gate added to G2/S only). EA detected ping_pong but did NOT actually halt because (a) `CheckPingPong` ring buffer not cleared post-detection → re-detected stale (magic,dir) every tick; (b) `Orchestrator OnTick:594` invoked CheckPingPong unconditionally without state guard. Log grew at ~70 MB/min projecting 200+ GB for full 5-yr.
+
+**3-patch fix (~50 LOC, 23 files):**
+1. `slots/Slot_G.mqh` — added `m_last_fill_bar` H4-bar gate + `m_pending_fill` 60s latch + `PENDING_FILL_TIMEOUT_SEC=60` (mirrors Slot_G2 v2 IMPL-FIX-007 pattern); ctor inits all three; gate at top of Evaluate; OpenOrder success arms latch + records bar.
+2. `services/CircuitBreaker.mqh::CheckPingPong()` resets `m_count = 0; m_idx = 0` after detection so subsequent ticks see fresh ring buffer.
+3. `core/Orchestrator.mqh::OnTick:594` wraps CheckPingPong with `m_state_enum == EA_STATE_RUNNING && m_breaker.CheckPingPong()` state guard.
+
+**R-10 secondary fix (Q1 canary spam find):**
+- `slots/Slot_S.mqh` — added `m_close_logged_ticket` per-instance latch for `exit_profit_gate` Phase-1 stub (one-shot per ticket; restore when `RiskManager::CloseOrder` lands Phase 2).
+- Bulk-applied minimum-scope mitigation across all 21 `Slot_*.mqh` files: comment-out 22 `m_logger.Info(..., "exit_profit_gate", ...)` emit sites with 4-line `IMPL-FIX-008 R-10` banner header (Slot_P has 2 emits — exit_profit_gate + exit_profit_gate_pyramid). 3 dangling `if(m_logger != NULL)` no-body cases (Slot_H, Slot_K, Slot_L) patched to empty `{}` block to silence MQL5 warning 69.
+
+**Verification PASS:**
+- G1: `Result: 0 errors, 0 warnings, 5442 ms elapsed`
+- G2 smoke 3-day Model=0: 8 journal records, 0 ping_pong, 0 [ERROR], 1 deinit_cleanup, "automatical testing finished" (no regression on existing IMPL-FIX-007 v2 fix)
+- Q1 canary 2021 post-FIX-008 ran past 2021.01.08 20:37 storm point; whole-file UTF-16LE-encoded needle scan confirms 0 ping_pong events from current code (99,994 ping_pong events at log offset >1.2GB are leftover from earlier 13:32 5-yr Model=0 storm pre-FIX-008)
+
+**R-9 closed empirically.**
+
+**🟡 R-11 NEW (per-tick performance gap):** Q1 canary pace 6-30 sim-day per wall-min → 5-yr extrapolation 2-15 hr (vs original PhoenicisN2.10 baseline 40-60 min for 5-yr per project memory). Per-tick cost in modular monolith architecture (21-slot Evaluate × per tick + 21-slot ManageExits × per tick + MarketContext rebuild per tick + PortfolioState.Refresh O(N positions) per tick + Logger format-then-throw overhead) is fundamentally heavier than legacy 22k-LOC flat monolith. **Decision (per user 2026-05-10):** commit IMPL-FIX-008 (R-9 fix), defer 5-yr regression numeric drain pending R-11 perf investigation in separate session (IMPL-PERF-001 or IMPL-FIX-009; effort estimate 2-4 hr profile + targeted optimization via `TickLatencyProbe` IMPL-065 framework).
+
+**Hypothesis space for next session (R-11):**
+- (a) MarketContextBuilder rebuilt every tick when only H4 bar boundary indicator updates needed (could cache per-bar)
+- (b) PortfolioState.Refresh loops PositionsTotal every tick when broker positions are mostly static between ticks (could refresh only on PositionsTotal-changed event via OnTradeTransaction)
+- (c) per-slot Evaluate lacks short-circuit early-return for "no signal possible until next H4 bar"
+- (d) Logger.Info formatting overhead even when level filters out (`m_min_level` checked AFTER `FormatLine()` call which builds the full string)
+
+Evidence: `_session-handoff/IMPL-FIX-008-evidence-20260510.md`.
+
+---
+
+## Prior action (kept for context)
+
 **🟢 IMPL-FIX-007 CLOSED v2 2026-05-10 — G2 smoke PASS empirical (full 3-day 18 H4 bars, $251.03 final balance, 8 order_sent each ≤1 per H4 bar, ~47x wall-clock reduction)**
 
 **v2 patches (post v1 G2 smoke finding):** v1 fix landed PortfolioState.Refresh + GetTicketsForSlot bodies + 60s pending-fill latch + tester-mode bar-throttle. v1 G2 smoke (12:50) revealed 2 additional defects:

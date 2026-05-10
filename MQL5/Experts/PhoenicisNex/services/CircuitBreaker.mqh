@@ -234,6 +234,14 @@ bool CCircuitBreaker::CheckPingPong()
             else
                Print("[CircuitBreaker][ERROR] " + detail);
 
+            // IMPL-FIX-008: reset buffer after detection so subsequent
+            // ticks do not re-detect the same stale (magic,dir) pair.
+            // Without this reset, even with the Orchestrator state guard,
+            // any path that bypasses the guard (or future re-init flow)
+            // would re-trigger on the same ring. EA is halting anyway;
+            // a fresh buffer is the correct post-condition.
+            m_count = 0;
+            m_idx   = 0;
             return true;  // Orchestrator wires EAState::SetHalted
            }
          else if(delta <= (long)NEAR_MISS_THRESHOLD_S)

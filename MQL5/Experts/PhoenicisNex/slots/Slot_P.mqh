@@ -542,10 +542,13 @@ void CSlotP::ManageExits(CPortfolioState &port)
       double gate = _TpPipsForSubMode(c);
       if(profit_pips >= gate)
         {
-         m_logger.Info("SlotP", "exit_profit_gate", MAGIC_P,
-                       StringFormat("ticket=%I64u comment=%s profit_pips=%.1f "
-                                    ">= gate=%.1f โ’ close",
-                                    ticket, c, profit_pips, gate));
+         // IMPL-FIX-008 R-10: exit_profit_gate Info emit suppressed (Phase-1 stub spam
+         // caused 5-yr regression to bloat log + halt processing pace; restore when
+         // RiskManager::CloseOrder wires + this becomes one-shot post-close milestone)
+//          m_logger.Info("SlotP", "exit_profit_gate", MAGIC_P,
+//                        StringFormat("ticket=%I64u comment=%s profit_pips=%.1f "
+//                                     ">= gate=%.1f โ’ close",
+//                                     ticket, c, profit_pips, gate));
          //--- Phase-1 stub: logger-only milestone; broker close wires through core/Orchestrator.mqh per ea.md.
         }
      }
@@ -568,10 +571,13 @@ void CSlotP::ManageExits(CPortfolioState &port)
 
       if(profit_pips >= InpPTpPipsE)
         {
-         m_logger.Info("SlotP", "exit_profit_gate_pyramid", MAGIC_P,
-                       StringFormat("ticket=%I64u sub_mode=E profit_pips=%.1f "
-                                    ">= gate=%.1f โ’ close",
-                                    ticket, profit_pips, InpPTpPipsE));
+         // IMPL-FIX-008 R-10: exit_profit_gate Info emit suppressed (Phase-1 stub spam
+         // caused 5-yr regression to bloat log + halt processing pace; restore when
+         // RiskManager::CloseOrder wires + this becomes one-shot post-close milestone)
+//          m_logger.Info("SlotP", "exit_profit_gate_pyramid", MAGIC_P,
+//                        StringFormat("ticket=%I64u sub_mode=E profit_pips=%.1f "
+//                                     ">= gate=%.1f โ’ close",
+//                                     ticket, profit_pips, InpPTpPipsE));
          //--- Phase-1 stub: logger-only milestone; broker close wires through core/Orchestrator.mqh per ea.md.
         }
      }

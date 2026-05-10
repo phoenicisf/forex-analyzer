@@ -362,9 +362,12 @@ void CSlotG2::ManageExits(CPortfolioState &port)
       //--- Profit gate: โฅ InpG2TpProfitPips (30 pip default โ€” lighter than G's 50)
       if(profit_pips >= InpG2TpProfitPips)
         {
-         m_logger.Info("SlotG2", "exit_profit_gate", MAGIC_G,
-                       StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f โ’ close",
-                                    ticket, profit_pips, InpG2TpProfitPips));
+         // IMPL-FIX-008 R-10: exit_profit_gate Info emit suppressed (Phase-1 stub spam
+         // caused 5-yr regression to bloat log + halt processing pace; restore when
+         // RiskManager::CloseOrder wires + this becomes one-shot post-close milestone)
+//          m_logger.Info("SlotG2", "exit_profit_gate", MAGIC_G,
+//                        StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f โ’ close",
+//                                     ticket, profit_pips, InpG2TpProfitPips));
 
          //--- Phase-1 stub: logger-only milestone; broker close wires at
          //    Orchestrator wiring path (core/Orchestrator.mqh) (RiskManager::OpenOrder) per ea.md.

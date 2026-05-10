@@ -591,7 +591,10 @@ void COrchestrator::OnTick()
    m_logger.OnTickBoundary();
 
    // 4. CircuitBreaker check (D-2 — zero-arg signature)
-   if(m_breaker.CheckPingPong())
+   //    IMPL-FIX-008: state guard — once HALTED, skip CheckPingPong to stop
+   //    spam loop (CheckPingPong re-detects same buffer entries every tick
+   //    if EA is HALTED but CheckPingPong is unconditionally called).
+   if(m_state_enum == EA_STATE_RUNNING && m_breaker.CheckPingPong())
       Halt("circuit_breaker_pingpong");
       // fall through to exit pass
 

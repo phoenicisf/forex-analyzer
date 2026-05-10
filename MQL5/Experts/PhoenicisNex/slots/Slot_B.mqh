@@ -260,9 +260,12 @@ public:
             continue;
 
          if(m_logger != NULL)
-            m_logger.Info("Slot_B", "exit_profit_gate", Magic(),
-                          StringFormat("ticket=%I64u profit_pips=%.1f",
-                                       ticket, profit_pips));
+            // IMPL-FIX-008 R-10: exit_profit_gate Info emit suppressed (Phase-1 stub spam
+            // caused 5-yr regression to bloat log + halt processing pace; restore when
+            // RiskManager::CloseOrder wires + this becomes one-shot post-close milestone)
+//             m_logger.Info("Slot_B", "exit_profit_gate", Magic(),
+//                           StringFormat("ticket=%I64u profit_pips=%.1f",
+//                                        ticket, profit_pips));
 
          //--- Phase-1 stub: m_risk.CloseOrder(ticket) wires through core/Orchestrator.mqh
          //    Post-close BR-trigger hook (BR-2.2 orphan exit-only spawn);

@@ -212,9 +212,12 @@ public:
          //    Full cloud-touch check wires through core/Orchestrator.mqh when ctx
          //    is passed to ManageExits. For MVP: close on profit gate alone
          //    when InpKTpProfitPips threshold met (sufficient for E-AC).
-         if(m_logger != NULL)
-            m_logger.Info("Slot_K", "exit_profit_gate", Magic(),
-                          StringFormat("ticket=%I64u profit_pips=%.1f", ticket, profit_pips));
+         if(m_logger != NULL) {}
+            // IMPL-FIX-008 R-10: exit_profit_gate Info emit suppressed (Phase-1 stub spam
+            // caused 5-yr regression to bloat log + halt processing pace; restore when
+            // RiskManager::CloseOrder wires + this becomes one-shot post-close milestone)
+//             m_logger.Info("Slot_K", "exit_profit_gate", Magic(),
+//                           StringFormat("ticket=%I64u profit_pips=%.1f", ticket, profit_pips));
 
          //--- Close order via RiskManager (CTrade wired through core/Orchestrator.mqh)
          //    Log intent only until wiring complete (same pattern as Evaluate).

@@ -221,9 +221,12 @@ void CSlotJ::ManageExits(CPortfolioState &port)
          int    magic_for_log = MAGIC_J;
          string g4_tag        = "(G4 fix BR-7.2)";
 #endif
-         m_logger.Info("SlotJ", "exit_profit_gate", magic_for_log,
-                       StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f โ’ close %s",
-                                    ticket, profit_pips, InpJTpProfitPips, g4_tag));
+         // IMPL-FIX-008 R-10: exit_profit_gate Info emit suppressed (Phase-1 stub spam
+         // caused 5-yr regression to bloat log + halt processing pace; restore when
+         // RiskManager::CloseOrder wires + this becomes one-shot post-close milestone)
+//          m_logger.Info("SlotJ", "exit_profit_gate", magic_for_log,
+//                        StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f โ’ close %s",
+//                                     ticket, profit_pips, InpJTpProfitPips, g4_tag));
 
          //--- Phase-1 stub: logger-only milestone; broker close wires at
          //    Orchestrator wiring path (core/Orchestrator.mqh) (RiskManager::OpenOrder) per ea.md.

@@ -124,9 +124,17 @@ private:
    datetime          m_pending_set_time;
    static const int  PENDING_FILL_TIMEOUT_SEC; // = 60
 
+   //--- IMPL-FIX-008 R-10 close-intent latch (post-Q1-2021-canary spam find):
+   //    Slot_S exit_profit_gate is Phase-1 stub (logs intent; broker-close
+   //    wiring deferred to RiskManager::CloseOrder Phase 2). Without latch,
+   //    every tick at profit>=gate re-emits Info -> log spam.
+   //    Latch: remember last ticket that triggered log; suppress re-emit
+   //    until ticket vanishes (broker-close from end-of-test or SL hit).
+   ulong             m_close_logged_ticket;
+
 public:
    //--- Constructor / Destructor
-   CSlotS() : m_pending_fill(false), m_pending_set_time(0), m_last_fill_bar(0) {}
+   CSlotS() : m_pending_fill(false), m_pending_set_time(0), m_last_fill_bar(0), m_close_logged_ticket(0) {}
    virtual          ~CSlotS() {}
 
    //=================================================================
@@ -354,12 +362,18 @@ void CSlotS::ManageExits(CPortfolioState &port)
       else
          profit_pips = (open_price - cur_price) / pip_size;
 
-      //--- Profit gate: >= InpSTpProfitPips (35 pip โ€” post-close follow-on target)
-      if(profit_pips >= InpSTpProfitPips)
+      //--- Profit gate: >= InpSTpProfitPips (35 pip - post-close follow-on target)
+      //    IMPL-FIX-008 R-10: latch close-intent per ticket so subsequent ticks
+      //    do not re-spam Info while position lingers (Phase-1 close stub).
+      if(profit_pips >= InpSTpProfitPips && ticket != m_close_logged_ticket)
         {
-         m_logger.Info("SlotS", "exit_profit_gate", MAGIC_S,
-                       StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f โ’ close",
-                                    ticket, profit_pips, InpSTpProfitPips));
+         // IMPL-FIX-008 R-10: exit_profit_gate Info emit suppressed (Phase-1 stub spam
+         // caused 5-yr regression to bloat log + halt processing pace; restore when
+         // RiskManager::CloseOrder wires + this becomes one-shot post-close milestone)
+//          m_logger.Info("SlotS", "exit_profit_gate", MAGIC_S,
+//                        StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f close (one-shot per ticket)",
+//                                     ticket, profit_pips, InpSTpProfitPips));
+         m_close_logged_ticket = ticket;
 
          //--- Phase-1 stub: logger-only milestone; broker close wires at
          //    Orchestrator wiring path (core/Orchestrator.mqh) (RiskManager::OpenOrder) per ea.md.

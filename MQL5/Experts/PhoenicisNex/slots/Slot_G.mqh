@@ -54,6 +54,24 @@ private:
    //--- Per-tick trailing state (reset on new G order open)
    double            m_maxProfitPip;    // trailing max-profit tracking for GOverload detection (BR-8.4)
 
+   //--- IMPL-FIX-008 H4 bar gate (R-9 closure post-5yr-storm finding):
+   //    rate-limit fills to <=1 per H4 bar regardless of position
+   //    lifecycle. Mirrors Slot_G2 v2 IMPL-FIX-007 pattern. Without this,
+   //    Slot_G fires repeatedly on shared MAGIC_G=208 between H4 bar
+   //    boundaries when H4 trend persists -> CircuitBreaker ping-pong storm
+   //    detected at 2021.01.08 in 5-yr Model=0 Bucket B regression.
+   datetime          m_last_fill_bar;
+
+   //--- IMPL-FIX-008: synchronous in-memory pending-fill latch.
+   //    Set after RiskManager.OpenOrder() returns true; reset when
+   //    PortfolioState reflects the new ticket OR after 60s timeout.
+   //    Covers OrderSend->next-OnTick race (PortfolioState.Refresh at
+   //    step 7 cannot see ticket created at step 11 of the SAME tick).
+   bool              m_pending_fill;
+   datetime          m_pending_set_time;
+   static const int  PENDING_FILL_TIMEOUT_SEC; // = 60
+
+
    //--- Private helpers
    bool              _IsGBuySignal(const MarketContext &ctx) const;
    bool              _IsGSellSignal(const MarketContext &ctx) const;
@@ -65,7 +83,7 @@ private:
 
 public:
    //--- Constructor
-   CSlotG() : m_maxProfitPip(0.0) {}
+   CSlotG() : m_maxProfitPip(0.0), m_pending_fill(false), m_pending_set_time(0), m_last_fill_bar(0) {}
    virtual ~CSlotG() {}
 
    //--- 6-method behavior contract (ADR-002; slot-abstraction-contract.yaml)
@@ -196,6 +214,11 @@ bool CSlotG::_IsGSellSignal(const MarketContext &ctx) const
   }
 
 //+------------------------------------------------------------------+
+//| Static const definition (MQL5 requires out-of-class definition)  |
+//+------------------------------------------------------------------+
+const int CSlotG::PENDING_FILL_TIMEOUT_SEC = 60;
+
+//+------------------------------------------------------------------+
 //| Evaluate โ€” Slot G entry pass (CodeWiki ยง3.6 MVP)                  |
 //|                                                                   |
 //| Entry conditions (5 of 13 for M-size MVP):                        |
@@ -216,6 +239,36 @@ void CSlotG::Evaluate(const MarketContext &ctx, CPortfolioState &port)
 
    //--- Guard: service pointers must be wired (Composition Root via Init)
    if(m_risk == NULL || m_logger == NULL) return;
+
+   //--- IMPL-FIX-008 H4 bar gate (PRIMARY anti-pyramid defense; mirrors
+   //    Slot_G2 IMPL-FIX-007). MAGIC_G=208 shared with G2 - Slot_G
+   //    storming inside the same H4 bar triggered CircuitBreaker
+   //    ping-pong cascade in 5-yr regression (R-9). Bar gate enforces
+   //    "<=1 fill per H4 bar" semantics matching G2 wave-helper rule.
+   if(m_last_fill_bar > 0 && iTime(_Symbol, PERIOD_H4, 0) == m_last_fill_bar)
+      return;
+
+   //--- IMPL-FIX-008 anti-pyramid latch (same-tick race protection).
+   //    Reset when PortfolioState reflects fill OR after timeout.
+   if(m_pending_fill)
+     {
+      if(_HasActiveGOrder(port))
+        {
+         m_pending_fill     = false;
+         m_pending_set_time = 0;
+        }
+      else if(TimeCurrent() - m_pending_set_time > PENDING_FILL_TIMEOUT_SEC)
+        {
+         m_pending_fill     = false;
+         m_pending_set_time = 0;
+         m_logger.Warn("SlotG", "pending_fill_timeout", MAGIC_G,
+                       "60s elapsed without PortfolioState reflection - clearing latch");
+        }
+      else
+        {
+         return;  // still pending - skip until reflected or timeout
+        }
+     }
 
    //--- Condition 1: no active G (own "G," prefix orders)
    if(_HasActiveGOrder(port)) return;
@@ -303,7 +356,13 @@ void CSlotG::Evaluate(const MarketContext &ctx, CPortfolioState &port)
                                  (buySignal ? "BUY" : "SELL"), lot, sl_pips, price, sl_price, comment));
 
    //--- IMPL-FIX-003: submit broker order via RiskManager.OpenOrder wrapper (ea.md mandate)
-   m_risk.OpenOrder(req, "G");
+   //--- IMPL-FIX-008: arm pending-fill latch + record bar on success to block same-tick + same-bar re-entry
+   if(m_risk.OpenOrder(req, "G"))
+     {
+      m_pending_fill     = true;
+      m_pending_set_time = TimeCurrent();
+      m_last_fill_bar    = iTime(_Symbol, PERIOD_H4, 0);
+     }
 
    //--- Reset trailing state for new position
    m_maxProfitPip = 0.0;
@@ -367,9 +426,12 @@ void CSlotG::ManageExits(CPortfolioState &port)
       //--- Profit gate: โฅ InpGTpProfitPips (50 pip default) โ’ emit close signal
       if(profit_pips >= InpGTpProfitPips)
         {
-         m_logger.Info("SlotG", "exit_profit_gate", MAGIC_G,
-                       StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f โ’ close",
-                                    ticket, profit_pips, InpGTpProfitPips));
+         // IMPL-FIX-008 R-10: exit_profit_gate Info emit suppressed (Phase-1 stub spam
+         // caused 5-yr regression to bloat log + halt processing pace; restore when
+         // RiskManager::CloseOrder wires + this becomes one-shot post-close milestone)
+//          m_logger.Info("SlotG", "exit_profit_gate", MAGIC_G,
+//                        StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f โ’ close",
+//                                     ticket, profit_pips, InpGTpProfitPips));
 
          //--- Close via CTrade route โ€” fix-round-12 ยง 12.8: actual close
          //    routes through `RiskManager::OpenOrder` / `CloseOrder` per
