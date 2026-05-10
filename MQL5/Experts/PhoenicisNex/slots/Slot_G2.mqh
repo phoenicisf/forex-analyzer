@@ -51,21 +51,12 @@
 class CSlotG2 : public CSlotBase
   {
 private:
-   //--- IMPL-FIX-011 R-13 (e) Force narrow-band constants per CodeWiki ยง3.7:4
-   //    Legacy "Force[1] in (0.2, 7)" โ€” narrow positive momentum band, NOT
-   //    just >0. Inlined static const (mirrors Slot_S LK_LOOKBACK_BARS_MAX
-   //    + Slot_G PENDING_FILL_TIMEOUT_SEC precedent) to avoid scope-creep
-   //    on Inputs_Slot_G2.mqh + .ini reproducibility.
-   static const double G2_FI_NARROW_LOWER;   // = 0.2
-   static const double G2_FI_NARROW_UPPER;   // = 7.0
-
    //--- Private helpers
    bool              _IsG2BuySignal(const MarketContext &ctx) const;
    bool              _IsG2SellSignal(const MarketContext &ctx) const;
    bool              _IsPriceAboveCloud(const MarketContext &ctx) const;
    bool              _IsPriceBelowCloud(const MarketContext &ctx) const;
    bool              _HasActiveG2Order(CPortfolioState &port) const;
-   bool              _HasActiveGOrder(CPortfolioState &port) const;   // IMPL-FIX-011 R-13 (e) peer-slot G presence (CodeWiki ยง3.7:1)
    double            _CloudHigh(const MarketContext &ctx) const;
    double            _CloudLow(const MarketContext &ctx) const;
 
@@ -147,9 +138,7 @@ bool CSlotG2::_IsPriceBelowCloud(const MarketContext &ctx) const
 //+------------------------------------------------------------------+
 //| Static const definition (MQL5 requires out-of-class definition)   |
 //+------------------------------------------------------------------+
-const int    CSlotG2::PENDING_FILL_TIMEOUT_SEC = 60;
-const double CSlotG2::G2_FI_NARROW_LOWER       = 0.2;   // IMPL-FIX-011 R-13 (e) CodeWiki ยง3.7:4 narrow band lower
-const double CSlotG2::G2_FI_NARROW_UPPER       = 7.0;   // IMPL-FIX-011 R-13 (e) CodeWiki ยง3.7:4 narrow band upper
+const int CSlotG2::PENDING_FILL_TIMEOUT_SEC = 60;
 
 //+------------------------------------------------------------------+
 //| _HasActiveG2Order โ€” check for open G2 orders via PortfolioState   |
@@ -159,20 +148,6 @@ bool CSlotG2::_HasActiveG2Order(CPortfolioState &port) const
   {
    ulong tickets[];
    int n = port.GetTicketsForSlot(MAGIC_G, "G2,", tickets);
-   return n > 0;
-  }
-
-//+------------------------------------------------------------------+
-//| _HasActiveGOrder โ€” IMPL-FIX-011 R-13 (e) peer-slot G presence    |
-//| (CodeWiki ยง3.7:1 "No active G or G2 orders").                    |
-//| Q1 paired-canary diff (Step 2) showed G2 fired alongside G on the |
-//| 2021-01-04 16:00Z bucket; legacy "no active G+G2" first-condition |
-//| gating suppresses G2 when peer G has open order.                  |
-//+------------------------------------------------------------------+
-bool CSlotG2::_HasActiveGOrder(CPortfolioState &port) const
-  {
-   ulong tickets[];
-   int n = port.GetTicketsForSlot(MAGIC_G, "G,", tickets);
    return n > 0;
   }
 
@@ -192,14 +167,7 @@ bool CSlotG2::_IsG2BuySignal(const MarketContext &ctx) const
    double f2 = ctx.force_h4.f2;
 
    //--- Continuation range: F[1]>0 โง F[2]>-0.2 (still in wave, not reversed)
-   //--- IMPL-FIX-011 R-13 (e) eligibility tightening per CodeWiki ยง3.7:4
-   //    Legacy spec: F[1] in (0.2, 7) โ€” NARROW positive momentum band, NOT
-   //    just >0. Q1 paired-canary diff (Step 2 + Step 4 iter-1) showed G2
-   //    fired with F[1] just barely positive on rewrite-only buckets
-   //    2021-01-04 16:00Z + 2021-01-08 20:00Z while legacy was silent.
-   //    F[2] continuation lower bound preserved from prior MVP behaviour.
-   return (f1 > G2_FI_NARROW_LOWER && f1 < G2_FI_NARROW_UPPER &&
-           f2 > InpG2FIContinuationLow);
+   return (f1 > InpG2FIContinuationMin && f2 > InpG2FIContinuationLow);
   }
 
 //+------------------------------------------------------------------+
@@ -213,9 +181,7 @@ bool CSlotG2::_IsG2SellSignal(const MarketContext &ctx) const
    double f2 = ctx.force_h4.f2;
 
    //--- Mirror of BUY (negated thresholds)
-   //--- IMPL-FIX-011 R-13 (e) mirror of BUY: legacy F[1] in (-7, -0.2)
-   return (f1 < -G2_FI_NARROW_LOWER && f1 > -G2_FI_NARROW_UPPER &&
-           f2 < -InpG2FIContinuationLow);
+   return (f1 < -InpG2FIContinuationMin && f2 < -InpG2FIContinuationLow);
   }
 
 //+------------------------------------------------------------------+
@@ -265,11 +231,8 @@ void CSlotG2::Evaluate(const MarketContext &ctx, CPortfolioState &port)
         }
      }
 
-   //--- Condition 1: no active G OR G2 (CodeWiki ยง3.7:1)
-   //    IMPL-FIX-011 R-13 (e): legacy gates G2 entry on absence of BOTH
-   //    G and G2 open orders, not just G2. Q1 paired-canary diff showed
-   //    G2 fired alongside G on the 2021-01-04 16:00Z bucket.
-   if(_HasActiveGOrder(port) || _HasActiveG2Order(port)) return;
+   //--- Condition 1: no active G2 (own "G2," prefix orders)
+   if(_HasActiveG2Order(port)) return;
 
    //--- Determine direction
    bool buySignal  = _IsG2BuySignal(ctx);
