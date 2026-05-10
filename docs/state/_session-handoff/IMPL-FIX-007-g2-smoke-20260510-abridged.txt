@@ -1,0 +1,412 @@
+== HEADER (300 lines) ==
+CS	0	12:57:56.168	Startup	MetaTester 5 build 5833, 25 Apr 2026
+
+CS	0	12:57:56.169	Startup	Windows 11 build 22631, 16 x AMD Ryzen 7 7840HS w/ Radeon 780M, AVX2, 9 / 31 Gb memory, 192 / 930 Gb disk, UAC, GMT+7
+
+CS	0	12:57:56.170	Server	MetaTester 5 started on 127.0.0.1:3000
+
+CS	0	12:57:56.171	Startup	cloud network mode is off
+
+CS	0	12:57:56.171	Startup	initialization finished
+
+CS	0	12:57:56.285	127.0.0.1	login (build 5833)
+
+CS	0	12:57:56.302	Network	16516 bytes of account info loaded
+
+CS	0	12:57:56.302	Network	1478 bytes of tester parameters loaded
+
+CS	0	12:57:56.302	Network	116420 bytes of input parameters loaded
+
+CS	0	12:57:56.303	Network	2680 bytes of symbols list loaded (581 symbols)
+
+CS	0	12:57:56.303	Tester	expert file added: Experts\PhoenicisNex\PhoenicisNex.ex5. 338747 bytes loaded
+
+CS	0	12:57:56.303	Tester	program file added: Indicators\Examples\ZigZag.ex5. 13896 bytes loaded
+
+CS	0	12:57:56.307	Tester	9958 Mb available, 124 blocks set for ticks generating
+
+CS	0	12:57:56.307	Tester	initial deposit 1000.00 USD, leverage 1:500
+
+CS	0	12:57:56.307	Tester	successfully initialized
+
+CS	0	12:57:56.307	Network	351 Kb of total initialization data received
+
+CS	0	12:57:56.307	Tester	AMD Ryzen 7 7840HS w/ Radeon 780M, 31938 MB
+
+CS	0	12:57:56.313	Symbols	EURUSD: symbol to be synchronized
+
+CS	0	12:57:56.313	Symbols	EURUSD: symbol synchronized, 3720 bytes of symbol info received
+
+CS	0	12:57:56.315	History	EURUSD: load 27 bytes of history data to synchronize in 0:00:00.000
+
+CS	0	12:57:56.315	History	EURUSD: history synchronized from 2019.01.02 to 2026.05.08
+
+CS	0	12:57:56.330	History	EURUSD,H4: history cache allocated for 1580 bars and contains 1554 bars from 2023.01.02 00:00 to 2023.12.29 20:00
+
+CS	0	12:57:56.330	History	EURUSD,H4: history begins from 2023.01.02 00:00
+
+CS	0	12:57:56.330	Tester	EURUSD,H4 (FBS-Real): every tick generating
+
+CS	0	12:57:56.330	Tester	EURUSD,H4: testing of Experts\PhoenicisNex\PhoenicisNex.ex5 from 2024.01.02 00:00 to 2024.01.05 00:00 started with inputs:
+
+CS	0	12:57:56.330	Tester	  General=
+
+CS	0	12:57:56.330	Tester	  InpInteruptRatioDecrease=8.0
+
+CS	0	12:57:56.330	Tester	  InpMainOverloadRatioDecrease=4.0
+
+CS	0	12:57:56.330	Tester	  InpUseCOverload=true
+
+CS	0	12:57:56.330	Tester	  InpUseOverloadAutoRange=true
+
+CS	0	12:57:56.330	Tester	  InpOverLoadUseLastLot=true
+
+CS	0	12:57:56.330	Tester	  InpFIDValue=21
+
+CS	0	12:57:56.330	Tester	  InpTradeOnHNN=false
+
+CS	0	12:57:56.330	Tester	  InpZigZagPeriod=5
+
+CS	0	12:57:56.330	Tester	  InpLADXMLevel=30.0
+
+CS	0	12:57:56.330	Tester	  InpLADXMLevelMin=22.0
+
+CS	0	12:57:56.330	Tester	  InpJPip1StBetweenC=-10
+
+CS	0	12:57:56.330	Tester	  InpJPip1StBetweenD=-13
+
+CS	0	12:57:56.330	Tester	  InpFRatioDecrease=1.0
+
+CS	0	12:57:56.330	Tester	  InpJRatioDecrease=2.3
+
+CS	0	12:57:56.330	Tester	  InpGRatioDecrease=10.0
+
+CS	0	12:57:56.330	Tester	  InpGORatioDecrease=10.0
+
+CS	0	12:57:56.330	Tester	  InpHRatioDecrease=10.0
+
+CS	0	12:57:56.330	Tester	  InpGRisk=15
+
+CS	0	12:57:56.330	Tester	  InpMainRiskRatio=1.0
+
+CS	0	12:57:56.330	Tester	  InpLimitMaxLotSizeRatio=2.9
+
+CS	0	12:57:56.330	Tester	  InpNormalTakeProfitPIP=48
+
+CS	0	12:57:56.330	Tester	  TimeGates=
+
+CS	0	12:57:56.330	Tester	  InpMorningWindowMinutes=5
+
+CS	0	12:57:56.330	Tester	  InpMondaySpreadThreshold=10
+
+CS	0	12:57:56.330	Tester	  InpHolidayStartMonth=12
+
+CS	0	12:57:56.330	Tester	  InpHolidayStartDay=21
+
+CS	0	12:57:56.330	Tester	  InpHolidayEndMonth=1
+
+CS	0	12:57:56.330	Tester	  InpHolidayEndDay=3
+
+CS	0	12:57:56.330	Tester	  InpBanCCooldownBars=5
+
+CS	0	12:57:56.330	Tester	  InpBanLCooldownBars=5
+
+CS	0	12:57:56.330	Tester	  InpBanMCooldownBars=5
+
+CS	0	12:57:56.330	Tester	  InpKLastOrderCooldownBars=4
+
+CS	0	12:57:56.330	Tester	  InpGPauseCooldownBars=3
+
+CS	0	12:57:56.330	Tester	  Pending=
+
+CS	0	12:57:56.330	Tester	  InpForceClearC_Bars=100
+
+CS	0	12:57:56.330	Tester	  InpForceClearM_Bars=150
+
+CS	0	12:57:56.330	Tester	  InpForceClearT_Bars=80
+
+CS	0	12:57:56.330	Tester	  InpForceClearQ_Bars=100
+
+CS	0	12:57:56.330	Tester	  InpLegacyCBars=8
+
+CS	0	12:57:56.330	Tester	  InpLegacyCAdxBars=30
+
+CS	0	12:57:56.330	Tester	  InpLegacyRBars=40
+
+CS	0	12:57:56.330	Tester	  InpLegacyPBars=70
+
+CS	0	12:57:56.330	Tester	  InpLegacyForceBars=9
+
+CS	0	12:57:56.330	Tester	  Logging=
+
+CS	0	12:57:56.330	Tester	  InpLogLevel=1
+
+CS	0	12:57:56.330	Tester	  InpAlertOnError=true
+
+CS	0	12:57:56.330	Tester	  InpErrorEscalationN=10
+
+CS	0	12:57:56.330	Tester	  Slot S=
+
+CS	0	12:57:56.330	Tester	  InpEnableSlotS=true
+
+CS	0	12:57:56.330	Tester	  InpSBaseLot=10.0
+
+CS	0	12:57:56.330	Tester	  InpSSlPips=60.0
+
+CS	0	12:57:56.330	Tester	  InpSTpProfitPips=35.0
+
+CS	0	12:57:56.330	Tester	  InpSMaxOrders=1
+
+CS	0	12:57:56.330	Tester	  InpSAdxMin=20.0
+
+CS	0	12:57:56.330	Tester	  InpSWprOversold=-80.0
+
+CS	0	12:57:56.330	Tester	  InpSWprOverbought=-20.0
+
+CS	0	12:57:56.330	Tester	  InpSPercentTp=10.0
+
+CS	0	12:57:56.330	Tester	  Slot C=
+
+CS	0	12:57:56.330	Tester	  InpEnableSlotC=true
+
+CS	0	12:57:56.330	Tester	  InpCMaxOrders=1
+
+CS	0	12:57:56.330	Tester	  InpCBaseLot=20.0
+
+CS	0	12:57:56.330	Tester	  InpCSlPipsFloor=50.0
+
+CS	0	12:57:56.330	Tester	  InpCAdxMin=20.0
+
+CS	0	12:57:56.330	Tester	  InpCStochOversold=30.0
+
+CS	0	12:57:56.330	Tester	  InpCStochOverbought=70.0
+
+CS	0	12:57:56.330	Tester	  InpCTpProfitPips=40.0
+
+CS	0	12:57:56.330	Tester	  InpCMacdSignalThresh=0.0
+
+CS	0	12:57:56.330	Tester	  Slot D=
+
+CS	0	12:57:56.330	Tester	  InpEnableSlotD=true
+
+CS	0	12:57:56.330	Tester	  InpDLotMultiplier=1.4
+
+CS	0	12:57:56.330	Tester	  Slot F=
+
+CS	0	12:57:56.330	Tester	  InpEnableSlotF=true
+
+CS	0	12:57:56.330	Tester	  InpFMaxOrders=1
+
+CS	0	12:57:56.330	Tester	  InpFLotReductionRatio=0.7
+
+CS	0	12:57:56.330	Tester	  InpFSlPipsFloor=50.0
+
+CS	0	12:57:56.330	Tester	  InpFTpProfitPips=40.0
+
+CS	0	12:57:56.330	Tester	  Slot J=
+
+CS	0	12:57:56.330	Tester	  InpEnableSlotJ=true
+
+CS	0	12:57:56.330	Tester	  InpJMaxOrders=1
+
+CS	0	12:57:56.330	Tester	  InpJSlPipsFloor=50.0
+
+CS	0	12:57:56.330	Tester	  InpJTpProfitPips=40.0
+
+CS	0	12:57:56.330	Tester	  Slot H=
+
+CS	0	12:57:56.330	Tester	  InpEnableSlotH=true
+
+CS	0	12:57:56.330	Tester	  InpHMaxOrders=2
+
+CS	0	12:57:56.330	Tester	  InpHFractalLookback=3
+
+CS	0	12:57:56.330	Tester	  InpHIchimokuMaxPips=35.0
+
+CS	0	12:57:56.330	Tester	  InpHBaseLot=15.0
+
+CS	0	12:57:56.330	Tester	  InpHSlPips=90.0
+
+CS	0	12:57:56.330	Tester	  InpHTpMinPips=30.0
+
+CS	0	12:57:56.330	Tester	  InpHMaxAgeBars=8
+
+CS	0	12:57:56.330	Tester	  Slot K=
+
+CS	0	12:57:56.330	Tester	  InpEnableSlotK=true
+
+CS	0	12:57:56.330	Tester	  InpKBaseLot=15.0
+
+CS	0	12:57:56.330	Tester	  InpKSlPips=90.0
+
+CS	0	12:57:56.330	Tester	  InpKTpProfitPips=20.0
+
+CS	0	12:57:56.330	Tester	  InpKMaxOrders=1
+
+CS	0	12:57:56.330	Tester	  InpKFICrossThreshHigh=0.5
+
+CS	0	12:57:56.330	Tester	  InpKFICrossThreshLow=-0.2
+
+CS	0	12:57:56.330	Tester	  InpKFICrossAltHigh=1.0
+
+CS	0	12:57:56.330	Tester	  Slot G=
+
+CS	0	12:57:56.330	Tester	  InpEnableSlotG=true
+
+CS	0	12:57:56.330	Tester	  InpGMaxOrders=1
+
+CS	0	12:57:56.330	Tester	  InpGBaseLot=30.0
+
+CS	0	12:57:56.330	Tester	  InpGSlPipsFloor=61.8
+
+CS	0	12:57:56.330	Tester	  InpGFICrossThreshHigh=0.0
+
+CS	0	12:57:56.330	Tester	  InpGFICrossThreshLow=-0.2
+
+CS	0	12:57:56.330	Tester	  InpGFICrossAltHigh=1.0
+
+CS	0	12:57:56.330	Tester	  InpGFICrossAltLow=-3.0
+
+CS	0	12:57:56.330	Tester	  InpGAdxDominanceMin=20.0
+
+CS	0	12:57:56.330	Tester	  InpGStochOversold=25.0
+
+CS	0	12:57:56.330	Tester	  InpGStochOverbought=75.0
+
+CS	0	12:57:56.330	Tester	  InpGTpProfitPips=50.0
+
+CS	0	12:57:56.330	Tester	  InpGOverloadForceMin=15.0
+
+CS	0	12:57:56.330	Tester	  InpGOverloadAdxMin=49.0
+
+CS	0	12:57:56.330	Tester	  InpGOverloadMaxOffset=20.0
+
+CS	0	12:57:56.330	Tester	  Slot G2=
+
+CS	0	12:57:56.330	Tester	  InpEnableSlotG2=true
+
+CS	0	12:57:56.330	Tester	  InpG2MaxOrders=1
+
+CS	0	12:57:56.330	Tester	  InpG2BaseLot=20.0
+
+CS	0	12:57:56.330	Tester	  InpG2SlPipsFloor=50.0
+
+CS	0	12:57:56.330	Tester	  InpG2FIContinuationMin=0.0
+
+CS	0	12:57:56.330	Tester	  InpG2FIContinuationLow=-0.2
+
+CS	0	12:57:56.330	Tester	  InpG2TpProfitPips=30.0
+
+CS	0	12:57:56.330	Tester	  Slot GO=
+
+
+== KEY EVENTS (order_sent/failed/skipped/pending_fill_timeout/clamp) ==
+CS	0	12:57:56.471	PhoenicisNex (EURUSD,H4)	2024.01.02 00:05:30   [Phoenicis][2024-01-02 00:05:30.126][INFO][slot=S][ev=order_sent][magic=217] ticket=2 dir=ORDER_TYPE_BUY lot=0.17 price=1.10478 sl=1.09878 comment=S,post,1
+CS	0	12:57:56.472	PhoenicisNex (EURUSD,H4)	2024.01.02 00:06:30   [Phoenicis][2024-01-02 00:06:30.128][INFO][slot=C][ev=order_sent][magic=200] ticket=3 dir=ORDER_TYPE_BUY lot=0.30 price=1.10479 sl=1.09979 comment=C,MA,N,1,SL
+CS	0	12:57:56.472	PhoenicisNex (EURUSD,H4)	2024.01.02 00:06:30   [Phoenicis][2024-01-02 00:06:30.128][INFO][slot=M][ev=order_sent][magic=210] ticket=4 dir=ORDER_TYPE_BUY lot=0.40 price=1.10479 sl=1.09979 comment=M,MA,N,1,SL
+CS	0	12:57:56.472	PhoenicisNex (EURUSD,H4)	2024.01.02 00:06:30   [Phoenicis][2024-01-02 00:06:30.128][INFO][slot=T][ev=order_sent][magic=219] ticket=5 dir=ORDER_TYPE_BUY lot=0.36 price=1.10479 sl=1.09929 comment=T,MA,N,1,SL
+CS	0	12:57:57.742	PhoenicisNex (EURUSD,H4)	2024.01.02 13:17:05   [Phoenicis][2024-01-02 13:17:05.398][INFO][slot=S][ev=order_sent][magic=217] ticket=10 dir=ORDER_TYPE_BUY lot=0.06 price=1.09886 sl=1.09286 comment=S,post,1
+CS	0	12:57:58.125	PhoenicisNex (EURUSD,H4)	2024.01.02 15:20:02   [Phoenicis][2024-01-02 15:20:02.781][INFO][slot=Q][ev=order_sent][magic=212] ticket=11 dir=ORDER_TYPE_BUY lot=0.11 price=1.09591 sl=1.09091 comment=Q,MA,N,1,SL
+CS	0	12:58:01.003	PhoenicisNex (EURUSD,H4)	2024.01.03 12:38:01   [Phoenicis][2024-01-03 12:38:01.659][INFO][slot=S][ev=order_sent][magic=217] ticket=13 dir=ORDER_TYPE_BUY lot=0.05 price=1.09294 sl=1.08694 comment=S,post,1
+CS	0	12:58:01.536	PhoenicisNex (EURUSD,H4)	2024.01.03 15:23:27   [Phoenicis][2024-01-03 15:23:27.192][INFO][slot=G2][ev=order_sent][magic=208] ticket=14 dir=ORDER_TYPE_SELL lot=0.04 price=1.09113 sl=1.10046 comment=G2,F1,N,1,SL
+
+== FOOTER (100 lines) ==
+CS	0	12:58:07.118	PhoenicisNex (EURUSD,H4)	2024.01.04 17:46:50   [Phoenicis][2024-01-04 17:46:50.774][INFO][slot=SlotS][ev=exit_profit_gate][magic=217] ticket=13 profit_pips=35.1 >= gate=35.0 โ’ close
+
+CS	0	12:58:07.118	PhoenicisNex (EURUSD,H4)	2024.01.04 17:46:50   [Phoenicis][2024-01-04 17:46:50.774][INFO][slot=SlotS][ev=exit_profit_gate][magic=217] ticket=13 profit_pips=35.2 >= gate=35.0 โ’ close
+
+CS	0	12:58:07.118	PhoenicisNex (EURUSD,H4)	2024.01.04 17:46:51   [Phoenicis][2024-01-04 17:46:51.774][INFO][slot=SlotS][ev=exit_profit_gate][magic=217] ticket=13 profit_pips=35.1 >= gate=35.0 โ’ close
+
+CS	0	12:58:07.118	PhoenicisNex (EURUSD,H4)	2024.01.04 17:46:51   [Phoenicis][2024-01-04 17:46:51.774][INFO][slot=SlotS][ev=exit_profit_gate][magic=217] ticket=13 profit_pips=35.4 >= gate=35.0 โ’ close
+
+CS	0	12:58:07.118	PhoenicisNex (EURUSD,H4)	2024.01.04 17:46:51   [Phoenicis][2024-01-04 17:46:51.774][INFO][slot=SlotS][ev=exit_profit_gate][magic=217] ticket=13 profit_pips=35.5 >= gate=35.0 โ’ close
+
+CS	0	12:58:07.119	PhoenicisNex (EURUSD,H4)	2024.01.04 17:46:52   [Phoenicis][2024-01-04 17:46:52.774][INFO][slot=SlotS][ev=exit_profit_gate][magic=217] ticket=13 profit_pips=35.4 >= gate=35.0 โ’ close
+
+CS	0	12:58:07.119	PhoenicisNex (EURUSD,H4)	2024.01.04 17:46:52   [Phoenicis][2024-01-04 17:46:52.774][INFO][slot=SlotS][ev=exit_profit_gate][magic=217] ticket=13 profit_pips=35.5 >= gate=35.0 โ’ close
+
+CS	0	12:58:07.119	PhoenicisNex (EURUSD,H4)	2024.01.04 17:46:52   [Phoenicis][2024-01-04 17:46:52.774][INFO][slot=SlotS][ev=exit_profit_gate][magic=217] ticket=13 profit_pips=35.4 >= gate=35.0 โ’ close
+
+CS	0	12:58:07.119	PhoenicisNex (EURUSD,H4)	2024.01.04 17:46:53   [Phoenicis][2024-01-04 17:46:53.774][INFO][slot=SlotS][ev=exit_profit_gate][magic=217] ticket=13 profit_pips=35.5 >= gate=35.0 โ’ close
+
+CS	0	12:58:07.119	PhoenicisNex (EURUSD,H4)	2024.01.04 17:46:53   [Phoenicis][2024-01-04 17:46:53.774][INFO][slot=SlotS][ev=exit_profit_gate][magic=217] ticket=13 profit_pips=35.4 >= gate=35.0 โ’ close
+
+CS	0	12:58:07.119	PhoenicisNex (EURUSD,H4)	2024.01.04 17:46:53   [Phoenicis][2024-01-04 17:46:53.774][INFO][slot=SlotS][ev=exit_profit_gate][magic=217] ticket=13 profit_pips=35.5 >= gate=35.0 โ’ close
+
+CS	0	12:58:07.119	PhoenicisNex (EURUSD,H4)	2024.01.04 17:46:54   [Phoenicis][2024-01-04 17:46:54.774][INFO][slot=SlotS][ev=exit_profit_gate][magic=217] ticket=13 profit_pips=35.4 >= gate=35.0 โ’ close
+
+CS	0	12:58:07.119	PhoenicisNex (EURUSD,H4)	2024.01.04 17:46:54   [Phoenicis][2024-01-04 17:46:54.775][INFO][slot=SlotS][ev=exit_profit_gate][magic=217] ticket=13 profit_pips=35.5 >= gate=35.0 โ’ close
+
+CS	0	12:58:07.119	PhoenicisNex (EURUSD,H4)	2024.01.04 17:46:54   [Phoenicis][2024-01-04 17:46:54.775][INFO][slot=SlotS][ev=exit_profit_gate][magic=217] ticket=13 profit_pips=35.3 >= gate=35.0 โ’ close
+
+CS	0	12:58:07.119	PhoenicisNex (EURUSD,H4)	2024.01.04 17:46:55   [Phoenicis][2024-01-04 17:46:55.775][INFO][slot=SlotS][ev=exit_profit_gate][magic=217] ticket=13 profit_pips=35.4 >= gate=35.0 โ’ close
+
+CS	0	12:58:07.119	PhoenicisNex (EURUSD,H4)	2024.01.04 17:46:55   [Phoenicis][2024-01-04 17:46:55.775][INFO][slot=SlotS][ev=exit_profit_gate][magic=217] ticket=13 profit_pips=35.3 >= gate=35.0 โ’ close
+
+CS	0	12:58:07.119	PhoenicisNex (EURUSD,H4)	2024.01.04 17:46:55   [Phoenicis][2024-01-04 17:46:55.775][INFO][slot=SlotS][ev=exit_profit_gate][magic=217] ticket=13 profit_pips=35.4 >= gate=35.0 โ’ close
+
+CS	0	12:58:07.119	PhoenicisNex (EURUSD,H4)	2024.01.04 17:46:56   [Phoenicis][2024-01-04 17:46:56.775][INFO][slot=SlotS][ev=exit_profit_gate][magic=217] ticket=13 profit_pips=35.3 >= gate=35.0 โ’ close
+
+CS	0	12:58:07.119	PhoenicisNex (EURUSD,H4)	2024.01.04 17:46:56   [Phoenicis][2024-01-04 17:46:56.775][INFO][slot=SlotS][ev=exit_profit_gate][magic=217] ticket=13 profit_pips=35.4 >= gate=35.0 โ’ close
+
+CS	0	12:58:07.119	PhoenicisNex (EURUSD,H4)	2024.01.04 17:46:56   [Phoenicis][2024-01-04 17:46:56.775][INFO][slot=SlotS][ev=exit_profit_gate][magic=217] ticket=13 profit_pips=35.3 >= gate=35.0 โ’ close
+
+CS	0	12:58:07.119	PhoenicisNex (EURUSD,H4)	2024.01.04 17:46:57   [Phoenicis][2024-01-04 17:46:57.775][INFO][slot=SlotS][ev=exit_profit_gate][magic=217] ticket=13 profit_pips=35.4 >= gate=35.0 โ’ close
+
+CS	0	12:58:07.119	PhoenicisNex (EURUSD,H4)	2024.01.04 17:46:57   [Phoenicis][2024-01-04 17:46:57.775][INFO][slot=SlotS][ev=exit_profit_gate][magic=217] ticket=13 profit_pips=35.3 >= gate=35.0 โ’ close
+
+CS	0	12:58:07.119	PhoenicisNex (EURUSD,H4)	2024.01.04 17:46:57   [Phoenicis][2024-01-04 17:46:57.775][INFO][slot=SlotS][ev=exit_profit_gate][magic=217] ticket=13 profit_pips=35.4 >= gate=35.0 โ’ close
+
+CS	0	12:58:07.119	PhoenicisNex (EURUSD,H4)	2024.01.04 17:46:58   [Phoenicis][2024-01-04 17:46:58.775][INFO][slot=SlotS][ev=exit_profit_gate][magic=217] ticket=13 profit_pips=35.2 >= gate=35.0 โ’ close
+
+CS	0	12:58:07.119	PhoenicisNex (EURUSD,H4)	2024.01.04 17:46:58   [Phoenicis][2024-01-04 17:46:58.775][INFO][slot=SlotS][ev=exit_profit_gate][magic=217] ticket=13 profit_pips=35.3 >= gate=35.0 โ’ close
+
+CS	0	12:58:07.119	PhoenicisNex (EURUSD,H4)	2024.01.04 17:46:58   [Phoenicis][2024-01-04 17:46:58.775][INFO][slot=SlotS][ev=exit_profit_gate][magic=217] ticket=13 profit_pips=35.2 >= gate=35.0 โ’ close
+
+CS	0	12:58:07.119	PhoenicisNex (EURUSD,H4)	2024.01.04 17:46:59   [Phoenicis][2024-01-04 17:46:59.775][INFO][slot=SlotS][ev=exit_profit_gate][magic=217] ticket=13 profit_pips=35.3 >= gate=35.0 โ’ close
+
+CS	0	12:58:07.834	Trade	2024.01.04 23:57:59   position closed due end of test at 1.09464 [#14 sell 0.04 EURUSD 1.09113 sl: 1.10046]
+
+CS	0	12:58:07.834	Trades	2024.01.04 23:57:59   deal #16 buy 0.04 EURUSD at 1.09464 done (based on order #16)
+
+CS	0	12:58:07.834	Trade	2024.01.04 23:57:59   deal performed [#16 buy 0.04 EURUSD at 1.09464]
+
+CS	0	12:58:07.834	Trade	2024.01.04 23:57:59   order performed buy 0.04 at 1.09464 [#16 buy 0.04 EURUSD at 1.09464]
+
+CS	0	12:58:07.834	Trade	2024.01.04 23:57:59   position closed due end of test at 1.09443 [#13 buy 0.05 EURUSD 1.09294 sl: 1.08694]
+
+CS	0	12:58:07.834	Trades	2024.01.04 23:57:59   deal #17 sell 0.05 EURUSD at 1.09443 done (based on order #17)
+
+CS	0	12:58:07.834	Trade	2024.01.04 23:57:59   deal performed [#17 sell 0.05 EURUSD at 1.09443]
+
+CS	0	12:58:07.834	Trade	2024.01.04 23:57:59   order performed sell 0.05 at 1.09443 [#17 sell 0.05 EURUSD at 1.09443]
+
+CS	0	12:58:07.835	Tester	final balance 251.03 USD
+
+CS	0	12:58:07.835	Tester	OnTester result 251.03
+
+CS	0	12:58:07.835	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:59   [Phoenicis][2024-01-04 23:57:59.491][INFO][slot=system][ev=deinit_cleanup][magic=0] reason=1 state=EA_STATE_RUNNING
+
+CS	0	12:58:07.835	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:59   [Phoenicis][2024-01-04 23:57:59.491][INFO][slot=system][ev=journal_latency_report][magic=0] writes=8 avg_us=38 p95_us=119 max_us=119
+
+CS	0	12:58:07.835	PhoenicisNex (EURUSD,H4)	2024.01.04 23:57:59   [Phoenicis][2024-01-04 23:57:59.491][INFO][slot=system][ev=journal_latency_by_type][magic=0] ev=entry writes=8 avg_us=38
+
+CS	0	12:58:07.843	Tester	EURUSD,H4: 304418 ticks, 18 bars generated. Environment synchronized in 0:00:00.022. Test passed in 0:00:11.535 (including ticks preprocessing 0:00:00.015).
+
+CS	0	12:58:07.843	Tester	EURUSD,H4: total time from login to stop testing 0:00:11.557 (including 0:00:00.022 for history data synchronization)
+
+CS	0	12:58:07.843	Tester	123 Mb memory used including 9 Mb of history data, 64 Mb of tick data
+
+CS	0	12:58:07.843	Tester	log file "C:\Users\kritsana.ye\AppData\Roaming\MetaQuotes\Tester\A12EC900AF5AF5023ECB36F7FB72E396\Agent-127.0.0.1-3000\logs\20260510.log" written
+
+CS	0	12:58:07.875	Tester	test Experts\PhoenicisNex\PhoenicisNex.ex5 on EURUSD,H4 thread finished
+
+CS	0	12:58:07.933	127.0.0.1	tester forced to close
+
+CS	0	12:58:07.933	127.0.0.1	prepare for shutdown
+
+CS	0	12:58:07.933	127.0.0.1	stop immediately
+
+CS	0	12:58:07.933	127.0.0.1	shutdown finished
+
+CS	0	12:58:08.235	Server	MetaTester 5 stopped

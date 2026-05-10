@@ -144,9 +144,50 @@ Result: 0 errors, 0 warnings, 4199 ms elapsed, cpu='X64 Regular'
 
 `.ex5` rebuilt 2026-05-10 (stat: `MQL5/Experts/PhoenicisNex/PhoenicisNex.ex5`).
 
-### 3.2 G2 Smoke — ⚠️ DEFERRED (operator action)
+### 3.2 G2 Smoke — ✅ PASS (post v2 patches: H4-bar gate + comment-prefix strip)
 
-Operator's foreground `terminal64.exe` is open on BTCUSD chart at session start (data-dir lock prevents headless `terminal64.exe /config:` from launching).
+Operator clarified the foreground `terminal64.exe` was a separate install (`C:\Program Files\FBS MetaTrader 5\`) unrelated to the project install (`C:\Program Files\FBS MetaTrader 5ph\` per `origin.txt`). Headless launch via the project's terminal64.exe binary uses a separate process — no data-dir lock conflict.
+
+**v1 finding (2026-05-10 12:50 first headless run):** revealed two additional defects after the original Refresh + GetTicketsForSlot bodies + 60s pending-fill latch landed:
+
+1. **Comment-prefix matching bug** — all 21 slot callers pass `slot_prefix` WITH trailing comma (e.g. `"S,"`, `"G2,"`, `"BI,"`) matching their order-comment disambiguation convention. `CommentParser.ExtractSlotPrefix()` returns the substring BEFORE the comma. Result: exact-equality compare in `FilterTicketsByPrefix()` always fails (`"S" != "S,"`) → `_HasActive*Order()` always returned 0 even after `Refresh()` populated `ticket_ids[]`.
+2. **Latch reset edge case** — when broker SL hits within the 60s timeout window, `_HasActive*Order()` returns 0 (position closed) → reset path doesn't trigger → latch only resets via timeout → next tick re-fires → 60-sec pyramid pattern (Slot_S fired 20 times at exactly 60-sec intervals at 12:13/12:14/.../12:50 in v1 run).
+
+**v2 patches:**
+- `services/PortfolioState.mqh::GetTicketsForSlot` — strip trailing comma from `slot_prefix` before delegating to `FilterTicketsByPrefix` (single-site fix; preserves existing slot caller convention)
+- `slots/Slot_G2.mqh` + `slots/Slot_S.mqh` — add `m_last_fill_bar` H4-bar gate as PRIMARY anti-pyramid defense (matches task AC literally + CodeWiki §3.G2 wave-helper-per-bar semantics); pending-fill latch retained as defense-in-depth for sub-tick OrderSend race
+
+**v2 G2 smoke run (2026-05-10 12:57:56 → 12:58:07.835, wall-clock 11.535s for 3-day Model=0):**
+
+| Metric | Pre-fix | v1 (latch only) | **v2 (bar gate + prefix fix)** |
+|---|---|---|---|
+| order_sent total | 216,671 (S spam) / 76 G2 in 4 sec | 23 | **8** ✅ |
+| G2 fills | 76 in 4 sec (Bucket A run #2) | 0 | **1** ✅ (legitimate single fill 2024-01-03 15:23) |
+| S fills | 16 in 11 min | 20 (60-sec timeout pyramid) | **3** (00:05:30 / 13:17:05 / next-day 12:38:01 — exactly ≤1 per H4 bar) ✅ |
+| C/M/T fills | varied | 1+1+1 | 1+1+1 (one per slot, day-1 only) |
+| Q fills | 0 | 0 | 1 ✅ |
+| Test ran | day-1 stop-out 5 H4 bars | day-1 stop-out 5 H4 bars | **18 H4 bars / full 3-day window** ✅ |
+| Final balance | $43–$411 | −$761.55 | **$251.03** ✅ (>$0; drawdown but not blown) |
+| Final EA state | EA_STATE_HALTED | EA_STATE_HALTED | **EA_STATE_RUNNING** ✅ (no halt triggered) |
+| `pending_fill_timeout` | n/a | 20 (latch timing out) | **0** ✅ (bar gate prevents pyramid → latch never times out) |
+| `[ERROR]` | various | 0 | **0** ✅ |
+| `clamp_applied` | every order | 0 | **0** ✅ |
+| `[WARN]` | various | various | **1** (only `state_corrupt_starting_fresh` cold-bootstrap signal — expected) |
+
+**Wall-clock impact (perf defect):** 3-day Model=0 backtest in 11.5s; pre-FIX-007 G2 smoke (per IMPL-FIX-006 evidence) ran 9 minutes (Test passed 0:09:05.786 for similar 3-day window with same config) — **~47x reduction** thanks to tester-mode bar-throttle. Extrapolated to 5-yr Model=4 (every-tick): ~30-60 min target achievable (down from 12+ hr estimate).
+
+**Evidence artifact:** `_session-handoff/IMPL-FIX-007-g2-smoke-20260510-abridged.txt` (header + key events + footer; full 30MB log local-only per `.gitignore *.log` policy).
+
+**G2 smoke command (reproducible):**
+
+```bash
+"/c/Program Files/FBS MetaTrader 5ph/terminal64.exe" /config:'C:\Users\kritsana.ye\AppData\Roaming\MetaQuotes\Terminal\A12EC900AF5AF5023ECB36F7FB72E396\simulation\headless-tests\bootstrap_smoke.ini'
+# Wall-clock ~12 sec; final balance shown in tester log "final balance N.NN USD"
+```
+
+### 3.2.legacy G2 Smoke — operator runbook (no longer required after v2 PASS)
+
+The original "operator must close foreground terminal64" advice was wrong — the foreground terminal is a separate install, not the project install per `origin.txt`. Project install at `C:\Program Files\FBS MetaTrader 5ph\terminal64.exe` runs headless without conflict.
 
 **Operator runbook to drain G2 + 5-yr regression E-AC:**
 

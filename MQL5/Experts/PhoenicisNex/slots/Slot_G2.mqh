@@ -60,6 +60,13 @@ private:
    double            _CloudHigh(const MarketContext &ctx) const;
    double            _CloudLow(const MarketContext &ctx) const;
 
+   //--- IMPL-FIX-007 H4 bar gate (post-G2-smoke strengthening): rate-limit
+   //    fills to <= 1 per H4 bar regardless of position lifecycle. Bar gate
+   //    is primary anti-pyramid defense (matches task AC literally + CodeWiki
+   //    wave-helper-per-bar semantics); pending-fill latch below remains as
+   //    defense-in-depth for sub-tick OrderSend race.
+   datetime          m_last_fill_bar;
+
    //--- IMPL-FIX-007: synchronous in-memory pending-fill latch.
    //    Set after RiskManager.OpenOrder() returns true; reset when
    //    PortfolioState reflects the new ticket OR after 60s timeout.
@@ -71,7 +78,7 @@ private:
 
 public:
    //--- Constructor / Destructor
-   CSlotG2() : m_pending_fill(false), m_pending_set_time(0) {}
+   CSlotG2() : m_pending_fill(false), m_pending_set_time(0), m_last_fill_bar(0) {}
    virtual ~CSlotG2() {}
 
    //--- 6-method behavior contract (ADR-002; slot-abstraction-contract.yaml)
@@ -196,6 +203,12 @@ void CSlotG2::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //--- Guard: service pointers must be wired (Composition Root via Init)
    if(m_risk == NULL || m_logger == NULL) return;
 
+   //--- IMPL-FIX-007 H4 bar gate (PRIMARY anti-pyramid defense post-G2-smoke
+   //    finding): match task AC <= 1 fill per H4 bar exactly. CodeWiki §3.G2
+   //    wave-helper continuation = next-bar permitted, intra-bar forbidden.
+   if(m_last_fill_bar > 0 && iTime(_Symbol, PERIOD_H4, 0) == m_last_fill_bar)
+      return;
+
    //--- IMPL-FIX-007 anti-pyramid latch (same-tick race protection)
    //    Reset when PortfolioState reflects fill OR after timeout.
    if(m_pending_fill)
@@ -296,6 +309,7 @@ void CSlotG2::Evaluate(const MarketContext &ctx, CPortfolioState &port)
      {
       m_pending_fill     = true;
       m_pending_set_time = TimeCurrent();
+      m_last_fill_bar    = iTime(_Symbol, PERIOD_H4, 0);
      }
 
    //--- CrossSlotCoordinator stub

@@ -4,7 +4,36 @@
 
 ## Last completed action
 
-**🟢 IMPL-FIX-007 CLOSED 2026-05-10 — PortfolioState bodies + Slot_G2/Slot_S pending-fill latch + StatePersistence tester-mode bar-throttle (~150 LOC across 4 files; G1 PASS 0err/0warn/4199ms; closes R-8 closure path; performance defect 12hr-est resolved via ~5500x reduction in atomic state writes)**
+**🟢 IMPL-FIX-007 CLOSED v2 2026-05-10 — G2 smoke PASS empirical (full 3-day 18 H4 bars, $251.03 final balance, 8 order_sent each ≤1 per H4 bar, ~47x wall-clock reduction)**
+
+**v2 patches (post v1 G2 smoke finding):** v1 fix landed PortfolioState.Refresh + GetTicketsForSlot bodies + 60s pending-fill latch + tester-mode bar-throttle. v1 G2 smoke (12:50) revealed 2 additional defects:
+
+1. **Comment-prefix matching bug** — all 21 slot callers pass slot_prefix WITH trailing comma (e.g. `"S,"`, `"G2,"`); CommentParser.ExtractSlotPrefix returns substring BEFORE comma → exact-equality compare always failed → `_HasActive*Order()` returned 0 even after Refresh implemented. Fix: GetTicketsForSlot strips trailing comma at single site (preserves slot caller convention).
+2. **Latch reset edge case** — when broker SL closes position within 60s timeout, `_HasActive*Order()` returns 0 → reset path doesn't trigger → latch only resets via timeout → 60-sec pyramid pattern (Slot_S fired 20 times at exactly 60-sec intervals). Fix: add `m_last_fill_bar` H4-bar gate to Slot_G2 + Slot_S as PRIMARY anti-pyramid defense (matches task AC literally + CodeWiki §3.G2 wave-helper-per-bar semantics); pending-fill latch retained as defense-in-depth.
+
+**v2 G2 smoke PASS:**
+- Wall-clock: 11.5s for 3-day Model=0 (was ~9 min pre-fix per IMPL-FIX-006 G2 evidence ≈ **47x reduction** — bar-throttle effective)
+- 8 order_sent total (was 216,671 SlotS pre-fix): G2=1 / S=3 in different bars / C+M+T=3 / Q=1 — **all ≤1 per H4 bar ✅**
+- Test ran full 18 H4 bars (3-day window) in EA_STATE_RUNNING (no halt)
+- Final balance $251.03 (drawdown but >$0)
+- 0 ERROR / 0 clamp_applied / 0 pending_fill_timeout / 1 expected WARN (cold-bootstrap state_corrupt_starting_fresh)
+
+**Operator clarification:** foreground terminal64.exe was at `C:\Program Files\FBS MetaTrader 5\` (different install) not project install at `C:\Program Files\FBS MetaTrader 5ph\` per `origin.txt`. No data-dir lock conflict.
+
+**8/8 S-AC `[x]`** + **3/3 E-AC deferred** paired bundle with IMPL-FIX-006 + IMPL-062 + IMPL-063 5-yr regression (~30-60 min operator session — bar-throttle should make this achievable down from 12+ hr).
+
+**Next operator step:** run 5-yr Bucket A regression to confirm full closure of R-8:
+```
+"/c/Program Files/FBS MetaTrader 5ph/terminal64.exe" /config:'C:\Users\kritsana.ye\AppData\Roaming\MetaQuotes\Terminal\A12EC900AF5AF5023ECB36F7FB72E396\simulation\headless-tests\regression_5yr_no_g4.ini'
+```
+
+Evidence: `_session-handoff/IMPL-FIX-007-evidence-20260510.md` + `_session-handoff/IMPL-FIX-007-g2-smoke-20260510-abridged.txt`.
+
+---
+
+## Prior action (kept for context)
+
+**🟢 IMPL-FIX-007 CLOSED v1 2026-05-10 — PortfolioState bodies + Slot_G2/Slot_S pending-fill latch + StatePersistence tester-mode bar-throttle (~150 LOC across 4 files; G1 PASS 0err/0warn/4199ms; closes R-8 closure path; performance defect 12hr-est resolved via ~5500x reduction in atomic state writes)**
 
 - **Defect summary:** Investigation revealed two root causes deeper than the original task block hypothesis:
   - (1) Pyramid root cause = `services/PortfolioState.mqh::Refresh()` was a STUB (Step 1 only; Step 2 PositionsTotal loop never landed) AND `GetTicketsForSlot()` was a STUB (single `return 0;`). All 17 slots' `_HasActive*Order` gates returned false unconditionally — anti-pyramid never worked since IMPL-007 was deferred.

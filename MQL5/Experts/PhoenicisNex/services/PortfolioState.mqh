@@ -427,8 +427,19 @@ int CPortfolioState::GetTicketsForSlot(int magic, string slot_prefix,
    if(!mut.TryGetValue(magic, s) || s == NULL) return 0;
    if(ArraySize(s.ticket_ids) == 0) return 0;
 
+   // IMPL-FIX-007 G2 smoke finding: 21 slot callers pass prefix WITH
+   //   trailing comma (e.g. "S,", "G2,", "BI,") matching the comment-prefix
+   //   disambig convention; CommentParser.ExtractSlotPrefix returns the
+   //   substring BEFORE the comma. Strip trailing comma here so the
+   //   exact-equality compare inside FilterTicketsByPrefix matches.
+   string canonical = slot_prefix;
+   int plen = StringLen(canonical);
+   if(plen > 0 && StringGetCharacter(canonical, plen - 1) == ',')
+      canonical = StringSubstr(canonical, 0, plen - 1);
+   if(StringLen(canonical) == 0) return 0;
+
    CCommentParser parser;
-   return parser.FilterTicketsByPrefix(s.ticket_ids, slot_prefix, out_tickets);
+   return parser.FilterTicketsByPrefix(s.ticket_ids, canonical, out_tickets);
   }
 
 //+------------------------------------------------------------------+
