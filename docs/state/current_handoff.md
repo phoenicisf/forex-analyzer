@@ -4,7 +4,84 @@
 
 ## Last completed action
 
-**🔴 IMPL-FIX-011 STEP 4 ITER-2 RE-CANARY EMPIRICALLY FALSIFIES SESSION B G/G2 PATCHES 2026-05-10 — Session B G/G2 patches INEFFECTIVE on top-10 |Δ| sum (0% reduction) + caused Net Profit REGRESSION (-22.7% vs iter-1 / -18.3% vs legacy → exits ±10% gate); S-AC #4 NOT MET; recommend revert Session B + escalate to Slot_T 4-sub-path Session C with MarketContext extension (folded scope unblocks G/G2/T simultaneously).**
+**🟢 IMPL-FIX-011 STEP 3 SESSION C CODE COMPLETE 2026-05-10 (this session) — MarketContext extension + history-based G/G2/T predicates landed in 5 commits; ready for Step 4 iter-3 re-canary (operator action gated).**
+
+**Trigger:** User invoked `/impl-task IMPL-FIX-011 — Session C: MarketContext extension (Hull / BB-history / Force-history / DemRolling / ADX-history) + rewrite Slot_T 4-sub-path predicate per CodeWiki §3.15 + rewrite Slot_G + Slot_G2 history-based predicates per §3.6:9/11/12 + §3.7:6/9. ~4-8 hr dedicated session per impl-plan.md:112-126.`
+
+**Phase 1 checks:** Operator Action Registry empty; Deferred-AC Registry no expired rows; foreground `terminal64.exe` PID 30132 still running (only blocks Step 4 iter-3 re-canary downstream — code work + G1 compiles unaffected).
+
+**Pre-step (operator decision via AskUserQuestion):** Operator chose "Revert 1e915d7, then Session C (Recommended)" → `git revert 1e915d7 --no-edit` produced clean revert commit `fdae425` (-56 LOC + 5 LOC; Slot_G + Slot_G2 reverted to pre-Session-B baseline). Slot_S Session A gate + (d) `entry_*` bulk-suppress STAY (validated 100% effective).
+
+**5 cluster commits landed** (~590 net LOC across 7 files; 5× G1 PASS incremental):
+
+| # | Commit | Files | LOC | G1 ms |
+|---|--------|-------|-----|-------|
+| C1+C2 | `36f71a4` | `domain/MarketContext.mqh` + `services/MarketContextBuilder.mqh` + `docs/api-specs/marketcontext-snapshot-schema.yaml` | +291 / -3 | 4924 |
+| C3 | `c6aa436` | `slots/Slot_T.mqh` + `inputs/Inputs_Slot_T.mqh` | +285 / -97 | 5064 |
+| C4 | `44c9ee5` | `slots/Slot_G.mqh` + `inputs/Inputs_Slot_G.mqh` | +114 | 5070 |
+| C5 | `d1ca62e` | `slots/Slot_G2.mqh` + `inputs/Inputs_Slot_G2.mqh` | +102 | 4887 |
+
+**C1+C2 — MarketContext extension:** 4 new sub-structs added (`BBHistoryFields` 15-bar bb_top, `ForceHistoryFields` 8-bar Force + peak_count_above11, `DemRollingFields` 25-bar DEM × 100 rolling sum, `AdxHistoryFields` 3-bar adx/+DI/-DI + adxw_no_trap_bars_1_3) + 4 new fields (`bb_h4_history`, `force_h4_history`, `dem_h4_rolling`, `adx_h4_history`); MarketContextBuilder wires 4 new `Populate*History/Rolling` helpers via existing IDX_BBANDS_H4 / IDX_FORCE_H4 / IDX_DEMARK_H4 / IDX_ADX_H4 (no new indicator handles); schema YAML extended (additionalProperties: false maintained; +460 bytes per snapshot ≈ 64% increase, acceptable per ADR-004 const& semantics).
+
+**C3 — Slot_T full 4-sub-path rewrite per CodeWiki §3.15:** 11 new private helpers covering §3.15:1-9 conditions (zone presence + BB%, Hull dominance, BB-history scan, ADX dominance, sub-path D/H resolution at trigger time, SL anchor max-of-three=max(hull-distance, BBWidth pips, InpTSlPipsCodeWikiFloor=90)); preserved PMR PM_T Phase A IDLE → Phase B PENDING flow + entry_signal suppress + exit_profit_gate suppress + ManageExits 45-pip profit gate. Comment format: `T,<dir>,<sub>,1,<sl_pips>` (sub_path D/H per §3.15:7 DEM ≥0.45 divider). 6 new inputs.
+
+**C4 — Slot_G §3.6:9/11/12 history predicates:** 3 new gate calls in Evaluate after existing Stoch check: `_IsForcePeaksNotExhausted` (peak_count_above11 ≤ InpGForcePeakMaxAbove11=3), `_BBTopBelowIchiMaxCount ≥ InpGBBHistMinBelow=1` over 15-bar window, `_IsDemRollingBuyOk/SellOk` (rolling sum × 100 ≥175 BUY / ≤25 SELL); preserved m_last_fill_bar IMPL-FIX-008 H4 gate + m_pending_fill latch + entry_signal suppress + BR-8.4 GOverload stub. 5 new inputs.
+
+**C5 — Slot_G2 §3.7:5/6/9 history predicates:** 5 new gate calls in Evaluate after existing priceOk check: `_IsAdxNotTrapped` (adxw_no_trap_bars_1_3 == 1 covering bars 1..2 of 3-bar series-indexed buffer), `_CountForceAbove02 ≥ InpG2ForceMinAbove02BUY=5` (5-of-8 BUY) / `_CountForceBelowNeg02 ≥ 5` (SELL mirror), `_HasForceTroughBuy` ([2,5) scan for force ≤ -0.2 reversal trough) / `_HasForceTroughSell` mirror; preserved m_last_fill_bar + m_pending_fill + entry_signal suppress. 6 new inputs.
+
+**Phase 1 conservative deferrals (banner-cited per cluster):**
+- Slot_T §3.15:3 "no opposing G/B/R sells" → no-op TRUE (defer to P4 IMPL-062 with PortfolioState.GetByMagic + total_lots_sell)
+- Slot_T §3.15:5 SELL mirror "BBBot > IchiMin" → symmetric proxy via BBTop scan (full bb_bot[15] companion buffer if 5-yr drift)
+- Slot_T §3.15:8 ZoneStrength=ZONE_PROVEN explicit + zone_hit ≥ 2 → proxied via subdem.has_support/demand
+- Slot_G §3.6:9 "extremum <±25" sub-clause → peak count alone (extremum cap if 5-yr drift)
+- Slot_G §3.6:11 SELL mirror → symmetric proxy
+- All `has_data` short → degrade-but-continue (gates return true) per NFR-2.2
+
+**Phase 5 mechanical gates verified:**
+- Gate #6 (file integrity): no impl-plan.md trailer issues (single `## End of Plan` preserved)
+- Gate #10 (stash-clean G1): PASS (`git stash --include-untracked` + compile vs HEAD; 0err/0warn/4887 ms — same as final cluster compile, confirming HEAD content compiles identically)
+- Gate #11 (working-tree clean): post-pop status empty (handoff/overview/impl-plan updates all in this commit)
+
+**S-AC status (3/6 `[x]` — Sessions A+B unchanged):**
+- ✅ S-AC #1 (Step 1 paired Q1 canary harness) — Session A
+- ✅ S-AC #2 (Step 2 journal-diff script + divergence artifact) — Session A
+- ✅ S-AC #3 (Step 3 patches per Step 2 ranking) — incrementally extended through Sessions A+B+C
+- ⏳ S-AC #4 (Step 4 ≥75% top-5 |Δ| reduction) — **GATED ON Step 4 iter-3 re-canary** (operator action)
+- ⏳ S-AC #5 (G1 0err/0warn end-of-task) — already verified after C5; will be re-confirmed after iter-3 doc commit
+- ⏳ S-AC #6 (G2 smoke 3-day post-merge final balance ≥ $200) — sanity check pending iter-3 outcome
+
+**E-AC paired bundle (deferred per registry expiry 2026-05-19):**
+- Step 5 5-yr Bucket A regression to 2025-12-31 (operator paired bundle)
+- |Bucket A drift| ≤ 25% NFR-1.1 + per-slot ≤ 10% NFR-1.6
+- Bucket B paired regression IMPL-063
+
+**Predicted Step 4 iter-3 effect:**
+- G/entry |Δ| 2 → 0 (rewrite now requires 6+ bar Force-peak count ≤ 3 + 15-bar BB scan + 25-bar DEM rolling sum ≥175/≤25 — gates the spurious 2021-01-04 + 2021-01-14 firings)
+- G2/entry |Δ| 2 → 0 (rewrite now requires 5-of-8 Force history + 1-of-[2,5) reversal trough + ADX-not-trapped — gates 2021-01-04 + 2021-01-12 spurious firings)
+- T/entry |Δ| 3 → 0 or 1 (rewrite now matches §3.15 4-sub-path: BUY support/SELL resistance × D/H sub-path)
+- top-5 reduction projected: ≥75% gate met → close S-AC #4
+
+**cap-3 iteration headroom:** this is iter-3 (final allowed within Session C). If iter-3 fails decision gate → escalate via `/impl-plan-review all` for additional task decomposition.
+
+**Plan Staleness Sentinel:** unchanged at 0 IMPL-NNN closures since R25 (FIX session closures don't increment per workflow.md Gate #4 + fix-round-10 precedent).
+
+**State Reconciliation 3-file rule honored:**
+- ✅ `docs/state/impl-plan.md` — TL;DR § prepended Session C entry; Status field of IMPL-FIX-011 task block updated; Audit Log entries inserted (iter-2 close + Session C close); Next entry rewritten as iter-3 re-canary action
+- ✅ `docs/state/overview.md` — line 19 Impl Plan Notes column extended with Session C close summary (5 commits, 5× G1 PASS, gates 6+10+11)
+- ✅ `docs/state/current_handoff.md` — this entry
+
+**Next action — OPERATOR-GATED:**
+1. Operator close foreground `terminal64.exe` PID 30132 from `C:\Program Files\FBS MetaTrader 5` (data-dir lock release per `mt5-headless-backtest § Step 3`)
+2. `bash .agents/skills/mt5-headless-backtest/scripts/run_headless_backtest.sh simulation/headless-tests/q1_2021_paired_rewrite.ini /tmp/iter3_rewrite.txt`
+3. Locate produced `MQL5/Files/PhoenicisNex/journal/tester/q1_rewrite_<timestamp>.jsonl` → copy to `_session-handoff/IMPL-FIX-011-q1_rewrite_postpatch_<YYYYMMDDHHmm>.jsonl`
+4. `python simulation/scripts/journal_diff.py --rewrite <new-jsonl> --legacy _session-handoff/IMPL-FIX-011-q1_legacy_202605102037.txt --out _session-handoff/IMPL-FIX-011-q1-postpatch-20260510-iter3.md --json _session-handoff/IMPL-FIX-011-q1-postpatch-20260510-iter3.json`
+5. Decision gate: ≥75% top-5 |Δ| reduction + Net Profit within ±10% of legacy → close S-AC #4 + 1 E-AC drained → Step 5 5-yr Bucket A enabled
+
+---
+
+## Previous action — IMPL-FIX-011 Step 4 iter-2 (historical reference)
+
+**🔴 IMPL-FIX-011 STEP 4 ITER-2 RE-CANARY EMPIRICALLY FALSIFIES SESSION B G/G2 PATCHES 2026-05-10 — Session B G/G2 patches INEFFECTIVE on top-10 |Δ| sum (0% reduction) + caused Net Profit REGRESSION (-22.7% vs iter-1 / -18.3% vs legacy → exits ±10% gate); S-AC #4 NOT MET; recommended revert Session B + escalate to Slot_T 4-sub-path Session C with MarketContext extension (folded scope unblocks G/G2/T simultaneously). RESOLVED via Session C above.**
 
 **Trigger:** User invoked `/impl-task IMPL-FIX-011 (Step 4 iter-2 re-canary)`. Phase 1 checks: Phase Gate Override active; Operator Action Registry empty; Deferred-AC Registry no expired rows. Foreground `terminal64.exe` PID 30132 from `C:\Program Files\FBS MetaTrader 5` (NOT `5ph` — separate live trading install with different terminal_id hash); did NOT block rewrite data-dir lock at A12EC9... so headless backtest proceeded without operator close.
 
