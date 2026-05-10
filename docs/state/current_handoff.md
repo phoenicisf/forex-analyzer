@@ -4,6 +4,20 @@
 
 ## Last completed action
 
+**✅ IMPL-063 STRUCTURAL CLOSED 2026-05-10 — Bucket B regression .ini + report skeleton (paired-bundle with IMPL-062 + IMPL-FIX-006 numeric drain)**
+
+- **Files added:**
+  - `simulation/headless-tests/regression_5yr_g4.ini` (NEW; default-build 5-yr 2021.01.01–2025.12.31 — complement to IMPL-062's `regression_5yr_no_g4.ini`)
+  - `docs/state/regression-bucket-b.md` (NEW; 8-section structural skeleton — Bucket B drift formula `(G4-ON − G4-OFF) / G4-OFF * 100` referencing IMPL-062 baseline; per-slot impact table flagging J + BI as G4-bearing slots; G4 Fix #1/#2 jq filter recipes for E-AC drain)
+- **G1 compile:** PASS `Result: 0 errors, 0 warnings, 4199 ms` (default-build invariant — `grep -c '#define[[:space:]]\+DISABLE_G4_FIXES' PhoenicisNex.mq5` = 0).
+- **Status:** 3/3 S-AC `[x]` structural; 3/3 E-AC deferred paired-bundle gated on operator paired 5-yr run with IMPL-062 + IMPL-FIX-006 (registry row P4 IMPL-063 expiry 2026-05-24).
+- **Cascade:** P4 16/17 → **17/17 ✅**. Single paired-bundle operator session now drains all 3 Bucket-related deferred-AC bundles in one go (IMPL-FIX-006 + IMPL-062 Bucket A + IMPL-063 Bucket B = NFR-1.1 + NFR-1.6 + NFR-1.8 acceptance signals + R-8 closure + Tier 2 Phase Gate unblocking).
+- **Next suggested task:** Operator paired-bundle drain (Bucket A then Bucket B 5-yr regressions, ~60-120 min wall-clock); on success → P4 Tier 2 Phase Gate empirical demo proceeds (Tier 1.5 walk batch-3 already PASSED 2026-05-09/10). Alternatively `/impl-review all` R09 (cumulative attack surface — IMPL-FIX-006 dimensional formula change touched 17 slots' risk math; recommended before MVP delivery sign-off).
+
+---
+
+## Prior action (kept for context)
+
 **✅ IMPL-FIX-006 IMPLEMENTED 2026-05-10 — RiskManager.ComputeLot dimensional formula fix (R-8 root cause closed; 5-yr regression drift drain pending operator session paired with IMPL-062)**
 
 - **Files changed:** `MQL5/Experts/PhoenicisNex/services/RiskManager.mqh` (1 file, ~110 LOC delta) — added `_PipValue()` + `_RiskMoneyToLot(risk_money, sl_pips, slot_id)` private helpers; rewrote `ComputeLot` dispatcher so 17 direct-lot slots (C/D/F/G/G2/GO/M/L/LX/Q/R/P/T/B/BR/H + S/K via private variants) route through `_RiskMoneyToLot`; updated `_ComputeLotForS(sl_pips, percent_tp)` + `_ComputeLotForK(sl_pips, balance, extra)` signatures to accept `sl_pips`; J/BI/I parent-anchored variants unchanged (formulas already operate on `parent.last_open_lot × fibonacci_pct` → lot units); SelfTest extended 9 → 10 cases (Case 10 dimensional invariant: doubling sl_pips → halving lot via `_RiskMoneyToLot`).

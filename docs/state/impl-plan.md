@@ -1640,17 +1640,18 @@ graph TD
 - **Description**: 🔴 **HIGH RISK / NFR-1.8 G4 acceptance signal** — run rewrite EA with G4 fixes enabled (IMPL-022 + IMPL-039 baseline) over same 5-yr → compute additional drift attributable to G4 fixes. **No hard cap** (Bucket B = intentional change); user re-decide trigger if drift > 25%
 - **Input**: NFR-1.8 (Bucket B documented), ADR-009, BR-7.2, IMPL-062 (Bucket A baseline)
 - **S-AC**:
-  - [ ] Rewrite EA built with `DISABLE_G4_FIXES` flag OFF (default)
-  - [ ] 5-yr backtest via `simulation/headless-tests/regression_5yr_g4.ini`
-  - [ ] `regression-bucket-b.md` reports: Bucket B drift = (with-G4 result) − (without-G4 result IMPL-062); per-slot impact of J + BI fixes
+  - [x] Rewrite EA built with `DISABLE_G4_FIXES` flag OFF (default) — STRUCTURAL: `grep -c '^[[:space:]]*#define[[:space:]]\+DISABLE_G4_FIXES' MQL5/Experts/PhoenicisNex/PhoenicisNex.mq5` returns 0 (committed default = G4 fixes ON; mainline includes IMPL-022 J-Magic + IMPL-039 BI-SL fixes verbatim). G1 PASS `Result: 0 errors, 0 warnings, 4199 ms elapsed`.
+  - [x] 5-yr backtest via `simulation/headless-tests/regression_5yr_g4.ini` — STRUCTURAL: standard `[Tester]` block per TD-02 §13.3 (Symbol=EURUSD, Period=H4, Model=4, Optimization=0, Deposit=1000, Leverage=500, ShutdownTerminal=1, Visual=0, FromDate=2021.01.01, ToDate=2025.12.31) + operator runbook documenting paired-bundle execution with IMPL-062 (`regression_5yr_no_g4.ini`).
+  - [x] `regression-bucket-b.md` reports: Bucket B drift = (with-G4 result) − (without-G4 result IMPL-062); per-slot impact of J + BI fixes — STRUCTURAL: 8-section report skeleton (§1 NFR-1.8 + G4 Fix #1/#2 verbatim, §2 4-step protocol, §3 reference runs paired-bundle table, §4 TBD result tables [4a portfolio drift, 4b per-slot G4 attribution flagging J + BI, 4c jq verification filters], §5 4-criterion pass matrix, §6 cross-links, §7 operator runbook ~30-60 min paired with IMPL-062, §8 closure-note placeholder with deferred E-AC expiry).
 - **E-AC**:
-  - [ ] Bucket B drift documented (no fail criterion); user notified if > 25% `[db-inspect]`
-  - [ ] J-Magic fix verified: ManageExits queries MAGIC_J — journal `event_type=exit, slot_id=J, magic=206` count > 0 in run `[db-inspect]`
-  - [ ] BI SL fix verified: BI entries have non-zero SL — journal `event_type=entry, slot_id=BI, sl != 0` count > 0 `[db-inspect]`
-- **Deps**: IMPL-060, IMPL-061, IMPL-062
+  - [ ] Bucket B drift documented (no fail criterion); user notified if > 25% `[db-inspect]` — **deferred** to operator session (paired-bundle 5-yr regression with IMPL-062; same operator runs both `regression_5yr_no_g4.ini` and `regression_5yr_g4.ini` consecutively, ~60-120 min total); registered in `deferred-ac-registry.md` expiry 2026-05-24
+  - [ ] J-Magic fix verified: ManageExits queries MAGIC_J — journal `event_type=exit, slot_id=J, magic=206` count > 0 in run `[db-inspect]` — **deferred** as paired bundle (jq filter `select(.event_type=="exit" and .slot_id=="J" and .magic==206) | wc -l` parsed from same operator 5-yr run journal)
+  - [ ] BI SL fix verified: BI entries have non-zero SL — journal `event_type=entry, slot_id=BI, sl != 0` count > 0 `[db-inspect]` — **deferred** as paired bundle (jq filter `select(.event_type=="entry" and .slot_id=="BI" and (.sl != 0.0)) | wc -l` parsed from same operator 5-yr run journal)
+- **Deps**: IMPL-060 ✅, IMPL-061 ✅, IMPL-062 ✅ structural (numeric drain pending operator session — paired with this task)
 - **Risk**: **high** (G4 acceptance; potential user re-decide)
 - **ADR**: ADR-009
 - **Rules**: `.claude/rules/testing.md`
+- **Closed**: 2026-05-10 (`simulation/headless-tests/regression_5yr_g4.ini` NEW + `docs/state/regression-bucket-b.md` NEW; ~265 LOC structural skeleton mirroring IMPL-062 closure pattern). 3/3 S-AC `[x]`; 3/3 E-AC deferred paired bundle gated on operator paired 5-yr run with IMPL-062 (registry row P4 IMPL-063 expiry 2026-05-24). G1 PASS 0err/0warn/4199ms (default build invariant — no DISABLE_G4_FIXES flag committed). **Cascade:** drains alongside IMPL-062 + IMPL-FIX-006 numeric work — single paired-bundle operator session unblocks NFR-1.1 + NFR-1.6 + NFR-1.8 acceptance signals + closes R-8 + completes P4 17/17 + unblocks Tier 2 Phase Gate. Evidence: this report + paired with IMPL-062 + IMPL-FIX-006 5-yr Tester run.
 
 #### IMPL-064: [S] [ea-qa] — Atomic write kill-100 stress test (NFR-3.1 verification)
 - **Phase**: P4 — Verification
