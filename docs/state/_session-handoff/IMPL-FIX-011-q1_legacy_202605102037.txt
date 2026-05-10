@@ -1,0 +1,262 @@
+﻿CS	0	20:38:06.571	Startup	MetaTester 5 build 5833, 25 Apr 2026
+CS	0	20:38:06.571	Startup	Windows 11 build 22631, 16 x AMD Ryzen 7 7840HS w/ Radeon 780M, AVX2, 8 / 31 Gb memory, 177 / 930 Gb disk, UAC, GMT+7
+CS	0	20:38:06.573	Server	MetaTester 5 started on 127.0.0.1:3000
+CS	0	20:38:06.573	Startup	cloud network mode is off
+CS	0	20:38:06.573	Startup	initialization finished
+CS	0	20:38:06.585	127.0.0.1	login (build 5833)
+CS	0	20:38:06.603	Network	16516 bytes of account info loaded
+CS	0	20:38:06.603	Network	1478 bytes of tester parameters loaded
+CS	0	20:38:06.603	Network	196 bytes of input parameters loaded
+CS	0	20:38:06.603	Network	2680 bytes of symbols list loaded (581 symbols)
+CS	0	20:38:06.603	Tester	expert file added: Experts\PhoenicisN2.10_stable.ex5. 546281 bytes loaded
+CS	0	20:38:06.603	Tester	program file added: Indicators\Examples\ZigZag.ex5. 13896 bytes loaded
+CS	0	20:38:06.604	Tester	program file added: Indicators\iHull.ex5. 14324 bytes loaded
+CS	0	20:38:06.606	Tester	9034 Mb available, 112 blocks set for ticks generating
+CS	0	20:38:06.606	Tester	initial deposit 1000.00 USD, leverage 1:500
+CS	0	20:38:06.606	Tester	successfully initialized
+CS	0	20:38:06.606	Network	565 Kb of total initialization data received
+CS	0	20:38:06.606	Tester	AMD Ryzen 7 7840HS w/ Radeon 780M, 31938 MB
+CS	0	20:38:06.613	Symbols	EURUSD: symbol to be synchronized
+CS	0	20:38:06.614	Symbols	EURUSD: symbol synchronized, 3720 bytes of symbol info received
+CS	0	20:38:06.619	History	EURUSD: load 27 bytes of history data to synchronize in 0:00:00.000
+CS	0	20:38:06.619	History	EURUSD: history synchronized from 2019.01.02 to 2026.05.08
+CS	0	20:38:06.622	Ticks	EURUSD: ticks synchronization started
+CS	0	20:38:06.623	Ticks	EURUSD: load 34 bytes of tick data to synchronize in 0:00:00.000
+CS	0	20:38:06.623	Ticks	EURUSD: history ticks synchronized from 2021.01.04 to 2026.05.08
+CS	0	20:38:06.640	History	EURUSD,H4: history cache allocated for 1942 bars and contains 1560 bars from 2020.01.02 00:00 to 2020.12.31 20:00
+CS	0	20:38:06.640	History	EURUSD,H4: history begins from 2020.01.02 00:00
+CS	0	20:38:06.641	Tester	EURUSD,H4 (FBS-Real): generating based on real ticks
+CS	0	20:38:06.641	Tester	EURUSD,H4: testing of Experts\PhoenicisN2.10_stable.ex5 from 2021.01.01 00:00 to 2021.03.31 00:00 started
+CS	0	20:38:06.661	Tester	program file added: \Indicators\Examples\ZigZag.ex5. 13897 bytes loaded
+CS	0	20:38:06.693	History	EURUSD,M5: history cache allocated for 93110 bars and contains 74801 bars from 2020.01.02 00:00 to 2020.12.31 23:55
+CS	0	20:38:06.693	History	EURUSD,M5: history begins from 2020.01.02 00:00
+CS	0	20:38:06.708	History	EURUSD,Daily: history cache allocated for 324 bars and contains 260 bars from 2020.01.02 00:00 to 2020.12.31 00:00
+CS	0	20:38:06.708	History	EURUSD,Daily: history begins from 2020.01.02 00:00
+CS	0	20:38:06.727	History	EURUSD,M10: history cache allocated for 46567 bars and contains 37412 bars from 2020.01.02 00:00 to 2020.12.31 23:50
+CS	0	20:38:06.727	History	EURUSD,M10: history begins from 2020.01.02 00:00
+CS	0	20:38:06.744	History	EURUSD,M15: history cache allocated for 31045 bars and contains 24942 bars from 2020.01.02 00:00 to 2020.12.31 23:45
+CS	0	20:38:06.744	History	EURUSD,M15: history begins from 2020.01.02 00:00
+CS	0	20:38:06.771	History	EURUSD,M2: history cache allocated for 232527 bars and contains 186755 bars from 2020.01.02 00:00 to 2020.12.31 23:58
+CS	0	20:38:06.771	History	EURUSD,M2: history begins from 2020.01.02 00:00
+CS	0	20:38:06.772	Tester	program file added: \Indicators\iHull.ex5. 14325 bytes loaded
+CS	0	20:38:06.781	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.01 00:00:00   OnInit Loaded: 1.00
+CS	0	20:38:07.141	Ticks	EURUSD : real ticks begin from 2021.01.04 00:00:00
+CS	0	20:38:07.164	History	EURUSD,H1: history cache allocated for 7762 bars and contains 6236 bars from 2020.01.02 00:00 to 2020.12.31 23:00
+CS	0	20:38:07.168	History	EURUSD,H1: 1 bar from 2021.01.04 00:00 added
+CS	0	20:38:07.168	History	EURUSD,H1: history begins from 2020.01.02 00:00
+CS	0	20:38:07.204	History	EURUSD,M1: history cache allocated for 463778 bars and contains 372235 bars from 2020.01.02 00:00 to 2020.12.31 23:59
+CS	0	20:38:07.204	History	EURUSD,M1: 1 bar from 2021.01.04 00:05 added
+CS	0	20:38:07.204	History	EURUSD,M1: history begins from 2020.01.02 00:00
+CS	0	20:38:11.926	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.06 02:50:56   T use low 10 _lotSize: 0.09
+CS	0	20:38:11.926	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.06 02:50:56   ✔️[PhoenicisN2.10.4.mq5:18835]: _ratioPriceSubDem:ORDER_TYPE_SELL T,H,B,0.61,0,V,1,108 100.08859259587261
+CS	0	20:38:11.926	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.06 02:50:56   ✔️[PhoenicisN2.10.4.mq5:18836]: _ratioPriceSubDemD:ORDER_TYPE_SELL -9999.0
+CS	0	20:38:11.926	Trade	2021.01.06 02:50:56   market sell 0.05 EURUSD sl: 1.24343 (1.23260 / 1.23277)
+CS	0	20:38:11.926	Trades	2021.01.06 02:50:56   deal #2 sell 0.05 EURUSD at 1.23260 done (based on order #2)
+CS	0	20:38:11.926	Trade	2021.01.06 02:50:56   deal performed [#2 sell 0.05 EURUSD at 1.23260]
+CS	0	20:38:11.926	Trade	2021.01.06 02:50:56   order performed sell 0.05 at 1.23260 [#2 sell 0.05 EURUSD at 1.23260]
+CS	0	20:38:11.926	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.06 02:50:56   OrderOpen:T T,H,B,0.61,0,V,1,108
+CS	0	20:38:11.926	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.06 02:50:56   Lotsize Ratio: 0.257
+CS	0	20:38:11.926	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.06 02:50:56   set FirstSetOrderDate 2021.01.06 00:00:00
+CS	0	20:38:16.774	Trade	2021.01.07 12:51:05   market buy 0.05 EURUSD, close #2 (1.22457 / 1.22469)
+CS	0	20:38:16.774	Trades	2021.01.07 12:51:05   deal #3 buy 0.05 EURUSD at 1.22469 done (based on order #3)
+CS	0	20:38:16.774	Trade	2021.01.07 12:51:05   deal performed [#3 buy 0.05 EURUSD at 1.22469]
+CS	0	20:38:16.774	Trade	2021.01.07 12:51:05   order performed buy 0.05 at 1.22469 [#3 buy 0.05 EURUSD at 1.22469]
+CS	0	20:38:16.774	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.07 12:51:05   CTrade::OrderSend: market buy 0.05 position #2 EURUSD [done at 1.22469]
+CS	0	20:38:16.774	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.07 12:51:05   Close good potsition: T,H,B,0.61,0,V,1,108
+CS	0	20:38:16.774	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.07 12:51:05   * Close by Close T Band invalid at start
+CS	0	20:38:16.774	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.07 12:51:05   set FirstSetOrderDate 0
+CS	0	20:38:24.692	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.14 15:03:30   TOrderPendingDate 2021.01.14 15:03:00
+CS	0	20:38:27.082	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.18 01:44:42   typeOfNerve: 0
+CS	0	20:38:27.082	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.18 01:44:42   lotSizeContinue0.00
+CS	0	20:38:27.082	Trade	2021.01.18 01:44:42   market buy 0.06 EURUSD (1.20699 / 1.20711)
+CS	0	20:38:27.082	Trades	2021.01.18 01:44:42   deal #4 buy 0.06 EURUSD at 1.20711 done (based on order #4)
+CS	0	20:38:27.082	Trade	2021.01.18 01:44:42   deal performed [#4 buy 0.06 EURUSD at 1.20711]
+CS	0	20:38:27.082	Trade	2021.01.18 01:44:42   order performed buy 0.06 at 1.20711 [#4 buy 0.06 EURUSD at 1.20711]
+CS	0	20:38:27.082	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.18 01:44:42   D,6-8-13,-,0,0
+CS	0	20:38:27.082	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.18 01:44:42   ,P IsBUseNearCrossIchi: false
+CS	0	20:38:27.082	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.18 01:44:42   Lotsize Ratio: 0.274
+CS	0	20:38:27.082	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.18 01:44:42   ExtraForceTakeProfitMode active force5.2 force3_extra
+CS	0	20:38:27.082	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.18 01:44:42   set FirstSetOrderDate 2021.01.18 00:00:00
+CS	0	20:38:28.890	Trade	2021.01.19 01:02:18   market buy 0.06 EURUSD sl: 1.19155 (1.20722 / 1.20746)
+CS	0	20:38:28.890	Trades	2021.01.19 01:02:18   deal #5 buy 0.06 EURUSD at 1.20746 done (based on order #5)
+CS	0	20:38:28.890	Trade	2021.01.19 01:02:18   deal performed [#5 buy 0.06 EURUSD at 1.20746]
+CS	0	20:38:28.890	Trade	2021.01.19 01:02:18   order performed buy 0.06 at 1.20746 [#5 buy 0.06 EURUSD at 1.20746]
+CS	0	20:38:28.890	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.19 01:02:18   OrderOpen:T T,PF,A,0.28,0
+CS	0	20:38:28.890	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.19 01:02:18   Lotsize Ratio: 0.274
+CS	0	20:38:28.890	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.19 01:02:18   ✔️[PhoenicisN2.10.4.mq5:19011]: _ratioPriceSubDem:ORDER_TYPE_BUYT,PF,A,0.28,0 -9999.0
+CS	0	20:38:29.046	Trade	2021.01.19 03:30:11   market buy 0.17 EURUSD (1.20912 / 1.20922)
+CS	0	20:38:29.046	Trades	2021.01.19 03:30:11   deal #6 buy 0.17 EURUSD at 1.20922 done (based on order #6)
+CS	0	20:38:29.046	Trade	2021.01.19 03:30:11   deal performed [#6 buy 0.17 EURUSD at 1.20922]
+CS	0	20:38:29.046	Trade	2021.01.19 03:30:11   order performed buy 0.17 at 1.20922 [#6 buy 0.17 EURUSD at 1.20922]
+CS	0	20:38:29.047	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.19 03:30:11   M,NN,30.46,2,N,H
+CS	0	20:38:29.047	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.19 03:30:11   Lotsize Ratio: 0.768
+CS	0	20:38:32.073	Trade	2021.01.20 04:00:00   market sell 0.17 EURUSD, close #6 (1.21422 / 1.21433)
+CS	0	20:38:32.073	Trades	2021.01.20 04:00:00   deal #7 sell 0.17 EURUSD at 1.21422 done (based on order #7)
+CS	0	20:38:32.073	Trade	2021.01.20 04:00:00   deal performed [#7 sell 0.17 EURUSD at 1.21422]
+CS	0	20:38:32.073	Trade	2021.01.20 04:00:00   order performed sell 0.17 at 1.21422 [#7 sell 0.17 EURUSD at 1.21422]
+CS	0	20:38:32.073	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.20 04:00:00   CTrade::OrderSend: market sell 0.17 position #6 EURUSD [done at 1.21422]
+CS	0	20:38:32.073	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.20 04:00:00   Close good potsition: M,NN,30.46,2,N,H
+CS	0	20:38:32.073	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.20 04:00:00   * Close by ExtraTakeProfit M NN
+CS	0	20:38:36.120	Trade	2021.01.21 15:51:16   market sell 0.06 EURUSD, close #5 (1.21727 / 1.21737)
+CS	0	20:38:36.120	Trades	2021.01.21 15:51:16   deal #8 sell 0.06 EURUSD at 1.21727 done (based on order #8)
+CS	0	20:38:36.120	Trade	2021.01.21 15:51:16   deal performed [#8 sell 0.06 EURUSD at 1.21727]
+CS	0	20:38:36.120	Trade	2021.01.21 15:51:16   order performed sell 0.06 at 1.21727 [#8 sell 0.06 EURUSD at 1.21727]
+CS	0	20:38:36.120	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.21 15:51:16   CTrade::OrderSend: market sell 0.06 position #5 EURUSD [done at 1.21727]
+CS	0	20:38:36.120	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.21 15:51:16   Close good potsition: T,PF,A,0.28,0
+CS	0	20:38:36.120	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.21 15:51:16   * Close by Close T Top Band
+CS	0	20:38:42.612	Trade	2021.01.26 20:00:00   market sell 0.06 EURUSD, close #4 (1.21579 / 1.21589)
+CS	0	20:38:42.612	Trades	2021.01.26 20:00:00   deal #9 sell 0.06 EURUSD at 1.21579 done (based on order #9)
+CS	0	20:38:42.612	Trade	2021.01.26 20:00:00   deal performed [#9 sell 0.06 EURUSD at 1.21579]
+CS	0	20:38:42.612	Trade	2021.01.26 20:00:00   order performed sell 0.06 at 1.21579 [#9 sell 0.06 EURUSD at 1.21579]
+CS	0	20:38:42.612	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.26 20:00:00   CTrade::OrderSend: market sell 0.06 position #4 EURUSD [done at 1.21579]
+CS	0	20:38:42.612	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.26 20:00:00   Close good potsition: D,6-8-13,-,0,0
+CS	0	20:38:42.612	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.26 20:00:00   * Close by ExtraForceTakeProfit 3
+CS	0	20:38:42.612	PhoenicisN2.10_stable (EURUSD,H4)	2021.01.26 20:00:00   set FirstSetOrderDate 0
+CS	0	20:39:07.112	Trade	2021.02.16 20:00:00   market sell 0.15 EURUSD sl: 1.21710 tp: 1.20757 (1.21098 / 1.21108)
+CS	0	20:39:07.112	Trades	2021.02.16 20:00:00   deal #10 sell 0.15 EURUSD at 1.21098 done (based on order #10)
+CS	0	20:39:07.112	Trade	2021.02.16 20:00:00   deal performed [#10 sell 0.15 EURUSD at 1.21098]
+CS	0	20:39:07.112	Trade	2021.02.16 20:00:00   order performed sell 0.15 at 1.21098 [#10 sell 0.15 EURUSD at 1.21098]
+CS	0	20:39:07.112	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.16 20:00:00   OrderOpen:K K,34,61,15,B,0.56,37.59
+CS	0	20:39:07.112	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.16 20:00:00   Lotsize Ratio: 0.579
+CS	0	20:39:07.112	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.16 20:00:00   K _ratio   37.59158  (20.525/54.6)
+CS	0	20:39:07.112	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.16 20:00:01   set FirstSetOrderDate 2021.02.16 20:00:00
+CS	0	20:39:07.545	Trade	2021.02.17 09:16:20   take profit triggered #10 sell 0.15 EURUSD 1.21098 sl: 1.21710 tp: 1.20757 [#11 buy 0.15 EURUSD at 1.20757]
+CS	0	20:39:07.545	Trades	2021.02.17 09:16:20   deal #11 buy 0.15 EURUSD at 1.20755 done (based on order #11)
+CS	0	20:39:07.545	Trade	2021.02.17 09:16:20   deal performed [#11 buy 0.15 EURUSD at 1.20755]
+CS	0	20:39:07.545	Trade	2021.02.17 09:16:20   order performed buy 0.15 at 1.20755 [#11 buy 0.15 EURUSD at 1.20757]
+CS	0	20:39:07.545	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.17 09:16:20   set FirstSetOrderDate 0
+CS	0	20:39:15.321	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.25 09:57:01   TOrderPendingDate 2021.02.25 09:57:00
+CS	0	20:39:16.647	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.25 20:00:00   C checkIchimokuWaveWithPrice No   _ratio:8.6006
+CS	0	20:39:16.647	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.25 20:00:00   lotSizeMultiply: 0.99
+CS	0	20:39:16.647	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.25 20:00:00   lotSize a: 0.27027
+CS	0	20:39:16.647	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.25 20:00:00   lotSize b: 0.189189
+CS	0	20:39:16.647	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.25 20:00:00   IsCantPassDriveIChiDay true
+CS	0	20:39:16.647	Trade	2021.02.25 20:00:00   market sell 0.11 EURUSD (1.22146 / 1.22156)
+CS	0	20:39:16.647	Trades	2021.02.25 20:00:00   deal #12 sell 0.11 EURUSD at 1.22146 done (based on order #12)
+CS	0	20:39:16.647	Trade	2021.02.25 20:00:00   deal performed [#12 sell 0.11 EURUSD at 1.22146]
+CS	0	20:39:16.647	Trade	2021.02.25 20:00:00   order performed sell 0.11 at 1.22146 [#12 sell 0.11 EURUSD at 1.22146]
+CS	0	20:39:16.647	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.25 20:00:00   C,9-7-1,5.7-5.5-12.9,0.99,N
+CS	0	20:39:16.647	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.25 20:00:00   ,P IsBUseNearCrossIchi: false
+CS	0	20:39:16.647	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.25 20:00:00   Lotsize Ratio: 0.421
+CS	0	20:39:16.647	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.25 20:00:00   ✔️[PhoenicisN2.10.3.mq5:1632]: _ratioPriceSubDem SELL: -9999.0
+CS	0	20:39:16.647	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.25 20:00:00   ExtraForceTakeProfitMode active force5.1 force_extra
+CS	0	20:39:16.647	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.25 20:00:00   C idxPercent: 56.713221882170586
+CS	0	20:39:16.647	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.25 20:00:00   set FirstSetOrderDate 2021.02.25 20:00:00
+CS	0	20:39:17.685	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.26 01:00:00   C never lot: 0.990
+CS	0	20:39:17.685	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.26 01:00:00   cNerveLotImpact: true
+CS	0	20:39:17.685	Trade	2021.02.26 01:00:00   market sell 0.03 EURUSD (1.21823 / 1.21835)
+CS	0	20:39:17.685	Trades	2021.02.26 01:00:00   deal #13 sell 0.03 EURUSD at 1.21823 done (based on order #13)
+CS	0	20:39:17.685	Trade	2021.02.26 01:00:00   deal performed [#13 sell 0.03 EURUSD at 1.21823]
+CS	0	20:39:17.685	Trade	2021.02.26 01:00:00   order performed sell 0.03 at 1.21823 [#13 sell 0.03 EURUSD at 1.21823]
+CS	0	20:39:17.685	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.26 01:00:00   H,Y,N,-51,1,2,2
+CS	0	20:39:17.685	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.26 01:00:00   Lotsize Ratio: 0.117
+CS	0	20:39:18.285	Trade	2021.02.26 04:00:00   market sell 0.12 EURUSD sl: 1.22581 (1.21633 / 1.21643)
+CS	0	20:39:18.285	Trades	2021.02.26 04:00:00   deal #14 sell 0.12 EURUSD at 1.21633 done (based on order #14)
+CS	0	20:39:18.285	Trade	2021.02.26 04:00:00   deal performed [#14 sell 0.12 EURUSD at 1.21633]
+CS	0	20:39:18.285	Trade	2021.02.26 04:00:00   order performed sell 0.12 at 1.21633 [#14 sell 0.12 EURUSD at 1.21633]
+CS	0	20:39:18.285	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.26 04:00:00   OrderOpen:T T,PF,B,0.54,0
+CS	0	20:39:18.285	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.26 04:00:00   Lotsize Ratio: 0.445
+CS	0	20:39:18.285	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.26 04:00:00   ✔️[PhoenicisN2.10.4.mq5:19042]: _ratioPriceSubDem:ORDER_TYPE_SELL T,PF,B,0.54,0 -9999.0
+CS	0	20:39:20.621	Trade	2021.02.26 13:20:44   market buy 0.12 EURUSD, close #14 (1.21035 / 1.21044)
+CS	0	20:39:20.621	Trades	2021.02.26 13:20:44   deal #15 buy 0.12 EURUSD at 1.21044 done (based on order #15)
+CS	0	20:39:20.621	Trade	2021.02.26 13:20:44   deal performed [#15 buy 0.12 EURUSD at 1.21044]
+CS	0	20:39:20.621	Trade	2021.02.26 13:20:44   order performed buy 0.12 at 1.21044 [#15 buy 0.12 EURUSD at 1.21044]
+CS	0	20:39:20.621	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.26 13:20:44   CTrade::OrderSend: market buy 0.12 position #14 EURUSD [done at 1.21044]
+CS	0	20:39:20.621	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.26 13:20:44   Close good potsition: T,PF,B,0.54,0
+CS	0	20:39:20.621	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.26 13:20:44   * Close by Close T Bot Band
+CS	0	20:39:21.385	Trade	2021.02.26 16:00:00   market buy 0.11 EURUSD, close #12 (1.21223 / 1.21233)
+CS	0	20:39:21.385	Trades	2021.02.26 16:00:00   deal #16 buy 0.11 EURUSD at 1.21233 done (based on order #16)
+CS	0	20:39:21.385	Trade	2021.02.26 16:00:00   deal performed [#16 buy 0.11 EURUSD at 1.21233]
+CS	0	20:39:21.385	Trade	2021.02.26 16:00:00   order performed buy 0.11 at 1.21233 [#16 buy 0.11 EURUSD at 1.21233]
+CS	0	20:39:21.385	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.26 16:00:00   CTrade::OrderSend: market buy 0.11 position #12 EURUSD [done at 1.21233]
+CS	0	20:39:21.385	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.26 16:00:00   Close good potsition: C,9-7-1,5.7-5.5-12.9,0.99,N
+CS	0	20:39:21.385	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.26 16:00:00   * Close by ExtraForceTakeProfit 2
+CS	0	20:39:22.091	Trade	2021.02.26 18:18:35   market buy 0.03 EURUSD, close #13 (1.21053 / 1.21065)
+CS	0	20:39:22.091	Trades	2021.02.26 18:18:35   deal #17 buy 0.03 EURUSD at 1.21065 done (based on order #17)
+CS	0	20:39:22.091	Trade	2021.02.26 18:18:35   deal performed [#17 buy 0.03 EURUSD at 1.21065]
+CS	0	20:39:22.091	Trade	2021.02.26 18:18:35   order performed buy 0.03 at 1.21065 [#17 buy 0.03 EURUSD at 1.21065]
+CS	0	20:39:22.091	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.26 18:18:35   CTrade::OrderSend: market buy 0.03 position #13 EURUSD [done at 1.21065]
+CS	0	20:39:22.091	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.26 18:18:35   Close good potsition: H,Y,N,-51,1,2,2
+CS	0	20:39:22.091	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.26 18:18:35   * Close by ExtraTakeProfit H Ichi
+CS	0	20:39:22.091	PhoenicisN2.10_stable (EURUSD,H4)	2021.02.26 18:18:35   set FirstSetOrderDate 0
+CS	0	20:39:28.811	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.04 10:25:10   tpplus: 0.0
+CS	0	20:39:28.811	Trade	2021.03.04 10:25:10   market sell 0.21 EURUSD sl: 1.21726 (1.20406 / 1.20416)
+CS	0	20:39:28.811	Trades	2021.03.04 10:25:10   deal #18 sell 0.21 EURUSD at 1.20406 done (based on order #18)
+CS	0	20:39:28.811	Trade	2021.03.04 10:25:10   deal performed [#18 sell 0.21 EURUSD at 1.20406]
+CS	0	20:39:28.811	Trade	2021.03.04 10:25:10   order performed sell 0.21 at 1.20406 [#18 sell 0.21 EURUSD at 1.20406]
+CS	0	20:39:28.811	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.04 10:25:10   OrderOpen:B B,131,9.5,1,5,3,2,73
+CS	0	20:39:28.811	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.04 10:25:10   Lotsize Ratio: 0.666
+CS	0	20:39:28.811	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.04 10:25:10   set FirstSetOrderDate 2021.03.04 08:00:00
+CS	0	20:39:38.788	Trade	2021.03.09 09:35:40   market buy 0.25 EURUSD (1.18694 / 1.18703)
+CS	0	20:39:38.788	Trades	2021.03.09 09:35:40   deal #19 buy 0.25 EURUSD at 1.18703 done (based on order #19)
+CS	0	20:39:38.788	Trade	2021.03.09 09:35:40   deal performed [#19 buy 0.25 EURUSD at 1.18703]
+CS	0	20:39:38.788	Trade	2021.03.09 09:35:40   order performed buy 0.25 at 1.18703 [#19 buy 0.25 EURUSD at 1.18703]
+CS	0	20:39:38.788	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.09 09:35:40   M,NN,26.63,3,N,H
+CS	0	20:39:38.788	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.09 09:35:40   Lotsize Ratio: 0.811
+CS	0	20:39:42.204	Trade	2021.03.10 09:48:13   market buy 0.21 EURUSD, close #18 (1.18837 / 1.18846)
+CS	0	20:39:42.204	Trades	2021.03.10 09:48:13   deal #20 buy 0.21 EURUSD at 1.18846 done (based on order #20)
+CS	0	20:39:42.204	Trade	2021.03.10 09:48:13   deal performed [#20 buy 0.21 EURUSD at 1.18846]
+CS	0	20:39:42.204	Trade	2021.03.10 09:48:13   order performed buy 0.21 at 1.18846 [#20 buy 0.21 EURUSD at 1.18846]
+CS	0	20:39:42.204	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.10 09:48:13   CTrade::OrderSend: market buy 0.21 position #18 EURUSD [done at 1.18846]
+CS	0	20:39:42.204	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.10 09:48:13   Close good potsition: B,131,9.5,1,5,3,2,73
+CS	0	20:39:42.204	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.10 09:48:13   * Close by ExtraTakeProfit B Break Price Action
+CS	0	20:39:42.205	Trade	2021.03.10 09:48:13   market buy 0.14 EURUSD sl: 1.18087 (1.18837 / 1.18846)
+CS	0	20:39:42.205	Trades	2021.03.10 09:48:13   deal #21 buy 0.14 EURUSD at 1.18846 done (based on order #21)
+CS	0	20:39:42.205	Trade	2021.03.10 09:48:13   deal performed [#21 buy 0.14 EURUSD at 1.18846]
+CS	0	20:39:42.205	Trade	2021.03.10 09:48:13   order performed buy 0.14 at 1.18846 [#21 buy 0.14 EURUSD at 1.18846]
+CS	0	20:39:42.205	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.10 09:48:13   OrderOpen:BR BR,N,75,7
+CS	0	20:39:42.205	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.10 09:48:13   Lotsize Ratio: 0.358
+CS	0	20:39:43.249	Trade	2021.03.10 16:03:14   market sell 0.25 EURUSD, close #19 (1.19123 / 1.19132)
+CS	0	20:39:43.249	Trades	2021.03.10 16:03:14   deal #22 sell 0.25 EURUSD at 1.19123 done (based on order #22)
+CS	0	20:39:43.249	Trade	2021.03.10 16:03:14   deal performed [#22 sell 0.25 EURUSD at 1.19123]
+CS	0	20:39:43.249	Trade	2021.03.10 16:03:14   order performed sell 0.25 at 1.19123 [#22 sell 0.25 EURUSD at 1.19123]
+CS	0	20:39:43.249	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.10 16:03:14   CTrade::OrderSend: market sell 0.25 position #19 EURUSD [done at 1.19123]
+CS	0	20:39:43.249	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.10 16:03:14   Close good potsition: M,NN,26.63,3,N,H
+CS	0	20:39:43.249	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.10 16:03:14   * Close by ExtraTakeProfit M NN
+CS	0	20:39:45.390	Trade	2021.03.11 10:25:55   market sell 0.07 EURUSD sl: 1.20684 tp: 1.15944 (1.19492 / 1.19501)
+CS	0	20:39:45.390	Trades	2021.03.11 10:25:55   deal #23 sell 0.07 EURUSD at 1.19492 done (based on order #23)
+CS	0	20:39:45.390	Trade	2021.03.11 10:25:55   deal performed [#23 sell 0.07 EURUSD at 1.19492]
+CS	0	20:39:45.390	Trade	2021.03.11 10:25:55   order performed sell 0.07 at 1.19492 [#23 sell 0.07 EURUSD at 1.19492]
+CS	0	20:39:45.390	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.11 10:25:55   OrderOpen:P PX,7,1,101,118,18
+CS	0	20:39:45.390	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.11 10:25:55   Lotsize Ratio: 0.164
+CS	0	20:39:47.269	Trade	2021.03.11 20:03:14   market sell 0.14 EURUSD, close #21 (1.19897 / 1.19909)
+CS	0	20:39:47.269	Trades	2021.03.11 20:03:14   deal #24 sell 0.14 EURUSD at 1.19897 done (based on order #24)
+CS	0	20:39:47.269	Trade	2021.03.11 20:03:14   deal performed [#24 sell 0.14 EURUSD at 1.19897]
+CS	0	20:39:47.269	Trade	2021.03.11 20:03:14   order performed sell 0.14 at 1.19897 [#24 sell 0.14 EURUSD at 1.19897]
+CS	0	20:39:47.269	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.11 20:03:14   CTrade::OrderSend: market sell 0.14 position #21 EURUSD [done at 1.19897]
+CS	0	20:39:47.269	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.11 20:03:14   Close good potsition: BR,N,75,7
+CS	0	20:39:47.269	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.11 20:03:14   * Close by Close BR Touch Ichi
+CS	0	20:39:53.313	Trade	2021.03.16 17:21:55   market buy 0.07 EURUSD, close #23 (1.18879 / 1.18888)
+CS	0	20:39:53.313	Trades	2021.03.16 17:21:55   deal #25 buy 0.07 EURUSD at 1.18888 done (based on order #25)
+CS	0	20:39:53.313	Trade	2021.03.16 17:21:55   deal performed [#25 buy 0.07 EURUSD at 1.18888]
+CS	0	20:39:53.313	Trade	2021.03.16 17:21:55   order performed buy 0.07 at 1.18888 [#25 buy 0.07 EURUSD at 1.18888]
+CS	0	20:39:53.314	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.16 17:21:55   CTrade::OrderSend: market buy 0.07 position #23 EURUSD [done at 1.18888]
+CS	0	20:39:53.314	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.16 17:21:55   Close good potsition: PX,7,1,101,118,18
+CS	0	20:39:53.314	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.16 17:21:55   * Close by Close P touch Ichi&BBand
+CS	0	20:39:53.314	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.16 17:21:55   set FirstSetOrderDate 0
+CS	0	20:39:55.452	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.17 20:36:53   Remove R pending
+CS	0	20:40:09.570	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.30 10:46:57   ✔️[PhoenicisN2.10.4.mq5:18639]: _ratioPriceSubDem:ORDER_TYPE_BUY T,H,A,0.27,0,V,1,145 -0.1050079528086034
+CS	0	20:40:09.570	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.30 10:46:57   ✔️[PhoenicisN2.10.4.mq5:18640]: _ratioPriceSubDemD:ORDER_TYPE_BUY -9999.0
+CS	0	20:40:09.570	Trade	2021.03.30 10:46:57   market buy 0.13 EURUSD sl: 1.15865 (1.17316 / 1.17325)
+CS	0	20:40:09.570	Trades	2021.03.30 10:46:57   deal #26 buy 0.13 EURUSD at 1.17325 done (based on order #26)
+CS	0	20:40:09.570	Trade	2021.03.30 10:46:57   deal performed [#26 buy 0.13 EURUSD at 1.17325]
+CS	0	20:40:09.570	Trade	2021.03.30 10:46:57   order performed buy 0.13 at 1.17325 [#26 buy 0.13 EURUSD at 1.17325]
+CS	0	20:40:09.570	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.30 10:46:57   OrderOpen:T T,H,A,0.27,0,V,1,145
+CS	0	20:40:09.570	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.30 10:46:57   Lotsize Ratio: 0.299
+CS	0	20:40:09.570	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.30 10:46:57   set FirstSetOrderDate 2021.03.30 08:00:00
+CS	0	20:40:11.222	Trade	2021.03.30 23:59:58   position closed due end of test at 1.17113 [#26 buy 0.13 EURUSD 1.17325 sl: 1.15865]
+CS	0	20:40:11.222	Trades	2021.03.30 23:59:58   deal #27 sell 0.13 EURUSD at 1.17113 done (based on order #27)
+CS	0	20:40:11.222	Trade	2021.03.30 23:59:58   deal performed [#27 sell 0.13 EURUSD at 1.17113]
+CS	0	20:40:11.222	Trade	2021.03.30 23:59:58   order performed sell 0.13 at 1.17113 [#27 sell 0.13 EURUSD at 1.17113]
+CS	0	20:40:11.222	Tester	final balance 2071.17 USD
+CS	0	20:40:11.222	PhoenicisN2.10_stable (EURUSD,H4)	2021.03.30 23:59:58   Worst DD:-1.8623   2021.03.04 18:30:54
+CS	0	20:40:11.229	Tester	EURUSD,H4: 5500180 ticks, 372 bars generated. Environment synchronized in 0:00:00.021. Test passed in 0:02:04.622 (including ticks preprocessing 0:00:00.328).
+CS	0	20:40:11.229	Tester	EURUSD,H4: total time from login to stop testing 0:02:04.643 (including 0:00:00.021 for history data synchronization)
+CS	0	20:40:11.229	Tester	256 Mb memory used including 52 Mb of history data, 128 Mb of tick data
+CS	0	20:40:11.229	Tester	log file "C:\Users\kritsana.ye\AppData\Roaming\MetaQuotes\Tester\A12EC900AF5AF5023ECB36F7FB72E396\Agent-127.0.0.1-3000\logs\20260510.log" written
+CS	0	20:40:11.230	Tester	test Experts\PhoenicisN2.10_stable.ex5 on EURUSD,H4 thread finished
+CS	0	20:40:11.249	127.0.0.1	tester forced to close
+CS	0	20:40:11.249	127.0.0.1	prepare for shutdown
+CS	0	20:40:11.249	127.0.0.1	stop immediately
+CS	0	20:40:11.249	127.0.0.1	shutdown finished
+CS	0	20:40:11.500	Server	MetaTester 5 stopped

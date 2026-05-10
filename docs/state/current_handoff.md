@@ -4,6 +4,123 @@
 
 ## Last completed action
 
+**🟢 IMPL-FIX-011 STEP 1 CLOSED 2026-05-10 — paired Q1 canary executed; rewrite vs legacy slot-set is nearly disjoint; hypothesis (d) `entry_*` per-tick spam empirically confirmed; NEW hypothesis (e) "per-slot eligibility-predicate divergence" surfaced.**
+
+**Trigger:** User invoked `/impl-task IMPL-FIX-011` after Last completed action = "task block AUTHORED". Phase 1 checks: Phase Gate Override 2026-05-03 already active (P4 work proceeding under approved override); Operator Action Registry empty; Deferred-AC Registry no expired rows (all Active rows expire ≥2026-05-17 vs today 2026-05-10). Size detected: L-XL `[ea]`, pre-decomposed into 5 Steps; current_handoff line 43 nominated **Step 1 (paired Q1 canary)** for this session.
+
+**Surface:** Step 1 produces baseline data for Step 2 journal-diff. The plan literal text said "use `simulation/headless-tests/q1_2021_canary.ini`" but that file is the IMPL-FIX-009 perf-profile canary (Jan-only, Model=0). Cleaner approach: 2 NEW reproducibility .ini files committed alongside, preserving FIX-009 canary unchanged.
+
+**Artifacts created (committable):**
+- `simulation/headless-tests/q1_2021_paired_rewrite.ini` (NEW; Q1 Jan-Mar Model=4 rewrite)
+- `simulation/headless-tests/q1_2021_paired_legacy.ini` (NEW; Q1 Jan-Mar Model=4 legacy `PhoenicisN2.10_stable`)
+- `docs/state/_session-handoff/IMPL-FIX-011-q1-paired-20260510.md` (paired artifact, ~250 LOC; satisfies S-AC #1)
+- `docs/state/_session-handoff/IMPL-FIX-011-q1_rewrite_202605102037.jsonl` (11.7 KB; 18 records — 14 entry / 4 exit)
+- `docs/state/_session-handoff/IMPL-FIX-011-q1_legacy_202605102037.txt` (27 KB decoded UTF-8 tester log; 26 deals)
+
+**Key empirical findings (more detail in §5 of paired artifact):**
+
+| Metric | Rewrite | Legacy | Note |
+|---|---|---|---|
+| Final balance | **$1,774.64** | **$2,071.17** | rewrite −14% |
+| Strategy-side opens | 14 (entry) | 8 (`OrderOpen:`) | rewrite +75% but disjoint slot set |
+| Wall-clock | 0:03:51.984 | 0:02:04.622 | rewrite 1.86× slower |
+| Tester log | **1.41 GB** | **27 KB** | rewrite **53,000×** larger ⚠️ |
+| Slot mix (entries) | S×6, T×2, Q×2, M×2, G2×2, G×2, C×2 | T×4, P×1, K×1, BR×1, B×1 | only T overlaps |
+| Worst DD | (not in tail) | -1.86% | — |
+
+**Headline:** the rewrite vs legacy slot mix is **nearly disjoint** (only T overlaps). Rewrite fires entire slot families legacy ignores in Q1 (S/C/Q/G/G2) and is silent on legacy's actives (P/K/BR/B). Hypothesis (a) "missing anti-pyramid gates" alone cannot explain a disjoint slot set; **per-slot eligibility-predicate divergence** is more likely the dominant class — promoted to NEW hypothesis (e) for Step 2 ranking.
+
+**Hypothesis (d) confirmed:** `entry_signal` / `entry_buy` / `entry_sell` Print emits dominate the rewrite tester log at ~2,000 events / MB. Density matches the R-13 narrative prediction. 5-yr extrapolation ~30 GB log, which would break the journal-diff pipeline; **bulk-suppress per IMPL-FIX-008 R-10 pattern is now mandatory before Step 5 5-yr retry** (escalates Step 3 scope by ~21 slot files).
+
+**FIX-010 latch verified working:** `eoverload_triggered` cadence dropped from per-tick (~50/sec pre-FIX-010) to ~3-12 events/sim-min in this run, due to WPR oscillation around the 90 threshold causing legitimate latch reset/re-fire — design-correct, ~18× spam reduction.
+
+**Hypothesis (b) xslot helpers** (RunSafePort/RunOrderGroup2/RunForceCutloss/ExtraCheckFunction2) — Q1 sample didn't surface per-tick spam from those four helpers (defensive deferral still appropriate per IMPL-FIX-010 closure note).
+
+**Hypothesis (c) CD-pool demote** — `cd_demote_triggered` not visible in sampled MB windows (entry-* events drowned all xslot signals); will surface in Step 2 journal-diff once entry-* spam is suppressed (Step 3 hypothesis (d) work must precede CD-pool analysis).
+
+**State propagation (3-file rule per CLAUDE.md §6):**
+- `docs/state/impl-plan.md` — TL;DR header rewritten (`AUTHORED` → `STEP 1 CLOSED`); IMPL-FIX-011 S-AC #1 `[x]` with detailed inline closure note; Status field rewritten (`AUTHORED 2026-05-10` → `STEP 1 CLOSED 2026-05-10`); Next Best Action checkbox flipped (Step 1 ☑ + new ☐ Step 2 entry).
+- `docs/state/overview.md` — row 19 status string Last Updated 2026-05-10 retained; **Next:** clause rewritten with Step 1 closure paragraph.
+- `docs/state/current_handoff.md` — this section.
+
+**Phase 5 mechanical gates verified (subset relevant to non-IMPL-NNN closure):**
+- Gate #1 (forbidden-pattern grep on `impl-plan.md`): 0 hits ✅
+- Gate #6 (single `## End of Plan` marker): 1 ✅
+- Gate #11 (working-tree clean post-Edit-batch): pending commit (final step of this session)
+
+Plan Staleness Sentinel unchanged at 0 IMPL-NNN closures since R25 (FIX tasks + Step closures don't increment per workflow.md Gate #4 + fix-round-10 precedent).
+
+**Files modified this session:**
+- `MQL5/Experts/PhoenicisNex/` — none (Step 1 has no source-tree edits; the dominant `entry_*` per-tick spam fix lands in Step 3 only)
+- `simulation/headless-tests/q1_2021_paired_rewrite.ini` (NEW)
+- `simulation/headless-tests/q1_2021_paired_legacy.ini` (NEW)
+- `docs/state/_session-handoff/IMPL-FIX-011-q1-paired-20260510.md` (NEW)
+- `docs/state/_session-handoff/IMPL-FIX-011-q1_rewrite_202605102037.jsonl` (NEW; sidecar)
+- `docs/state/_session-handoff/IMPL-FIX-011-q1_legacy_202605102037.txt` (NEW; sidecar)
+- `docs/state/impl-plan.md` (TL;DR + S-AC #1 [x] + Status + Next Best Action)
+- `docs/state/overview.md` (row 19 status string append)
+- `docs/state/current_handoff.md` (this section + prior action shift)
+
+**Next session — `/impl-task IMPL-FIX-011` (Step 2):**
+1. Author `simulation/scripts/journal_diff.py` (Python stdlib jsonl reader + legacy Tester-log Print parser; group both legs by `(slot_id, event_type, h4_bucket)` via existing rewrite `helpers/CommentParser.mqh` grammar)
+2. Run script against `_session-handoff/IMPL-FIX-011-q1_rewrite_202605102037.jsonl` + `_session-handoff/IMPL-FIX-011-q1_legacy_202605102037.txt`
+3. Output `_session-handoff/IMPL-FIX-011-divergence-<YYYYMMDD>.md` ranking top-5 divergence sources + classify each per hypothesis (a)/(b)/(c)/(d)/**(e new)**
+4. Decision gate at Step 2 end: top divergence concentrated in 1-3 slots → Steps 3-4 sufficient; dispersed across 8+ slots → escalate to upper-bound 8 hr / 3-session estimate
+5. Step 3+ in subsequent sessions per impl-plan task block
+
+> **Scope-revision flag for Step 2:** the disjoint slot-set finding may require a 5th hypothesis class (e) "per-slot eligibility-predicate divergence" beyond the (a)/(b)/(c)/(d) ranking from the impl-plan task block. Step 2 journal-diff should explicitly surface eligibility-predicate hits per slot per H4 bar so misclassification doesn't propagate into Step 3 patches.
+
+---
+
+## Prior action (kept for context)
+
+**📝 IMPL-FIX-011 task block AUTHORED 2026-05-10 — R-13 multi-slot trading-logic translation gap; L-XL (4-8 hr / 2-3 sessions); ready for `/impl-task IMPL-FIX-011`.**
+
+**Trigger:** User invoked `/next` after IMPL-FIX-010 closure → workflow detected R-13 OPEN as the single MVP-blocking risk (Bucket A run #3 reached sim 2021-11-23 / ~10.5 sim-months but depleted account; legacy `PhoenicisN2.10_stable.mq5` validated $24,564,949.07 / +1.2% on identical conditions; strategy + data + broker config SOUND; gap = rewrite-specific translation defects). Pre-check 0 Path B fired on state-memory breakage; recommended action = author IMPL-FIX-011 task block first since not yet ticketed. User replied "so do it".
+
+**Surface:** task block landed at `### IMPL-FIX-011` in `docs/state/impl-plan.md` (line ~1696, between IMPL-FIX-009 and IMPL-061), following IMPL-FIX-009 template (5-step decomposition, multi-session, defer 5-yr E-AC to operator paired-bundle session).
+
+**5-step decomposition:**
+1. **Step 1 — Q1 paired canary harness** (~30 min). Build rewrite + run `simulation/headless-tests/q1_2021_canary.ini` → `MQL5/Files/PhoenicisNex/journal/tester/q1_rewrite_<YYYYMMDDHHmm>.jsonl`. Re-target same .ini Expert= path to `PhoenicisN2.10_stable` → `q1_legacy_<YYYYMMDDHHmm>.jsonl`. Both Q1 2021 (Jan-Mar) full window Model=4. Output: paired-bundle artifact summarizing volume + final balance per file.
+2. **Step 2 — Journal-diff** (~60-90 min). Author NEW `simulation/scripts/journal_diff.py` (Python stdlib jsonl reader): for each journal, group by `(slot_id, event_type, sim_timestamp_h4_bucket)`; output per-slot per-bucket `(rewrite_count, legacy_count, delta)` table; rank slots by absolute delta sum. Output: divergence artifact ranking top-5 sources + hypothesis (a)/(b)/(c)/(d) classification per source. Decision gate: top divergence concentrated in 1-3 slots → Steps 3-4 sufficient; dispersed across 8+ slots → escalate scope estimate to upper bound (8 hr, 3 sessions).
+3. **Step 3 — Targeted patches** (~60-180 min depending on Step 2 scope). For each top divergence source: hypothesis (a) → mirror IMPL-FIX-007 v2 H4-bar anti-pyramid latch pattern on slot file; hypothesis (b) → mirror IMPL-FIX-010 5-LOC one-shot trigger latch on xslot helper (RunSafePort/RunOrderGroup2/RunForceCutloss/ExtraCheckFunction2 still in suspect class); hypothesis (c) → recalibrate `_IsCDDemoteCondition` against CodeWiki §3.4/§5.2 spec; hypothesis (d) → bulk-suppress per-tick Print emit per IMPL-FIX-008 R-10 precedent. G1 0err/0warn after each cluster (incremental verify; do NOT batch all patches before compile).
+4. **Step 4 — Re-canary iterate** (~30 min per iteration). Re-run Step 1 Q1 canary on patched rewrite; re-run Step 2 journal-diff vs same legacy journal from Step 1 (legacy doesn't change between iterations — capture once, reuse). Pass condition: Q1 trajectory matches legacy within ~10% per-slot count + ~10% Net Profit → Step 5; else iterate Steps 2-4 (cap at 3 iterations per session).
+5. **Step 5 — 5-yr Bucket A retry** (~30-40 min wall-clock per FIX-009 perf restore + operator presence). Re-run `simulation/headless-tests/regression_5yr_no_g4.ini` (rewrite with `#define DISABLE_G4_FIXES`); compute |Bucket A drift| vs `baseline-per-slot.json` total $24.27M. Pass: drift ≤ 25% NFR-1.1 → close S-AC + 1-2 E-AC; remaining E-AC paired with IMPL-063 Bucket B operator session.
+
+**Hypothesis space (a)/(b)/(c)/(d) per R-13 narrative inlined:**
+- (a) **18 of 21 slots lack per-slot anti-pyramid H4-bar gate** — only G/G2/S have it via IMPL-FIX-007 v2 + IMPL-FIX-008. Affected: C/D/F/M/T/Q/H/K/L/LX/I/P/R/B/BI/BR/J/GO. **Mitigation:** mirror FIX-007 v2 pattern; per-slot apply only after Step 2 confirms divergence (avoid bulk patch that could suppress legitimate intra-bar trades).
+- (b) **xslot helpers lack one-shot trigger latches** — IMPL-FIX-010 already landed latches for RunEOverload + RunCOverload. Suspect class extends to RunSafePort + RunOrderGroup2 + RunForceCutloss + ExtraCheckFunction2 (exit-side helpers; did NOT show in Bucket A run #3 5-MB head sample). **Mitigation:** mirror FIX-010 5-LOC pattern per helper; defensive deferral.
+- (c) **CD-pool demote miscalibrated** — `cd_demote_triggered` 255 events / 5MB sample suggests `_IsCDDemoteCondition(buy+sell==1)` predicate fires per-tick instead of one-shot per state transition; OR threshold differs from legacy. **Mitigation:** journal-diff legacy CD demote events vs rewrite; recalibrate against CodeWiki §3.4/§5.2 + legacy `CD_DEMOTE_*` constants.
+- (d) **`entry_sell` per-tick emit pattern** — 12,631 events / 5MB sample (~2.5k/MB density) suggests one or more slots' Print emit was not gated per IMPL-FIX-008 R-10 stub-suppress sweep (which targeted `exit_profit_gate` only). **Mitigation:** Step 2 grep/sort by `slot=` field + identify offenders; bulk-suppress per FIX-008 R-10 precedent.
+
+**Scope-out (explicitly NOT in this task):** algorithmic indicator change (RSI/MACD/ADX thresholds = CodeWiki §3 spec, not translation defect) / risk formula re-edit (FIX-006 done) / force-clear retune (R-4 separate; IMPL-068 if force_clear_count > 0) / CSlotBase contract (ADR-002 stable) / performance tune (FIX-009 done).
+
+**AC scaffold:** 6 S-AC + 4 E-AC pending execution; all `[ ]` (no premature [x] — empirical closure discipline). 5-yr Bucket A retry E-AC + per-slot deviation E-AC + Bucket B paired drift E-AC deferred to operator paired-bundle session per IMPL-FIX-006/007/009 precedent (registered as pending under same `deferred-ac-registry.md` paired-bundle row when IMPL-FIX-011 first closes Step 4).
+
+**Deps verified ✅:** IMPL-FIX-006 (lot dimensional formula — required for any slot's lot sizing to be physically meaningful) + IMPL-FIX-007 v2 (G2/S anti-pyramid latches — pattern source for hypothesis (a)) + IMPL-FIX-008 (R-9 G storm + R-10 exit_profit_gate suppress — sets bulk-suppress precedent for hypothesis (d)) + IMPL-FIX-009 (perf restore — required for Step 5 5-yr retry feasibility at ~40 min wall-clock) + IMPL-FIX-010 (E/COverload latches — partial coverage of hypothesis (b); defines latch pattern for remaining 4 helpers) + IMPL-061 (baseline-per-slot.json) + IMPL-062 structural (5-yr regression .ini + report skeleton) + legacy build `MQL5/Experts/PhoenicisN2.10_stable.ex5` (validated 2026-05-10).
+
+**Risk: high** — multi-slot patching surface; misclassifying hypothesis at Step 2 risks suppressing legitimate trades (e.g., applying anti-pyramid gate to a slot that legacy ALSO fires multiple times intra-bar by design). Mitigation: mandatory Step 2 journal-diff BEFORE any patch (hypothesis verification, not assumption); incremental G1 per cluster; Step 4 ≥75% divergence reduction gate; cap 3 Step 2-4 iterations per session. Worst case: discover architectural impedance (e.g., legacy global-state lookup pattern fundamentally differs from rewrite CHashMap dispatch) → escalate via `/backtrack sd` to revisit ADR-005.
+
+**Plan Staleness Sentinel** unchanged at 0 IMPL-NNN closures since R25 (task-block authoring is not a closure event; counter only ticks on IMPL-NNN closure per workflow.md Gate #4 + fix-round-10 precedent).
+
+**Phase 5 11-gate sweep:** Gate #1 (forbidden-pattern grep on impl-plan.md) = 0 hits ✅ · Gate #6 (single `## End of Plan` marker) = 1 ✅ · Gate #11 (working-tree clean post-edit pending commit) ✅ pending. State Reconciliation 3-file rule honored.
+
+**Files modified this session:**
+- `docs/state/impl-plan.md` (NEW IMPL-FIX-011 task block ~1696 + TL;DR header note + Next Best Action checkbox flip + Audit Log row 2026-05-10)
+- `docs/state/overview.md` (row 19 status string append — IMPL-FIX-011 authored paragraph)
+- `docs/state/current_handoff.md` (this section)
+
+**Next session — `/impl-task IMPL-FIX-011`** (Step 1 paired Q1 canary):
+1. Operator close foreground `terminal64.exe` (FBS-Demo BTCUSD chart) briefly to release data-dir lock
+2. Rewrite Q1 canary: `bash .agents/skills/mt5-headless-backtest/scripts/run_headless_backtest.sh simulation/headless-tests/q1_2021_canary.ini /tmp/fix011_q1_rewrite.txt` → produces `MQL5/Files/PhoenicisNex/journal/tester/run-<ISO>.jsonl`; rename to `q1_rewrite_<YYYYMMDDHHmm>.jsonl`
+3. Switch Expert= path in `q1_2021_canary.ini` (or duplicate as `q1_2021_canary_legacy.ini`) to `PhoenicisN2.10_stable`; re-run; rename output to `q1_legacy_<YYYYMMDDHHmm>.jsonl`
+4. Author Step 1 paired-bundle artifact at `_session-handoff/IMPL-FIX-011-q1-paired-<YYYYMMDD>.md` summarizing both
+5. Proceed to Step 2 (author `simulation/scripts/journal_diff.py` + run + write divergence artifact)
+
+---
+
+## Prior action (kept for context)
+
 **🟢 IMPL-FIX-010 CLOSED 2026-05-10 — R-12 (`eoverload_triggered`/`coverload_triggered` per-tick spam) RESOLVED via one-shot trigger latch in `services/CrossSlotCoordinator.mqh`. Renumbers R-13 ticket from IMPL-FIX-010 → IMPL-FIX-011 for next session.**
 
 **Trigger:** Bucket A run #3 (post-FIX-009) surfaced new R-12 defect — `[ev=eoverload_triggered]` Info emit fires every tick when WPR/force/gap_pip conditions persist; sample 50 events / 55 sim-sec at sim 2021-11-23 12:03:44–12:04:39 in run #3 (same wpr_abs ~74-75 / force=-13.68 / gap_pip=43.5 repeating); projected 5-yr log volume ~180 GB if not gated. Same defect class as IMPL-FIX-008 R-10 `exit_profit_gate` per-tick spam, this time at xslot helper layer not slot layer. User chose Option B (R-12 quick cleanup, ~30 min) followed by Option C (defer R-13 to next session).
