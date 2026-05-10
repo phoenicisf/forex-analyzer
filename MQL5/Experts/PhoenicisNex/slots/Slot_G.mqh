@@ -292,6 +292,20 @@ void CSlotG::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    if(sellSignal) priceOk = _IsPriceBelowCloud(ctx);
    if(!priceOk) return;
 
+   //--- IMPL-FIX-011 R-13 (e) eligibility tightening per CodeWiki ยง3.6:9
+   //    "Force peaks not exhausted" โ€” Phase-1 single-tick proxy: require
+   //    current-bar Force same-side as signal so the wave is still pushing.
+   //    Q1 2021 paired-canary diff (Step 2 / Step 4 iter-1) showed 2
+   //    rewrite-only G entries (2021-01-04 16:00Z + 2021-01-14 16:00Z) on
+   //    H4 buckets where current-bar Force had already decayed away from
+   //    the signal direction, while legacy was silent. Full Force-peak
+   //    history scan is P4 IMPL-062 surface (~6+ bars lookback + extremum
+   //    threshold ยฑ25); current f0 directional gate is the conservative
+   //    single-tick proxy that needs no MarketContext extension.
+   double f0 = ctx.force_h4.f0;
+   if(buySignal  && f0 <= 0.0) return;
+   if(sellSignal && f0 >= 0.0) return;
+
    //--- Condition 4 (Stochastic M10 oversold/overbought confirmation)
    double stoch_k = ctx.stoch_m10.k_main;
    if(buySignal  && stoch_k >= InpGStochOversold)  return;
