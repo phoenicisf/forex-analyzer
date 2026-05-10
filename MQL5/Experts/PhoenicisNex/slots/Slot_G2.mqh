@@ -60,6 +60,13 @@ private:
    double            _CloudHigh(const MarketContext &ctx) const;
    double            _CloudLow(const MarketContext &ctx) const;
 
+   //--- IMPL-FIX-011 Session C — §3.7:5/6/9 history-based predicates
+   bool              _IsAdxNotTrapped(const MarketContext &ctx) const;          // §3.7:5
+   int               _CountForceAbove02(const MarketContext &ctx) const;        // §3.7:6 BUY
+   int               _CountForceBelowNeg02(const MarketContext &ctx) const;     // §3.7:6 SELL mirror
+   bool              _HasForceTroughBuy(const MarketContext &ctx) const;        // §3.7:9 BUY (≥1 bar in [2,5) Force≤-0.2)
+   bool              _HasForceTroughSell(const MarketContext &ctx) const;       // §3.7:9 SELL mirror
+
    //--- IMPL-FIX-007 H4 bar gate (post-G2-smoke strengthening): rate-limit
    //    fills to <= 1 per H4 bar regardless of position lifecycle. Bar gate
    //    is primary anti-pyramid defense (matches task AC literally + CodeWiki
@@ -133,6 +140,79 @@ bool CSlotG2::_IsPriceAboveCloud(const MarketContext &ctx) const
 bool CSlotG2::_IsPriceBelowCloud(const MarketContext &ctx) const
   {
    return ctx.ask < _CloudLow(ctx);
+  }
+
+//+------------------------------------------------------------------+
+//| IMPL-FIX-011 Session C — §3.7:5/6/9 history-based helpers         |
+//| Replace single-tick proxies that empirically failed Step 4 iter-2 |
+//| (G2/entry |Δ|=2 unchanged after Session B narrow-band+peer-G).    |
+//+------------------------------------------------------------------+
+
+//+------------------------------------------------------------------+
+//| _IsAdxNotTrapped — §3.7:5                                         |
+//| "ADX-W not trapped between ±DI for bars 1..3"                     |
+//| MarketContextBuilder.PopulateAdxHistory sets adxw_no_trap_bars_1_3|
+//| = 1 when none of bars 1..2 in 3-bar buffer have ADX trapped       |
+//| between both DI lines (per CodeWiki spec).                        |
+//+------------------------------------------------------------------+
+bool CSlotG2::_IsAdxNotTrapped(const MarketContext &ctx) const
+  {
+   if(!ctx.adx_h4_history.has_data) return true;  // degrade-but-continue
+   return (ctx.adx_h4_history.adxw_no_trap_bars_1_3 == 1);
+  }
+
+//+------------------------------------------------------------------+
+//| _CountForceAbove02 — §3.7:6 BUY count                             |
+//| Count of last 8 bars (force_h4_history.force[0..7]) with          |
+//| force > +0.2; gate: count ≥ InpG2ForceMinAbove02BUY (5).          |
+//+------------------------------------------------------------------+
+int CSlotG2::_CountForceAbove02(const MarketContext &ctx) const
+  {
+   if(!ctx.force_h4_history.has_data) return 8;  // degrade-but-continue (assume permissive)
+   int count = 0;
+   for(int i = 0; i < 8; i++)
+      if(ctx.force_h4_history.force[i] > 0.2) count++;
+   return count;
+  }
+
+//+------------------------------------------------------------------+
+//| _CountForceBelowNeg02 — §3.7:6 SELL mirror                        |
+//+------------------------------------------------------------------+
+int CSlotG2::_CountForceBelowNeg02(const MarketContext &ctx) const
+  {
+   if(!ctx.force_h4_history.has_data) return 8;
+   int count = 0;
+   for(int i = 0; i < 8; i++)
+      if(ctx.force_h4_history.force[i] < -0.2) count++;
+   return count;
+  }
+
+//+------------------------------------------------------------------+
+//| _HasForceTroughBuy — §3.7:9 BUY                                   |
+//| ≥1 bar in [InpG2ForceTroughIdxLow, InpG2ForceTroughIdxHigh)       |
+//| with force ≤ InpG2ForceTroughThreshBuy (-0.2 reversal trough).    |
+//+------------------------------------------------------------------+
+bool CSlotG2::_HasForceTroughBuy(const MarketContext &ctx) const
+  {
+   if(!ctx.force_h4_history.has_data) return true;  // degrade-but-continue
+   int lo = (InpG2ForceTroughIdxLow  > 0) ? InpG2ForceTroughIdxLow  : 0;
+   int hi = (InpG2ForceTroughIdxHigh < 8) ? InpG2ForceTroughIdxHigh : 8;
+   for(int i = lo; i < hi; i++)
+      if(ctx.force_h4_history.force[i] <= InpG2ForceTroughThreshBuy) return true;
+   return false;
+  }
+
+//+------------------------------------------------------------------+
+//| _HasForceTroughSell — §3.7:9 SELL mirror                          |
+//+------------------------------------------------------------------+
+bool CSlotG2::_HasForceTroughSell(const MarketContext &ctx) const
+  {
+   if(!ctx.force_h4_history.has_data) return true;
+   int lo = (InpG2ForceTroughIdxLow  > 0) ? InpG2ForceTroughIdxLow  : 0;
+   int hi = (InpG2ForceTroughIdxHigh < 8) ? InpG2ForceTroughIdxHigh : 8;
+   for(int i = lo; i < hi; i++)
+      if(ctx.force_h4_history.force[i] >= InpG2ForceTroughThreshSell) return true;
+   return false;
   }
 
 //+------------------------------------------------------------------+
@@ -244,6 +324,20 @@ void CSlotG2::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    if(buySignal)  priceOk = _IsPriceAboveCloud(ctx);
    if(sellSignal) priceOk = _IsPriceBelowCloud(ctx);
    if(!priceOk) return;
+
+   //--- IMPL-FIX-011 Session C — §3.7:5 ADX-W not trapped between ±DI bars 1..3
+   if(!_IsAdxNotTrapped(ctx)) return;
+
+   //--- IMPL-FIX-011 Session C — §3.7:6 ≥5 of last 8 bars Force>+0.2 (BUY) /
+   //    ≥5 of last 8 bars Force<-0.2 (SELL)
+   if(buySignal  && _CountForceAbove02(ctx)    < InpG2ForceMinAbove02BUY)  return;
+   if(sellSignal && _CountForceBelowNeg02(ctx) < InpG2ForceMinAbove02Sell) return;
+
+   //--- IMPL-FIX-011 Session C — §3.7:9 ≥1 bar in [2,5) with reversal trough
+   //    BUY: force ≤ -0.2 (prior negative trough confirms ongoing reversal back up);
+   //    SELL: force ≥ +0.2 (mirror)
+   if(buySignal  && !_HasForceTroughBuy(ctx))  return;
+   if(sellSignal && !_HasForceTroughSell(ctx)) return;
 
    //--- Pip size via base-class helper (Round-06 06.1)
    double pip_size = _PipSize();

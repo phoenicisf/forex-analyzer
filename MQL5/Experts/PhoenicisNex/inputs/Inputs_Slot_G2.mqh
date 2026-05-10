@@ -29,4 +29,12 @@ input double InpG2FIContinuationMin    = 0.0;    // Force Index min for continua
 input double InpG2FIContinuationLow    = -0.2;   // Force Index: F[2] must be in continuation range > this
 input double InpG2TpProfitPips         = 30.0;   // Minimum profit gate for exit in pips — lighter than G's 50
 
+//--- IMPL-FIX-011 Session C — §3.7:5/6/9 history-based predicates
+input int    InpG2ForceMinAbove02BUY   = 5;      // §3.7:6 BUY: ≥ this many of last 8 bars with Force > +0.2
+input int    InpG2ForceMinAbove02Sell  = 5;      // §3.7:6 SELL mirror: ≥ this many of last 8 bars with Force < -0.2
+input int    InpG2ForceTroughIdxLow    = 2;      // §3.7:9 trough scan window low bound (bars-back inclusive)
+input int    InpG2ForceTroughIdxHigh   = 5;      // §3.7:9 trough scan window high bound (bars-back exclusive)
+input double InpG2ForceTroughThreshBuy = -0.2;   // §3.7:9 BUY: ≥1 bar in [2,5) with Force ≤ this (reversal trough)
+input double InpG2ForceTroughThreshSell= 0.2;    // §3.7:9 SELL mirror: ≥1 bar in [2,5) with Force ≥ this
+
 #endif // PHOENICISNEX_INPUTS_SLOT_G2_MQH
