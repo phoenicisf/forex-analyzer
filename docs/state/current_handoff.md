@@ -4,7 +4,22 @@
 
 ## Last completed action
 
-**🔴 IMPL-FIX-006 root cause IDENTIFIED + task block AUTHORED 2026-05-10 — RiskManager.ComputeLot dimensional formula bug (R-8 closed pending implementation)**
+**✅ IMPL-FIX-006 IMPLEMENTED 2026-05-10 — RiskManager.ComputeLot dimensional formula fix (R-8 root cause closed; 5-yr regression drift drain pending operator session paired with IMPL-062)**
+
+- **Files changed:** `MQL5/Experts/PhoenicisNex/services/RiskManager.mqh` (1 file, ~110 LOC delta) — added `_PipValue()` + `_RiskMoneyToLot(risk_money, sl_pips, slot_id)` private helpers; rewrote `ComputeLot` dispatcher so 17 direct-lot slots (C/D/F/G/G2/GO/M/L/LX/Q/R/P/T/B/BR/H + S/K via private variants) route through `_RiskMoneyToLot`; updated `_ComputeLotForS(sl_pips, percent_tp)` + `_ComputeLotForK(sl_pips, balance, extra)` signatures to accept `sl_pips`; J/BI/I parent-anchored variants unchanged (formulas already operate on `parent.last_open_lot × fibonacci_pct` → lot units); SelfTest extended 9 → 10 cases (Case 10 dimensional invariant: doubling sl_pips → halving lot via `_RiskMoneyToLot`).
+- **Tests added:** SelfTest Case 10 (in-process invariant + sl_pips=0 fail-loud guard).
+- **G1 compile:** PASS — `Result: 0 errors, 0 warnings, 4199 ms elapsed`.
+- **G2 smoke:** PASS — `bootstrap_smoke.ini` Model=0 3-day; lots now dimensional (S=0.17 / C=0.30 / M=0.40 / T=0.36) — was constant 2.90 cap pre-fix; **0 `[ev=clamp_applied]`** events across 19 `[ev=order_sent]` (primary structural signal); 0 `order_failed`; 1 `order_skipped_no_margin` (IMPL-FIX-005 anti-spam latch fires once + silenced).
+- **Side-finding (out of FIX-006 scope):** Slot_S pyramid stacking (16 same-direction Buy entries in 11 min on continuous WPR-oversold + EMA-trend signal). Same defect class as Slot_G2 anti-pyramid concern flagged in the IMPL-FIX-006 task block "Secondary concern" line. Final balance −$239 in 3-day window attributable to this stacking + drawdown, NOT to dimensional sizing. Open IMPL-FIX-007 covering both G2 + S anti-pyramid gates if Bucket A drift > 25% during 5-yr regression retry.
+- **Deferred E-AC bundle:** 3/4 E-ACs (5-yr regression wall-clock + Bucket A drift ≤ 25% + per-slot lot scaling spot-check) registered in `deferred-ac-registry.md` row P4 IMPL-FIX-006 expiry 2026-05-19, paired with IMPL-062 numeric drain (operator builds .ex5 with `#define DISABLE_G4_FIXES` + runs `regression_5yr_no_g4.ini` ~30-60 min). 1/4 E-AC drained via G2 (clamp count = 0).
+- **Evidence artifact:** `docs/state/_session-handoff/IMPL-FIX-006-evidence-20260510.md`.
+- **Next suggested task:** Operator drains 5-yr regression for IMPL-FIX-006 + IMPL-062 paired bundle; on success → R-8 closes, IMPL-062 numeric drain proceeds, P4 16/17 → 17/17 unblocks Tier 2 Phase Gate. If 5-yr halts day-1 again → open IMPL-FIX-007 (Slot_S/G2 anti-pyramid gates).
+
+---
+
+## Prior action (root-cause investigation, kept for context)
+
+**🔴 IMPL-FIX-006 root cause IDENTIFIED + task block AUTHORED 2026-05-10 — RiskManager.ComputeLot dimensional formula bug**
 
 - **Trigger:** user said "do it" to recommended next action ("Open IMPL-FIX-006 root-cause investigation").
 - **Investigation method:** parallel inspection of (1) rewrite `services/RiskManager.mqh::ComputeLot` body lines 191-237; (2) rewrite per-slot private variants `_ComputeLotForJ/_BI/_I/_S/_K` lines 302-457; (3) legacy 22k-LOC `MQL5/Experts/PhoenicisN2.10_stable.mq5` to find `CalculateLotSize` call sites (~80 hits across 17137-21826); (4) `MQL5/Libraries/LibCommon1.1.mq5:835` where `CalculateLotSize` body lives (file referenced from legacy mq5 line 20 `#include "./..//Libraries//LibCommon1.1.mq5"`); (5) authoritative spec `docs/foundation-input-sources/PhoenicisN2.10_CodeWiki.md` § 4.1 lines 767-826.

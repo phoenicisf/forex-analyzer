@@ -60,8 +60,19 @@ private:
    double            _ComputeLotForJ(double extra);
    double            _ComputeLotForBI();
    double            _ComputeLotForI();
-   double            _ComputeLotForS(double percent_tp);
-   double            _ComputeLotForK(double balance, double extra);
+   double            _ComputeLotForS(double sl_pips, double percent_tp);
+   double            _ComputeLotForK(double sl_pips, double balance, double extra);
+
+   //--- IMPL-FIX-006 — dimensional helpers per CodeWiki §4.1
+   //    _PipValue(): USD per pip per 1.0 lot for current symbol (FBS EURUSD ≈ $10/pip)
+   //                 = SymbolInfoDouble(SYMBOL_TRADE_TICK_VALUE) × digit_multiplier
+   //                 digit_multiplier = (_Digits == 5 || _Digits == 3) ? 10 : 1
+   //                 (canonical 5/3-digit detection — matches CPipMath::Init body)
+   //    _RiskMoneyToLot(risk_money, sl_pips, slot_id):
+   //                 lot = risk_money / (sl_pips × pip_value)
+   //                 returns 0.0 + Warn if sl_pips ≤ 0 or pip_value ≤ 0 (fail-loud).
+   double            _PipValue();
+   double            _RiskMoneyToLot(double risk_money, double sl_pips, string slot_id);
 
    //--- Step-round + normalize helper
    double            _StepRound(double raw_lot);
@@ -181,6 +192,58 @@ double CRiskManager::_StepRound(double raw_lot)
   }
 
 //+------------------------------------------------------------------+
+//| _PipValue — IMPL-FIX-006 dimensional helper                      |
+//|                                                                  |
+//| Returns USD per pip per 1.0 lot for the current symbol.          |
+//|   pip_value = SymbolInfoDouble(SYMBOL_TRADE_TICK_VALUE) ×          |
+//|               digit_multiplier                                    |
+//|   digit_multiplier = (_Digits == 5 || _Digits == 3) ? 10 : 1     |
+//|                                                                  |
+//| Canonical 5/3-digit detection mirrors CPipMath::Init body —      |
+//| RiskManager keeps an inline copy to avoid an extra wiring step    |
+//| through Composition Root (no signature change to Init() needed). |
+//|                                                                  |
+//| For FBS-Real EURUSD (5-digit, tick_value ≈ 1.0 USD/lot/point):   |
+//|   pip_value ≈ 1.0 × 10 = 10.0 USD/pip/lot                        |
+//| Matches legacy LibCommon1.1.mq5:835 CalculateLotSize convention   |
+//| (Balance × RiskPct/100) / (slPips × DigitMultipier).              |
+//+------------------------------------------------------------------+
+double CRiskManager::_PipValue()
+  {
+   double tick_value       = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
+   int    digit_multiplier = (_Digits == 5 || _Digits == 3) ? 10 : 1;
+   return tick_value * digit_multiplier;
+  }
+
+//+------------------------------------------------------------------+
+//| _RiskMoneyToLot — IMPL-FIX-006 dimensional conversion helper     |
+//|                                                                  |
+//| Converts riskMoney (USD) → lot units via:                        |
+//|   lot = riskMoney / (sl_pips × pip_value)                        |
+//|                                                                  |
+//| Guards (fail-loud per Finding 02.3 / 01.7 philosophy):           |
+//|   sl_pips ≤ 0  → log Warn + return 0.0 (caller's ClampLot floors)|
+//|   pip_value ≤ 0 → log Warn + return 0.0 (broker symbol unloaded?)|
+//|                                                                  |
+//| First skip per session emits one Warn (anti-spam):                |
+//|   we re-use Logger's per-tag throttle (Logger.Warn already        |
+//|   throttles via N-consecutive-error policy per ADR-011).          |
+//+------------------------------------------------------------------+
+double CRiskManager::_RiskMoneyToLot(double risk_money, double sl_pips, string slot_id)
+  {
+   double pip_value = _PipValue();
+   if(sl_pips <= 0.0 || pip_value <= 0.0)
+     {
+      if(m_logger != NULL)
+         m_logger.Warn(slot_id, "compute_lot_invalid_inputs", 0,
+                       StringFormat("sl_pips=%.2f pip_value=%.4f -> lot=0.0",
+                                    sl_pips, pip_value));
+      return 0.0;
+     }
+   return risk_money / (sl_pips * pip_value);
+  }
+
+//+------------------------------------------------------------------+
 //| ComputeLot เนโฌโ€ 21-slot dispatch table per TD-02 เธขเธ5.4.1             |
 //|                                                                  |
 //| base = balance * m_main_risk_ratio  (BR-4.1)                     |
@@ -195,26 +258,31 @@ double CRiskManager::ComputeLot(string slot_id, double sl_pips, double balance,
    double result = 0.0;
 
    //--- Full 21-slot dispatch (no default: return 0 silent fallback เนโฌโ€ S-AC #1)
-   if(slot_id == "C")  result = base * 0.15 * extra_multiplier;
-   else if(slot_id == "D")  result = base * 0.15 * extra_multiplier;
-   else if(slot_id == "F")  result = base * 0.10 * extra_multiplier;
+   //--- IMPL-FIX-006 — direct-lot slots route through _RiskMoneyToLot()
+   //    riskMoney = base × per_slot_pct × extra_multiplier (USD)
+   //    lot       = riskMoney / (sl_pips × pip_value)       (lot units)
+   //    K + S use private helpers (sl_pips threaded; conversion internal)
+   //    J/BI/I parent-anchored — helpers return lot units directly
+   if(slot_id == "C")  result = _RiskMoneyToLot(base * 0.15 * extra_multiplier, sl_pips, slot_id);
+   else if(slot_id == "D")  result = _RiskMoneyToLot(base * 0.15 * extra_multiplier, sl_pips, slot_id);
+   else if(slot_id == "F")  result = _RiskMoneyToLot(base * 0.10 * extra_multiplier, sl_pips, slot_id);
    else if(slot_id == "J")  result = _ComputeLotForJ(extra_multiplier);
-   else if(slot_id == "H")  result = base * 0.15 * extra_multiplier;
-   else if(slot_id == "K")  result = _ComputeLotForK(balance, extra_multiplier);
-   else if(slot_id == "G")  result = base * 0.30 * 0.6 * extra_multiplier;
-   else if(slot_id == "G2") result = base * 0.15 * 0.7 * extra_multiplier;
-   else if(slot_id == "GO") result = base * 0.30 * extra_multiplier;
+   else if(slot_id == "H")  result = _RiskMoneyToLot(base * 0.15 * extra_multiplier, sl_pips, slot_id);
+   else if(slot_id == "K")  result = _ComputeLotForK(sl_pips, balance, extra_multiplier);
+   else if(slot_id == "G")  result = _RiskMoneyToLot(base * 0.30 * 0.6 * extra_multiplier, sl_pips, slot_id);
+   else if(slot_id == "G2") result = _RiskMoneyToLot(base * 0.15 * 0.7 * extra_multiplier, sl_pips, slot_id);
+   else if(slot_id == "GO") result = _RiskMoneyToLot(base * 0.30 * extra_multiplier, sl_pips, slot_id);
    else if(slot_id == "I")  result = _ComputeLotForI();
-   else if(slot_id == "M")  result = base * 0.20 * extra_multiplier;
-   else if(slot_id == "L")  result = base * 0.15 * extra_multiplier;
-   else if(slot_id == "LX") result = base * 0.10 * extra_multiplier;
-   else if(slot_id == "Q")  result = base * 0.15 * extra_multiplier;
-   else if(slot_id == "R")  result = base * 0.20 * extra_multiplier;
-   else if(slot_id == "P")  result = base * 0.15 * extra_multiplier;
-   else if(slot_id == "T")  result = base * 0.20 * extra_multiplier;
-   else if(slot_id == "S")  result = _ComputeLotForS(extra_multiplier);
-   else if(slot_id == "B")  result = base * 0.20 * extra_multiplier;
-   else if(slot_id == "BR") result = base * 0.10 * extra_multiplier;
+   else if(slot_id == "M")  result = _RiskMoneyToLot(base * 0.20 * extra_multiplier, sl_pips, slot_id);
+   else if(slot_id == "L")  result = _RiskMoneyToLot(base * 0.15 * extra_multiplier, sl_pips, slot_id);
+   else if(slot_id == "LX") result = _RiskMoneyToLot(base * 0.10 * extra_multiplier, sl_pips, slot_id);
+   else if(slot_id == "Q")  result = _RiskMoneyToLot(base * 0.15 * extra_multiplier, sl_pips, slot_id);
+   else if(slot_id == "R")  result = _RiskMoneyToLot(base * 0.20 * extra_multiplier, sl_pips, slot_id);
+   else if(slot_id == "P")  result = _RiskMoneyToLot(base * 0.15 * extra_multiplier, sl_pips, slot_id);
+   else if(slot_id == "T")  result = _RiskMoneyToLot(base * 0.20 * extra_multiplier, sl_pips, slot_id);
+   else if(slot_id == "S")  result = _ComputeLotForS(sl_pips, extra_multiplier);
+   else if(slot_id == "B")  result = _RiskMoneyToLot(base * 0.20 * extra_multiplier, sl_pips, slot_id);
+   else if(slot_id == "BR") result = _RiskMoneyToLot(base * 0.10 * extra_multiplier, sl_pips, slot_id);
    else if(slot_id == "BI") result = _ComputeLotForBI();
    else
      {
@@ -425,7 +493,7 @@ double CRiskManager::_ComputeLotForI()
 //| enum); silent 0.10 fallback removed (would mask Inputs_Slot_S    |
 //| default-set bug เนยโ€ 2x lot at intended 5% setting).                |
 //+------------------------------------------------------------------+
-double CRiskManager::_ComputeLotForS(double percent_tp)
+double CRiskManager::_ComputeLotForS(double sl_pips, double percent_tp)
   {
    double factor = 0.0;
 
@@ -441,8 +509,10 @@ double CRiskManager::_ComputeLotForS(double percent_tp)
       return 0.0;
      }
 
-   double balance = AccountInfoDouble(ACCOUNT_BALANCE);
-   return balance * factor;
+   //--- IMPL-FIX-006 — riskMoney = balance × factor (USD); lot via SL pip distance × pipValue
+   double balance    = AccountInfoDouble(ACCOUNT_BALANCE);
+   double risk_money = balance * factor;
+   return _RiskMoneyToLot(risk_money, sl_pips, "S");
   }
 
 //+------------------------------------------------------------------+
@@ -451,9 +521,12 @@ double CRiskManager::_ComputeLotForS(double percent_tp)
 //| Formula: balance * m_main_risk_ratio * 0.20 * extra              |
 //| K is a wave variant using slightly higher base than H/L/Q/P.     |
 //+------------------------------------------------------------------+
-double CRiskManager::_ComputeLotForK(double balance, double extra)
+double CRiskManager::_ComputeLotForK(double sl_pips, double balance, double extra)
   {
-   return balance * m_main_risk_ratio * 0.20 * extra;
+   //--- IMPL-FIX-006 — riskMoney = balance × m_main_risk_ratio × 0.20 × extra (USD)
+   //    lot = riskMoney / (sl_pips × pip_value)  — per CodeWiki §4.1 dimensional formula
+   double risk_money = balance * m_main_risk_ratio * 0.20 * extra;
+   return _RiskMoneyToLot(risk_money, sl_pips, "K");
   }
 
 //+------------------------------------------------------------------+
@@ -694,7 +767,51 @@ bool CRiskManager::SelfTest()
       rm.m_portfolio = NULL;
    }
 
-   Print("[Phoenicis][RiskManager][ev=risk_manager_self_test][result=pass] 9 cases passed");
+   //--- Case 10: IMPL-FIX-006 dimensional invariant — doubling sl_pips halves lot
+   //    For fixed risk_money: lot1 = R/(sl1 × pipValue);  lot2 = R/(2 × sl1 × pipValue) = lot1/2
+   //    Skip if pip_value ≤ 0 (offline / fresh-broker context); broker symbol info needed.
+   case_num = 10;
+   {
+      double pip_value = rm._PipValue();
+      if(pip_value > 0.0)
+        {
+         const double TEST_RISK_MONEY = 100.0;  // $100 USD
+         const double SL_BASE         = 50.0;   // 50 pips
+         double lot1 = rm._RiskMoneyToLot(TEST_RISK_MONEY, SL_BASE,        "C");
+         double lot2 = rm._RiskMoneyToLot(TEST_RISK_MONEY, SL_BASE * 2.0,  "C");
+         if(lot1 <= 0.0 || lot2 <= 0.0)
+           {
+            Print(StringFormat("[Phoenicis][RiskManager][ev=risk_manager_self_test][result=fail][case=%d] "
+                               "_RiskMoneyToLot returned non-positive: lot1=%.6f lot2=%.6f",
+                               case_num, lot1, lot2));
+            return false;
+           }
+         double ratio = lot1 / lot2;
+         if(MathAbs(ratio - 2.0) > 0.01)
+           {
+            Print(StringFormat("[Phoenicis][RiskManager][ev=risk_manager_self_test][result=fail][case=%d] "
+                               "doubling sl_pips: expected lot ratio 2.0 got %.6f (lot1=%.6f lot2=%.6f)",
+                               case_num, ratio, lot1, lot2));
+            return false;
+           }
+         //--- Guard path: sl_pips=0 → returns 0.0 (fail-loud)
+         double lot_zero = rm._RiskMoneyToLot(TEST_RISK_MONEY, 0.0, "C");
+         if(MathAbs(lot_zero) >= TOLERANCE)
+           {
+            Print(StringFormat("[Phoenicis][RiskManager][ev=risk_manager_self_test][result=fail][case=%d] "
+                               "sl_pips=0 guard: expected 0.0 got %.6f", case_num, lot_zero));
+            return false;
+           }
+        }
+      else
+        {
+         Print(StringFormat("[Phoenicis][RiskManager][ev=risk_manager_self_test][case=%d] "
+                            "skipped (pip_value=%.4f - offline broker context)",
+                            case_num, pip_value));
+        }
+   }
+
+   Print("[Phoenicis][RiskManager][ev=risk_manager_self_test][result=pass] 10 cases passed");
    return true;
   }
 
