@@ -4,6 +4,59 @@
 
 ## Last completed action
 
+**🔴 2026-05-10 BUCKET A POST-FIX-009 RUN #3 STILL FAILED + LEGACY EA STRATEGY VALIDATED — R-13 NEW (rewrite trading-logic translation gap beyond R-8 lot-sizing scope).**
+
+**Trigger:** User invoked operator paired-bundle 5-yr regression drain after IMPL-FIX-009 closure. Bucket A run #3 launched with `#define DISABLE_G4_FIXES` build at 16:43. User observed "backtest port money ranout" — confirmed via log inspection: account depleted via real trading P&L losses (NOT a code cascade — FIX-006/007/008 prevented day-1 stop-out; this run reached sim 2021-11-23 = ~10.5 sim-months in before money ran out). User suggested testing legacy `PhoenicisN2.10_stable.mq5` to validate strategy.
+
+**Bucket A run #3 outcome:**
+- Sim time reached: **2021-11-23 12:04** (~10.5 sim-months ✅ vs prior runs which halted day-1)
+- Wall-clock at kill: **9 min** (FIX-009 perf fix working — pace ~70 sim-day per wall-min)
+- Final balance: depleted (account multiplied losses over 10.5 months)
+- Lot sizing: ticket #2 Slot_C lot=0.30, #3 M lot=0.40, #4 T lot=0.36, #6 Q lot=0.30, #7 G2 lot=0.10, #8 G lot=0.19 — all dimensional ✅ (FIX-006 working)
+- Anti-pyramid: G2/G/S all firing ≤1 entry per H4 bar ✅ (FIX-007 v2 + FIX-008 working)
+- **NEW R-12 spam:** `[ev=eoverload_triggered]` Info emit fires every tick when WPR/force conditions persist; sample 50 events / 55 sim-sec at sim 2021-11-23 12:03:44–12:04:39; same wpr_abs ~74-75 / force=-13.68 / gap_pip=43.5 / lot_div=8.0 / halted=false; log spam 5.4 GB / 9 min projected to 180 GB / 5-yr run if not gated
+- Killed at 16:52 to stop log growth; .ex5 332,248 bytes default build restored 16:55 (DISABLE_G4_FIXES line reverted; G1 PASS)
+
+**Legacy EA validation (the proof):**
+- Spec: `simulation/headless-tests/legacy_5yr.ini` (NEW; matches `regression_5yr_no_g4.ini` window/model/deposit/leverage exactly — only Expert= path differs)
+- Build: `MQL5/Experts/PhoenicisN2.10_stable.ex5` 546KB May 1 build (pre-existing artifact; not recompiled this session)
+- Run: 16:55 → 17:55 wall-clock = **0:59:54.317**
+- Result: `Test passed in 0:59:54.317`; **final balance $24,564,949.07** (+$293,672 / +1.2% vs historical `ReportTester-25045474.html` baseline $24,271,276.63 — well within tick-data variance tolerance)
+- Trade activity: 215,985,662 ticks / 7,777 bars / 463+ deals; final deals at 2025-12-19 (BR sell + ExtraTakeProfit close) confirm slots active through end-of-window
+- Worst DD: -11.04% on 2022-08-23
+- Memory: 3658 MB (245 MB history + 4352 MB tick data) — normal
+
+**🎯 Strategy + data + broker config = SOUND.** Rewrite has trading-logic translation defects.
+
+**R-13 hypothesis space (ranked):**
+- (a) 18 of 21 slots (C/D/F/M/T/Q/H/K/L/LX/I/P/R/B/BI/BR/J/GO) lack per-slot anti-pyramid H4-bar gate — only G/G2/S have it via IMPL-FIX-008 + FIX-007 v2
+- (b) xslot helpers (`RunEOverload` confirmed; suspect class extends to `RunCOverload`/`RunGOverload`/`RunSafePort`/`RunOrderGroup2`/`RunForceCutloss`/`ExtraCheckFunction2`) lack one-shot trigger latches — fire side-effects every tick on persistent conditions where legacy fires once per condition activation
+- (c) `cd_demote_triggered` × 255 events / 5MB sample suggests CD-pool demote miscalibrated — possibly fires per-tick instead of one-shot
+- (d) `ev=entry_sell` × 12,631 events / 5MB sample — possibly a slot's per-tick emit pattern that wasn't gated; needs targeted grep to identify which slot
+
+**Recommended next session — IMPL-FIX-010** (L-XL, multi-slot scope, 4-8 hours over 2-3 sessions):
+1. Author task block with hypothesis space (a)/(b)/(c)/(d) ranked
+2. Run Q1-2021 canary on rewrite + legacy with journal recording on both
+3. Diff the two journals tick-by-tick to identify divergence points
+4. Apply targeted fixes to slots/helpers showing largest divergence (likely 1-2 slot Evaluate predicates + 1-2 xslot helper latches per session)
+5. Re-run Q1; compare trade trajectories
+6. Iterate until Q1 trajectory matches within ~10%; then escalate to 5-yr Bucket A
+7. **Bucket B blocked** until IMPL-FIX-010 closes R-13 + Bucket A passes NFR-1.1 ≤ 25%
+
+**Files committed/added this session:**
+- `simulation/headless-tests/legacy_5yr.ini` (NEW; per TD-02 §13.6)
+- `docs/state/_session-handoff/legacy-5yr-validation-20260510.md` (NEW; ~140 LOC strategy validation evidence)
+- `docs/state/_session-handoff/IMPL-062-bucket-a-fix-009-attempt-20260510.md` (NEW; ~115 LOC Bucket A run #3 evidence)
+- `docs/state/impl-plan.md` (TL;DR R-13 finding + R-12/R-13 in Open Risks + Next Best Action checklist update)
+- `docs/state/overview.md` (rows 19-20 status string append)
+- `docs/state/current_handoff.md` (this section)
+
+**Plan Staleness Sentinel:** unchanged at 0 IMPL-NNN closures since R25 (Bucket A retry + legacy validation are review-loop / E-AC residue artifacts, not new IMPL-NNN closures per workflow.md Gate #4 + fix-round-10 precedent).
+
+---
+
+## Prior action (kept for context)
+
 **🟢 IMPL-FIX-009 CLOSED 2026-05-10 — R-11 (per-tick perf gap) RESOLVED via state.json bar-throttle extension to HALTED state; 5-yr regression numeric drain unblocked.**
 
 **Trigger:** R-11 surfaced post-IMPL-FIX-008 closure: Q1 2021 Model=0 canary ran at pace 6-30 sim-day per wall-min → 5-yr extrapolation 2-15 hr (vs original PhoenicisN2.10 baseline 40-60 min). User explicitly authorized deferral 2026-05-10 to separate session for R-11 perf investigation (IMPL-PERF-001 or IMPL-FIX-009).
