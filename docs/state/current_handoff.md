@@ -4,6 +4,101 @@
 
 ## Last completed action
 
+**🔴 IMPL-FIX-011 STEP 4 ITER-2 RE-CANARY EMPIRICALLY FALSIFIES SESSION B G/G2 PATCHES 2026-05-10 — Session B G/G2 patches INEFFECTIVE on top-10 |Δ| sum (0% reduction) + caused Net Profit REGRESSION (-22.7% vs iter-1 / -18.3% vs legacy → exits ±10% gate); S-AC #4 NOT MET; recommend revert Session B + escalate to Slot_T 4-sub-path Session C with MarketContext extension (folded scope unblocks G/G2/T simultaneously).**
+
+**Trigger:** User invoked `/impl-task IMPL-FIX-011 (Step 4 iter-2 re-canary)`. Phase 1 checks: Phase Gate Override active; Operator Action Registry empty; Deferred-AC Registry no expired rows. Foreground `terminal64.exe` PID 30132 from `C:\Program Files\FBS MetaTrader 5` (NOT `5ph` — separate live trading install with different terminal_id hash); did NOT block rewrite data-dir lock at A12EC9... so headless backtest proceeded without operator close.
+
+**Headless run:** `simulation/headless-tests/q1_2021_paired_rewrite.ini` (Q1 2021.01.01–03.31, Model=4, $1000/1:500). Wall-clock 0:03:05.685 (iter-1 baseline 0:03:02.519; iter-2 +1.7%). 5,500,180 ticks / 372 bars; Tester clean exit. Final balance **$1,691.69** (iter-1 $2,188.09 = **-22.7%**; legacy $2,071.17 = **-18.3% below legacy → exits ±10% Net Profit gate**).
+
+**Empirical findings (full data: `_session-handoff/IMPL-FIX-011-q1-postpatch-20260510-iter2.md` § 0):**
+
+| Slot/Event | Step 2 \|Δ\| | iter-1 \|Δ\| | iter-2 \|Δ\| | Net reduction (iter-2 vs Step 2) |
+|---|---|---|---|---|
+| **S/entry** (was top-1) | 6 | 0 | 0 | 100% ✅ (Session A holding) |
+| T/entry | 3 | 3 | 3 | 0% (out-of-Session-B scope) |
+| **G/entry** | 2 | 2 | **2** | **0%** ❌ (Session B patch INEFFECTIVE) |
+| **G2/entry** | 2 | 2 | **2** | **0%** ❌ (Session B patch shifted bucket only) |
+| T/exit | 2 | 2 | 2 | 0% (out-of-Session-B scope) |
+| **Sum top-10** | **20** | **15** | **15** | **−25% (iter-1 holding; Session B 0% delta)** |
+
+**Entry slot mix IDENTICAL to iter-1** (C×1, M×1, T×1, Q×1, G2×2, G×2 = 8 entries; legacy unchanged at 13 entries). G2 #2 bucket-shifted from iter-1 2021-01-08T20:37 (lot 0.17 / price 1.21999) to iter-2 2021-01-12T00:05 (lot 0.08 / price 1.21482) — narrow-band gate caught 2021-01-08 but H4-bar `m_last_fill_bar` cooldown didn't engage so 2021-01-12 emerged. **Slot_G `f0` patch: ZERO suppression** (both 2021-01-04 16:00Z + 2021-01-14 16:00Z entries fired identically; `f0` was already same-side as signal at those buckets). **Slot_G2 peer-G `_HasActiveGOrder`: ineffective at 2021-01-04 16:00Z** because G2 fires 16:00:00 / G fires 16:51:34 (51 min later → at G2 evaluation time no G open → peer-check passes).
+
+**Net Profit regression analysis:** despite identical entry slot mix, iter-2 balance dropped -$496 because G2 #2 bucket-shift (1.21999 iter-1 → 1.21482 iter-2 entry price) cascades into different EOT-close prices for the 4 unmatched positions held to 2021-03-30 23:59:58 (close at 1.17188). Net effect: -22.7% balance / -18.3% vs legacy without exit-side count changing. **Manifests artifact § 0.6 R-A risk** (*"if engineer mis-reads CodeWiki spec and tightens an eligibility predicate that was correctly loose in legacy, Step 4 re-canary will show worse divergence"*) on the Net Profit axis.
+
+**S-AC #4 status: NOT MET — INEFFECTIVE PATCH.**
+- Per-slot top-5 reduction: 1/5 (S 100%) vs ≥75% required → NOT MET.
+- Sum-of-|Δ| top-5 reduction: 33% (15→10) vs ≥75% gate → NOT MET.
+- Sum-of-|Δ| top-10 reduction: 25% (20→15; same as iter-1) → NOT MET.
+
+**Decision gate per task-block § Step 4:**
+- ❌ Net Profit gate (was MET in iter-1; FAILED in iter-2 with -18.3% drift)
+- ❌ Per-slot count gate (rewrite 8 vs legacy 13 = -38%)
+- → **Iterating Session B further is empirically falsified** (cap-3 iteration headroom remains 1 but ineffective); **escalate to Slot_T 4-sub-path Session C with MarketContext extension**
+
+**Root cause (artifact § 0.4):** single-tick proxies (Slot_G `f0` / Slot_G2 narrow-band F[1]) cannot substitute for legacy's history-dependent eligibility gates per CodeWiki:
+- §3.6:9 — 6+ bar Force-peak counting + extremum threshold ±25
+- §3.6:11 — Bollinger 15-bar BBTop<IchiMax
+- §3.6:12 — DeMarker rolling sum 175/25
+- §3.7:6 — ≥5 of last 8 bars Force>0.2
+- §3.7:9 — ≥1 bar in [2,5) with Force ≤ -0.2 reversal trough
+
+These need MarketContext extension — same architectural gap as Slot_T 4-sub-path session deferred from Session A.
+
+**Recommended next session — REVERT Session B + escalate to Slot_T 4-sub-path Session C** (4-8 hr dedicated session per artifact § 0.5):
+
+1. **Pre-step (operator decision):** revert Session B G/G2 fix-commit `1e915d7` via `git revert 1e915d7` — leaves Slot_S Session A + (d) bulk-suppress untouched (validated 100% effective). OR keep Session B patches in place and let Session C re-implementation overwrite — operator's call.
+2. **MarketContext extension** in `domain/MarketContext.mqh` + `services/MarketContextBuilder.mqh`:
+   - Hull MA bar 0/1 (HullFields hull_h4 — already declared per current MarketContext line 55)
+   - 15-bar Bollinger history (NEW BBHistoryFields)
+   - 8-bar Force buffer (NEW ForceHistoryFields)
+   - DeMarker rolling sum (NEW DemRollingFields)
+   - 300-bar ADX history (NEW AdxHistoryFields for §3.6:6 "no opposite cross")
+3. **Rewrite Slot_T predicate** (~400 LOC) against new fields per CodeWiki §3.15 4-sub-path varieties (PF/H × buy/sell)
+4. **Rewrite Slot_G predicate** (~50 LOC additional) against Force-history + Bollinger history + DeMarker rolling per §3.6:9/11/12
+5. **Rewrite Slot_G2 predicate** (~30 LOC additional) against Force-history per §3.7:6/9
+6. G1 incremental per cluster
+7. Re-run Step 4 iter-3 (operator close MT5 + re-canary + journal_diff); decision gate ≥75% top-5 sum-reduction → close S-AC #4 → proceed to Step 5
+
+**Folded scope rationale:** Slot_T MarketContext extension was already deferred from Session A; iter-2 falsification proves G/G2 also need same extension; consolidating into single Session C avoids 3 separate dedicated sessions for what is architecturally one MarketContext extension.
+
+**Alternative — Step 5 5-yr Bucket A retry on current state (Slot_S only fix; Session B G/G2 reverted):** ~30-40 min wall-clock + operator presence; useful only if user wants long-window diagnostic data before committing 4-8 hr to Session C. Net Profit gate would FAIL at 5-yr (already fails at Q1 with -18.3% drift) but the 5-yr regression itself may surface more divergence sources informing Session C priorities.
+
+**State propagation (3-file rule per CLAUDE.md §6):**
+- `docs/state/impl-plan.md` — TL;DR header prepended with iter-2 falsification paragraph; Status field updated; Next Best Action restructured to Slot_T Session C path; Mid-Phase Audit Log row inserted above Session B row.
+- `docs/state/overview.md` — row 19 status string appended with iter-2 paragraph.
+- `docs/state/current_handoff.md` — this section + prior action shift.
+
+**Phase 5 mechanical gates verified:**
+- Gate #1 (forbidden-pattern grep on `impl-plan.md`): 0 hits ✅
+- Gate #6 (single `## End of Plan` marker): 1 ✅
+- Gate #11 (working-tree clean post-commit): pending verification
+
+Plan Staleness Sentinel unchanged at 0 IMPL-NNN closures since R25 (FIX tasks + Step closures don't increment per workflow.md Gate #4 + fix-round-10 precedent).
+
+**Files added this session (3 NEW + 3 docs modified):**
+- `docs/state/_session-handoff/IMPL-FIX-011-q1_rewrite_postpatch_202605102222.jsonl` (NEW; 7841 bytes; 12 records)
+- `docs/state/_session-handoff/IMPL-FIX-011-q1-postpatch-20260510-iter2.md` (NEW; § 0 verdict synthesis prepended)
+- `docs/state/_session-handoff/IMPL-FIX-011-q1-postpatch-20260510-iter2.json` (NEW; sidecar)
+- `docs/state/impl-plan.md` (TL;DR + Status + Next Best Action + audit log row)
+- `docs/state/overview.md` (row 19 status string append)
+- `docs/state/current_handoff.md` (this section + prior shift)
+
+**Source code unchanged** — Session B patches at `slots/Slot_G.mqh` + `slots/Slot_G2.mqh` STAY in place pending operator decision on revert. Operator may run `git revert 1e915d7` before next session, OR let Session C re-implementation overwrite.
+
+**Next session — `/impl-task IMPL-FIX-011` Slot_T 4-sub-path Session C (~4-8 hr):**
+1. (Operator) optional: `git revert 1e915d7` to clear ineffective Session B G/G2 patches
+2. MarketContext extension (Hull + Bollinger 15-bar + Force 8-bar + DeMarker rolling + ADX 300-bar)
+3. MarketContextBuilder populate logic for new fields
+4. Slot_T 4-sub-path rewrite per CodeWiki §3.15
+5. Slot_G + Slot_G2 history-based predicate rewrite per §3.6/§3.7
+6. G1 incremental + Step 4 iter-3 re-canary
+
+> **Scope-out for next session:** Slot_S Session A (parent-close gate) + (d) bulk-suppress STAY untouched. ADR-002 Composition Root + ADR-005 PortfolioState CHashMap + ADR-012 file layout invariants preserved. New MarketContext fields + populate logic land in `services/MarketContextBuilder.mqh` (already a service; no new ADR needed).
+
+---
+
+## Prior action (kept for context)
+
 **🟢 IMPL-FIX-011 STEP 3 SESSION B PARTIAL CLOSE 2026-05-10 — (e) Slot_G + Slot_G2 eligibility tightening per CodeWiki §3.6:9 + §3.7:1 + §3.7:4; G1 PASS 2× incremental; Slot_D deferred to P4 IMPL-062; Step 4 iter-2 re-canary deferred to next session.**
 
 **Trigger:** User invoked `/impl-task IMPL-FIX-011` Step 3 Session B per Step 4 iter-1 closure NEXT pointer. Phase 1 checks: Phase Gate Override active; Operator Action Registry empty; Deferred-AC Registry no expired rows (all 2026-05-17/18/19/24 future). Size detected: M `[ea]` for Session B (2 patch clusters + 1 Slot_D no-patch decision per artifact § 0.6 R-A risk).
