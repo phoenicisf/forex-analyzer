@@ -4,6 +4,70 @@
 
 ## Last completed action
 
+**🟢 IMPL-FIX-011 STEP 4 ITER-1 RE-CANARY EMPIRICALLY VALIDATES (e) Slot_S GATE 2026-05-10 — 100% reduction on top-1 divergence row (S/entry |Δ|=6 → 0); Net Profit decision-gate MET (rewrite +5.6% over legacy); S-AC #4 NOT YET MET (1/5 top-5 reduction; Session B G/G2/D needed before iter-2 closes the gate).**
+
+**Trigger:** User invoked "do it" then "closed" after Session A commit (a47d78f); operator closed foreground MT5 + my stale PID 21024 to release data-dir lock per `mt5-headless-backtest § Step 3` process hygiene rule.
+
+**Headless run:** `simulation/headless-tests/q1_2021_paired_rewrite.ini` (Q1 2021.01.01–03.31, Model=4, $1000/1:500). Wall-clock 0:03:02.519 (Step 1 baseline 0:03:51.984; **-21%**); 5,500,180 ticks / 372 bars; Tester clean exit. Final balance **$2,188.09** (Step 1 baseline $1,774.64; **+23.3%**; legacy baseline $2,071.17 → rewrite within **+5.6%** ✅ within ~10% per task-block decision gate).
+
+**Empirical findings (full data: `_session-handoff/IMPL-FIX-011-q1-postpatch-20260510-iter1.md` § 0):**
+
+| Metric | Step 2 baseline | Step 4 iter-1 | Reduction |
+|---|---|---|---|
+| Slot_S/entry (top-1) | rewrite=6, legacy=0, \|Δ\|=6 | rewrite=**0**, legacy=0, \|Δ\|=**0** | **100%** ✅ |
+| Sum top-10 \|Δ\| | 20 | 15 | -25% |
+| Final balance | $1,774.64 | $2,188.09 | +23% (+5.6% over legacy) |
+| Tester log size | 1.41 GB | 484 KB | **~3000×** smaller |
+| Wall-clock | 3:51 | 3:02 | -21% |
+
+**Slot_S gate validated:** rewrite Q1 has L=0/K=0 throughout → `m_last_lk_close_bar==0` → gate suppresses S entirely → matches legacy Q1 S=0 convention exactly. CodeWiki §3.16 requirement "Lookback 70 bars; require prior L/K closure" empirically validated.
+
+**(d) `entry_*` bulk-suppress validated:** Q1 log 1.41 GB → 484 KB (~3000× reduction). 5-yr extrapolation = ~10 MB → operator-feasible (was ~30 GB before suppress; broke iconv decode budget). DD-monitor Print now dominates log (expected; `new_worst_dd` is per-tick when DD increasing during halt-to-EOT cascade).
+
+**S-AC #4 status: NOT YET MET (cap-3 iteration headroom):** S-AC #4 requires ≥75% top-5 per-slot reduction. Achieved: 1/5 met (Slot_S 100%); the other 4 (T entry/exit, G entry, G2 entry) are out-of-Session-A scope and need Session B G/G2/D eligibility patches before iter-2. Average top-5 reduction = 20%.
+
+**New top-1 post-patch divergence:** T/entry |Δ|=3 (rewrite hits 1 of 4 legacy trigger varieties — `T,MA,N,1,SL` only; legacy fires PF buy/sell + H buy/sell). Confirms Slot_T deferral to dedicated CodeWiki §3.15 redesign session (~400 LOC + new MarketContext fields).
+
+**Decision gate per task-block § Step 4:** *"if Q1 trajectory matches legacy within ~10% per-slot count + ~10% Net Profit → proceed to Step 5; else iterate Steps 2-4."*
+- ✅ Net Profit gate MET (rewrite within +5.6% of legacy)
+- ❌ Per-slot count gate NOT MET (rewrite 8 entries vs legacy 13 = -38%)
+- → **Iterate Sessions B/C before Step 5 5-yr Bucket A retry**
+
+**State propagation (3-file rule per CLAUDE.md §6):**
+- `docs/state/impl-plan.md` — TL;DR header rewritten (`STEP 3 SESSION A PARTIAL CLOSE` → `STEP 4 ITER-1 RE-CANARY EMPIRICALLY VALIDATES (e) Slot_S GATE`); Status field updated; Next Best Action 2-path branch (Session B G/G2/D recommended; Slot_T dedicated session alternative); Mid-Phase Audit Log row appended (~3-paragraph closure narrative).
+- `docs/state/overview.md` — row 19 status string appended.
+- `docs/state/current_handoff.md` — this section + prior action shift.
+
+**Phase 5 mechanical gates verified (subset relevant to non-IMPL-NNN closure):**
+- Gate #1 (forbidden-pattern grep on `impl-plan.md`): 0 hits ✅
+- Gate #6 (single `## End of Plan` marker): 1 ✅
+- Gate #11 (working-tree clean post-Edit-batch): pending commit (final step of this session)
+
+Plan Staleness Sentinel unchanged at 0 IMPL-NNN closures since R25 (FIX tasks + Step closures don't increment per workflow.md Gate #4 + fix-round-10 precedent).
+
+**Files added this session (3 NEW + 3 docs modified):**
+- `docs/state/_session-handoff/IMPL-FIX-011-q1_rewrite_postpatch_202605102145.jsonl` (NEW; 7843 bytes; 12 records)
+- `docs/state/_session-handoff/IMPL-FIX-011-q1-postpatch-20260510-iter1.md` (NEW; § 0 verdict synthesis prepended)
+- `docs/state/_session-handoff/IMPL-FIX-011-q1-postpatch-20260510-iter1.json` (NEW; sidecar)
+- `docs/state/impl-plan.md` (TL;DR + Status + Next Best Action + audit log row)
+- `docs/state/overview.md` (row 19 status string append)
+- `docs/state/current_handoff.md` (this section + prior shift)
+
+**Next session — `/impl-task IMPL-FIX-011` (Step 3 Session B = G/G2/D eligibility patches; ~60-90 min):**
+1. `slots/Slot_G.mqh::Evaluate` — F1-trigger predicate audit vs CodeWiki §3.G; rewrite fires 2 G entries that legacy doesn't; predicate too permissive
+2. `slots/Slot_G2.mqh::Evaluate` — should be silent when G silent per legacy convention; audit predicate gating
+3. `slots/Slot_D.mqh::Evaluate` — C-D force-pending wrapper not firing in Q1 (rewrite=0, legacy=1); audit `ForcePendingActionOrder` invocation chain
+4. G1 incremental per cluster; banner cite IMPL-FIX-011 (e) hypothesis class + CodeWiki §3.G/§3.G2/§3.D
+5. Re-run Step 4 iter-2 (operator close MT5 + `q1_2021_paired_rewrite.ini` + `journal_diff.py`); decision gate ≥75% top-5 reduction → close S-AC #4 → proceed to Step 5
+
+**Alternative path (c) Slot_T 4-sub-path redesign** (4-8 hr dedicated session): Hull MA + Bollinger Band + SubDem zone + ADX-W dominance per CodeWiki §3.15; requires `services/MarketContextBuilder.mqh` + `domain/MarketContext.mqh` extension to add Hull MA / BB% / SubDem zone / ADX-W dominance fields BEFORE Slot_T predicate rewrite.
+
+> **Scope-out for next session:** ADR-002 Composition Root + ADR-005 PortfolioState CHashMap invariants preserved across all (d) + (e) edits. No service/domain layer touched in Sessions A/B (until Slot_T MarketContext extension at session C).
+
+---
+
+## Prior action (kept for context)
+
 **🟢 IMPL-FIX-011 STEP 3 SESSION A PARTIAL CLOSE 2026-05-10 — (d) `entry_*` Print bulk-suppress across 16 slot files + (e) Slot_S parent-close gate per CodeWiki §3.16; 4× G1 PASS; 3/6 S-AC [x]; Slot_T deferred to Session B; Step 4 re-canary deferred (foreground MT5 running).**
 
 **Trigger:** User invoked `/impl-task IMPL-FIX-011` after Step 2 closure, then "proceed". Phase 1 checks: Phase Gate Override active; Operator Action Registry empty; Deferred-AC Registry no expired rows. Size detected: M `[ea]` for Session A (3 patch clusters per artifact § 0.5).
