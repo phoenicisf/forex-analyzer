@@ -45,6 +45,10 @@ required:
   - zigzag_m5
   - subdem_h4
   - subdem_d1
+  - bb_h4_history
+  - force_h4_history
+  - dem_h4_rolling
+  - adx_h4_history
   - derived_signals
 
 properties:
@@ -232,6 +236,85 @@ properties:
     properties:
       support_zone: { type: [number, "null"] }
       demand_zone: { type: [number, "null"] }
+
+  bb_h4_history:
+    type: object
+    additionalProperties: false
+    description: "IMPL-FIX-011 Session C — 15-bar bb_top history for §3.6:11 + §3.7 + §3.15:5 BBTop<IchiMax scan"
+    required: [bb_top, has_data]
+    properties:
+      bb_top:
+        type: array
+        items: { type: number }
+        minItems: 15
+        maxItems: 15
+        description: "Bollinger upper band by H4 bar; series-indexed bb_top[0]=current, bb_top[14]=oldest"
+      has_data:
+        type: boolean
+        description: "False if CopyBuffer short on any bar (degrade-but-continue per NFR-2.2)"
+
+  force_h4_history:
+    type: object
+    additionalProperties: false
+    description: "IMPL-FIX-011 Session C — 8-bar Force history + peak count for §3.6:9 + §3.7:6 + §3.7:9"
+    required: [force, peak_count_above11, has_data]
+    properties:
+      force:
+        type: array
+        items: { type: number }
+        minItems: 8
+        maxItems: 8
+        description: "Force Index by H4 bar; series-indexed force[0]=current, force[7]=oldest"
+      peak_count_above11:
+        type: integer
+        minimum: 0
+        maximum: 8
+        description: "Count of bars in 8-bar window where |force|>11 — §3.6:9 'no >3 prior >11 peaks'"
+      has_data:
+        type: boolean
+        description: "False if CopyBuffer short"
+
+  dem_h4_rolling:
+    type: object
+    additionalProperties: false
+    description: "IMPL-FIX-011 Session C — 25-bar DEM rolling sum × 100 for §3.6:12 thresholds"
+    required: [rolling_sum_x100, has_data]
+    properties:
+      rolling_sum_x100:
+        type: number
+        description: "sum(dem_h4 over last 25 bars) * 100; threshold ≥175 → BUY pending; ≤25 → SELL pending"
+      has_data:
+        type: boolean
+        description: "False if CopyBuffer short"
+
+  adx_h4_history:
+    type: object
+    additionalProperties: false
+    description: "IMPL-FIX-011 Session C — 3-bar ADX/+DI/-DI buffer + adxw_no_trap flag for §3.7:5"
+    required: [adx, di_plus, di_minus, adxw_no_trap_bars_1_3, has_data]
+    properties:
+      adx:
+        type: array
+        items: { type: number }
+        minItems: 3
+        maxItems: 3
+      di_plus:
+        type: array
+        items: { type: number }
+        minItems: 3
+        maxItems: 3
+      di_minus:
+        type: array
+        items: { type: number }
+        minItems: 3
+        maxItems: 3
+      adxw_no_trap_bars_1_3:
+        type: integer
+        minimum: 0
+        maximum: 1
+        description: "1 if bars 1..3 do NOT trap ADX between ±DI (per §3.7:5); 0 otherwise. 'Trapped' = ADX < both di_plus AND di_minus on the bar."
+      has_data:
+        type: boolean
 
   derived_signals:
     type: object

@@ -57,6 +57,13 @@ static const int MCB_IDX_MOMENTUM_H4= 23;
 #define MCB_BARS_STD     3    // standard lookback for wave/slope computation
 #define MCB_BARS_FORCE   4    // ForceFields: f0..f3
 
+//--- IMPL-FIX-011 Session C history-buffer sizes (per CodeWiki §3.6/§3.7/§3.15)
+#define MCB_BARS_BB_HIST     15   // §3.6:11 + §3.7 + §3.15:5 BBTop history scan window
+#define MCB_BARS_FORCE_HIST  8    // §3.6:9 (peak count) + §3.7:6 (5-of-8) + §3.7:9 (1-of-[2,5))
+#define MCB_BARS_DEM_ROLL    25   // §3.6:12 DEM rolling sum window
+#define MCB_BARS_ADX_HIST    3    // §3.7:5 ADX-W not-trapped 1..3 bars window
+#define MCB_FORCE_PEAK_THR   11.0 // §3.6:9 "peaks > 11" threshold (legacy CodeWiki spec)
+
 //+------------------------------------------------------------------+
 //| CMarketContextBuilder                                            |
 //| Builds immutable per-tick MarketContext snapshot (ADR-004)       |
@@ -93,6 +100,12 @@ private:
    void PopulateFractal (int handle, FractalFields  &out) const;
    void PopulateZigZag  (int handle, ZigZagFields   &out) const;
    void PopulateSubDem  (int handle, SubDemFields   &out) const;
+
+   //--- IMPL-FIX-011 Session C history populate helpers (per CodeWiki §3.6/§3.7/§3.15)
+   void PopulateBBHistory   (int handle, BBHistoryFields    &out) const;
+   void PopulateForceHistory(int handle, ForceHistoryFields &out) const;
+   void PopulateDemRolling  (int handle, DemRollingFields   &out) const;
+   void PopulateAdxHistory  (int handle, AdxHistoryFields   &out) const;
 
    //--- Derived signal precompute helpers (ADR-004: computed once, slot reads flag)
    //    Replaces EA เดิม global RunCheckWPRWaveWithIchimoku2 + CheckADXWithForcePeakValid2
@@ -157,6 +170,14 @@ MarketContext CMarketContextBuilder::Build() const
    PopulateZigZag  (m_indicators.GetHandle(MCB_IDX_ZIGZAG_M5),  ctx.zigzag_m5);  // IDX_ZIGZAG_M5=17
    PopulateSubDem  (m_indicators.GetHandle(MCB_IDX_MA_SLOW_H4), ctx.subdem_h4);  // IDX_MA_SLOW_H4=19 (subdem H4 proxy)
    PopulateSubDem  (m_indicators.GetHandle(MCB_IDX_RSI_D1),     ctx.subdem_d1);  // IDX_RSI_D1=21 (subdem D1 proxy)
+
+   //--- IMPL-FIX-011 Session C history-based field population
+   //    Reuses existing IDX_BBANDS_H4 / IDX_FORCE_H4 / IDX_DEMARK_H4 / IDX_ADX_H4 handles
+   //    (no new indicator handles needed — IndicatorService inventory unchanged).
+   PopulateBBHistory   (m_indicators.GetHandle(MCB_IDX_BBANDS_H4), ctx.bb_h4_history);    // §3.6:11 + §3.7 + §3.15:5
+   PopulateForceHistory(m_indicators.GetHandle(MCB_IDX_FORCE_H4),  ctx.force_h4_history); // §3.6:9 + §3.7:6 + §3.7:9
+   PopulateDemRolling  (m_indicators.GetHandle(MCB_IDX_DEMARK_H4), ctx.dem_h4_rolling);   // §3.6:12
+   PopulateAdxHistory  (m_indicators.GetHandle(MCB_IDX_ADX_H4),    ctx.adx_h4_history);   // §3.7:5
 
    //--- 1 derived signals field (computed from raw fields — no DRY violation, ADR-004) ---
    ctx.derived.wpr_wave_signal          = ComputeWprWaveSignal(ctx);
@@ -579,6 +600,130 @@ bool CMarketContextBuilder::ComputeIchiDoubleBounce(const MarketContext &ctx) co
    // PLACEHOLDER IMPL-006 — refine in P3 slot integration
    // TODO IMPL-FUTURE — requires multi-bar history scan beyond ADR-004 single-tick snapshot
    return false;
+  }
+
+//+------------------------------------------------------------------+
+//| IMPL-FIX-011 Session C — history-based population helpers         |
+//| Per CodeWiki §3.6:9/11/12 (Slot_G), §3.7:5/6/9 (Slot_G2),         |
+//| §3.15:5 (Slot_T). Replace single-tick proxies that empirically    |
+//| failed Step 4 iter-2 (per artifact IMPL-FIX-011-q1-postpatch-     |
+//| 20260510-iter2.md § 0 verdict synthesis).                         |
+//+------------------------------------------------------------------+
+
+//+------------------------------------------------------------------+
+//| PopulateBBHistory — 15-bar bb_top history from Bollinger H4       |
+//| buffer_index 1 = Upper band; series-indexed (newest=[0]).         |
+//| Used by Slot_G §3.6:11 + Slot_G2 §3.7 + Slot_T §3.15:5.           |
+//+------------------------------------------------------------------+
+void CMarketContextBuilder::PopulateBBHistory(int handle, BBHistoryFields &out) const
+  {
+   double buf[];
+   ArraySetAsSeries(buf, true);
+   int copied = CopyBuffer(handle, 1, 0, MCB_BARS_BB_HIST, buf);
+   out.has_data = (copied >= MCB_BARS_BB_HIST);
+   if(!out.has_data && m_logger != NULL)
+      m_logger.Warn("market_context", "copybuffer_short", 0,
+                    StringFormat("bb_history handle=%d copied=%d expected=%d",
+                                 handle, copied, MCB_BARS_BB_HIST));
+   for(int i = 0; i < MCB_BARS_BB_HIST; i++)
+      out.bb_top[i] = (i < copied) ? buf[i] : 0.0;
+  }
+
+//+------------------------------------------------------------------+
+//| PopulateForceHistory — 8-bar Force buffer + peak count > 11       |
+//| buffer_index 0 = Force line; series-indexed (newest=[0]).         |
+//| peak_count_above11 = bars where |force| > MCB_FORCE_PEAK_THR (11) |
+//| Used by Slot_G §3.6:9 + Slot_G2 §3.7:6 + §3.7:9.                  |
+//+------------------------------------------------------------------+
+void CMarketContextBuilder::PopulateForceHistory(int handle, ForceHistoryFields &out) const
+  {
+   double buf[];
+   ArraySetAsSeries(buf, true);
+   int copied = CopyBuffer(handle, 0, 0, MCB_BARS_FORCE_HIST, buf);
+   out.has_data = (copied >= MCB_BARS_FORCE_HIST);
+   if(!out.has_data && m_logger != NULL)
+      m_logger.Warn("market_context", "copybuffer_short", 0,
+                    StringFormat("force_history handle=%d copied=%d expected=%d",
+                                 handle, copied, MCB_BARS_FORCE_HIST));
+   out.peak_count_above11 = 0;
+   for(int i = 0; i < MCB_BARS_FORCE_HIST; i++)
+     {
+      double v = (i < copied) ? buf[i] : 0.0;
+      out.force[i] = v;
+      if(MathAbs(v) > MCB_FORCE_PEAK_THR) out.peak_count_above11++;
+     }
+  }
+
+//+------------------------------------------------------------------+
+//| PopulateDemRolling — 25-bar DEM rolling sum × 100                 |
+//| buffer_index 0 = DEM value; series-indexed (newest=[0]).          |
+//| rolling_sum_x100 = sum(dem[0..24]) × 100; CodeWiki §3.6:12 spec   |
+//| thresholds: ≥175 → BUY pending; ≤25 → SELL pending.               |
+//| Used by Slot_G §3.6:12 BUY/SELL pending gates.                    |
+//+------------------------------------------------------------------+
+void CMarketContextBuilder::PopulateDemRolling(int handle, DemRollingFields &out) const
+  {
+   double buf[];
+   ArraySetAsSeries(buf, true);
+   int copied = CopyBuffer(handle, 0, 0, MCB_BARS_DEM_ROLL, buf);
+   out.has_data = (copied >= MCB_BARS_DEM_ROLL);
+   if(!out.has_data && m_logger != NULL)
+      m_logger.Warn("market_context", "copybuffer_short", 0,
+                    StringFormat("dem_rolling handle=%d copied=%d expected=%d",
+                                 handle, copied, MCB_BARS_DEM_ROLL));
+   double sum = 0.0;
+   for(int i = 0; i < copied; i++) sum += buf[i];
+   out.rolling_sum_x100 = sum * 100.0;
+  }
+
+//+------------------------------------------------------------------+
+//| PopulateAdxHistory — 3-bar ADX/+DI/-DI buffer + adxw-no-trap flag |
+//| buffer_index: 0=ADX 1=+DI 2=-DI; series-indexed (newest=[0]).     |
+//| adxw_no_trap_bars_1_3: 1 if bars 1..3 ALL have ADX >= di_plus OR  |
+//| ADX >= di_minus (i.e., NOT trapped between both DI lines on any   |
+//| of bars 1..3); 0 otherwise. CodeWiki §3.7:5 spec.                  |
+//| Used by Slot_G2 §3.7:5 ADX-W trap gate.                            |
+//+------------------------------------------------------------------+
+void CMarketContextBuilder::PopulateAdxHistory(int handle, AdxHistoryFields &out) const
+  {
+   double bufAdx[], bufPlus[], bufMinus[];
+   ArraySetAsSeries(bufAdx,   true);
+   ArraySetAsSeries(bufPlus,  true);
+   ArraySetAsSeries(bufMinus, true);
+
+   int c0 = CopyBuffer(handle, 0, 0, MCB_BARS_ADX_HIST, bufAdx);
+   int c1 = CopyBuffer(handle, 1, 0, MCB_BARS_ADX_HIST, bufPlus);
+   int c2 = CopyBuffer(handle, 2, 0, MCB_BARS_ADX_HIST, bufMinus);
+
+   out.has_data = (c0 >= MCB_BARS_ADX_HIST &&
+                   c1 >= MCB_BARS_ADX_HIST &&
+                   c2 >= MCB_BARS_ADX_HIST);
+   if(!out.has_data && m_logger != NULL)
+      m_logger.Warn("market_context", "copybuffer_short", 0,
+                    StringFormat("adx_history handle=%d copies=%d/%d/%d expected=%d",
+                                 handle, c0, c1, c2, MCB_BARS_ADX_HIST));
+   for(int i = 0; i < MCB_BARS_ADX_HIST; i++)
+     {
+      out.adx[i]      = (i < c0) ? bufAdx  [i] : 0.0;
+      out.di_plus[i]  = (i < c1) ? bufPlus [i] : 0.0;
+      out.di_minus[i] = (i < c2) ? bufMinus[i] : 0.0;
+     }
+
+   //--- §3.7:5 "ADX-W not trapped between ±DI for bars 1..3"
+   //    Trapped on bar i = (adx[i] < di_plus[i]) AND (adx[i] < di_minus[i])
+   //    "Not trapped 1..3" = NONE of bars 1, 2 are trapped (we have 3 bars [0,1,2]
+   //    so "1..3" maps to indices 1 and 2 in our 3-element series-indexed buffer;
+   //    bar 0 is "current" which CodeWiki treats separately).
+   bool any_trapped = false;
+   for(int i = 1; i < MCB_BARS_ADX_HIST; i++)
+     {
+      if(out.adx[i] < out.di_plus[i] && out.adx[i] < out.di_minus[i])
+        {
+         any_trapped = true;
+         break;
+        }
+     }
+   out.adxw_no_trap_bars_1_3 = any_trapped ? 0 : 1;
   }
 
 #endif // PHOENICISNEX_SERVICES_MARKETCONTEXTBUILDER_MQH

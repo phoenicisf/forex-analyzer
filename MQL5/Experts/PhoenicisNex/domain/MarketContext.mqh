@@ -63,6 +63,53 @@ struct ZigZagFields { double last_high; double last_low; };
 //--- Sub-demand/support zone fields (H4 and D1 timeframes)
 struct SubDemFields { double support_zone; double demand_zone; bool has_support; bool has_demand; };
 
+//--- Bollinger Bands history (15-bar bb_top buffer per CodeWiki §3.6:11 + §3.7 + §3.15:5)
+//    bb_top[0] = current bar (newest); bb_top[14] = oldest; series-indexed.
+//    has_data = false if CopyBuffer short on any bar (degrade-but-continue per NFR-2.2).
+//    Consumers: Slot_G §3.6:11 "15-bar BBTop<IchiMax scan", Slot_T §3.15:5 "≥7 of last 10 BBTop<IchiMax", Slot_G2 §3.7 BB conditions.
+struct BBHistoryFields {
+   double bb_top[15];
+   bool   has_data;
+};
+
+//--- Force Index history (8-bar Force buffer per CodeWiki §3.6:9 + §3.7:6 + §3.7:9)
+//    force[0] = current bar (newest); force[7] = oldest; series-indexed.
+//    peak_count_above11 = count of bars in window where |force| > 11 (§3.6:9 "≤3 prior >11 peaks").
+//    has_data = false if CopyBuffer short.
+//    Consumers: Slot_G §3.6:9 peak-exhaustion, Slot_G2 §3.7:6 (≥5 of 8 bars Force>0.2) + §3.7:9 (≥1 bar in [2,5) Force ≤ -0.2).
+struct ForceHistoryFields {
+   double force[8];
+   int    peak_count_above11;
+   bool   has_data;
+};
+
+//--- DeMarker rolling sum (25-bar sum × 100 per CodeWiki §3.6:12)
+//    rolling_sum_x100 = sum(dem_h4 over last 25 bars) * 100.
+//    Threshold: ≥175 → BUY pending (high momentum); ≤25 → SELL pending (low momentum).
+//    has_data = false if CopyBuffer short.
+//    Consumer: Slot_G §3.6:12 "DeMarker thresholds: BUY pending if total ratio ≥175; SELL ≤25".
+struct DemRollingFields {
+   double rolling_sum_x100;
+   bool   has_data;
+};
+
+//--- ADX history (3-bar adx/+DI/-DI buffer per CodeWiki §3.6:6 + §3.7:5)
+//    adx[0..2] / di_plus[0..2] / di_minus[0..2] series-indexed (newest=[0]).
+//    adxw_no_trap_bars_1_3 = 1 when bars 1..3 do NOT have ADX trapped between ±DI (§3.7:5),
+//    else 0. "Trapped" = ADX < both di_plus AND di_minus on the bar.
+//    has_data = false if CopyBuffer short.
+//    Consumers: Slot_G2 §3.7:5 ADX-W trap check; Slot_G uses adx_h4 currents directly (no history needed).
+//    NB: §3.6:6 "no opposite cross within 300-bar lookback" deferred — proxy via current
+//    ADX-W dominance is sufficient for Phase 1 single-tick gate; full 300-bar buffer would
+//    cost ~7.2 KB per snapshot. Add later if 5-yr Bucket A surfaces drift.
+struct AdxHistoryFields {
+   double adx[3];
+   double di_plus[3];
+   double di_minus[3];
+   int    adxw_no_trap_bars_1_3;
+   bool   has_data;
+};
+
 //--- Pre-computed cross-indicator signals (computed once per tick by MarketContextBuilder)
 struct DerivedSignals {
    bool wpr_wave_signal;            // RunCheckWPRWaveWithIchimoku2 result
@@ -72,8 +119,13 @@ struct DerivedSignals {
 
 //+------------------------------------------------------------------+
 //| MarketContext — immutable per-tick snapshot (ADR-004)             |
-//| Size: ~720 bytes; always passed by const& (never by value)        |
-//| 25 top-level fields: 5 primitives + 19 sub-structs + 1 derived   |
+//| Size: ~1180 bytes (was ~720B; +460B from IMPL-FIX-011 Session C   |
+//|       MarketContext extension: BB-history 15B-double + Force      |
+//|       8B-double + DEM 1B-double + ADX 9B-double + scalars)        |
+//| Always passed by const& (never by value) — extension cost minimal |
+//| 29 top-level fields: 5 primitives + 23 sub-structs + 1 derived   |
+//|   (was 25 = 5 + 19 + 1; +4 sub-structs for §3.6/§3.7/§3.15        |
+//|   history-based predicates per IMPL-FIX-011 Session C)            |
 //+------------------------------------------------------------------+
 struct MarketContext {
    // --- 5 primitive fields ---
@@ -83,7 +135,7 @@ struct MarketContext {
    double   spread_pip;        // (ask-bid) / (_Point * digit_multiplier)
    int      bar_index_h4;      // current H4 bar index (FR-8.1 cache key)
 
-   // --- 19 sub-struct fields ---
+   // --- 23 sub-struct fields (was 19; +4 history fields per IMPL-FIX-011 Session C) ---
    IchimokuFields  ichi_h4;
    IchimokuFields  ichi_d1;
    ForceFields     force_h4;
@@ -105,6 +157,14 @@ struct MarketContext {
    ZigZagFields    zigzag_m5;
    SubDemFields    subdem_h4;
    SubDemFields    subdem_d1;
+
+   // --- IMPL-FIX-011 Session C history-based predicate fields ---
+   //     Source: CodeWiki §3.6:9/11/12 (Slot_G), §3.7:5/6/9 (Slot_G2), §3.15:5 (Slot_T).
+   //     Populated once per tick by MarketContextBuilder (ADR-004 immutability preserved).
+   BBHistoryFields    bb_h4_history;     // §3.6:11 + §3.7 + §3.15:5 — 15-bar bb_top scan
+   ForceHistoryFields force_h4_history;  // §3.6:9 + §3.7:6 + §3.7:9 — 8-bar Force buffer + peak count
+   DemRollingFields   dem_h4_rolling;    // §3.6:12 — 25-bar DEM rolling sum × 100
+   AdxHistoryFields   adx_h4_history;    // §3.7:5 — 3-bar ADX/+DI/-DI history + adxw_no_trap_bars_1_3
 
    // --- 1 derived signals field ---
    // Note: schema YAML name is "derived_signals"; struct field name is "derived"
