@@ -175,13 +175,17 @@ public:
       //    `RiskManager::OpenOrder` per `.claude/rules/ea.md` (IMPL-017 +
       //    IMPL-062 5-yr regression). Log intent โ€” observable milestone
       //    for E-AC [log-assertion].
-      m_logger.Info("Slot_LX", buy_signal ? "entry_pyramid_buy" : "entry_pyramid_sell",
-                    MAGIC_L,
-                    StringFormat("parent_ticket=%I64u parent_profit_pips=%.1f "
-                                 "dir=%s lot=%.2f price=%.5f sl=%.5f comment=%s",
-                                 parent_tickets[0], profit_pips,
-                                 (buy_signal ? "BUY" : "SELL"),
-                                 lot, price, sl_price, comment));
+      // IMPL-FIX-011 R-13 (d): entry_pyramid_buy/sell Info emit suppressed
+      // (per-tick stub spam bloated Q1 canary log to 1.41 GB / ~30 GB
+      // extrapolated over 5-yr; restore when RiskManager::OpenOrder wires
+      // real send + this becomes one-shot post-fill milestone). IMPL-FIX-008 R-10.
+      // m_logger.Info("Slot_LX", buy_signal ? "entry_pyramid_buy" : "entry_pyramid_sell",
+      //               MAGIC_L,
+      //               StringFormat("parent_ticket=%I64u parent_profit_pips=%.1f "
+      //                            "dir=%s lot=%.2f price=%.5f sl=%.5f comment=%s",
+      //                            parent_tickets[0], profit_pips,
+      //                            (buy_signal ? "BUY" : "SELL"),
+      //                            lot, price, sl_price, comment));
 
       //--- CrossSlotCoordinator stub
       if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (Orchestrator wiring path (core/Orchestrator.mqh)) */)

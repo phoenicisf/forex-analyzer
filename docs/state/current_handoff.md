@@ -4,6 +4,79 @@
 
 ## Last completed action
 
+**🟢 IMPL-FIX-011 STEP 3 SESSION A PARTIAL CLOSE 2026-05-10 — (d) `entry_*` Print bulk-suppress across 16 slot files + (e) Slot_S parent-close gate per CodeWiki §3.16; 4× G1 PASS; 3/6 S-AC [x]; Slot_T deferred to Session B; Step 4 re-canary deferred (foreground MT5 running).**
+
+**Trigger:** User invoked `/impl-task IMPL-FIX-011` after Step 2 closure, then "proceed". Phase 1 checks: Phase Gate Override active; Operator Action Registry empty; Deferred-AC Registry no expired rows. Size detected: M `[ea]` for Session A (3 patch clusters per artifact § 0.5).
+
+**Surface:** 17 slot files modified — 16 for (d) bulk-suppress + Slot_S header + Evaluate body for (e) parent-close gate. No source-tree edits outside `slots/`.
+
+**Patch (d) — bulk-suppress `entry_*` Info emit across 16 slots:** Slot_B/BI/C/G/G2/H/I/K/L/LX/M/P/Q/R/S/T. Each site replaced with 4-line banner mirroring IMPL-FIX-008 R-10 pattern (`// IMPL-FIX-011 R-13 (d): entry_signal Info emit suppressed ... restore when RiskManager::OpenOrder wires real send + this becomes one-shot post-fill milestone`) + commented original emit. ~9 LOC per file × 16 ≈ 140 LOC total. **Why mandatory:** Step 1 artifact §4 confirmed Q1 rewrite log was 1.41 GB dominated by per-tick `entry_*` Print emits (~2,000 events/MB density); 5-yr extrapolation ~30 GB breaks iconv decode budget for journal_diff pipeline at Step 5 5-yr Bucket A retry.
+
+**Patch (e) — Slot_S parent-close gate per CodeWiki §3.16** ("Lookback 70 bars; require prior L/K closure ≥33 bars ago"): root cause = original `_BothParentsInactive` gate returned true when L/K had NEVER opened (Q1 2021 rewrite case where L=0/K=0 throughout window), letting Slot_S fire 6 entries with no parent context (journal-diff top-1 divergence S/entry +6 vs legacy 0). FIX: track L/K active(prev tick) → inactive(now tick) transition; record H4 bar of last L/K close; require S entries to be within `LK_LOOKBACK_BARS_MAX=70` H4 bars of that close. 2 new private members + 1 static const + ctor init + 11-line tracking+gate block in Evaluate before existing `_BothParentsInactive` (preserves original gate as defense-in-depth). **Phase-1 conservative lower-bound = 0 bars** (CodeWiki spec ≥33 but rewrite slots are logger stubs; tighten to 33 after RiskManager::OpenOrder wires real flow + Step 5 5-yr retry). **Predicted Step 4 effect:** Slot_S top-1 divergence |Δ|=6 → 0 (gate now suppresses S entirely when L/K never close — matches legacy Q1 S=0 convention; verifiable by re-running journal_diff vs Step 1 legacy artifact next session).
+
+**G1 verification (4× incremental):**
+| Cluster | Slots | G1 result |
+|---|---|---|
+| 1 | C/T/M/Q/R | `Result: 0 errors, 0 warnings, 5090 ms` |
+| 2 | B/G/G2/H/I | `Result: 0 errors, 0 warnings, 4624 ms` |
+| 3 | K/L/LX/P/S/BI | `Result: 0 errors, 0 warnings, 4379 ms` |
+| Final post-(e) | Slot_S header + Evaluate | `Result: 0 errors, 0 warnings, 4323 ms` |
+
+**Slot_T DEFERRED to Session B:** CodeWiki §3.15 reveals Hull MA + Bollinger Band + SubDem zone + ADX-W dominance signal sources producing 4 sub-path varieties (PF/H × A/B). Rewrite uses MACD/ADX/Stoch — different signal sources requiring ~400 LOC redesign + new MarketContext fields (Hull MA, BB%, SubDem zone, ADX-W dominance text). Beyond Session A budget per artifact § 0.6 R-A "false-positive eligibility fixes" risk (mis-reading complex CodeWiki specs causes regressions). Documented deferral in TL;DR + R-13 narrative for Session B pickup.
+
+**Step 4 re-canary DEFERRED to next session:** foreground terminal64.exe (PID 30132) running; headless re-canary needs MT5 closed for data-dir lock release per `mt5-headless-backtest § Step 3` process hygiene rule. Operator close = 1-line action in next session; then re-run `q1_2021_paired_rewrite.ini` + `journal_diff.py` for empirical validation.
+
+**State propagation (3-file rule per CLAUDE.md §6):**
+- `docs/state/impl-plan.md` — TL;DR header rewritten (`STEP 2 CLOSED` → `STEP 3 SESSION A PARTIAL CLOSE`); IMPL-FIX-011 S-AC #3 `[x]` with detailed inline closure note; Status field rewritten + 3-path Next Best Action branch (Step 4 re-canary recommended; OR Session B G/G2/D; OR Slot_T 4-sub-path session); R-13 narrative refined; Mid-Phase Audit Log row appended (~3-paragraph closure narrative).
+- `docs/state/overview.md` — row 19 status string appended with **+ IMPL-FIX-011 STEP 3 SESSION A PARTIAL CLOSE 2026-05-10** paragraph.
+- `docs/state/current_handoff.md` — this section + prior action shift.
+
+**Phase 5 mechanical gates verified (subset relevant to non-IMPL-NNN closure):**
+- Gate #1 (forbidden-pattern grep on `impl-plan.md`): 0 hits ✅
+- Gate #6 (single `## End of Plan` marker): 1 ✅
+- Gate #11 (working-tree clean post-Edit-batch): pending commit (final step of this session)
+
+Plan Staleness Sentinel unchanged at 0 IMPL-NNN closures since R25 (FIX tasks + Step closures don't increment per workflow.md Gate #4 + fix-round-10 precedent).
+
+**Files modified this session:**
+- `MQL5/Experts/PhoenicisNex/slots/Slot_B.mqh` (d)
+- `MQL5/Experts/PhoenicisNex/slots/Slot_BI.mqh` (d)
+- `MQL5/Experts/PhoenicisNex/slots/Slot_C.mqh` (d)
+- `MQL5/Experts/PhoenicisNex/slots/Slot_G.mqh` (d)
+- `MQL5/Experts/PhoenicisNex/slots/Slot_G2.mqh` (d)
+- `MQL5/Experts/PhoenicisNex/slots/Slot_H.mqh` (d)
+- `MQL5/Experts/PhoenicisNex/slots/Slot_I.mqh` (d)
+- `MQL5/Experts/PhoenicisNex/slots/Slot_K.mqh` (d)
+- `MQL5/Experts/PhoenicisNex/slots/Slot_L.mqh` (d)
+- `MQL5/Experts/PhoenicisNex/slots/Slot_LX.mqh` (d)
+- `MQL5/Experts/PhoenicisNex/slots/Slot_M.mqh` (d)
+- `MQL5/Experts/PhoenicisNex/slots/Slot_P.mqh` (d)
+- `MQL5/Experts/PhoenicisNex/slots/Slot_Q.mqh` (d)
+- `MQL5/Experts/PhoenicisNex/slots/Slot_R.mqh` (d)
+- `MQL5/Experts/PhoenicisNex/slots/Slot_S.mqh` (d) + (e)
+- `MQL5/Experts/PhoenicisNex/slots/Slot_T.mqh` (d)
+- `docs/state/impl-plan.md` (TL;DR + S-AC #3 [x] + Status + Next Best Action + R-13 + audit log row)
+- `docs/state/overview.md` (row 19 status string append)
+- `docs/state/current_handoff.md` (this section + prior action shift)
+
+**Next session — `/impl-task IMPL-FIX-011`:** **Recommended path (a) Step 4 re-canary first** (~30 min, fast feedback):
+1. Operator close foreground terminal64.exe (PID was 30132 in this session)
+2. Run `simulation/headless-tests/q1_2021_paired_rewrite.ini` headless (`bash .agents/skills/mt5-headless-backtest/scripts/run_headless_backtest.sh simulation/headless-tests/q1_2021_paired_rewrite.ini /tmp/q1_rerun.txt`)
+3. Locate fresh JSONL at Tester Agent's `MQL5/Files/PhoenicisNex/journal/tester/run-*.jsonl`; rename to `IMPL-FIX-011-q1_rewrite_postpatch_<YYYYMMDDHHmm>.jsonl` per Step 4 naming
+4. Run `python simulation/scripts/journal_diff.py --rewrite <new-jsonl> --legacy docs/state/_session-handoff/IMPL-FIX-011-q1_legacy_202605102037.txt --out docs/state/_session-handoff/IMPL-FIX-011-q1-postpatch-20260511-iter1.md --json docs/state/_session-handoff/IMPL-FIX-011-q1-postpatch-20260511-iter1.json`
+5. Decision gate: ≥75% per-slot divergence reduction on top-3 slots → proceed to Session B (G/G2/D); else iterate Session A (debug Slot_S gate logic)
+6. Tick S-AC #4 `[x]` if Step 4 verdict ≥75% reduction
+
+**Alternative path (b) Step 3 Session B without re-canary** (60-90 min): G/G2/D eligibility predicates per CodeWiki §3.G / §3.G2 / §3.D; defer re-canary to end of Session C. Higher risk: accumulated bugs without validation gate.
+
+**Alternative path (c) Slot_T 4-sub-path session** (4-8 hr, dedicated): Hull MA + Bollinger Band + SubDem zone + ADX-W dominance per CodeWiki §3.15; requires `services/MarketContextBuilder.mqh` + `domain/MarketContext.mqh` extension to add Hull MA + BB% + SubDem zone + ADX-W dominance fields BEFORE Slot_T predicate rewrite.
+
+> **Scope-out for next session:** ADR-002 Composition Root + ADR-005 PortfolioState CHashMap invariants preserved across all (d) + (e) edits. No service/domain layer touched in Session A.
+
+---
+
+## Prior action (kept for context)
+
 **🟢 IMPL-FIX-011 STEP 2 CLOSED 2026-05-10 — `simulation/scripts/journal_diff.py` + Q1 paired divergence artifact landed; (e) eligibility-predicate divergence empirically confirmed dominant axis (10/10 top-10 rows); (a) anti-pyramid FALSIFIED for Q1; verdict dispersed (escalate to upper-bound Step 3 scope = 8 hr / 3 sessions).**
 
 **Trigger:** User invoked `/impl-task IMPL-FIX-011` after Last completed action = "STEP 1 CLOSED". Phase 1 checks: Phase Gate Override 2026-05-03 already active (P4 work proceeding under approved override; FIX-011 spans P3 slots + P4 helpers but is recovery task outside normal phase-gate flow per fix-round-10 precedent); Operator Action Registry empty; Deferred-AC Registry no expired rows (all Active rows expire ≥2026-05-17 vs today 2026-05-10). Size detected: M `[ea]` for Step 2 substep (single Python script + 1 MD report); Phase 2B 3-Step process.

@@ -257,10 +257,14 @@ void CSlotH::Evaluate(const MarketContext &ctx, CPortfolioState &port)
                      ? _NormalizeBrokerPrice(price - InpHSlPips * pip_size)
                      : _NormalizeBrokerPrice(price + InpHSlPips * pip_size);
 
-   if(m_logger != NULL)
-      m_logger.Info("Slot_H", is_buy ? "entry_buy" : "entry_sell", MAGIC_H,
-                    StringFormat("lot=%.2f price=%.5f sl=%.5f bar=%d comment=%s",
-                                 lot, price, sl_price, ctx.bar_index_h4, comment_str));
+   // IMPL-FIX-011 R-13 (d): entry_buy/sell Info emit suppressed (per-tick stub
+   // spam bloated Q1 canary log to 1.41 GB / ~30 GB extrapolated over 5-yr;
+   // restore when RiskManager::OpenOrder wires real send + this becomes
+   // one-shot post-fill milestone). Mirrors IMPL-FIX-008 R-10.
+   // if(m_logger != NULL)
+   //    m_logger.Info("Slot_H", is_buy ? "entry_buy" : "entry_sell", MAGIC_H,
+   //                  StringFormat("lot=%.2f price=%.5f sl=%.5f bar=%d comment=%s",
+   //                               lot, price, sl_price, ctx.bar_index_h4, comment_str));
 
    //--- Update cooldown bar โ€” prevents re-entry on same H4 bar even when
    //    OrderSend wiring lands and the actual broker call may fail. Same

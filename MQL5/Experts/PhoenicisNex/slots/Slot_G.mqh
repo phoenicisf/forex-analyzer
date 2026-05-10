@@ -350,10 +350,14 @@ void CSlotG::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //    Phase-1 stub: OrderSend call deferred โ€” body placeholder logs intent only.
    //    Full CTrade wiring at Orchestrator wiring path (core/Orchestrator.mqh) orchestrator (Composition Root).
    //    For smoke test evidence: emit journal-format log entry.
-   if(m_logger != NULL)
-      m_logger.Info("SlotG", "entry_signal", MAGIC_G,
-                    StringFormat("dir=%s lot=%.2f sl_pips=%.1f price=%.5f sl=%.5f comment=%s",
-                                 (buySignal ? "BUY" : "SELL"), lot, sl_pips, price, sl_price, comment));
+   // IMPL-FIX-011 R-13 (d): entry_signal Info emit suppressed (per-tick stub
+   // spam bloated Q1 canary log to 1.41 GB / ~30 GB extrapolated over 5-yr;
+   // restore when RiskManager::OpenOrder wires real send + this becomes
+   // one-shot post-fill milestone). Mirrors IMPL-FIX-008 R-10.
+   // if(m_logger != NULL)
+   //    m_logger.Info("SlotG", "entry_signal", MAGIC_G,
+   //                  StringFormat("dir=%s lot=%.2f sl_pips=%.1f price=%.5f sl=%.5f comment=%s",
+   //                               (buySignal ? "BUY" : "SELL"), lot, sl_pips, price, sl_price, comment));
 
    //--- IMPL-FIX-003: submit broker order via RiskManager.OpenOrder wrapper (ea.md mandate)
    //--- IMPL-FIX-008: arm pending-fill latch + record bar on success to block same-tick + same-bar re-entry

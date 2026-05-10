@@ -476,12 +476,16 @@ void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       //    `RiskManager::OpenOrder` per `.claude/rules/ea.md` (IMPL-017 +
       //    IMPL-062 5-yr regression). Slot_BI / Slot_R follow the same
       //    pattern. (review-round-07 Finding 07.4)
-      m_logger.Info("SlotP", "entry_signal", MAGIC_P,
-                    StringFormat("sub_mode=%s dir=%s lot=%.2f sl_pips=%.1f "
-                                 "price=%.5f sl=%.5f comment=%s "
-                                 "(Phase 1 logger-only; OrderSend at Orchestrator wiring path (core/Orchestrator.mqh))",
-                                 sub_str, (isBuy ? "BUY" : "SELL"), lot, sl_pips,
-                                 price, sl_price, comment));
+      // IMPL-FIX-011 R-13 (d): entry_signal Info emit suppressed (per-tick
+      // stub spam bloated Q1 canary log to 1.41 GB / ~30 GB extrapolated over
+      // 5-yr; restore when RiskManager::OpenOrder wires real send + this
+      // becomes one-shot post-fill milestone). Mirrors IMPL-FIX-008 R-10.
+      // m_logger.Info("SlotP", "entry_signal", MAGIC_P,
+      //               StringFormat("sub_mode=%s dir=%s lot=%.2f sl_pips=%.1f "
+      //                            "price=%.5f sl=%.5f comment=%s "
+      //                            "(Phase 1 logger-only; OrderSend at Orchestrator wiring path (core/Orchestrator.mqh))",
+      //                            sub_str, (isBuy ? "BUY" : "SELL"), lot, sl_pips,
+      //                            price, sl_price, comment));
 
       m_pending.TransitionExecuted(PM_P);
      }

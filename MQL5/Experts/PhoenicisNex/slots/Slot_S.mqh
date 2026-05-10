@@ -132,9 +132,22 @@ private:
    //    until ticket vanishes (broker-close from end-of-test or SL hit).
    ulong             m_close_logged_ticket;
 
+   //--- IMPL-FIX-011 R-13 (e) Slot S parent-close tracker per CodeWiki §3.16:
+   //    "Lookback 70 bars; require prior L/K closure ≥33 bars ago."
+   //    Previous gate `_BothParentsInactive` was insufficient: returned true
+   //    when L/K never opened (Q1 2021 rewrite case), letting S fire 6 entries
+   //    with no parent context (journal-diff top-1 divergence, |Δ|=6).
+   //    Fix: track L/K active(prev) → inactive(now) transition; only fire S
+   //    when a close was observed within LK_LOOKBACK_BARS_MAX of current bar.
+   bool              m_lk_was_active;
+   datetime          m_last_lk_close_bar;
+   static const int  LK_LOOKBACK_BARS_MAX; // = 70  (CodeWiki §3.16 upper bound)
+
 public:
    //--- Constructor / Destructor
-   CSlotS() : m_pending_fill(false), m_pending_set_time(0), m_last_fill_bar(0), m_close_logged_ticket(0) {}
+   CSlotS() : m_pending_fill(false), m_pending_set_time(0), m_last_fill_bar(0),
+              m_close_logged_ticket(0),
+              m_lk_was_active(false), m_last_lk_close_bar(0) {}
    virtual          ~CSlotS() {}
 
    //=================================================================
@@ -179,6 +192,7 @@ public:
 //| Static const definition (MQL5 requires out-of-class definition)   |
 //+------------------------------------------------------------------+
 const int CSlotS::PENDING_FILL_TIMEOUT_SEC = 60;
+const int CSlotS::LK_LOOKBACK_BARS_MAX = 70;
 
 //+------------------------------------------------------------------+
 //| Evaluate โ€” Slot S entry pass (CodeWiki ยง3.S MVP)                  |
@@ -201,10 +215,33 @@ void CSlotS::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //--- Guard: service pointers must be wired (Composition Root via Init)
    if(m_risk == NULL || m_logger == NULL) return;
 
+   //--- IMPL-FIX-011 R-13 (e) Slot S parent-close gate per CodeWiki §3.16:
+   //    "Lookback 70 bars; require prior L/K closure ≥33 bars ago."
+   //    The original gate `_BothParentsInactive` only checked CURRENT absence
+   //    of L/K — that returned true when L/K had never opened (Q1 2021 rewrite
+   //    case), letting S fire with no parent context (journal-diff top-1
+   //    divergence S/entry +6 vs legacy 0). Fix: track active→inactive
+   //    transition and require it within LK_LOOKBACK_BARS_MAX H4 bars.
+   //    Phase-1 conservative: lower bound = 0 bars (CodeWiki spec ≥33 but
+   //    rewrite slots are logger stubs; tighten after RiskManager wires).
+   bool lk_active_now = !_BothParentsInactive(port);
+   if(m_lk_was_active && !lk_active_now)
+      m_last_lk_close_bar = iTime(_Symbol, PERIOD_H4, 0);
+   m_lk_was_active = lk_active_now;
+
    //--- Condition 1 (post-close proxy gate): both L and K must have no active orders
    //    ADR-012: cross-slot access via PortfolioState.GetTicketsForSlot only
-   //    // CodeWiki ยง3.S โ€” S entry triggers when L/K windows closed
+   //    // CodeWiki §3.S — S entry triggers when L/K windows closed
    if(!_BothParentsInactive(port)) return;
+
+   //--- Condition 1b (parent-close history per CodeWiki §3.16): require an
+   //    observed L/K close within LK_LOOKBACK_BARS_MAX of current H4 bar.
+   //    Suppresses S entirely when L/K never opened (Q1 2021 rewrite case
+   //    where L=0/K=0 throughout window — legacy convention says S=0).
+   if(m_last_lk_close_bar == 0) return;
+   datetime now_h4 = iTime(_Symbol, PERIOD_H4, 0);
+   int bars_since_lk_close = (int)((now_h4 - m_last_lk_close_bar) / (4 * 3600));
+   if(bars_since_lk_close > LK_LOOKBACK_BARS_MAX) return;
 
    //--- Condition 2 (own-no-active guard): S must have no open "S," orders
    //    // CodeWiki ยง3.S โ€” single active S position allowed
@@ -295,12 +332,16 @@ void CSlotS::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    req.type_filling = ORDER_FILLING_IOC;
    req.comment   = comment;
 
-   m_logger.Info("SlotS", "entry_signal", MAGIC_S,
-                 StringFormat("dir=%s lot=%.2f sl_pips=%.1f price=%.5f sl=%.5f comment=%s"
-                              " adx=%.1f wpr=%.1f trend=%d",
-                              (buy_signal ? "BUY" : "SELL"),
-                              lot, InpSSlPips, price, sl_price, comment,
-                              ctx.adx_h4.adx, ctx.wpr_h4.wpr, trend_dir));
+   // IMPL-FIX-011 R-13 (d): entry_signal Info emit suppressed (per-tick stub
+   // spam bloated Q1 canary log to 1.41 GB / ~30 GB extrapolated over 5-yr;
+   // restore when RiskManager::OpenOrder wires real send + this becomes
+   // one-shot post-fill milestone). Mirrors IMPL-FIX-008 R-10.
+   // m_logger.Info("SlotS", "entry_signal", MAGIC_S,
+   //               StringFormat("dir=%s lot=%.2f sl_pips=%.1f price=%.5f sl=%.5f comment=%s"
+   //                            " adx=%.1f wpr=%.1f trend=%d",
+   //                            (buy_signal ? "BUY" : "SELL"),
+   //                            lot, InpSSlPips, price, sl_price, comment,
+   //                            ctx.adx_h4.adx, ctx.wpr_h4.wpr, trend_dir));
 
    //--- IMPL-FIX-003: submit broker order via RiskManager.OpenOrder wrapper (ea.md mandate)
    //--- IMPL-FIX-007: arm pending-fill latch on success to block same-tick re-entry

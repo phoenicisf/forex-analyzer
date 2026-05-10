@@ -252,11 +252,15 @@ void CSlotT::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       req.magic        = MAGIC_T;
       req.type_filling = ORDER_FILLING_FOK;  // broker detection at Orchestrator wiring path (core/Orchestrator.mqh)
 
-      if(m_logger != NULL)
-         m_logger.Info("SlotT", "entry_signal", MAGIC_T,
-                       StringFormat("dir=%s lot=%.2f sl_pips=%.1f price=%.5f sl=%.5f comment=%s",
-                                    (isBuy ? "BUY" : "SELL"), lot, sl_pips, price, sl_price,
-                                    comment));
+      // IMPL-FIX-011 R-13 (d): entry_signal Info emit suppressed (per-tick stub
+      // spam bloated Q1 canary log to 1.41 GB / ~30 GB extrapolated over 5-yr;
+      // restore when RiskManager::OpenOrder wires real send + this becomes
+      // one-shot post-fill milestone). Mirrors IMPL-FIX-008 R-10 stub-suppress.
+      // if(m_logger != NULL)
+      //    m_logger.Info("SlotT", "entry_signal", MAGIC_T,
+      //                  StringFormat("dir=%s lot=%.2f sl_pips=%.1f price=%.5f sl=%.5f comment=%s",
+      //                               (isBuy ? "BUY" : "SELL"), lot, sl_pips, price, sl_price,
+      //                               comment));
 
       //--- IMPL-FIX-003: submit broker order via RiskManager.OpenOrder wrapper (ea.md mandate)
       m_risk.OpenOrder(req, "T");

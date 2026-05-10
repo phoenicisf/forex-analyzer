@@ -277,10 +277,14 @@ void CSlotI::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //    `RiskManager::OpenOrder` per `.claude/rules/ea.md` (IMPL-017 +
    //    IMPL-062 5-yr regression).
    //    Observable milestone for E-AC [log-assertion]:
-   m_logger.Info("SlotI", "entry_signal", MAGIC_I,
-                 StringFormat("dir=%s lot=%.2f sl_pips=%.1f price=%.5f sl=%.5f comment=%s fib_level=%.2f g_dir=%s",
-                              (isBuy ? "BUY" : "SELL"), lot, sl_pips, price, sl_price, comment,
-                              InpIFibLevel, (g_dir == POSITION_TYPE_BUY ? "G_BUY" : "G_SELL")));
+   // IMPL-FIX-011 R-13 (d): entry_signal Info emit suppressed (per-tick stub
+   // spam bloated Q1 canary log to 1.41 GB / ~30 GB extrapolated over 5-yr;
+   // restore when RiskManager::OpenOrder wires real send + this becomes
+   // one-shot post-fill milestone). Mirrors IMPL-FIX-008 R-10.
+   // m_logger.Info("SlotI", "entry_signal", MAGIC_I,
+   //               StringFormat("dir=%s lot=%.2f sl_pips=%.1f price=%.5f sl=%.5f comment=%s fib_level=%.2f g_dir=%s",
+   //                            (isBuy ? "BUY" : "SELL"), lot, sl_pips, price, sl_price, comment,
+   //                            InpIFibLevel, (g_dir == POSITION_TYPE_BUY ? "G_BUY" : "G_SELL")));
 
    //--- CrossSlotCoordinator stub
    if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (Orchestrator wiring path (core/Orchestrator.mqh)) */)

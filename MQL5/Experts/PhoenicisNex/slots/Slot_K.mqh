@@ -162,11 +162,15 @@ public:
       //    RiskManager::OpenOrder wired through core/Orchestrator.mqh.
       //    Until then: log intent + update D1 guard so SelfTest/smoke
       //    verifies the entry path without panicking on NULL CTrade.
-      if(m_logger != NULL)
-         m_logger.Info("Slot_K", buy_signal ? "entry_buy" : "entry_sell",
-                       Magic(),
-                       StringFormat("lot=%.2f price=%.5f sl=%.5f comment=%s",
-                                    lot, price, sl_price, comment));
+      // IMPL-FIX-011 R-13 (d): entry_buy/sell Info emit suppressed (per-tick
+      // stub spam bloated Q1 canary log to 1.41 GB / ~30 GB extrapolated over
+      // 5-yr; restore when RiskManager::OpenOrder wires real send + this
+      // becomes one-shot post-fill milestone). Mirrors IMPL-FIX-008 R-10.
+      // if(m_logger != NULL)
+      //    m_logger.Info("Slot_K", buy_signal ? "entry_buy" : "entry_sell",
+      //                  Magic(),
+      //                  StringFormat("lot=%.2f price=%.5f sl=%.5f comment=%s",
+      //                               lot, price, sl_price, comment));
 
       //--- Update D1 guard AFTER logging intent (prevents re-entry same day)
       m_last_order_d1_time = d1_bar_time;

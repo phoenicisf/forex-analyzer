@@ -232,15 +232,19 @@ public:
       //    IMPL-062 5-yr regression). Log intent โ€” observable milestone for
       //    E-AC [log-assertion] + [db-inspect] (sl_distance_pip > 0 invariant
       //    verifiable in journal via signal_context once RiskManager wires).
-      m_logger.Info("Slot_BI", buy_signal ? "entry_pyramid_buy" : "entry_pyramid_sell",
-                    MAGIC_B,
-                    StringFormat("parent_ticket=%I64u parent_profit_pips=%.1f "
-                                 "dir=%s lot=%.2f bi_entry=%.5f sl=%.5f "
-                                 "sl_distance_pip=%.1f %s comment=%s %s",
-                                 parent_ticket, profit_pips,
-                                 (buy_signal ? "BUY" : "SELL"),
-                                 lot, bi_entry, sl_price,
-                                 sl_distance_pip, sl_inherit_tag, comment, g4_tag));
+      // IMPL-FIX-011 R-13 (d): entry_pyramid_buy/sell Info emit suppressed
+      // (per-tick stub spam bloated Q1 canary log to 1.41 GB / ~30 GB
+      // extrapolated over 5-yr; restore when RiskManager::OpenOrder wires
+      // real send + this becomes one-shot post-fill milestone). IMPL-FIX-008 R-10.
+      // m_logger.Info("Slot_BI", buy_signal ? "entry_pyramid_buy" : "entry_pyramid_sell",
+      //               MAGIC_B,
+      //               StringFormat("parent_ticket=%I64u parent_profit_pips=%.1f "
+      //                            "dir=%s lot=%.2f bi_entry=%.5f sl=%.5f "
+      //                            "sl_distance_pip=%.1f %s comment=%s %s",
+      //                            parent_ticket, profit_pips,
+      //                            (buy_signal ? "BUY" : "SELL"),
+      //                            lot, bi_entry, sl_price,
+      //                            sl_distance_pip, sl_inherit_tag, comment, g4_tag));
      }
 
    //--- 4. ManageExits() โ€” exit pass; runs in BOTH RUNNING and HALTED (ADR-010)
