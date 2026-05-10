@@ -4,6 +4,81 @@
 
 ## Last completed action
 
+**🟢 IMPL-FIX-011 STEP 2 CLOSED 2026-05-10 — `simulation/scripts/journal_diff.py` + Q1 paired divergence artifact landed; (e) eligibility-predicate divergence empirically confirmed dominant axis (10/10 top-10 rows); (a) anti-pyramid FALSIFIED for Q1; verdict dispersed (escalate to upper-bound Step 3 scope = 8 hr / 3 sessions).**
+
+**Trigger:** User invoked `/impl-task IMPL-FIX-011` after Last completed action = "STEP 1 CLOSED". Phase 1 checks: Phase Gate Override 2026-05-03 already active (P4 work proceeding under approved override; FIX-011 spans P3 slots + P4 helpers but is recovery task outside normal phase-gate flow per fix-round-10 precedent); Operator Action Registry empty; Deferred-AC Registry no expired rows (all Active rows expire ≥2026-05-17 vs today 2026-05-10). Size detected: M `[ea]` for Step 2 substep (single Python script + 1 MD report); Phase 2B 3-Step process.
+
+**Surface:** Step 2 produces ranked divergence + hypothesis classification artifact for Step 3 patch sequencing. `journal_diff.py` parses rewrite TradeJournal JSONL + legacy MT5 Tester Print stream (UTF-8 decoded), groups by (slot_id, event_type, h4_bucket), emits Markdown report + JSON sidecar. Slot resolution from legacy log uses 4 mechanisms (priority order: `OrderOpen:<SLOT>` Print prefix → comment-shape Print → `Close good potsition:` comment → `* Close by` phrase pattern) so EVERY strategy-side open/close gets attributed (vs Step 1 artifact's grep-only count which under-counted at 8 because parsed only `OrderOpen:` prefix).
+
+**Artifacts created (committable):**
+- `simulation/scripts/journal_diff.py` (NEW; ~580 LOC; Python stdlib only — `json`, `re`, `argparse`, `pathlib`, `datetime`, `collections`)
+- `docs/state/_session-handoff/IMPL-FIX-011-divergence-20260510.md` (NEW; ~280 LOC: § 0 engineer synthesis prepended + auto-generated § 1-§ 8 from script — top-5 ranking + hypothesis rollup + decision-gate verdict + Step 3 sequencing proposal + risk callouts)
+- `docs/state/_session-handoff/IMPL-FIX-011-divergence-20260510.json` (NEW; sidecar for downstream `jq` consumers — `divergence_rows` array with hypothesis label + rationale per row)
+
+**Key empirical findings (more detail in artifact § 0):**
+
+| Metric | Rewrite | Legacy | Note |
+|---|---|---|---|
+| Total events parsed | 18 (14 entry + 4 exit) | 24 (13 entry + 11 exit) | both 0 unresolved |
+| Entry slot mix | S×6 G×2 G2×2 C×1 M×1 T×1 Q×1 | T×4 M×2 D×1 K×1 C×1 H×1 B×1 BR×1 P×1 | only C/M/T overlap; 7 vs 9 distinct slots |
+| Top-1 divergence | S/entry +6 (rewrite-only) | — | (e) eligibility — S should chain off L/K close per CodeWiki §3.S |
+| Top-2 divergence | T/entry −3 (under-fires) | T×4 (PF/H buy/sell trigger varieties) | (e) eligibility — rewrite hits 1 of 4 trigger types |
+| Max intra-bucket count | 1 across all top-10 rows | 1 across all top-10 rows | **(a) anti-pyramid FALSIFIED for Q1** |
+| Distinct entry slots with \|Δ\| ≥ 1 | — | — | **12 of 21** (B/BR/D/G/G2/H/K/M/P/Q/S/T) → dispersed |
+
+**Headline:** hypothesis **(e) per-slot eligibility-predicate divergence is dominant axis** (10/10 of top-10 divergence rows classify as (e); zero rows classify as (a) anti-pyramid because `max_intra_bucket_rewrite ≤ 1` for every slot/event in top-10 → no slot multi-fills inside any single H4 bar in rewrite). Step 1 artifact's "scope-revision flag for Step 2" prediction is empirically validated. **Hypothesis (a) FALSIFIED for Q1 2021** — keep IMPL-FIX-007 v2 / IMPL-FIX-008 latches as-is for G/G2/S; do NOT bulk-add latches to remaining 18 slots based on Q1 evidence (would suppress legitimate trades). Revisit only if Step 5 5-yr Bucket A surfaces a slot with max-intra-bucket > 2.
+
+**Top-5 divergence sources (S-AC #2 requirement):**
+
+| Rank | Slot | Event | Δ | Class | Step 3 action |
+|---|---|---|---|---|---|
+| 1 | S | entry | +6 | (e) rewrite-only | `slots/Slot_S.mqh::Evaluate` parent-close gate per CodeWiki §3.S — S should chain off L/K close, not fire alone |
+| 2 | T | entry | −3 | (e) under-fires | `slots/Slot_T.mqh::Evaluate` — rewrite hits 1 of 4 legacy trigger varieties (rewrite "T,MA,N,1,SL" only; legacy "T,PF,B" / "T,PF,A" / "T,H,B" / "T,H,A"); add PF (PriceFractal) + H (Hull) sub-paths |
+| 3 | G | entry | +2 | (e) rewrite-only | `slots/Slot_G.mqh::Evaluate` — F1-trigger predicate too permissive vs CodeWiki §3.G |
+| 4 | G2 | entry | +2 | (e) rewrite-only | `slots/Slot_G2.mqh::Evaluate` — should be silent when G silent (legacy convention); audit predicate gating |
+| 5 | T | exit | −2 | (e) companion | resolves with row 2 fix |
+
+**Decision gate (per task-block Step 2 §):** 12 of 21 active slots show |Δ| ≥ 1 → **dispersed (escalate)** scope estimate to upper bound 8 hr / 3 sessions per task-block guidance ("if dispersed across 8+ slots → escalate"). Step 3 sequencing proposed in artifact § 0.5: Session A = (d) `entry_*` Print bulk-suppress across 21 slots [mandatory pre-Step 5 — 5-yr would emit ~30 GB log breaking iconv decode budget] + (e) Slot S parent-close gate + (e) Slot T predicate alignment; Session B = G/G2/D eligibility predicates; Session C = long-tail (B/BR/H/K/M/P) + Step 4 re-canary at ≥75% divergence reduction gate.
+
+**Risk callouts for Step 3 (artifact § 0.6):**
+- **R-A: false-positive eligibility fixes** — if engineer mis-reads a CodeWiki spec and tightens an eligibility predicate that was correctly loose in legacy, Step 4 re-canary will show worse divergence. Mitigation: Step 3 ALWAYS cite CodeWiki §X.Y in banner; Step 4 re-canary BEFORE the next session ends.
+- **R-B: scope creep** — 12 diverging slots × ~30 LOC ≈ 360 LOC across slots/. ADR-002 + ADR-005 invariants preserved; per-slot edit cluster ≤ 30 LOC absent justification (per S-AC #3).
+- **R-C: under-coverage at 5-yr** — Q1 sampled only 7 of 21 rewrite slots + 9 of 21 legacy slots. 8 slots silent on both legs may surface drift only at 5-yr scale. Budget +1 contingency session.
+
+**State propagation (3-file rule per CLAUDE.md §6):**
+- `docs/state/impl-plan.md` — TL;DR header rewritten (`STEP 1 CLOSED` → `STEP 2 CLOSED`); IMPL-FIX-011 S-AC #2 `[x]` with detailed inline closure note (Top-5 + (a) FALSIFIED + dispersed verdict); Status field rewritten (`STEP 1 CLOSED 2026-05-10` → `STEP 2 CLOSED 2026-05-10`); R-13 narrative refined (dominant axis = (e); (a) FALSIFIED for Q1; defer bulk anti-pyramid latches); Next Best Action checkbox flipped (Step 2 ☑ + new ☐ Step 3 Session A entry); Mid-Phase Audit Log row appended (4-paragraph closure narrative).
+- `docs/state/overview.md` — row 19 status string appended with **+ IMPL-FIX-011 STEP 2 CLOSED 2026-05-10** paragraph (verdict + Top-5 + Step 3 sequencing).
+- `docs/state/current_handoff.md` — this section + prior action shift.
+
+**Phase 5 mechanical gates verified (subset relevant to non-IMPL-NNN closure):**
+- Gate #1 (forbidden-pattern grep on `impl-plan.md`): 0 hits ✅
+- Gate #6 (single `## End of Plan` marker): 1 ✅
+- Gate #11 (working-tree clean post-Edit-batch): pending commit (final step of this session)
+
+Plan Staleness Sentinel unchanged at 0 IMPL-NNN closures since R25 (FIX tasks + Step closures don't increment per workflow.md Gate #4 + fix-round-10 precedent).
+
+**Files modified this session:**
+- `simulation/scripts/journal_diff.py` (NEW; ~580 LOC)
+- `docs/state/_session-handoff/IMPL-FIX-011-divergence-20260510.md` (NEW; ~280 LOC)
+- `docs/state/_session-handoff/IMPL-FIX-011-divergence-20260510.json` (NEW; sidecar)
+- `docs/state/impl-plan.md` (TL;DR + S-AC #2 [x] + Status + R-13 narrative + Next Best Action + Mid-Phase Audit Log row)
+- `docs/state/overview.md` (row 19 status string append)
+- `docs/state/current_handoff.md` (this section + prior action shift)
+- `MQL5/Experts/PhoenicisNex/` — none (Step 2 has no source-tree edits; the patches land in Step 3 onward)
+
+**Next session — `/impl-task IMPL-FIX-011` (Step 3 Session A):**
+1. Bulk-suppress `entry_*` Prints across all 21 slot files mirror IMPL-FIX-008 R-10 stub-suppress pattern (4-line banner cite IMPL-FIX-011 + hypothesis (d) + per-bar-per-direction emit-cadence rationale). MANDATORY pre-Step 5 — 5-yr Bucket A retry would emit ~30 GB log.
+2. `slots/Slot_S.mqh::Evaluate` add parent-close gate: only fire when L or K had close event in current/recent H4 bar. Banner: `// IMPL-FIX-011 R-13 hypothesis (e) — Slot S parent-close gate per CodeWiki §3.S`.
+3. `slots/Slot_T.mqh::Evaluate` predicate alignment vs legacy 4 trigger varieties (PF buy/sell + H buy/sell). Spec source: `MQL5/Experts/PhoenicisN2.10_stable.mq5::BusinessLogic_T`. Banner: `// IMPL-FIX-011 R-13 hypothesis (e) — Slot T trigger varieties per CodeWiki §3.T + legacy BusinessLogic_T`.
+4. G1 incremental per cluster ≤ 30 LOC per file; no batched-then-compile.
+5. Step 4 re-canary at end of session if scope allows (re-run `python simulation/scripts/journal_diff.py --rewrite <new-jsonl> --legacy <unchanged-Step-1-legacy-txt> --out <new-md>` → check ≥75% per-slot divergence reduction on top-3 slots).
+
+> **Scope-out for Step 3 Session A:** algorithmic indicator changes (RSI/MACD/ADX thresholds), risk formula (FIX-006 done), force-clear thresholds (R-4 separate), CSlotBase contract (ADR-002 stable), performance (FIX-009 done), other slots (B/BR/D/G/G2/H/K/M/P deferred to Sessions B/C).
+
+---
+
+## Prior action (kept for context)
+
 **🟢 IMPL-FIX-011 STEP 1 CLOSED 2026-05-10 — paired Q1 canary executed; rewrite vs legacy slot-set is nearly disjoint; hypothesis (d) `entry_*` per-tick spam empirically confirmed; NEW hypothesis (e) "per-slot eligibility-predicate divergence" surfaced.**
 
 **Trigger:** User invoked `/impl-task IMPL-FIX-011` after Last completed action = "task block AUTHORED". Phase 1 checks: Phase Gate Override 2026-05-03 already active (P4 work proceeding under approved override); Operator Action Registry empty; Deferred-AC Registry no expired rows (all Active rows expire ≥2026-05-17 vs today 2026-05-10). Size detected: L-XL `[ea]`, pre-decomposed into 5 Steps; current_handoff line 43 nominated **Step 1 (paired Q1 canary)** for this session.
