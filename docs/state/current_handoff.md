@@ -4,6 +4,22 @@
 
 ## Last completed action
 
+**🔴 IMPL-FIX-006 BUCKET A RETRY 2026-05-10 — STILL HALTED day-1 ($411.43); IMPL-FIX-007 task block authored (Slot_G2 + Slot_S anti-pyramid race)**
+
+- **Run setup:** `#define DISABLE_G4_FIXES` build → G1 PASS → `terminal64.exe /config:simulation/headless-tests/regression_5yr_no_g4.ini` headless launch.
+- **Outcome:** Tester halted at simulated 2021.01.04 16:56:00 (5 H4 bars, 68,584 ticks, 1m 46s test thread / 2m 13s process). Final balance **$411.43** (was $512.80 in run #1; somehow worse). Drift ≈ 100% — far exceeds NFR-1.1 ≤ 25% target.
+- **Root cause confirmed:** **Slot_G2 OrderSend / OnTradeTransaction race**. 76/80 `[ev=order_sent]` events are Slot_G2 in same direction at near-identical prices (10 fills in 4 seconds at 2021-01-04 16:00:00..04). `_HasActiveG2Order()` calls `port.GetTicketsForSlot(MAGIC_G, "G2,", ...)`; PortfolioState is populated via `OnTradeTransaction` async to OnTick — sub-second consecutive ticks evade the gate.
+- **IMPL-FIX-006 dimensional fix VERIFIED working** (0 `[ev=clamp_applied]` events; lot=0.10 each — was 2.90 cap pre-fix). The dimensional fix is **necessary but not sufficient**.
+- **Default build restored** — `#define DISABLE_G4_FIXES` removed; G1 PASS clean (`Result: 0 errors, 0 warnings, 4199 ms`); `grep -c "DISABLE_G4_FIXES"` returns 0 ✅.
+- **IMPL-FIX-007 task block AUTHORED in `docs/state/impl-plan.md`** — M-sized `[ea]` task: synchronous in-memory pending-fill latch in Slot_G2 + Slot_S (set on OrderSend success; reset by OnTradeTransaction confirmation OR timeout). Phase=P3. Deps: IMPL-FIX-006 ✅. Risk: medium (well-scoped 2-3 file change).
+- **Registry impact:** IMPL-FIX-006 row P4 closure note appended with Bucket A run #2 outcome + "BLOCKED on IMPL-FIX-007" tag. IMPL-062 + IMPL-063 numeric drain bundles also blocked transitively. R-8 Open Risk closure remains pending.
+- **Evidence:** `docs/state/_session-handoff/IMPL-FIX-006-bucket-a-attempt-20260510.md`.
+- **Next suggested task:** `/impl-task IMPL-FIX-007` — implement synchronous pending-fill latch in Slot_G2 + Slot_S; G1 + G2 smoke verify; then re-attempt Bucket A drain.
+
+---
+
+## Prior action (kept for context)
+
 **✅ IMPL-FIX-004 RESOLVED 2026-05-10 — Comment-history-exemptions manifest populated with 111 banner sites (Gate #9d sweep verified clean)**
 
 - **Files changed:**
