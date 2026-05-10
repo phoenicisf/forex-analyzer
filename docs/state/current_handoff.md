@@ -4,6 +4,23 @@
 
 ## Last completed action
 
+**✅ IMPL-FIX-004 RESOLVED 2026-05-10 — Comment-history-exemptions manifest populated with 111 banner sites (Gate #9d sweep verified clean)**
+
+- **Files changed:**
+  - `docs/state/comment-history-exemptions.md` — manifest rebuilt: 111 rows in `<file>:<line>:<task-id>:<justification>` format embedded in fenced ` ```text ` block (preserves Markdown header but uses fenced block to prevent prose lines from poisoning Gate #9d's `awk -F:` extraction). Added population script + population-history table.
+- **Sweep scope:** `grep -rnE "IMPL-(006|007|018|042|043|053)\b" MQL5/Experts/PhoenicisNex/ simulation/headless-tests/` — same 6 closed-task IDs cited in fix-round-19 §19.2 (the original ~86 site count grew to 111 reflecting ~25 IMPL-053+ closure additions).
+- **Verification gates:**
+  - Gate #9d post-condition `comm -23 <(sweep) <(manifest)` returns **0 unmatched** ✅
+  - Gate #9 clause (h) verb-form forward-pointer sweep returns **0 hits** at population time ✅ — confirms ALL 111 surviving sites are banner-history exempt (no stale forward-pointers)
+- **Registry impact:** P5 row IMPL-FIX-004 strikethrough-resolved in place (mirrors IMPL-067 closure pattern); Active count 48 → 50 (P5 −1 net + P4 +2 from IMPL-FIX-006 + IMPL-063 paired bundles). Resolved count 6 → 7.
+- **Next suggested task:**
+  1. **Operator session** — paired-bundle 5-yr regression drain (IMPL-FIX-006 + IMPL-062 + IMPL-063, ~60-120 min wall-clock)
+  2. **OR** `/impl-review all` R09 — cumulative attack surface (IMPL-FIX-006 dimensional fix touched 17 slots' risk math; recommended pre-MVP)
+
+---
+
+## Prior action (kept for context)
+
 **✅ IMPL-063 STRUCTURAL CLOSED 2026-05-10 — Bucket B regression .ini + report skeleton (paired-bundle with IMPL-062 + IMPL-FIX-006 numeric drain)**
 
 - **Files added:**
