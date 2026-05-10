@@ -23,6 +23,7 @@
 #include <Generic\HashMap.mqh>
 #include "../domain/EnumTypes.mqh"
 #include "../domain/SlotState.mqh"
+#include "../helpers/CommentParser.mqh"
 #include "Logger.mqh"
 
 // CommentParser is not included here เนโฌโ€ consumed by GetTicketsForSlot
@@ -293,7 +294,7 @@ void CPortfolioState::RegisterAll()
 //+------------------------------------------------------------------+
 void CPortfolioState::Refresh()
   {
-   // Step 1 เนโฌโ€ Reset aggregates per ADR-005 เธขเธ Refresh contract step 1
+   // Step 1 - Reset aggregates per ADR-005 Refresh contract step 1
    for(int i = 0; i < m_magic_count; i++)
      {
       SlotState *s = NULL;
@@ -302,38 +303,70 @@ void CPortfolioState::Refresh()
          s.buy_count     = 0;
          s.sell_count    = 0;
          s.total_lots    = 0.0;
-         s.last_open_lot = 0.0;   // Finding 02.3 เนโฌโ€ reset; re-populated by step 2 broker loop
+         s.last_open_lot = 0.0;   // Finding 02.3 - reset; re-populated by step 2 broker loop
          s.total_profit  = 0.0;
          ArrayResize(s.ticket_ids, 0);
          ArrayResize(s.ticket_max_profit_pip, 0);
         }
      }
 
-   // TODO IMPL-007-refresh: full PositionsTotal() loop per ADR-005 เธขเธ Refresh contract step 2
-   //   Deferred: requires entry .mq5 (IMPL-018+) + orchestrator wire-up (Orchestrator wiring path (core/Orchestrator.mqh))
+   // Step 2 - IMPL-FIX-007: PositionsTotal() loop per ADR-005 Refresh
+   //   contract step 2. Without this body, GetTicketsForSlot() always
+   //   returned 0 and slot anti-pyramid gates (_HasActiveG2Order /
+   //   _HasActiveSOrder / _BothParentsInactive) ALL passed unconditionally
+   //   on every tick -> Bucket A run #2 produced 76/80 Slot_G2 fills in 4-sec
+   //   windows (R-8 secondary defect class promoted to root cause).
    //
-   //   Implementation sketch (to land at Orchestrator wiring path (core/Orchestrator.mqh)):
-   //   for(int i = 0; i < PositionsTotal(); i++) {
-   //      ulong ticket = PositionGetTicket(i);
-   //      if(!PositionSelectByTicket(ticket)) continue;
-   //      int magic = (int)PositionGetInteger(POSITION_MAGIC);
-   //      SlotState *s = NULL;
-   //      if(!m_map.TryGetValue(magic, s) || s == NULL) continue;
-   //      ENUM_POSITION_TYPE ptype = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
-   //      if(ptype == POSITION_TYPE_BUY) s.buy_count++;
-   //      else s.sell_count++;
-   //      double vol = PositionGetDouble(POSITION_VOLUME);
-   //      datetime open_t = (datetime)PositionGetInteger(POSITION_TIME);
-   //      s.total_lots   += vol;
-   //      s.total_profit += PositionGetDouble(POSITION_PROFIT);
-   //      // Finding 02.3 เนโฌโ€ last_open_lot = lot of latest-opened position in pool
-   //      if(open_t >= s.last_open_date) { s.last_open_date = open_t; s.last_open_lot = vol; }
-   //      int n = ArraySize(s.ticket_ids);
-   //      ArrayResize(s.ticket_ids, n + 1);
-   //      s.ticket_ids[n] = ticket;
-   //      ArrayResize(s.ticket_max_profit_pip, n + 1);
-   //      s.ticket_max_profit_pip[n] = 0.0; // trailing tracker init
-   //   }
+   //   Per-position cost: PositionGetTicket + PositionSelectByTicket + 5x
+   //   PositionGet* reads (~us each). 21 magics x few open positions per
+   //   slot in steady state -> bounded; foreign-EA positions filtered via
+   //   IsKnownMagic (silent membership test, no log spam - Finding 09.1).
+   int total = PositionsTotal();
+   for(int i = 0; i < total; i++)
+     {
+      ulong ticket = PositionGetTicket(i);
+      if(ticket == 0 || !PositionSelectByTicket(ticket)) continue;
+
+      // Own-symbol filter (NFR-5.3 boundary at portfolio surface)
+      string sym = PositionGetString(POSITION_SYMBOL);
+      if(sym != _Symbol) continue;
+
+      int magic = (int)PositionGetInteger(POSITION_MAGIC);
+
+      // Silent foreign-magic skip (manual closes magic=0, other-EA magics
+      //   outside [200..219]) - IsKnownMagic does NOT emit Logger.Warn,
+      //   distinct from GetByMagic which does (per Finding 09.1).
+      if(!IsKnownMagic(magic)) continue;
+
+      SlotState *s = NULL;
+      if(!m_map.TryGetValue(magic, s) || s == NULL) continue;
+
+      ENUM_POSITION_TYPE ptype  = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+      double             vol    = PositionGetDouble(POSITION_VOLUME);
+      datetime           open_t = (datetime)PositionGetInteger(POSITION_TIME);
+
+      if(ptype == POSITION_TYPE_BUY)
+         s.buy_count++;
+      else
+         s.sell_count++;
+
+      s.total_lots   += vol;
+      s.total_profit += PositionGetDouble(POSITION_PROFIT);
+
+      // Finding 02.3 - last_open_lot tracks lot of MOST-RECENTLY-OPENED
+      //   position; J/I/BI parent-anchored lot formulas read this field.
+      if(open_t >= s.last_open_date)
+        {
+         s.last_open_date = open_t;
+         s.last_open_lot  = vol;
+        }
+
+      int n = ArraySize(s.ticket_ids);
+      ArrayResize(s.ticket_ids,            n + 1);
+      ArrayResize(s.ticket_max_profit_pip, n + 1);
+      s.ticket_ids[n]            = ticket;
+      s.ticket_max_profit_pip[n] = 0.0;  // BR-5.2 trailing tracker init
+     }
   }
 
 //+------------------------------------------------------------------+
@@ -376,13 +409,26 @@ bool CPortfolioState::IsKnownMagic(int magic)
 int CPortfolioState::GetTicketsForSlot(int magic, string slot_prefix,
                                        ulong &out_tickets[]) const
   {
-   // TODO IMPL-007-getticketsforslot: filter via CommentParser per BR-1.2
-   //   Example body (to land at Orchestrator wiring path (core/Orchestrator.mqh)):
-   //   SlotState *s = NULL;
-   //   if(!m_map.TryGetValue(magic, s) || s == NULL) return 0;
-   //   CCommentParser parser;
-   //   return parser.FilterTicketsByPrefix(s.ticket_ids, slot_prefix, out_tickets);
-   return 0;
+   // IMPL-FIX-007: filter SlotState.ticket_ids[] (populated by Refresh
+   //   step 2) by comment prefix via CommentParser.FilterTicketsByPrefix.
+   //   Cost: 1 hashmap lookup + N x (PositionSelectByTicket + read comment +
+   //   ExtractSlotPrefix) where N = active tickets in this slot pool.
+   //   Hot path - bounded by per-slot fill count (typically <=10).
+   //
+   //   ADR-012 m_map is mutable-friendly via TryGetValue contract; method
+   //   declared const because no logical mutation occurs (CHashMap iterator
+   //   is read-only). MQL5 const propagation through Generic templates is
+   //   shallow - cast away to satisfy compiler.
+   ArrayResize(out_tickets, 0);
+   if(StringLen(slot_prefix) == 0) return 0;
+
+   CHashMap<int, SlotState *> *mut = (CHashMap<int, SlotState *> *)&m_map;
+   SlotState *s = NULL;
+   if(!mut.TryGetValue(magic, s) || s == NULL) return 0;
+   if(ArraySize(s.ticket_ids) == 0) return 0;
+
+   CCommentParser parser;
+   return parser.FilterTicketsByPrefix(s.ticket_ids, slot_prefix, out_tickets);
   }
 
 //+------------------------------------------------------------------+

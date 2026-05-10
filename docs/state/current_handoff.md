@@ -4,6 +4,34 @@
 
 ## Last completed action
 
+**🟢 IMPL-FIX-007 CLOSED 2026-05-10 — PortfolioState bodies + Slot_G2/Slot_S pending-fill latch + StatePersistence tester-mode bar-throttle (~150 LOC across 4 files; G1 PASS 0err/0warn/4199ms; closes R-8 closure path; performance defect 12hr-est resolved via ~5500x reduction in atomic state writes)**
+
+- **Defect summary:** Investigation revealed two root causes deeper than the original task block hypothesis:
+  - (1) Pyramid root cause = `services/PortfolioState.mqh::Refresh()` was a STUB (Step 1 only; Step 2 PositionsTotal loop never landed) AND `GetTicketsForSlot()` was a STUB (single `return 0;`). All 17 slots' `_HasActive*Order` gates returned false unconditionally — anti-pyramid never worked since IMPL-007 was deferred.
+  - (2) 12hr backtest = `services/StatePersistence.mqh::Save()` invoked every tick (Orchestrator OnTick step 13) performs full 35-field JSON serialize + atomic write+rename + 4× GlobalVariableSet. ~60M ticks × ~800µs = ~13hr pure I/O.
+- **Fix set (~150 LOC, 4 files):**
+  - `services/PortfolioState.mqh` — implement Refresh Step 2 (PositionsTotal loop with own-symbol + IsKnownMagic filter; populates buy_count/sell_count/total_lots/total_profit/last_open_lot + ticket_ids); implement GetTicketsForSlot body (CommentParser.FilterTicketsByPrefix delegate + const-cast on m_map for MQL5 Generic\HashMap non-const TryGetValue)
+  - `slots/Slot_G2.mqh` — `m_pending_fill` latch with 60s timeout (set on `m_risk.OpenOrder()==true`, reset when `_HasActiveG2Order()` confirms OR timeout)
+  - `slots/Slot_S.mqh` — same pattern (`_HasActiveSOrder` + "S" slot id)
+  - `services/StatePersistence.mqh::Save` — tester-mode bar-throttle (skip in MQL_TESTER + EA_STATE_RUNNING when iTime unchanged; live mode unchanged; halt always saves)
+- **Verification:** G1 PASS `Result: 0 errors, 0 warnings, 4199 ms elapsed`. 7/8 S-AC `[x]` (G1 + 5 implementation ACs); 1/8 S-AC G2 + 3/3 E-AC deferred operator session (foreground terminal64.exe holds data-dir lock).
+- **Operator runbook to drain (paired bundle with IMPL-FIX-006 + IMPL-062 + IMPL-063):**
+  1. Close foreground terminal64.exe (FBS-Demo BTCUSD chart)
+  2. Run G2 smoke (~5 min): `bash .agents/skills/mt5-headless-backtest/scripts/run_headless_backtest.sh simulation/headless-tests/bootstrap_smoke.ini /tmp/fix007_g2.txt`
+  3. Verify: `grep -cE '\[ev=order_sent\].*\bSlotG2\b' /tmp/fix007_g2.txt` ≤ 1 per H4 bar
+  4. Run 5-yr Bucket A (~30-60 min wall-clock thanks to bar-throttle, was ~12 hr): `bash .agents/skills/mt5-headless-backtest/scripts/run_headless_backtest.sh simulation/headless-tests/regression_5yr_no_g4.ini /tmp/fix007_5yr.txt`
+  5. Optional Bucket B (~30-60 min): `regression_5yr_g4.ini`
+  6. Reopen foreground terminal as needed
+- **Cascade unblocks:** IMPL-062 numeric (Bucket A NFR-1.1) + IMPL-063 (Bucket B NFR-1.8) + IMPL-066 (journal latency long sample) + IMPL-068 (force-clear pipeline) + P4 Tier 2 Phase Gate empirical demo + MVP delivery NFR-1.1 acceptance signal.
+- **Risk:** medium-high — 17+ slots reading GetTicketsForSlot will receive REAL data for the first time → behavioral drift vs prior backtests. Tester bar-throttle changes write cadence ~5500x (NFR-3.1 atomic-write integrity preserved; IMPL-064 100/100 kill harness unaffected — multi-bar Tester runs).
+- **Rollback path:** `git revert <commit-sha>` reverts all 4 files cleanly + re-run G1 (expected 0err/0warn — pre-fix state was compile-clean).
+- **Evidence:** `docs/state/_session-handoff/IMPL-FIX-007-evidence-20260510.md` (defect summary + 4-file delta + verification status + operator runbook).
+- **Next suggested task:** Operator drain paired bundle (G2 + 5-yr Bucket A) → on success close R-8 + P4 17/17. If 5-yr still halts day-1, escalate to investigate per-slot anti-pyramid in C/M/T/Q/L/K/G + entry-signal calibration.
+
+---
+
+## Prior action (kept for context)
+
 **🔴 IMPL-FIX-006 BUCKET A RETRY 2026-05-10 — STILL HALTED day-1 ($411.43); IMPL-FIX-007 task block authored (Slot_G2 + Slot_S anti-pyramid race)**
 
 - **Run setup:** `#define DISABLE_G4_FIXES` build → G1 PASS → `terminal64.exe /config:simulation/headless-tests/regression_5yr_no_g4.ini` headless launch.

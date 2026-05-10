@@ -108,9 +108,18 @@ private:
       return 0;      // inside cloud โ€” no clear trend
      }
 
+   //--- IMPL-FIX-007: synchronous in-memory pending-fill latch.
+   //    Set after RiskManager.OpenOrder() returns true; reset when
+   //    PortfolioState reflects the new ticket OR after 60s timeout.
+   //    Covers OrderSend->next-OnTick race (PortfolioState.Refresh at
+   //    step 7 cannot see ticket created at step 11 of the SAME tick).
+   bool              m_pending_fill;
+   datetime          m_pending_set_time;
+   static const int  PENDING_FILL_TIMEOUT_SEC; // = 60
+
 public:
    //--- Constructor / Destructor
-   CSlotS() {}
+   CSlotS() : m_pending_fill(false), m_pending_set_time(0) {}
    virtual          ~CSlotS() {}
 
    //=================================================================
@@ -152,6 +161,11 @@ public:
   };
 
 //+------------------------------------------------------------------+
+//| Static const definition (MQL5 requires out-of-class definition)   |
+//+------------------------------------------------------------------+
+const int CSlotS::PENDING_FILL_TIMEOUT_SEC = 60;
+
+//+------------------------------------------------------------------+
 //| Evaluate โ€” Slot S entry pass (CodeWiki ยง3.S MVP)                  |
 //|                                                                   |
 //| Entry conditions (5 of N for M-size MVP):                         |
@@ -179,6 +193,28 @@ void CSlotS::Evaluate(const MarketContext &ctx, CPortfolioState &port)
 
    //--- Condition 2 (own-no-active guard): S must have no open "S," orders
    //    // CodeWiki ยง3.S โ€” single active S position allowed
+   //--- IMPL-FIX-007 anti-pyramid latch (same-tick race protection)
+   //    Reset when PortfolioState reflects fill OR after timeout.
+   if(m_pending_fill)
+     {
+      if(_HasActiveSOrder(port))
+        {
+         m_pending_fill     = false;
+         m_pending_set_time = 0;
+        }
+      else if(TimeCurrent() - m_pending_set_time > PENDING_FILL_TIMEOUT_SEC)
+        {
+         m_pending_fill     = false;
+         m_pending_set_time = 0;
+         m_logger.Warn("SlotS", "pending_fill_timeout", MAGIC_S,
+                       "60s elapsed without PortfolioState reflection - clearing latch");
+        }
+      else
+        {
+         return;  // still pending - skip until reflected or timeout
+        }
+     }
+
    if(_HasActiveSOrder(port)) return;
 
    //--- Condition 3: ADX volatility gate
@@ -246,7 +282,12 @@ void CSlotS::Evaluate(const MarketContext &ctx, CPortfolioState &port)
                               ctx.adx_h4.adx, ctx.wpr_h4.wpr, trend_dir));
 
    //--- IMPL-FIX-003: submit broker order via RiskManager.OpenOrder wrapper (ea.md mandate)
-   m_risk.OpenOrder(req, "S");
+   //--- IMPL-FIX-007: arm pending-fill latch on success to block same-tick re-entry
+   if(m_risk.OpenOrder(req, "S"))
+     {
+      m_pending_fill     = true;
+      m_pending_set_time = TimeCurrent();
+     }
 
    //--- CrossSlotCoordinator stub
    if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (Orchestrator wiring path (core/Orchestrator.mqh)) */)

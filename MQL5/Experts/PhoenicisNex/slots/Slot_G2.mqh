@@ -60,9 +60,18 @@ private:
    double            _CloudHigh(const MarketContext &ctx) const;
    double            _CloudLow(const MarketContext &ctx) const;
 
+   //--- IMPL-FIX-007: synchronous in-memory pending-fill latch.
+   //    Set after RiskManager.OpenOrder() returns true; reset when
+   //    PortfolioState reflects the new ticket OR after 60s timeout.
+   //    Covers OrderSend->next-OnTick race (PortfolioState.Refresh at
+   //    step 7 cannot see ticket created at step 11 of the SAME tick).
+   bool              m_pending_fill;
+   datetime          m_pending_set_time;
+   static const int  PENDING_FILL_TIMEOUT_SEC; // = 60
+
 public:
    //--- Constructor / Destructor
-   CSlotG2() {}
+   CSlotG2() : m_pending_fill(false), m_pending_set_time(0) {}
    virtual ~CSlotG2() {}
 
    //--- 6-method behavior contract (ADR-002; slot-abstraction-contract.yaml)
@@ -118,6 +127,11 @@ bool CSlotG2::_IsPriceBelowCloud(const MarketContext &ctx) const
   {
    return ctx.ask < _CloudLow(ctx);
   }
+
+//+------------------------------------------------------------------+
+//| Static const definition (MQL5 requires out-of-class definition)   |
+//+------------------------------------------------------------------+
+const int CSlotG2::PENDING_FILL_TIMEOUT_SEC = 60;
 
 //+------------------------------------------------------------------+
 //| _HasActiveG2Order โ€” check for open G2 orders via PortfolioState   |
@@ -181,6 +195,28 @@ void CSlotG2::Evaluate(const MarketContext &ctx, CPortfolioState &port)
 
    //--- Guard: service pointers must be wired (Composition Root via Init)
    if(m_risk == NULL || m_logger == NULL) return;
+
+   //--- IMPL-FIX-007 anti-pyramid latch (same-tick race protection)
+   //    Reset when PortfolioState reflects fill OR after timeout.
+   if(m_pending_fill)
+     {
+      if(_HasActiveG2Order(port))
+        {
+         m_pending_fill     = false;
+         m_pending_set_time = 0;
+        }
+      else if(TimeCurrent() - m_pending_set_time > PENDING_FILL_TIMEOUT_SEC)
+        {
+         m_pending_fill     = false;
+         m_pending_set_time = 0;
+         m_logger.Warn("SlotG2", "pending_fill_timeout", MAGIC_G,
+                       "60s elapsed without PortfolioState reflection - clearing latch");
+        }
+      else
+        {
+         return;  // still pending - skip until reflected or timeout
+        }
+     }
 
    //--- Condition 1: no active G2 (own "G2," prefix orders)
    if(_HasActiveG2Order(port)) return;
@@ -255,7 +291,12 @@ void CSlotG2::Evaluate(const MarketContext &ctx, CPortfolioState &port)
                               (buySignal ? "BUY" : "SELL"), lot, sl_pips, price, sl_price, comment));
 
    //--- IMPL-FIX-003: submit broker order via RiskManager.OpenOrder wrapper (ea.md mandate)
-   m_risk.OpenOrder(req, "G2");
+   //--- IMPL-FIX-007: arm pending-fill latch on success to block same-tick re-entry
+   if(m_risk.OpenOrder(req, "G2"))
+     {
+      m_pending_fill     = true;
+      m_pending_set_time = TimeCurrent();
+     }
 
    //--- CrossSlotCoordinator stub
    if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (Orchestrator wiring path (core/Orchestrator.mqh)) */)

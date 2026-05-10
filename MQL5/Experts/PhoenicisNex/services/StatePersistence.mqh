@@ -82,6 +82,14 @@ private:
    //--- Dirty bit (default off — write every tick per baseline)
    bool              m_dirty;
 
+   //--- IMPL-FIX-007: tester-mode bar-throttle for Save() — Strategy
+   //    Tester is closed-loop with no crash recovery scope; saving
+   //    state.json every tick = 60M atomic writes per 5-yr H4 backtest =
+   //    ~13 hours of file I/O. Throttle to once per H4 bar in tester only;
+   //    live mode unchanged (per-tick atomic write preserved).
+   //    Always saves on halt transition (ea_state != RUNNING) and OnDeinit.
+   datetime          m_last_save_bar_time;
+
    //--- Private serialization helpers
    string            SerializeAll(EEAState ea_state, string halt_reason) const;
    bool              ParseAndApply(string content,
@@ -114,7 +122,7 @@ public:
         m_journal_write_failures(0), m_journal_consecutive_failures(0),
         m_journal_last_failure_ts(0), m_journal_last_failure_reason(""),
         m_logger_throttled_count(0), m_logger_last_throttle_event(""),
-        m_dirty(false)
+        m_dirty(false), m_last_save_bar_time(0)
      {
       for(int i = 0; i < PM_COUNT; i++)
         {
@@ -254,6 +262,20 @@ bool CStatePersistence::Load(EEAState &out_ea_state, string &out_halt_reason)
 //+------------------------------------------------------------------+
 bool CStatePersistence::Save(EEAState ea_state, string halt_reason)
   {
+   //--- IMPL-FIX-007: tester-mode bar-throttle. Strategy Tester runs
+   //    Model=4 every-tick produces ~60M ticks per 5-yr backtest;
+   //    saving state.json per tick is the dominant wall-clock cost
+   //    (5-yr backtest 12hr est vs ~40-60min historical baseline).
+   //    Live mode unchanged: every tick still writes for crash recovery.
+   //    Halt transitions ALWAYS save (capture halt reason + final state).
+   if(MQLInfoInteger(MQL_TESTER) && ea_state == EA_STATE_RUNNING)
+     {
+      datetime cur_bar = iTime(_Symbol, _Period, 0);
+      if(cur_bar == m_last_save_bar_time)
+         return true;  // bar unchanged + EA running normally - skip
+      m_last_save_bar_time = cur_bar;
+     }
+
    if(m_portfolio == NULL)
      {
       if(m_logger != NULL)
