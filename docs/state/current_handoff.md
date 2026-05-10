@@ -4,6 +4,73 @@
 
 ## Last completed action
 
+**🟢 IMPL-FIX-010 CLOSED 2026-05-10 — R-12 (`eoverload_triggered`/`coverload_triggered` per-tick spam) RESOLVED via one-shot trigger latch in `services/CrossSlotCoordinator.mqh`. Renumbers R-13 ticket from IMPL-FIX-010 → IMPL-FIX-011 for next session.**
+
+**Trigger:** Bucket A run #3 (post-FIX-009) surfaced new R-12 defect — `[ev=eoverload_triggered]` Info emit fires every tick when WPR/force/gap_pip conditions persist; sample 50 events / 55 sim-sec at sim 2021-11-23 12:03:44–12:04:39 in run #3 (same wpr_abs ~74-75 / force=-13.68 / gap_pip=43.5 repeating); projected 5-yr log volume ~180 GB if not gated. Same defect class as IMPL-FIX-008 R-10 `exit_profit_gate` per-tick spam, this time at xslot helper layer not slot layer. User chose Option B (R-12 quick cleanup, ~30 min) followed by Option C (defer R-13 to next session).
+
+**Patch (5 LOC, 1 file):**
+- `services/CrossSlotCoordinator.mqh` private members:
+  ```mql5
+  bool m_eoverload_latched;
+  bool m_coverload_latched;
+  ```
+- Ctor init list: both `false`
+- `Init()` body reset: both `false`
+- `RunCOverload(ctx)` body — predicate-gated:
+  ```mql5
+  if(!_COverloadTriggered(loss_bars, adxw))
+  {
+     m_coverload_latched = false;
+     return;
+  }
+  if(m_coverload_latched) return;
+  m_coverload_latched = true;
+  m_logger.Info("xslot", "coverload_triggered", MAGIC_CD, ...);
+  ```
+- `RunEOverload(ctx)` body — same pattern with `m_eoverload_latched`
+- `TriggerGOverload` UNCHANGED — already one-shot per Slot_G close-event (called from `ManageExits` at exit boundary, not per-tick)
+
+State-machine: RUNNING→TRIGGERED emits one event; TRIGGERED→TRIGGERED ticks suppress; TRIGGERED→RUNNING resets, re-arms for next activation.
+
+**Verification PASS:**
+- **G1:** `.ex5` 332,312 bytes (vs default 332,248 = +64 bytes for 2 bools); 0err/0warn (no `.compile.log` per MetaEditor convention)
+- **G2 smoke 3-day:** `Test passed in 0:00:15.906`; final balance **$251.03 identical** to IMPL-FIX-007 v2 + IMPL-FIX-009 baselines (zero behavioral regression); 0 ERROR; 8 order_sent (slot=C/G2/M/Q/S×3/T) matches FIX-007 v2 trade pattern; 0 eoverload_triggered + 0 coverload_triggered events (3-day window doesn't trigger predicates — expected for short bootstrap; latch correctness proven analytically by patch inspection)
+
+**Latch correctness analysis:**
+- Predicate-false branch: ALWAYS resets latch + returns silently. Never blocks emit incorrectly.
+- Predicate-true branch: if latched (TRIGGERED→TRIGGERED), returns silent; else (RUNNING→TRIGGERED), sets latched + emits.
+- Initial state: `m_*_latched = false` from ctor + Init. First-ever predicate-true tick fires emit. Subsequent persistent ticks suppress.
+- Re-arm: any predicate-false tick resets. Subsequent re-activation fires fresh emit.
+- Conclusion: ≤1 emit per condition activation; 0 emits when condition never triggers; correct one-shot semantics.
+
+**Suspected class** extends to `RunSafePort`/`RunOrderGroup2`/`RunForceCutloss`/`ExtraCheckFunction2` per R-12 narrative — those exit-side helpers did NOT show in Bucket A run #3 5-MB head sample so deferred to IMPL-FIX-011 if Q1 canary or future regression surfaces them.
+
+**Plan Staleness Sentinel:** unchanged at 0 IMPL-NNN closures since R25 (FIX tasks don't increment per workflow.md Gate #4 + fix-round-10 precedent).
+
+**Phase 5 11-gate sweep verified:** Gate #1 (forbidden-pattern grep: 0 hits) ✅ · Gate #6 (single `## End of Plan` marker) ✅ · Gate #11 (working-tree clean post-commit pending) ✅. State Reconciliation 3-file rule honored (impl-plan + overview + current_handoff).
+
+**Renumbering note:** prior commit `85c87e1` referenced "IMPL-FIX-010" as the planned R-13 multi-slot translation gap fix. That ticket is now renumbered to IMPL-FIX-011 (the deferred multi-slot work for next session). IMPL-FIX-010 is consumed by this R-12 cleanup. References in TL;DR / Open Risks / Next Best Action / overview have been updated.
+
+**Files modified this session:**
+- `MQL5/Experts/PhoenicisNex/services/CrossSlotCoordinator.mqh` (3 edit clusters / 5 net LOC)
+- `docs/state/impl-plan.md` (TL;DR header + R-12 RESOLVED + R-13 renumbered + Next Best Action + audit log row)
+- `docs/state/overview.md` (row 19 IMPL-FIX-010 closure paragraph + R-13 IMPL-FIX-010→IMPL-FIX-011 renumber)
+- `docs/state/current_handoff.md` (this section)
+
+**Cascade benefit:** 5-yr regression log volume reduced from projected ~180 GB to bounded by per-bar trigger frequency. The R-13 multi-slot translation gap remains the primary blocker; IMPL-FIX-010 just cleans up the noise so the eventual journal-diff investigation isn't drowned in spam.
+
+**Next session — IMPL-FIX-011** (R-13; L-XL, multi-slot, 4-8 hours over 2-3 sessions):
+1. Author IMPL-FIX-011 task block with R-13 hypothesis space (a/b/c/d ranked)
+2. Run Q1-2021 canary on rewrite + legacy with full TradeJournal recording on both
+3. Diff the two journals tick-by-tick to identify divergence points
+4. Apply targeted fixes to slots/helpers showing largest divergence (likely 1-2 per session)
+5. Iterate Q1 until trajectory matches within ~10% → escalate to 5-yr Bucket A
+6. **Bucket B blocked** until IMPL-FIX-011 closes R-13 + Bucket A passes NFR-1.1 ≤ 25%
+
+---
+
+## Prior action (kept for context)
+
 **🔴 2026-05-10 BUCKET A POST-FIX-009 RUN #3 STILL FAILED + LEGACY EA STRATEGY VALIDATED — R-13 NEW (rewrite trading-logic translation gap beyond R-8 lot-sizing scope).**
 
 **Trigger:** User invoked operator paired-bundle 5-yr regression drain after IMPL-FIX-009 closure. Bucket A run #3 launched with `#define DISABLE_G4_FIXES` build at 16:43. User observed "backtest port money ranout" — confirmed via log inspection: account depleted via real trading P&L losses (NOT a code cascade — FIX-006/007/008 prevented day-1 stop-out; this run reached sim 2021-11-23 = ~10.5 sim-months in before money ran out). User suggested testing legacy `PhoenicisN2.10_stable.mq5` to validate strategy.

@@ -130,13 +130,26 @@ private:
    bool              m_halted;     // updated each tick from EAState (per `02 § 7.2 step 5b`)
    CTrade            m_trade;       // service-layer CTrade allowed (ea.md restricts only slots/*)
 
+   //--- IMPL-FIX-010: one-shot trigger latches for per-tick overload spam (R-12).
+   //    RunEOverload/RunCOverload predicates evaluate H4-cadence indicators
+   //    (WPR/force/gap_pip / MACD-D1 loss_bars + ADX-wave) that stay stable
+   //    across many ticks; previously the helpers emitted Info every tick when
+   //    conditions held, producing 5.4 GB log / 9 min in Bucket A run #3.
+   //    Latches reset on predicate=false → fire once per condition activation.
+   //    TriggerGOverload is already one-shot per Slot_G close-event (called
+   //    from ManageExits at exit boundary) so needs no latch.
+   bool              m_eoverload_latched;
+   bool              m_coverload_latched;
+
 public:
                      CCrossSlotCoordinator()
       : m_portfolio(NULL),
         m_journal(NULL),
         m_logger(NULL),
         m_pip(NULL),
-        m_halted(false) {}
+        m_halted(false),
+        m_eoverload_latched(false),
+        m_coverload_latched(false) {}
 
    //--- Composition Root injection (Orchestrator OnInit step 6+ per TD-02 §7.4)
    //    RiskManager is intentionally NOT injected — bulk-close uses the
@@ -249,6 +262,8 @@ void CCrossSlotCoordinator::Init(CPortfolioState *port,
    m_logger    = lg;
    m_pip       = pip;
    m_halted    = false;
+   m_eoverload_latched = false;   // IMPL-FIX-010 — one-shot latch reset on init
+   m_coverload_latched = false;
 
    //--- Detect broker filling policy (per ea.md MQL5 idiom + BR-1.5).
    //    CTrade defaults to FOK which FBS-Real may reject for EURUSD on
@@ -783,7 +798,15 @@ void CCrossSlotCoordinator::RunCOverload(const MarketContext &ctx)
    int    loss_bars = ctx.macd_d1.same_sign_loss_bars;
    double adxw      = ctx.adx_h4.adx_wave;
 
-   if(!_COverloadTriggered(loss_bars, adxw)) return;
+   //--- IMPL-FIX-010: one-shot latch — predicate evaluates H4-cadence
+   //    indicators stable across many ticks; reset when condition releases.
+   if(!_COverloadTriggered(loss_bars, adxw))
+     {
+      m_coverload_latched = false;
+      return;
+     }
+   if(m_coverload_latched) return;   // condition still active; suppress duplicate emit
+   m_coverload_latched = true;
 
    m_logger.Info("xslot", "coverload_triggered", MAGIC_CD,
                  StringFormat("loss_bars=%d adxw=%.2f halted=%s",
@@ -822,7 +845,16 @@ void CCrossSlotCoordinator::RunEOverload(const MarketContext &ctx)
    double force_value  = ctx.force_h4.f1;            // bar-1 reading per CodeWiki :9395
    double last_gap_pip = _LastGapPipFromZigZag(ctx);
 
-   if(!_EOverloadTriggered(wpr_abs, force_value, last_gap_pip)) return;
+   //--- IMPL-FIX-010: one-shot latch — predicate fields (WPR/force/gap_pip)
+   //    are H4-bar cadence and stay stable across many ticks; reset latch
+   //    when condition releases so next activation re-emits.
+   if(!_EOverloadTriggered(wpr_abs, force_value, last_gap_pip))
+     {
+      m_eoverload_latched = false;
+      return;
+     }
+   if(m_eoverload_latched) return;   // condition still active; suppress duplicate emit
+   m_eoverload_latched = true;
 
    m_logger.Info("xslot", "eoverload_triggered", MAGIC_CD,
                  StringFormat("wpr_abs=%.2f force=%.2f gap_pip=%.1f lot_div=%.1f halted=%s",
