@@ -67,6 +67,11 @@ private:
    bool              _HasForceTroughBuy(const MarketContext &ctx) const;        // §3.7:9 BUY (≥1 bar in [2,5) Force≤-0.2)
    bool              _HasForceTroughSell(const MarketContext &ctx) const;       // §3.7:9 SELL mirror
 
+   //--- IMPL-FIX-011b Phase 1 patch (2026-05-11) — legacy `BusinessLogic_G2` gates A + G + L
+   bool              _HasRecentUpperFractalBidAbove(const MarketContext &ctx) const;  // gate G BUY
+   bool              _HasRecentLowerFractalAskBelow(const MarketContext &ctx) const;  // gate G SELL mirror
+   int               _MaxBBWithIchiChain(const MarketContext &ctx, bool isBuy) const; // gate L (count first contiguous bars BB-lower>cloud-low BUY / BB-upper<cloud-high SELL)
+
    //--- IMPL-FIX-007 H4 bar gate (post-G2-smoke strengthening): rate-limit
    //    fills to <= 1 per H4 bar regardless of position lifecycle. Bar gate
    //    is primary anti-pyramid defense (matches task AC literally + CodeWiki
@@ -216,6 +221,70 @@ bool CSlotG2::_HasForceTroughSell(const MarketContext &ctx) const
   }
 
 //+------------------------------------------------------------------+
+//| IMPL-FIX-011b Phase 1 — gate G: Last upper-Fractal + bid-above    |
+//| Legacy `BusinessLogic_G2:5628-5637` BUY: scan FractalUpBuffer[2..9]|
+//| for most recent non-zero; require `bid > lastFractal && validNeg`.|
+//| Rewrite uses Fix D `fractal_h4_history.upper[5]` 5-bar buffer     |
+//| (bar 0=current, 4=oldest). Phase 1 conservative: scan [1..4]      |
+//| (skip bar 0 to match legacy "2..9"-ish recent-not-current scope). |
+//+------------------------------------------------------------------+
+bool CSlotG2::_HasRecentUpperFractalBidAbove(const MarketContext &ctx) const
+  {
+   if(!InpG2RequireFractalCheck) return true;  // gate disabled
+   if(!ctx.fractal_h4_history.has_data) return true;  // degrade-but-continue
+   for(int i = 1; i < 5; i++)
+     {
+      double fr = ctx.fractal_h4_history.upper[i];
+      if(fr > 0.0)
+         return (ctx.bid > fr);  // first non-zero fractal — check bid above
+     }
+   return false;  // no recent upper fractal → gate fails (was permissive in legacy if validNegative also false)
+  }
+
+//+------------------------------------------------------------------+
+//| IMPL-FIX-011b Phase 1 — gate G SELL mirror                        |
+//+------------------------------------------------------------------+
+bool CSlotG2::_HasRecentLowerFractalAskBelow(const MarketContext &ctx) const
+  {
+   if(!InpG2RequireFractalCheck) return true;
+   if(!ctx.fractal_h4_history.has_data) return true;
+   for(int i = 1; i < 5; i++)
+     {
+      double fr = ctx.fractal_h4_history.lower[i];
+      if(fr > 0.0)
+         return (ctx.ask < fr);
+     }
+   return false;
+  }
+
+//+------------------------------------------------------------------+
+//| IMPL-FIX-011b Phase 1 — gate L: maxBBWithIchi chain count         |
+//| Legacy `BusinessLogic_G2:5705-5717` BUY: count contiguous bars    |
+//| z=1..14 where BollBBot[z] > IchiMin[z] (chain — stops on first    |
+//| break). Legacy requires `maxBBWithIchi == 0` (BB-lower must NOT   |
+//| be above cloud-bot at bar 1 — i.e. BB still inside/below cloud).  |
+//| SELL mirror via BB-upper < cloud-high chain.                      |
+//| Uses Fix B `bb_h4_history.bb_bot/bb_top[15]` + Fix B               |
+//| `ichi_h4_history.cloud_low/cloud_high[15]`.                       |
+//+------------------------------------------------------------------+
+int CSlotG2::_MaxBBWithIchiChain(const MarketContext &ctx, bool isBuy) const
+  {
+   if(!ctx.bb_h4_history.has_data || !ctx.ichi_h4_history.has_data) return 0;
+   int count = 0;
+   for(int z = 1; z < 15; z++)
+     {
+      bool breach;
+      if(isBuy)
+         breach = (ctx.bb_h4_history.bb_bot[z] > ctx.ichi_h4_history.cloud_low [z]);
+      else
+         breach = (ctx.bb_h4_history.bb_top[z] < ctx.ichi_h4_history.cloud_high[z]);
+      if(breach) count++;
+      else       break;  // chain stops on first non-breach
+     }
+   return count;
+  }
+
+//+------------------------------------------------------------------+
 //| Static const definition (MQL5 requires out-of-class definition)   |
 //+------------------------------------------------------------------+
 const int CSlotG2::PENDING_FILL_TIMEOUT_SEC = 60;
@@ -247,7 +316,11 @@ bool CSlotG2::_IsG2BuySignal(const MarketContext &ctx) const
    double f2 = ctx.force_h4.f2;
 
    //--- Continuation range: F[1]>0 โง F[2]>-0.2 (still in wave, not reversed)
-   return (f1 > InpG2FIContinuationMin && f2 > InpG2FIContinuationLow);
+   //--- IMPL-FIX-011b Phase 1 gate A — legacy `Force[1] < 7` upper bound (line 5558)
+   //    Momentum-up-but-not-exhausted; suppresses extreme-spike spurious entries.
+   return (f1 > InpG2FIContinuationMin &&
+           f1 < InpG2ForceUpperBound   &&
+           f2 > InpG2FIContinuationLow);
   }
 
 //+------------------------------------------------------------------+
@@ -261,7 +334,10 @@ bool CSlotG2::_IsG2SellSignal(const MarketContext &ctx) const
    double f2 = ctx.force_h4.f2;
 
    //--- Mirror of BUY (negated thresholds)
-   return (f1 < -InpG2FIContinuationMin && f2 < -InpG2FIContinuationLow);
+   //--- Mirror of BUY (negated thresholds) + gate A upper bound (legacy line 5766 `Force[1] > -7`)
+   return (f1 < -InpG2FIContinuationMin &&
+           f1 > -InpG2ForceUpperBound   &&
+           f2 < -InpG2FIContinuationLow);
   }
 
 //+------------------------------------------------------------------+
@@ -338,6 +414,17 @@ void CSlotG2::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //    SELL: force ≥ +0.2 (mirror)
    if(buySignal  && !_HasForceTroughBuy(ctx))  return;
    if(sellSignal && !_HasForceTroughSell(ctx)) return;
+
+   //--- IMPL-FIX-011b Phase 1 gate G — last upper-Fractal + bid-above (BUY) /
+   //    last lower-Fractal + ask-below (SELL); legacy lines 5628-5637 + 5836-5845.
+   if(buySignal  && !_HasRecentUpperFractalBidAbove(ctx)) return;
+   if(sellSignal && !_HasRecentLowerFractalAskBelow(ctx)) return;
+
+   //--- IMPL-FIX-011b Phase 1 gate L — maxBBWithIchi chain == 0 (BUY: BB-lower
+   //    must NOT be above cloud-low in 15-bar chain; SELL mirror via BB-upper
+   //    vs cloud-high). Legacy lines 5705-5717 (BUY) + 5913-5925 (SELL).
+   if(buySignal  && _MaxBBWithIchiChain(ctx, true ) > InpG2MaxBBWithIchi) return;
+   if(sellSignal && _MaxBBWithIchiChain(ctx, false) > InpG2MaxBBWithIchi) return;
 
    //--- Pip size via base-class helper (Round-06 06.1)
    double pip_size = _PipSize();

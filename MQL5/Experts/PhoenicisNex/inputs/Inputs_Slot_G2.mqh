@@ -37,4 +37,9 @@ input int    InpG2ForceTroughIdxHigh   = 5;      // §3.7:9 trough scan window h
 input double InpG2ForceTroughThreshBuy = -0.2;   // §3.7:9 BUY: ≥1 bar in [2,5) with Force ≤ this (reversal trough)
 input double InpG2ForceTroughThreshSell= 0.2;    // §3.7:9 SELL mirror: ≥1 bar in [2,5) with Force ≥ this
 
+//--- IMPL-FIX-011b Phase 1 patch (2026-05-11) — legacy `BusinessLogic_G2` gates A + G + L
+input double InpG2ForceUpperBound      = 7.0;    // gate A: Force[1] < this (legacy line 5558 `Force[1] < 7`); momentum-up-but-not-exhausted upper bound
+input bool   InpG2RequireFractalCheck  = true;   // gate G: require recent upper-Fractal (BUY) / lower-Fractal (SELL) within 5-bar window AND bid above/below it
+input int    InpG2MaxBBWithIchi        = 0;      // gate L: BB-lower must NOT be above cloud-low within 15-bar chain (legacy maxBBWithIchi==0)
+
 #endif // PHOENICISNEX_INPUTS_SLOT_G2_MQH
