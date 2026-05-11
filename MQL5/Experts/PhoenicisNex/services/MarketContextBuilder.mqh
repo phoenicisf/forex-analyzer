@@ -154,7 +154,15 @@ MarketContext CMarketContextBuilder::Build() const
    // digit_multiplier = 10 for 5-digit broker (BR-9.1; PipMath not needed here — inline)
    double digit_mult = (_Digits == 5 || _Digits == 3) ? 10.0 : 1.0;
    ctx.spread_pip   = (ctx.ask - ctx.bid) / (_Point * digit_mult);
-   ctx.bar_index_h4 = (int)iBarShift(_Symbol, PERIOD_H4, TimeCurrent(), false);
+   //--- bar_index_h4 — total H4 bar COUNT (monotonically increasing).
+   //    IMPL-FIX-011a Step 4 iter-7 (2026-05-11) fix: was `iBarShift(_Symbol,
+   //    PERIOD_H4, TimeCurrent(), false)` which returns the bar SHIFT (0 for
+   //    current bar) — always 0, so `pending_bars = bar_index_h4 - entered_bar`
+   //    was always 0 → all Slot_T sub-path triggers (TDWD/THAF/THADEM require
+   //    pending_bars > N) silently never fired → PMR PENDING state never
+   //    transitioned to EXECUTED → S-AC #3 falsified at iter-4/5/6.
+   //    Use `iBars(_Symbol, PERIOD_H4)` instead — monotonic bar count.
+   ctx.bar_index_h4 = (int)iBars(_Symbol, PERIOD_H4);
 
    //--- 19 sub-struct fields ---
    PopulateIchimoku(m_indicators.GetHandle(MCB_IDX_ICHI_H4),    ctx.ichi_h4);    // IDX_ICHI_H4=0

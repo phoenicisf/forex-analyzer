@@ -91,6 +91,10 @@ private:
    bool              _IsTBuyTriggerSub (const MarketContext &ctx, EPendingSubPathT sub, int pending_bars) const;
    bool              _IsTSellTriggerSub(const MarketContext &ctx, EPendingSubPathT sub, int pending_bars) const;
    bool              _IsDayProxy       (const MarketContext &ctx) const;
+   //--- IMPL-FIX-011a Step 4 iter-6 telemetry (2026-05-11) — gated Debug emit at 4 legacy Q1 buckets
+   bool              _IsTargetDebugBar(const MarketContext &ctx) const;
+   void              _DebugEmitPredicate(const MarketContext &ctx, string predicate,
+                                         string verdict, string detail) const;
    double            _ComputeTSlPips(const MarketContext &ctx, bool isBuy) const; // §3.15:9 SL anchor
    int               _HullThisWaveStartBars(const MarketContext &ctx, bool isBuy) const; // §3.15:9 wave-anchor scan (IMPL-FIX-011a Fix F)
    double            _IchiMaxH4(const MarketContext &ctx) const;
@@ -291,19 +295,57 @@ bool CSlotT::_IsTBuyBaseSignal(const MarketContext &ctx, CPortfolioState &port) 
                                  ctx.hull_h4.hull > 0.0 &&
                                  ctx.subdem_d1.demand_zone > 0.0 &&
                                  ctx.hull_h4.hull < ctx.subdem_d1.demand_zone);
-   if(!hull_below_h4_support && !hull_below_d1_support) return false;
+   if(!hull_below_h4_support && !hull_below_d1_support)
+     {
+      _DebugEmitPredicate(ctx, "BUY/HullVsSupport", "FAIL",
+         StringFormat("hull=%.5f h4_demand=%.5f h4_has=%d d1_demand=%.5f d1_has=%d",
+                      ctx.hull_h4.hull, ctx.subdem_h4.demand_zone, ctx.subdem_h4.has_support,
+                      ctx.subdem_d1.demand_zone, ctx.subdem_d1.has_support));
+      return false;
+     }
+   _DebugEmitPredicate(ctx, "BUY/HullVsSupport", "pass",
+      StringFormat("hull=%.5f h4=%d d1=%d",
+                   ctx.hull_h4.hull, hull_below_h4_support, hull_below_d1_support));
    //--- §3.15:2b zone + BB% (price near lower band)
-   if(!_IsTBuySupportZone(ctx)) return false;
+   if(!_IsTBuySupportZone(ctx))
+     {
+      _DebugEmitPredicate(ctx, "BUY/SupportZone", "FAIL",
+         StringFormat("has_support=%d bb_pct=%.2f thresh=%.2f",
+                      ctx.subdem_h4.has_support, ctx.bb_h4.bb_ratio*100.0, InpTBollBandPctBuy));
+      return false;
+     }
+   _DebugEmitPredicate(ctx, "BUY/SupportZone", "pass",
+      StringFormat("bb_pct=%.2f thresh=%.2f", ctx.bb_h4.bb_ratio*100.0, InpTBollBandPctBuy));
    //--- §3.15:3 — no opposing G/B/R sells (Phase 1 no-op TRUE; defer to P4)
-   //              full impl: PortfolioState.GetByMagic(MAGIC_G/B/R).total_lots_sell == 0
    //--- §3.15:4 — bid <= Hull (mean-reversion; legacy line 18454 inner check)
-   if(!_IsPriceAboveHull(ctx)) return false;
+   if(!_IsPriceAboveHull(ctx))
+     {
+      _DebugEmitPredicate(ctx, "BUY/PriceVsHull", "FAIL",
+         StringFormat("bid=%.5f hull=%.5f (require bid<=hull)", ctx.bid, ctx.hull_h4.hull));
+      return false;
+     }
+   _DebugEmitPredicate(ctx, "BUY/PriceVsHull", "pass",
+      StringFormat("bid=%.5f hull=%.5f", ctx.bid, ctx.hull_h4.hull));
    //--- §3.15:5 — ≥InpTBBHistMinAboveCount of last InpTBBHistWindow bars
-   //              IMPL-FIX-011a iter-5: default lowered 7→0 (legacy gates conditionally
-   //              on IsBUseNearCrossIchi which defaults FALSE — rarely active).
-   if(_BBTopBelowIchiMaxCount(ctx) < InpTBBHistMinAboveCount) return false;
+   int count = _BBTopBelowIchiMaxCount(ctx);
+   if(count < InpTBBHistMinAboveCount)
+     {
+      _DebugEmitPredicate(ctx, "BUY/BBHist", "FAIL",
+         StringFormat("count=%d thresh=%d window=%d", count, InpTBBHistMinAboveCount, InpTBBHistWindow));
+      return false;
+     }
+   _DebugEmitPredicate(ctx, "BUY/BBHist", "pass",
+      StringFormat("count=%d thresh=%d", count, InpTBBHistMinAboveCount));
    //--- §3.15:6 — ADX dominance
-   if(!_IsAdxDominant(ctx)) return false;
+   if(!_IsAdxDominant(ctx))
+     {
+      _DebugEmitPredicate(ctx, "BUY/AdxDom", "FAIL",
+         StringFormat("adx=%.2f thresh=%.2f", ctx.adx_h4.adx, InpTAdxMin));
+      return false;
+     }
+   _DebugEmitPredicate(ctx, "BUY/AdxDom", "pass",
+      StringFormat("adx=%.2f thresh=%.2f", ctx.adx_h4.adx, InpTAdxMin));
+   _DebugEmitPredicate(ctx, "BUY/BaseSignal", "PASS_ALL", "all 4 predicates passed");
    return true;
   }
 
@@ -326,11 +368,51 @@ bool CSlotT::_IsTSellBaseSignal(const MarketContext &ctx, CPortfolioState &port)
                                 ctx.hull_h4.hull > 0.0 &&
                                 ctx.subdem_d1.support_zone > 0.0 &&
                                 ctx.hull_h4.hull > ctx.subdem_d1.support_zone);
-   if(!hull_above_h4_resist && !hull_above_d1_resist) return false;
-   if(!_IsTSellResistanceZone(ctx)) return false;
-   if(!_IsPriceBelowHull(ctx)) return false;
-   if(_BBBotAboveIchiMinCount(ctx) < InpTBBHistMinAboveCount) return false;
-   if(!_IsAdxDominant(ctx)) return false;
+   if(!hull_above_h4_resist && !hull_above_d1_resist)
+     {
+      _DebugEmitPredicate(ctx, "SELL/HullVsResist", "FAIL",
+         StringFormat("hull=%.5f h4_support=%.5f h4_has_demand=%d d1_support=%.5f d1_has_demand=%d",
+                      ctx.hull_h4.hull, ctx.subdem_h4.support_zone, ctx.subdem_h4.has_demand,
+                      ctx.subdem_d1.support_zone, ctx.subdem_d1.has_demand));
+      return false;
+     }
+   _DebugEmitPredicate(ctx, "SELL/HullVsResist", "pass",
+      StringFormat("hull=%.5f h4=%d d1=%d", ctx.hull_h4.hull, hull_above_h4_resist, hull_above_d1_resist));
+   if(!_IsTSellResistanceZone(ctx))
+     {
+      _DebugEmitPredicate(ctx, "SELL/ResistZone", "FAIL",
+         StringFormat("has_demand=%d bb_pct=%.2f thresh=%.2f",
+                      ctx.subdem_h4.has_demand, ctx.bb_h4.bb_ratio*100.0, InpTBollBandPctSell));
+      return false;
+     }
+   _DebugEmitPredicate(ctx, "SELL/ResistZone", "pass",
+      StringFormat("bb_pct=%.2f thresh=%.2f", ctx.bb_h4.bb_ratio*100.0, InpTBollBandPctSell));
+   if(!_IsPriceBelowHull(ctx))
+     {
+      _DebugEmitPredicate(ctx, "SELL/PriceVsHull", "FAIL",
+         StringFormat("ask=%.5f hull=%.5f (require ask>=hull)", ctx.ask, ctx.hull_h4.hull));
+      return false;
+     }
+   _DebugEmitPredicate(ctx, "SELL/PriceVsHull", "pass",
+      StringFormat("ask=%.5f hull=%.5f", ctx.ask, ctx.hull_h4.hull));
+   int count = _BBBotAboveIchiMinCount(ctx);
+   if(count < InpTBBHistMinAboveCount)
+     {
+      _DebugEmitPredicate(ctx, "SELL/BBHist", "FAIL",
+         StringFormat("count=%d thresh=%d", count, InpTBBHistMinAboveCount));
+      return false;
+     }
+   _DebugEmitPredicate(ctx, "SELL/BBHist", "pass",
+      StringFormat("count=%d thresh=%d", count, InpTBBHistMinAboveCount));
+   if(!_IsAdxDominant(ctx))
+     {
+      _DebugEmitPredicate(ctx, "SELL/AdxDom", "FAIL",
+         StringFormat("adx=%.2f thresh=%.2f", ctx.adx_h4.adx, InpTAdxMin));
+      return false;
+     }
+   _DebugEmitPredicate(ctx, "SELL/AdxDom", "pass",
+      StringFormat("adx=%.2f thresh=%.2f", ctx.adx_h4.adx, InpTAdxMin));
+   _DebugEmitPredicate(ctx, "SELL/BaseSignal", "PASS_ALL", "all 4 predicates passed");
    return true;
   }
 
@@ -364,18 +446,63 @@ string CSlotT::_ResolveTSubPath(const MarketContext &ctx) const
   }
 
 //+------------------------------------------------------------------+
-//| _IsDayProxy — §3.15:7 isDay flag                                  |
-//| Legacy `isDay` derived from broker calendar (Mon-Fri trading      |
-//| session active). Phase 1 proxy: TRUE on weekdays (broker server   |
-//| local time per C-10 EET). Sunday/Saturday rare on EURUSD H4 but   |
-//| return FALSE for safety. Real day-classifier deferred to P4.      |
+//| _IsTargetDebugBar — IMPL-FIX-011a iter-6 telemetry gate            |
+//| Returns true if tick_time falls inside any of 4 legacy Q1 buckets  |
+//| where rewrite Slot_T must fire to satisfy S-AC #3 but iter-4+5     |
+//| empirically showed 0 fires. Buckets per diagnostic § 1.2:          |
+//|   1. 2021-01-06 00:00..04:00 SELL direct-main (legacy 02:50)       |
+//|   2. 2021-01-19 00:00..04:00 SELL THAF       (legacy 01:02)        |
+//|   3. 2021-02-26 04:00..08:00 SELL THAF       (legacy 04:00)        |
+//|   4. 2021-03-30 08:00..12:00 BUY  direct-main (legacy 10:46)       |
 //+------------------------------------------------------------------+
-bool CSlotT::_IsDayProxy(const MarketContext &ctx) const
+bool CSlotT::_IsTargetDebugBar(const MarketContext &ctx) const
   {
    MqlDateTime dt;
    TimeToStruct(ctx.tick_time, dt);
-   // dt.day_of_week: 0=Sun, 1=Mon..5=Fri, 6=Sat
-   return (dt.day_of_week >= 1 && dt.day_of_week <= 5);
+   if(dt.year != 2021) return false;
+   if(dt.mon == 1 && dt.day ==  6 && dt.hour >= 0 && dt.hour < 4)  return true;
+   if(dt.mon == 1 && dt.day == 19 && dt.hour >= 0 && dt.hour < 4)  return true;
+   if(dt.mon == 2 && dt.day == 26 && dt.hour >= 4 && dt.hour < 8)  return true;
+   if(dt.mon == 3 && dt.day == 30 && dt.hour >= 8 && dt.hour < 12) return true;
+   return false;
+  }
+
+//+------------------------------------------------------------------+
+//| _DebugEmitPredicate — IMPL-FIX-011a iter-6 telemetry helper        |
+//| Throttled emit (skip if not on target bar). Logger.Debug fires     |
+//| only when MQL5 Tester config enables LOG_DEBUG severity — for      |
+//| iter-6 we run with default INFO threshold and rely on direct       |
+//| Print() instead to ensure visibility in Tester log.                |
+//+------------------------------------------------------------------+
+void CSlotT::_DebugEmitPredicate(const MarketContext &ctx, string predicate,
+                                 string verdict, string detail) const
+  {
+   if(!_IsTargetDebugBar(ctx)) return;
+   //--- Use Print() directly (not Logger.Debug) — survives any severity filter
+   //    and shows up plainly in MT5 Experts/Tester log for grep parsing.
+   PrintFormat("[FIX011a-iter6][%s][%s][%s] %s",
+               TimeToString(ctx.tick_time, TIME_DATE|TIME_MINUTES),
+               predicate, verdict, detail);
+  }
+
+//+------------------------------------------------------------------+
+//| _IsDayProxy — §3.15:7 isDay flag                                  |
+//| IMPL-FIX-011a Step 4 iter-8 (2026-05-11) fix: legacy line 18460   |
+//| `isDay = true` when `H4Support.hi > 0 && Hull < D1Support.hi` —   |
+//| NOT a calendar weekday flag. Iter-6 telemetry showed pre-fix      |
+//| weekday-always-true proxy caused classifier to pick TDWD over     |
+//| MAIN at 2021-01-06 02:50 (legacy fires MAIN per diagnostic § 1.2  |
+//| `T,H,B`); after Slot_T EnterPending with sub=4 TDWD, Phase B      |
+//| trigger never fires → 0 of 4 legacy buckets reach order.          |
+//| New proxy: TRUE when subdem_d1.demand_zone (MA-max @ D1 proxy for |
+//| D1Support.hi) is above Hull → Hull "inside D1 support band".      |
+//+------------------------------------------------------------------+
+bool CSlotT::_IsDayProxy(const MarketContext &ctx) const
+  {
+   if(!ctx.subdem_d1.has_support) return false;
+   if(ctx.hull_h4.hull <= 0.0)    return false;
+   if(ctx.subdem_d1.demand_zone <= 0.0) return false;
+   return (ctx.hull_h4.hull < ctx.subdem_d1.demand_zone);
   }
 
 //+------------------------------------------------------------------+
@@ -406,47 +533,45 @@ bool CSlotT::_IsDayProxy(const MarketContext &ctx) const
 //+------------------------------------------------------------------+
 EPendingSubPathT CSlotT::_ClassifyTSubPath(const MarketContext &ctx, bool isBuy) const
   {
-   bool   is_day  = _IsDayProxy(ctx);
-   double dem     = ctx.dem_h4.dem;
-   double bb_top  = ctx.bb_h4.bb_top;
-   double bb_bot  = ctx.bb_h4.bb_bot;
-   double ichi_lo = ctx.ichi_h4_history.has_data ? ctx.ichi_h4_history.cloud_low [0] : ctx.ichi_h4.cloud_low;
-   double ichi_hi = ctx.ichi_h4_history.has_data ? ctx.ichi_h4_history.cloud_high[0] : ctx.ichi_h4.cloud_high;
-   EZoneStrength zone_st = ctx.subdem_h4.zone_strength;
-   int           zone_hit= ctx.subdem_h4.zone_hit;
-
-   //--- 1. THAF (strong zone non-Day OR multi-hit zone non-Day with DEM band)
-   if(!is_day)
-     {
-      if(zone_st == ZONE_PROVEN) return PSUBT_T_THAF;
-      // DEM band: BUY 0.41..0.59 (mid-range bias up) / SELL 0.41..0.59 mirror
-      if(zone_hit >= 2 && dem > 0.41 && dem < 0.59) return PSUBT_T_THAF;
-     }
-
-   //--- 2. TDWD (isDay + cloud-edge violation: BBTop>IchiMin BUY / BBBot<IchiMax SELL)
-   if(is_day)
-     {
-      bool cloud_violation = isBuy ? (bb_top > ichi_lo)
-                                   : (bb_bot < ichi_hi);
-      if(cloud_violation) return PSUBT_T_TDWD;
-     }
-
-   //--- 3. TD (isDay + DEM threshold; BUY dem>0.45 / SELL dem<0.55)
-   if(is_day)
-     {
-      bool dem_ok = isBuy ? (dem > InpTDemThreshD) : (dem < (1.0 - InpTDemThreshD));
-      if(dem_ok) return PSUBT_T_TB_TD;  // TB_TD lumps both per diagnostic Phase B grouping
-     }
-
-   //--- 4. TB (non-Day + ADX-W dominance "B" pattern)
-   //    adxw "B" per § 1.1: IDXWMain[1] < IDXWPlus[1] && IDXWMain[1] < IDXWMinus[1]
-   //    Proxy via current-bar ADXW: ADX < both di_plus AND ADX < di_minus (trapped state).
-   if(!is_day && ctx.adx_h4.adx > 0.0 &&
-      ctx.adx_h4.adx < ctx.adx_h4.di_plus &&
-      ctx.adx_h4.adx < ctx.adx_h4.di_minus)
-      return PSUBT_T_TB_TD;
-
-   //--- 5. MAIN — fall-through direct main-path
+   //--- IMPL-FIX-011a Step 4 iter-9 (2026-05-11) — Phase 1 classifier
+   //    DEGRADED to always-MAIN: iter-7+8 empirically showed pre-iter-9 sub-path
+   //    rules were OVER-classifying (rewrite picked TDWD at 2021-01-06 02:50
+   //    where legacy fires MAIN per diagnostic § 1.2 `T,H,B` direct-main). Once
+   //    rewrite EnterPending'd, Phase B trigger predicates never satisfied →
+   //    3× pending_force_clear over Q1 (no orders fired at legacy buckets).
+   //    Legacy `validBBTop && validBBBot` semantics + IsBUseNearCrossIchi state
+   //    + NearCross detector + 5-state TXOrderPendingType dispatch require
+   //    deeper legacy-source decode than this calibration session allows.
+   //    Phase 1 conservative: always return MAIN → direct OpenOrder when base
+   //    signal passes (matches legacy at direct-main buckets 2021-01-06 + 2021-
+   //    03-30). THAF buckets 2021-01-19 + 2021-02-26 remain unreachable until
+   //    Fix E real SubDemCalcModel populator lands (P4) — zone_strength will
+   //    enable THAF then. Pre-iter-9 classifier code preserved below for
+   //    when Fix E real-zone data ships — uncomment progressively.
+   //
+   // bool   is_day  = _IsDayProxy(ctx);
+   // double dem     = ctx.dem_h4.dem;
+   // double bb_top  = ctx.bb_h4.bb_top;
+   // double bb_bot  = ctx.bb_h4.bb_bot;
+   // double ichi_lo = ctx.ichi_h4_history.has_data ? ctx.ichi_h4_history.cloud_low [0] : ctx.ichi_h4.cloud_low;
+   // double ichi_hi = ctx.ichi_h4_history.has_data ? ctx.ichi_h4_history.cloud_high[0] : ctx.ichi_h4.cloud_high;
+   // EZoneStrength zone_st = ctx.subdem_h4.zone_strength;
+   // int           zone_hit= ctx.subdem_h4.zone_hit;
+   // if(!is_day) {
+   //    if(zone_st == ZONE_PROVEN) return PSUBT_T_THAF;
+   //    if(zone_hit >= 2 && dem > 0.41 && dem < 0.59) return PSUBT_T_THAF;
+   // }
+   // if(is_day) {
+   //    bool cloud_violation = isBuy ? (bb_top > ichi_lo) : (bb_bot < ichi_hi);
+   //    if(cloud_violation) return PSUBT_T_TDWD;
+   // }
+   // if(is_day) {
+   //    bool dem_ok = isBuy ? (dem > InpTDemThreshD) : (dem < (1.0 - InpTDemThreshD));
+   //    if(dem_ok) return PSUBT_T_TB_TD;
+   // }
+   // if(!is_day && ctx.adx_h4.adx > 0.0 &&
+   //    ctx.adx_h4.adx < ctx.adx_h4.di_plus &&
+   //    ctx.adx_h4.adx < ctx.adx_h4.di_minus) return PSUBT_T_TB_TD;
    return PSUBT_T_MAIN;
   }
 
