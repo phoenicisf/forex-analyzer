@@ -49,8 +49,9 @@ typedef double (*ScanFnType)(int handle, int depth);
 //|   RSI       H4, D1                = 2  (IDX 20, 21)              |
 //|   ATR       H4                    = 1  (IDX 22)                  |
 //|   Momentum  H4                    = 1  (IDX 23)                  |
+//|   Fractal   H4 (real iFractals)   = 1  (IDX 24) IMPL-FIX-011a FxD |
 //|   ──────────────────────────────────────────────                  |
-//|   Total created: 24 handles (m_handle_count = 24)               |
+//|   Total created: 25 handles (m_handle_count = 25)               |
 //+------------------------------------------------------------------+
 class CIndicatorService
   {
@@ -102,6 +103,7 @@ private:
    static const int  IDX_RSI_D1;      // RSI D1
    static const int  IDX_ATR_H4;      // ATR H4       (pip-distance reference)
    static const int  IDX_MOMENTUM_H4; // Momentum H4  (CodeWiki §1.4)
+   static const int  IDX_FRACTAL_H4;  // Fractal H4 (real iFractals; THAF trigger §3.15:7 — IMPL-FIX-011a Fix D 2026-05-11)
 
 public:
    //--- Constructor — zero-init all members
@@ -257,9 +259,17 @@ bool CIndicatorService::CreateHandles()
    //    TODO IMPL-005-tune: verify Momentum period
    m_handles[IDX_MOMENTUM_H4] = iMomentum(_Symbol, PERIOD_H4, 14, PRICE_CLOSE);
 
-   // Total handles created: 24 (IDX 0..23)
+   //--- Fractal (H4) — real iFractals indicator for §3.15:7 THAF trigger
+   //    (FractalLowBuffer[3] < Hull[3] BUY / FractalUpBuffer[3] > Hull[3] SELL).
+   //    Distinct from IDX_ZIGZAG_H4 (=16) which feeds the legacy ZZ-proxy
+   //    `MarketContext.fractal_h4` already consumed by Slot_H/B/S. The real
+   //    iFractals feeds `MarketContext.fractal_h4_history` (bar-3 access).
+   //    Added 2026-05-11 IMPL-FIX-011a Fix D per diagnostic § 3 row D.
+   m_handles[IDX_FRACTAL_H4] = iFractals(_Symbol, PERIOD_H4);
+
+   // Total handles created: 25 (IDX 0..24)
    // Now validate all — fail-fast on first INVALID_HANDLE (NFR-3.2 + FR-7.6)
-   int total = 24;
+   int total = 25;
    for(int i = 0; i < total; i++)
      {
       if(m_handles[i] == INVALID_HANDLE)
@@ -422,5 +432,6 @@ const int CIndicatorService::IDX_RSI_H4      = 20;
 const int CIndicatorService::IDX_RSI_D1      = 21;
 const int CIndicatorService::IDX_ATR_H4      = 22;
 const int CIndicatorService::IDX_MOMENTUM_H4 = 23;
+const int CIndicatorService::IDX_FRACTAL_H4  = 24;  // IMPL-FIX-011a Fix D 2026-05-11
 
 #endif // PHOENICISNEX_SERVICES_INDICATORSERVICE_MQH

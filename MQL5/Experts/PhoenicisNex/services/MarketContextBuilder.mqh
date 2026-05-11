@@ -51,6 +51,7 @@ static const int MCB_IDX_RSI_H4     = 20;
 static const int MCB_IDX_RSI_D1     = 21;
 static const int MCB_IDX_ATR_H4     = 22;
 static const int MCB_IDX_MOMENTUM_H4= 23;
+static const int MCB_IDX_FRACTAL_H4 = 24;  // IMPL-FIX-011a Fix D 2026-05-11 — real iFractals H4
 
 //--- Number of bars to copy for each indicator
 #define MCB_BARS_ICHI    3    // tenkan/kijun/senkou require [bar0, bar1, bar2]
@@ -62,6 +63,7 @@ static const int MCB_IDX_MOMENTUM_H4= 23;
 #define MCB_BARS_FORCE_HIST  8    // §3.6:9 (peak count) + §3.7:6 (5-of-8) + §3.7:9 (1-of-[2,5))
 #define MCB_BARS_DEM_ROLL    25   // §3.6:12 DEM rolling sum window
 #define MCB_BARS_ADX_HIST    3    // §3.7:5 ADX-W not-trapped 1..3 bars window
+#define MCB_BARS_FRACTAL_HIST 5   // §3.15:7 THAF trigger needs FractalLow[3] — 5-bar buffer covers bar 3 + safety (IMPL-FIX-011a Fix D)
 #define MCB_FORCE_PEAK_THR   11.0 // §3.6:9 "peaks > 11" threshold (legacy CodeWiki spec)
 
 //+------------------------------------------------------------------+
@@ -108,6 +110,8 @@ private:
    void PopulateAdxHistory  (int handle, AdxHistoryFields      &out) const;
    //--- IMPL-FIX-011a Fix B (2026-05-11) — per-bar Ichimoku cloud-edge history
    void PopulateIchiHistory (int handle, IchimokuHistoryFields &out) const;
+   //--- IMPL-FIX-011a Fix D (2026-05-11) — 5-bar real iFractals H4 buffer
+   void PopulateFractalH4History(int handle, FractalHistoryFields &out) const;
 
    //--- Derived signal precompute helpers (ADR-004: computed once, slot reads flag)
    //    Replaces EA เดิม global RunCheckWPRWaveWithIchimoku2 + CheckADXWithForcePeakValid2
@@ -182,6 +186,8 @@ MarketContext CMarketContextBuilder::Build() const
    PopulateAdxHistory  (m_indicators.GetHandle(MCB_IDX_ADX_H4),    ctx.adx_h4_history);   // §3.7:5
    //--- IMPL-FIX-011a Fix B — per-bar Ichimoku cloud edges (reuses IDX_ICHI_H4; no new handle)
    PopulateIchiHistory (m_indicators.GetHandle(MCB_IDX_ICHI_H4),   ctx.ichi_h4_history);  // §3.15:5
+   //--- IMPL-FIX-011a Fix D — real iFractals H4 5-bar buffer (new IDX_FRACTAL_H4=24)
+   PopulateFractalH4History(m_indicators.GetHandle(MCB_IDX_FRACTAL_H4), ctx.fractal_h4_history); // §3.15:7
 
    //--- 1 derived signals field (computed from raw fields — no DRY violation, ADR-004) ---
    ctx.derived.wpr_wave_signal          = ComputeWprWaveSignal(ctx);
@@ -669,6 +675,37 @@ void CMarketContextBuilder::PopulateIchiHistory(int handle, IchimokuHistoryField
       double b = (i < cB) ? senkouB[i] : 0.0;
       out.cloud_low [i] = MathMin(a, b);
       out.cloud_high[i] = MathMax(a, b);
+     }
+  }
+
+//+------------------------------------------------------------------+
+//| PopulateFractalH4History — 5-bar real iFractals H4 buffer         |
+//| buffer_index 0 = Upper Fractal, 1 = Lower Fractal; series-indexed |
+//| (newest=[0]). iFractals returns EMPTY_VALUE on bars without a     |
+//| fractal pattern; we normalize to 0.0 for downstream zero-check.   |
+//| Consumer: Slot_T §3.15:7 THAF trigger compares lower[3] / upper[3]|
+//| vs Hull[3] per legacy `FractalLowBuffer[3] < Hull[3]` (line ~18897)|
+//| IMPL-FIX-011a Fix D (2026-05-11) per diagnostic § 3 row D.        |
+//+------------------------------------------------------------------+
+void CMarketContextBuilder::PopulateFractalH4History(int handle, FractalHistoryFields &out) const
+  {
+   double upper[], lower[];
+   ArraySetAsSeries(upper, true);
+   ArraySetAsSeries(lower, true);
+   int cU = CopyBuffer(handle, 0, 0, MCB_BARS_FRACTAL_HIST, upper);
+   int cL = CopyBuffer(handle, 1, 0, MCB_BARS_FRACTAL_HIST, lower);
+   out.has_data = (cU >= MCB_BARS_FRACTAL_HIST && cL >= MCB_BARS_FRACTAL_HIST);
+   if(!out.has_data && m_logger != NULL)
+      m_logger.Warn("market_context", "copybuffer_short", 0,
+                    StringFormat("fractal_h4_history handle=%d cU=%d cL=%d expected=%d",
+                                 handle, cU, cL, MCB_BARS_FRACTAL_HIST));
+   for(int i = 0; i < MCB_BARS_FRACTAL_HIST; i++)
+     {
+      double u = (i < cU) ? upper[i] : 0.0;
+      double l = (i < cL) ? lower[i] : 0.0;
+      // iFractals uses EMPTY_VALUE on bars without a fractal — normalize to 0.0
+      out.upper[i] = (u == EMPTY_VALUE) ? 0.0 : u;
+      out.lower[i] = (l == EMPTY_VALUE) ? 0.0 : l;
      }
   }
 

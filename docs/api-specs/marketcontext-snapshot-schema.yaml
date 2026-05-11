@@ -50,6 +50,7 @@ required:
   - dem_h4_rolling
   - adx_h4_history
   - ichi_h4_history
+  - fractal_h4_history
   - derived_signals
 
 properties:
@@ -259,6 +260,28 @@ properties:
       has_data:
         type: boolean
         description: "False if CopyBuffer short on either band/any bar (degrade-but-continue per NFR-2.2)"
+
+  fractal_h4_history:
+    type: object
+    additionalProperties: false
+    description: "IMPL-FIX-011a Fix D (2026-05-11) — 5-bar real iFractals H4 buffer for §3.15:7 THAF trigger (FractalLow[3]<Hull[3] BUY / FractalUp[3]>Hull[3] SELL) per CodeWiki + diagnostic § 3 row D. Distinct from ZZ-proxy fractal_h4 (current-bar) used by Slot_H/B/S."
+    required: [upper, lower, has_data]
+    properties:
+      upper:
+        type: array
+        items: { type: number }
+        minItems: 5
+        maxItems: 5
+        description: "Upper Fractal by H4 bar; series-indexed [0]=current, [4]=oldest. 0.0 = no fractal pattern at that bar (iFractals EMPTY_VALUE normalized)."
+      lower:
+        type: array
+        items: { type: number }
+        minItems: 5
+        maxItems: 5
+        description: "Lower Fractal by H4 bar; series-indexed. 0.0 = no fractal pattern at that bar."
+      has_data:
+        type: boolean
+        description: "False if CopyBuffer short on either Upper or Lower (degrade-but-continue per NFR-2.2)"
 
   ichi_h4_history:
     type: object

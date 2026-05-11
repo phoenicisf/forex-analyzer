@@ -77,6 +77,21 @@ struct BBHistoryFields {
    bool   has_data;
 };
 
+//--- Fractal H4 multi-bar buffer (real iFractals indicator; bars [0..4] series-indexed)
+//    upper[i] / lower[i] = fractal price at bar i (0=current, 4=oldest); 0.0 = no fractal at that bar.
+//    Consumer: Slot_T §3.15:7 THAF trigger `FractalLowBuffer[3] < Hull[3]` (BUY) /
+//      `FractalUpBuffer[3] > Hull[3]` (SELL) — i.e. fractal at bar 3 vs Hull at bar 3.
+//    Distinct from existing ZZ-proxy `fractal_h4` (current-bar only) populated from
+//      IDX_ZIGZAG_H4 — consumed by Slot_H/B/S already; left intact to avoid disturbing
+//      those slots. This new field is real iFractals via IDX_FRACTAL_H4 (=24).
+//    has_data = false if CopyBuffer short on either Upper or Lower buffer.
+//    Added 2026-05-11 IMPL-FIX-011a Fix D per diagnostic § 3 row D.
+struct FractalHistoryFields {
+   double upper[5];
+   double lower[5];
+   bool   has_data;
+};
+
 //--- Ichimoku cloud-edge history (15-bar per-bar cloud edges per CodeWiki §3.15:5)
 //    cloud_low[i]  = MathMin(senkou_a[i], senkou_b[i]) — bottom edge at bar i (legacy IchiMin)
 //    cloud_high[i] = MathMax(senkou_a[i], senkou_b[i]) — top edge at bar i (legacy IchiMax)
@@ -187,6 +202,7 @@ struct MarketContext {
    DemRollingFields      dem_h4_rolling;    // §3.6:12 — 25-bar DEM rolling sum × 100
    AdxHistoryFields      adx_h4_history;    // §3.7:5 — 3-bar ADX/+DI/-DI history + adxw_no_trap_bars_1_3
    IchimokuHistoryFields ichi_h4_history;   // §3.15:5 — 15-bar per-bar cloud_low/cloud_high (IMPL-FIX-011a Fix B)
+   FractalHistoryFields  fractal_h4_history;// §3.15:7 — 5-bar real iFractals buffer for THAF (IMPL-FIX-011a Fix D)
 
    // --- 1 derived signals field ---
    // Note: schema YAML name is "derived_signals"; struct field name is "derived"
