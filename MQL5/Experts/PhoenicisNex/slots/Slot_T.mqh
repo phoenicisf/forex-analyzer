@@ -261,19 +261,46 @@ bool CSlotT::_IsAdxDominant(const MarketContext &ctx) const
 
 //+------------------------------------------------------------------+
 //| _IsTBuyBaseSignal — composite (Phase A IDLE → EnterPending gate)  |
-//| All §3.15 BUY conditions except DEM trigger (D/H differentiation  |
-//| happens at Phase B trigger time, not Phase A enter time).         |
+//| Legacy outer gate (line 18449) — BUY requires BOTH:               |
+//|   1. `(Hull < H4Support.hi && H4Support.hi > 0) OR                |
+//|       (Hull < D1Support.hi && D1Support.hi > 0)` — Hull MA below  |
+//|      Support-zone HIGH boundary (resistance ceiling at support).  |
+//|   2. `pricePercentRange < 5` — bid within lower 5% of BB band.    |
+//| PLUS inner check (line 18454) — return if `bid > Hull`            |
+//|   → equivalent to gate `bid <= Hull` (mean-reversion).             |
+//| IMPL-FIX-011a Step 4 iter-5 calibration (2026-05-11): diagnostic   |
+//|   § 3 row A only cited the inner check (gap A = bid-vs-Hull) but   |
+//|   missed the OUTER Hull-vs-Support gate at line 18449. iter-4 Q1   |
+//|   re-canary showed Slot_T silent at all 4 legacy buckets → root    |
+//|   cause = missing outer gate (this fix) + Fix B unconditional      |
+//|   count >= 7 (relaxed in Inputs_Slot_T.mqh to 0). Hull-vs-Support  |
+//|   uses `subdem_h4.demand_zone` as proxy for `H4Support.hi` because |
+//|   PopulateSubDem maps MA-max → demand_zone (real SubDemCalcModel   |
+//|   .hi/.lo boundaries deferred to P4 IMPL-062). D1 fallback proxy   |
+//|   via `subdem_d1.demand_zone`. has_support guard preserved.        |
 //+------------------------------------------------------------------+
 bool CSlotT::_IsTBuyBaseSignal(const MarketContext &ctx, CPortfolioState &port) const
   {
    //--- §3.15:1 (no active T) — caller already checks; redundant guard skipped
-   //--- §3.15:2 — zone + BB%
+   //--- §3.15:2a Hull-vs-Support outer gate (legacy line 18449 — IMPL-FIX-011a iter-5)
+   bool hull_below_h4_support = (ctx.subdem_h4.has_support &&
+                                 ctx.hull_h4.hull > 0.0 &&
+                                 ctx.subdem_h4.demand_zone > 0.0 &&
+                                 ctx.hull_h4.hull < ctx.subdem_h4.demand_zone);
+   bool hull_below_d1_support = (ctx.subdem_d1.has_support &&
+                                 ctx.hull_h4.hull > 0.0 &&
+                                 ctx.subdem_d1.demand_zone > 0.0 &&
+                                 ctx.hull_h4.hull < ctx.subdem_d1.demand_zone);
+   if(!hull_below_h4_support && !hull_below_d1_support) return false;
+   //--- §3.15:2b zone + BB% (price near lower band)
    if(!_IsTBuySupportZone(ctx)) return false;
    //--- §3.15:3 — no opposing G/B/R sells (Phase 1 no-op TRUE; defer to P4)
    //              full impl: PortfolioState.GetByMagic(MAGIC_G/B/R).total_lots_sell == 0
-   //--- §3.15:4 — Price > Hull MA
+   //--- §3.15:4 — bid <= Hull (mean-reversion; legacy line 18454 inner check)
    if(!_IsPriceAboveHull(ctx)) return false;
-   //--- §3.15:5 — ≥InpTBBHistMinAboveCount (default 7) of last InpTBBHistWindow (default 10) bars
+   //--- §3.15:5 — ≥InpTBBHistMinAboveCount of last InpTBBHistWindow bars
+   //              IMPL-FIX-011a iter-5: default lowered 7→0 (legacy gates conditionally
+   //              on IsBUseNearCrossIchi which defaults FALSE — rarely active).
    if(_BBTopBelowIchiMaxCount(ctx) < InpTBBHistMinAboveCount) return false;
    //--- §3.15:6 — ADX dominance
    if(!_IsAdxDominant(ctx)) return false;
@@ -282,9 +309,24 @@ bool CSlotT::_IsTBuyBaseSignal(const MarketContext &ctx, CPortfolioState &port) 
 
 //+------------------------------------------------------------------+
 //| _IsTSellBaseSignal — SELL mirror per §3.15                        |
+//| Legacy SELL outer gate (line 18644, symmetric to BUY 18449):      |
+//|   `Hull > H4Resist.lo OR Hull > D1Resist.lo` — Hull MA above       |
+//|   Resistance-zone LOW boundary (support floor at resistance).     |
+//| Proxy: `Hull > subdem_h4.support_zone` (ma_min) for `Resist.lo`.  |
+//| IMPL-FIX-011a Step 4 iter-5 calibration — see BUY banner above.   |
 //+------------------------------------------------------------------+
 bool CSlotT::_IsTSellBaseSignal(const MarketContext &ctx, CPortfolioState &port) const
   {
+   //--- Hull-vs-Resistance outer gate (SELL mirror of line 18449)
+   bool hull_above_h4_resist = (ctx.subdem_h4.has_demand &&
+                                ctx.hull_h4.hull > 0.0 &&
+                                ctx.subdem_h4.support_zone > 0.0 &&
+                                ctx.hull_h4.hull > ctx.subdem_h4.support_zone);
+   bool hull_above_d1_resist = (ctx.subdem_d1.has_demand &&
+                                ctx.hull_h4.hull > 0.0 &&
+                                ctx.subdem_d1.support_zone > 0.0 &&
+                                ctx.hull_h4.hull > ctx.subdem_d1.support_zone);
+   if(!hull_above_h4_resist && !hull_above_d1_resist) return false;
    if(!_IsTSellResistanceZone(ctx)) return false;
    if(!_IsPriceBelowHull(ctx)) return false;
    if(_BBBotAboveIchiMinCount(ctx) < InpTBBHistMinAboveCount) return false;

@@ -29,7 +29,7 @@ input double InpTSlPipsCodeWikiFloor = 90.0;    // §3.15:9 SL floor (CodeWiki s
 input double InpTBollBandPctBuy      = 5.0;     // §3.15:2 BUY support — BollBand% < this (price near lower band, range 0-100)
 input double InpTBollBandPctSell     = 95.0;    // §3.15 mirror SELL resistance — BollBand% > this
 input int    InpTBBHistWindow        = 10;      // §3.15:5 BB-history scan window (last N bars; ≤15 hard cap from MCB_BARS_BB_HIST)
-input int    InpTBBHistMinAboveCount = 7;       // §3.15:5 minimum bars satisfying BBTop < IchiMax (BUY) / BBBot > IchiMin (SELL)
+input int    InpTBBHistMinAboveCount = 0;       // §3.15:5 minimum bars satisfying BBTop<CloudLow (BUY) / BBBot>CloudHigh (SELL). IMPL-FIX-011a iter-5 calibration: lowered 7→0 to permissive default — legacy line 18487 gates this count<7 conditionally on `IsBUseNearCrossIchi` (default FALSE in LibCommon1.1.mq5:46), so the count gate fires rarely in legacy. Pre-fix rewrite gated count<7 UNCONDITIONALLY → blocked all 4 Q1 legacy buckets at iter-4. Tighten later if Bucket A drift surfaces.
 input double InpTDemThreshD          = 0.45;    // §3.15:7 DEM ≥ this → "D" (day) sub-path; else "H" (Hull) sub-path
 
 #endif // PHOENICISNEX_INPUTS_SLOT_T_MQH
