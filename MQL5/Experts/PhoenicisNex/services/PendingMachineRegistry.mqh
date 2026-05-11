@@ -426,6 +426,15 @@ public:
       return m_machines[id].force_clear_count;
      }
 
+   //--- IMPL-FIX-011a Fix C (2026-05-11) — bar_index_h4 when EnterPending called.
+   //    Slot_T Phase B uses this to derive `pendingIndex = current_bar - entered_bar`
+   //    for legacy `BusinessLogic_PendingT` trigger predicates per CodeWiki §3.15:7.
+   int               GetEnteredBar(EPendingMachineId id) const
+     {
+      if(id < 0 || id >= PM_COUNT) return 0;
+      return m_machines[id].pending_started_bar;
+     }
+
    //--- Slot transition helpers (Evaluate / ManageExits call these)
    void              EnterPending(EPendingMachineId id, string payload, int current_bar)
      {

@@ -81,7 +81,16 @@ private:
    bool              _IsTSellBaseSignal(const MarketContext &ctx, CPortfolioState &port) const;
    bool              _IsTBuyTrigger(const MarketContext &ctx, CPortfolioState &port) const;
    bool              _IsTSellTrigger(const MarketContext &ctx, CPortfolioState &port) const;
-   string            _ResolveTSubPath(const MarketContext &ctx) const;       // §3.15:7 D/H sub-path
+   string            _ResolveTSubPath(const MarketContext &ctx) const;       // §3.15:7 D/H comment letter
+   //--- IMPL-FIX-011a Fix C — 5-state pending sub-path resolution (CodeWiki §3.15:7 + diagnostic § 1.1)
+   EPendingSubPathT  _ClassifyTSubPath(const MarketContext &ctx, bool isBuy) const;
+   bool              _IsTbTdTrigger    (const MarketContext &ctx, bool isBuy, int pending_bars) const;
+   bool              _IsThafTrigger    (const MarketContext &ctx, bool isBuy, int pending_bars) const;
+   bool              _IsThademTrigger  (const MarketContext &ctx, bool isBuy, int pending_bars) const;
+   bool              _IsTdwdTrigger    (const MarketContext &ctx, bool isBuy, int pending_bars) const;
+   bool              _IsTBuyTriggerSub (const MarketContext &ctx, EPendingSubPathT sub, int pending_bars) const;
+   bool              _IsTSellTriggerSub(const MarketContext &ctx, EPendingSubPathT sub, int pending_bars) const;
+   bool              _IsDayProxy       (const MarketContext &ctx) const;
    double            _ComputeTSlPips(const MarketContext &ctx, bool isBuy) const; // §3.15:9 SL anchor
    int               _HullThisWaveStartBars(const MarketContext &ctx, bool isBuy) const; // §3.15:9 wave-anchor scan (IMPL-FIX-011a Fix F)
    double            _IchiMaxH4(const MarketContext &ctx) const;
@@ -304,10 +313,254 @@ bool CSlotT::_IsTSellTrigger(const MarketContext &ctx, CPortfolioState &port) co
 
 //+------------------------------------------------------------------+
 //| _ResolveTSubPath — §3.15:7 DEM ≥ 0.45 → "D" else "H"              |
+//| Used for COMMENT letter only (legacy `T,H` / `T,D`); distinct     |
+//| from `_ClassifyTSubPath` which routes pending sub-paths.          |
 //+------------------------------------------------------------------+
 string CSlotT::_ResolveTSubPath(const MarketContext &ctx) const
   {
    return (ctx.dem_h4.dem >= InpTDemThreshD) ? "D" : "H";
+  }
+
+//+------------------------------------------------------------------+
+//| _IsDayProxy — §3.15:7 isDay flag                                  |
+//| Legacy `isDay` derived from broker calendar (Mon-Fri trading      |
+//| session active). Phase 1 proxy: TRUE on weekdays (broker server   |
+//| local time per C-10 EET). Sunday/Saturday rare on EURUSD H4 but   |
+//| return FALSE for safety. Real day-classifier deferred to P4.      |
+//+------------------------------------------------------------------+
+bool CSlotT::_IsDayProxy(const MarketContext &ctx) const
+  {
+   MqlDateTime dt;
+   TimeToStruct(ctx.tick_time, dt);
+   // dt.day_of_week: 0=Sun, 1=Mon..5=Fri, 6=Sat
+   return (dt.day_of_week >= 1 && dt.day_of_week <= 5);
+  }
+
+//+------------------------------------------------------------------+
+//| _ClassifyTSubPath — §3.15:7 5-state pending sub-path classifier   |
+//| IMPL-FIX-011a R-13 (gap C) per CodeWiki §3.15:7 + diagnostic § 1.1|
+//| Pre-Fix-C rewrite collapsed 5 legacy sub-paths into a single      |
+//| composite predicate — Phase B trigger logic could not differen-   |
+//| tiate THAF Fractal trigger from TB peak/Sto trigger from TDWD     |
+//| cloud-edge trigger. Diagnostic § 1.2 shows 2 of 4 legacy Q1       |
+//| SELL entries (2021-01-19 + 2021-02-26) came from THAF resolution; |
+//| these are unreachable without sub-path classification.            |
+//|                                                                   |
+//| Priority order matches legacy (first match wins):                 |
+//|   1. THAF — `zone_strength == ZONE_PROVEN && !isDay`              |
+//|             OR `zone_hit >= 2 && DEM in 0.41..0.59 && !isDay`     |
+//|   2. TDWD — `isDay && (BBTop>IchiMin || BBBot<IchiMax)`           |
+//|             (cloud-edge violation)                                |
+//|   3. TD   — `isDay && DEM threshold` (BUY DEM>0.45 / SELL DEM<0.55)|
+//|   4. TB   — `adxw dominance "B" && narrow-cloud non-Day`          |
+//|   5. MAIN — fall-through (direct OpenOrder; no pending)           |
+//|                                                                   |
+//| Sub-path data sources after Fixes A/B/D/E/F:                      |
+//|   - zone_strength + zone_hit ← subdem_h4 (Fix E placeholder; THAF |
+//|     fails closed until real SubDemCalcModel wired at P4)          |
+//|   - isDay ← tick_time day-of-week proxy                           |
+//|   - IchiMin / IchiMax ← ichi_h4_history.cloud_low/_high[0] (Fix B)|
+//|   - DEM ← dem_h4.dem (current bar)                                |
+//+------------------------------------------------------------------+
+EPendingSubPathT CSlotT::_ClassifyTSubPath(const MarketContext &ctx, bool isBuy) const
+  {
+   bool   is_day  = _IsDayProxy(ctx);
+   double dem     = ctx.dem_h4.dem;
+   double bb_top  = ctx.bb_h4.bb_top;
+   double bb_bot  = ctx.bb_h4.bb_bot;
+   double ichi_lo = ctx.ichi_h4_history.has_data ? ctx.ichi_h4_history.cloud_low [0] : ctx.ichi_h4.cloud_low;
+   double ichi_hi = ctx.ichi_h4_history.has_data ? ctx.ichi_h4_history.cloud_high[0] : ctx.ichi_h4.cloud_high;
+   EZoneStrength zone_st = ctx.subdem_h4.zone_strength;
+   int           zone_hit= ctx.subdem_h4.zone_hit;
+
+   //--- 1. THAF (strong zone non-Day OR multi-hit zone non-Day with DEM band)
+   if(!is_day)
+     {
+      if(zone_st == ZONE_PROVEN) return PSUBT_T_THAF;
+      // DEM band: BUY 0.41..0.59 (mid-range bias up) / SELL 0.41..0.59 mirror
+      if(zone_hit >= 2 && dem > 0.41 && dem < 0.59) return PSUBT_T_THAF;
+     }
+
+   //--- 2. TDWD (isDay + cloud-edge violation: BBTop>IchiMin BUY / BBBot<IchiMax SELL)
+   if(is_day)
+     {
+      bool cloud_violation = isBuy ? (bb_top > ichi_lo)
+                                   : (bb_bot < ichi_hi);
+      if(cloud_violation) return PSUBT_T_TDWD;
+     }
+
+   //--- 3. TD (isDay + DEM threshold; BUY dem>0.45 / SELL dem<0.55)
+   if(is_day)
+     {
+      bool dem_ok = isBuy ? (dem > InpTDemThreshD) : (dem < (1.0 - InpTDemThreshD));
+      if(dem_ok) return PSUBT_T_TB_TD;  // TB_TD lumps both per diagnostic Phase B grouping
+     }
+
+   //--- 4. TB (non-Day + ADX-W dominance "B" pattern)
+   //    adxw "B" per § 1.1: IDXWMain[1] < IDXWPlus[1] && IDXWMain[1] < IDXWMinus[1]
+   //    Proxy via current-bar ADXW: ADX < both di_plus AND ADX < di_minus (trapped state).
+   if(!is_day && ctx.adx_h4.adx > 0.0 &&
+      ctx.adx_h4.adx < ctx.adx_h4.di_plus &&
+      ctx.adx_h4.adx < ctx.adx_h4.di_minus)
+      return PSUBT_T_TB_TD;
+
+   //--- 5. MAIN — fall-through direct main-path
+   return PSUBT_T_MAIN;
+  }
+
+//+------------------------------------------------------------------+
+//| _IsTbTdTrigger — §3.15:7 TB/TD Phase B trigger                    |
+//| Legacy composite (per diagnostic § 1.1 second table BUY row):     |
+//|   __countPeakBand >= threshold && Sto<20 && bid<BBBot[1]          |
+//|   && bid<latestPeakPrice                                          |
+//| Phase 1 proxy after Fix B + Fix F:                                |
+//|   - countPeakBand ≈ bars in last `pending_bars` window where      |
+//|     bb_bot[i] < bb_bot[0] (descending lower-band chain)           |
+//|   - Sto<20 ← stoch_h4.k_main (BUY) / Sto>80 (SELL)                |
+//|   - bid<bb_bot[1] (BUY) / ask>bb_top[1] (SELL)                    |
+//|   - latestPeakPrice proxy = bb_h4.bb_bot (BUY) / bb_h4.bb_top SELL|
+//+------------------------------------------------------------------+
+bool CSlotT::_IsTbTdTrigger(const MarketContext &ctx, bool isBuy, int pending_bars) const
+  {
+   if(!ctx.bb_h4_history.has_data) return false;
+   //--- peak band count (bars descending-chain proxy)
+   int window = (pending_bars > 0 && pending_bars < 15) ? pending_bars : 5;
+   int count  = 0;
+   for(int i = 1; i < window; i++)
+     {
+      double now = isBuy ? ctx.bb_h4_history.bb_bot[0] : ctx.bb_h4_history.bb_top[0];
+      double bar = isBuy ? ctx.bb_h4_history.bb_bot[i] : ctx.bb_h4_history.bb_top[i];
+      bool descending = isBuy ? (bar > now) : (bar < now);
+      if(descending) count++;
+     }
+   if(count < 2) return false;
+   //--- Stochastic + BB-bot/top break + peak break composite
+   bool sto_ok = isBuy ? (ctx.stoch_h4.k_main < 20.0)
+                       : (ctx.stoch_h4.k_main > 80.0);
+   bool band_break = isBuy ? (ctx.bid < ctx.bb_h4_history.bb_bot[1])
+                           : (ctx.ask > ctx.bb_h4_history.bb_top[1]);
+   bool peak_break = isBuy ? (ctx.bid < ctx.bb_h4.bb_bot)
+                           : (ctx.ask > ctx.bb_h4.bb_top);
+   return sto_ok && band_break && peak_break;
+  }
+
+//+------------------------------------------------------------------+
+//| _IsThafTrigger — §3.15:7 THAF Phase B trigger                     |
+//| Legacy (per diagnostic § 1.1 second table BUY row):               |
+//|   pendingIndex>3 && FractalLow[3]<Hull[3] && ask<BBMid[1]         |
+//|   && ratioPriceSubDem<30                                          |
+//| Phase 1 with Fix D + Fix F data:                                  |
+//|   - fractal_h4_history.lower[3] < hull_h4_history.hull[3] (BUY)   |
+//|     OR fractal_h4_history.upper[3] > hull_h4_history.hull[3] SELL |
+//|   - ratioPriceSubDem<30: (bid - support) / (demand - support)<0.3 |
+//|     SELL mirrors with >0.7                                        |
+//+------------------------------------------------------------------+
+bool CSlotT::_IsThafTrigger(const MarketContext &ctx, bool isBuy, int pending_bars) const
+  {
+   if(pending_bars <= 3) return false;
+   if(!ctx.fractal_h4_history.has_data || !ctx.hull_h4_history.has_data) return false;
+   if(!ctx.bb_h4_history.has_data) return false;
+   double hull3 = ctx.hull_h4_history.hull[3];
+   if(hull3 <= 0.0) return false;
+   double fr3   = isBuy ? ctx.fractal_h4_history.lower[3] : ctx.fractal_h4_history.upper[3];
+   if(fr3 <= 0.0) return false;  // no fractal at bar 3 → trigger fails
+   bool fractal_ok = isBuy ? (fr3 < hull3) : (fr3 > hull3);
+   if(!fractal_ok) return false;
+   double mid1 = ctx.bb_h4_history.bb_mid[1];
+   bool   mid_ok = isBuy ? (ctx.ask < mid1) : (ctx.bid > mid1);
+   if(!mid_ok) return false;
+   //--- ratioPriceSubDem
+   double sup = ctx.subdem_h4.support_zone;
+   double dem = ctx.subdem_h4.demand_zone;
+   if(dem <= sup || sup <= 0.0 || dem <= 0.0) return false;
+   double price = isBuy ? ctx.bid : ctx.ask;
+   double ratio = (price - sup) / (dem - sup);
+   return isBuy ? (ratio < 0.30) : (ratio > 0.70);
+  }
+
+//+------------------------------------------------------------------+
+//| _IsThademTrigger — §3.15:7 THADEM Phase B trigger                 |
+//| Legacy: pendingIndex>1 && (count of bars where Low<BBBot ≥ 2 in   |
+//| pending history). Phase 1 proxy with Fix B bb_bot history:        |
+//|   count bars i in [1..pending_bars-1] where bb_bot[i]<bb_bot[0]   |
+//|   (descending lower-band chain, ≥2 bars). SELL inverts via bb_top.|
+//+------------------------------------------------------------------+
+bool CSlotT::_IsThademTrigger(const MarketContext &ctx, bool isBuy, int pending_bars) const
+  {
+   if(pending_bars <= 1) return false;
+   if(!ctx.bb_h4_history.has_data) return false;
+   int window = (pending_bars < 15) ? pending_bars : 14;
+   int count  = 0;
+   for(int i = 1; i < window; i++)
+     {
+      double bar0 = isBuy ? ctx.bb_h4_history.bb_bot[0] : ctx.bb_h4_history.bb_top[0];
+      double bari = isBuy ? ctx.bb_h4_history.bb_bot[i] : ctx.bb_h4_history.bb_top[i];
+      bool below = isBuy ? (bari > bar0) : (bari < bar0);
+      if(below) count++;
+     }
+   return (count >= 2);
+  }
+
+//+------------------------------------------------------------------+
+//| _IsTdwdTrigger — §3.15:7 TDWD Phase B trigger                     |
+//| Legacy (BUY): pendingIndex in (1,30) && ADX-A dominance           |
+//|   && BBTop<IchiMin && ask<BBMid && BBTop[1]>IchiMin               |
+//| ADX-A: ADX > both di_plus AND ADX > di_minus (dominant).          |
+//| Uses Fix B per-bar cloud_low + Fix F bb_mid[1].                   |
+//+------------------------------------------------------------------+
+bool CSlotT::_IsTdwdTrigger(const MarketContext &ctx, bool isBuy, int pending_bars) const
+  {
+   if(pending_bars <= 1 || pending_bars >= 30) return false;
+   if(!ctx.ichi_h4_history.has_data || !ctx.bb_h4_history.has_data) return false;
+   //--- ADX-A dominance proxy (current bar)
+   bool adx_a = (ctx.adx_h4.adx > ctx.adx_h4.di_plus &&
+                 ctx.adx_h4.adx > ctx.adx_h4.di_minus);
+   if(!adx_a) return false;
+   double bb_top   = ctx.bb_h4.bb_top;
+   double bb_bot   = ctx.bb_h4.bb_bot;
+   double ichi_lo  = ctx.ichi_h4_history.cloud_low [0];
+   double ichi_hi  = ctx.ichi_h4_history.cloud_high[0];
+   double ichi_lo1 = ctx.ichi_h4_history.cloud_low [1];
+   double ichi_hi1 = ctx.ichi_h4_history.cloud_high[1];
+   double bb_top1  = ctx.bb_h4_history.bb_top[1];
+   double bb_bot1  = ctx.bb_h4_history.bb_bot[1];
+   double bb_mid1  = ctx.bb_h4_history.bb_mid[1];
+   bool cloud_break_now  = isBuy ? (bb_top  < ichi_lo)  : (bb_bot  > ichi_hi);
+   bool cloud_break_prev = isBuy ? (bb_top1 > ichi_lo1) : (bb_bot1 < ichi_hi1);  // prior bar still above (transition)
+   bool mid_ok           = isBuy ? (ctx.ask < bb_mid1)  : (ctx.bid > bb_mid1);
+   return cloud_break_now && cloud_break_prev && mid_ok;
+  }
+
+//+------------------------------------------------------------------+
+//| _IsTBuyTriggerSub / _IsTSellTriggerSub — sub-path dispatcher      |
+//| Phase B reads `sub` field from pending payload and routes to the  |
+//| matching trigger predicate. MAIN sub-path never reaches Phase B   |
+//| (handled at Phase A as direct OpenOrder + skip pending).          |
+//+------------------------------------------------------------------+
+bool CSlotT::_IsTBuyTriggerSub(const MarketContext &ctx, EPendingSubPathT sub, int pending_bars) const
+  {
+   switch(sub)
+     {
+      case PSUBT_T_TB_TD : return _IsTbTdTrigger  (ctx, true, pending_bars);
+      case PSUBT_T_THAF  : return _IsThafTrigger  (ctx, true, pending_bars);
+      case PSUBT_T_THADEM: return _IsThademTrigger(ctx, true, pending_bars);
+      case PSUBT_T_TDWD  : return _IsTdwdTrigger  (ctx, true, pending_bars);
+      case PSUBT_T_MAIN  :
+      default            : return false;  // MAIN handled at Phase A; never re-entered here
+     }
+  }
+
+bool CSlotT::_IsTSellTriggerSub(const MarketContext &ctx, EPendingSubPathT sub, int pending_bars) const
+  {
+   switch(sub)
+     {
+      case PSUBT_T_TB_TD : return _IsTbTdTrigger  (ctx, false, pending_bars);
+      case PSUBT_T_THAF  : return _IsThafTrigger  (ctx, false, pending_bars);
+      case PSUBT_T_THADEM: return _IsThademTrigger(ctx, false, pending_bars);
+      case PSUBT_T_TDWD  : return _IsTdwdTrigger  (ctx, false, pending_bars);
+      case PSUBT_T_MAIN  :
+      default            : return false;
+     }
   }
 
 //+------------------------------------------------------------------+
@@ -392,12 +645,22 @@ double CSlotT::_ComputeTSlPips(const MarketContext &ctx, bool isBuy) const
 //|                                                                   |
 //| T-Pending pattern (ADR-008 / OQ-A3 / shared context §4.3):        |
 //|   Phase A (base signal, not yet in pending):                      |
-//|     IDLE + base signal → EnterPending(PM_T, payload, bar_index)  |
+//|     IDLE + base signal:                                           |
+//|       classify sub-path via _ClassifyTSubPath                     |
+//|         sub == MAIN  → direct OpenOrder (fall-through; no pending)|
+//|         sub != MAIN  → EnterPending(PM_T, payload{sub}, bar)      |
 //|   Phase B (pending, trigger now valid):                           |
-//|     PENDING + trigger valid → place entry + TransitionExecuted    |
+//|     PENDING + sub-path trigger valid                              |
+//|         → place entry + TransitionExecuted                        |
 //|   Force-clear: PMR.TickAll (Orchestrator step 8) — slot ห้าม poll  |
 //|                                                                   |
-//| IMPL-FIX-011 Session C — predicates now history-based per §3.15.   |
+//| IMPL-FIX-011 Session C — predicates history-based per §3.15.       |
+//| IMPL-FIX-011a Fix C (2026-05-11) — 5-state pending sub-path        |
+//|   resolution per diagnostic § 3 row C. Phase A classifies one of 5 |
+//|   sub-paths (TB_TD / THAF / THADEM / TDWD / MAIN); MAIN fires      |
+//|   directly without pending; others encode `"sub":N` in payload and |
+//|   are dispatched in Phase B by `_IsTBuyTriggerSub`/`_IsTSellTrig-  |
+//|   gerSub` to the matching trigger predicate.                       |
 //+------------------------------------------------------------------+
 void CSlotT::Evaluate(const MarketContext &ctx, CPortfolioState &port)
   {
@@ -415,7 +678,7 @@ void CSlotT::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //--- Retrieve current pending state for PM_T
    EPendingState st = m_pending.GetState(PM_T);
 
-   //--- Phase A: IDLE — check base signal, enter pending if met
+   //--- Phase A: IDLE — check base signal, classify sub-path, route
    if(st == PENDING_STATE_IDLE)
      {
       bool buyBase  = _IsTBuyBaseSignal(ctx, port);
@@ -423,33 +686,87 @@ void CSlotT::Evaluate(const MarketContext &ctx, CPortfolioState &port)
 
       if(!buyBase && !sellBase) return;
 
-      //--- §3.15:9 SL anchor (max of Hull/BBWidth/floor)
-      double sl_pips = _ComputeTSlPips(ctx, buyBase);
+      bool isBuy = buyBase;
+      //--- §3.15:9 SL anchor (max of wave-anchor/BBWidth/floor) per Fix F
+      double sl_pips = _ComputeTSlPips(ctx, isBuy);
 
-      //--- Build pending payload (minimal JSON — full schema in
-      //    state-persistence-schema.yaml § PendingMachine; sub_path
-      //    deferred to Phase B trigger time so DEM can update inside
-      //    the pending window without invalidating the gate).
-      string dir     = buyBase ? "BUY" : "SELL";
-      string payload = StringFormat("{\"dir\":\"%s\",\"sl_pips\":%.1f}", dir, sl_pips);
+      //--- IMPL-FIX-011a Fix C — classify sub-path
+      EPendingSubPathT sub = _ClassifyTSubPath(ctx, isBuy);
 
+      string dir = isBuy ? "BUY" : "SELL";
+
+      if(sub == PSUBT_T_MAIN)
+        {
+         //--- MAIN fall-through: direct OpenOrder (legacy comment T,H/D,A/B,DEM,...)
+         //    No pending state — fires immediately on the bar the base signal met.
+         double pip_size = _PipSize();
+         double balance  = AccountInfoDouble(ACCOUNT_BALANCE);
+         double lot      = m_risk.ComputeLot("T", sl_pips, balance);
+         if(lot <= 0.0) return;
+         double price    = isBuy ? ctx.ask : ctx.bid;
+         double sl_price = isBuy
+                           ? _NormalizeBrokerPrice(ctx.ask - sl_pips * pip_size)
+                           : _NormalizeBrokerPrice(ctx.bid + sl_pips * pip_size);
+         //--- Comment: T,<dir>,<H/D>,0,<sl_pips> — sub=0 distinguishes MAIN from pending sub-paths
+         string sub_letter = _ResolveTSubPath(ctx);
+         string comment    = StringFormat("T,%s,%s,0,%.0f",
+                                          (isBuy ? "B" : "S"), sub_letter, sl_pips);
+         MqlTradeRequest req = {};
+         req.action       = TRADE_ACTION_DEAL;
+         req.symbol       = _Symbol;
+         req.volume       = lot;
+         req.type         = isBuy ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
+         req.price        = _NormalizeBrokerPrice(price);
+         req.sl           = sl_price;
+         req.tp           = 0.0;
+         req.comment      = comment;
+         req.magic        = MAGIC_T;
+         req.type_filling = ORDER_FILLING_FOK;
+         m_risk.OpenOrder(req, "T");
+         //--- MAIN does NOT enter pending state — return after firing.
+         return;
+        }
+
+      //--- Sub-path classified — EnterPending with sub-path encoded as integer
+      string payload = StringFormat("{\"dir\":\"%s\",\"sub\":%d,\"sl_pips\":%.1f}",
+                                    dir, (int)sub, sl_pips);
       m_pending.EnterPending(PM_T, payload, ctx.bar_index_h4);
 
       if(m_logger != NULL)
          m_logger.Info("SlotT", "pending_entered", MAGIC_T,
-                       StringFormat("dir=%s bar_index=%d sl_pips=%.1f payload=%s",
-                                    dir, ctx.bar_index_h4, sl_pips, payload));
+                       StringFormat("dir=%s sub=%d bar_index=%d sl_pips=%.1f payload=%s",
+                                    dir, (int)sub, ctx.bar_index_h4, sl_pips, payload));
       return;
      }
 
-   //--- Phase B: PENDING — check trigger, place entry if valid
+   //--- Phase B: PENDING — read sub-path from payload, dispatch to trigger
    if(st == PENDING_STATE_PENDING)
      {
-      //--- Read payload to recover direction
+      //--- Read payload to recover direction + sub-path
       string payload = m_pending.GetPayload(PM_T);
       bool   isBuy   = (StringFind(payload, "\"dir\":\"BUY\"") >= 0);
 
-      bool triggerOk = isBuy ? _IsTBuyTrigger(ctx, port) : _IsTSellTrigger(ctx, port);
+      //--- Parse "sub":N (Fix C). Default to TB_TD if missing (back-compat
+      //    with pre-Fix-C payloads that may persist across the upgrade).
+      EPendingSubPathT sub = PSUBT_T_TB_TD;
+      int sub_pos = StringFind(payload, "\"sub\":");
+      if(sub_pos >= 0)
+        {
+         int digit_pos = sub_pos + 6;
+         if(digit_pos < StringLen(payload))
+           {
+            int digit = (int)(StringGetCharacter(payload, digit_pos) - '0');
+            if(digit >= 0 && digit <= 4) sub = (EPendingSubPathT)digit;
+           }
+        }
+
+      //--- pendingIndex = current_bar - entered_bar (Fix C dependency on PMR GetEnteredBar)
+      int pending_bars = ctx.bar_index_h4 - m_pending.GetEnteredBar(PM_T);
+      if(pending_bars < 0) pending_bars = 0;
+
+      //--- Dispatch sub-path trigger
+      bool triggerOk = isBuy ? _IsTBuyTriggerSub (ctx, sub, pending_bars)
+                             : _IsTSellTriggerSub(ctx, sub, pending_bars);
       if(!triggerOk) return;
 
       //--- Pip size via base-class helper (Round-06 06.1)
@@ -467,51 +784,36 @@ void CSlotT::Evaluate(const MarketContext &ctx, CPortfolioState &port)
          return;
         }
 
-      //--- §3.15:7 sub-path resolution at trigger time
-      string sub_path = _ResolveTSubPath(ctx);
-
       //--- Compute SL + TP prices
       double price    = isBuy ? ctx.ask : ctx.bid;
       double sl_price = isBuy
                         ? _NormalizeBrokerPrice(ctx.ask - sl_pips * pip_size)
                         : _NormalizeBrokerPrice(ctx.bid + sl_pips * pip_size);
 
-      //--- §3.15 comment encodes sub-path: "T,<dir>,<sub>,1,<sl_pips>"
-      string comment = StringFormat("T,%s,%s,1,%.0f",
-                                    (isBuy ? "B" : "S"), sub_path, sl_pips);
+      //--- Comment encodes sub-path (Fix C): T,<dir>,<H/D>,<sub-int>,<sl>
+      string sub_letter = _ResolveTSubPath(ctx);
+      string comment    = StringFormat("T,%s,%s,%d,%.0f",
+                                       (isBuy ? "B" : "S"), sub_letter, (int)sub, sl_pips);
 
       //--- Submit order through RiskManager CTrade wrapper
       //    ห้าม instantiate CTrade direct (ea.md + ADR-002)
       ENUM_ORDER_TYPE order_type = isBuy ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
 
       MqlTradeRequest req  = {};
-      MqlTradeResult  res  = {};
-
       req.action       = TRADE_ACTION_DEAL;
       req.symbol       = _Symbol;
       req.volume       = lot;
       req.type         = order_type;
       req.price        = _NormalizeBrokerPrice(price);
       req.sl           = sl_price;
-      req.tp           = 0.0;    // TP = 0; profit gate managed in ManageExits
+      req.tp           = 0.0;
       req.comment      = comment;
       req.magic        = MAGIC_T;
-      req.type_filling = ORDER_FILLING_FOK;  // broker detection at Orchestrator wiring path
+      req.type_filling = ORDER_FILLING_FOK;
 
-      // IMPL-FIX-011 R-13 (d): entry_signal Info emit suppressed (per-tick stub
-      // spam bloated Q1 canary log to 1.41 GB / ~30 GB extrapolated over 5-yr;
-      // restore when RiskManager::OpenOrder wires real send + this becomes
-      // one-shot post-fill milestone). Mirrors IMPL-FIX-008 R-10 stub-suppress.
-      // if(m_logger != NULL)
-      //    m_logger.Info("SlotT", "entry_signal", MAGIC_T,
-      //                  StringFormat("dir=%s sub=%s lot=%.2f sl_pips=%.1f price=%.5f sl=%.5f comment=%s",
-      //                               (isBuy ? "BUY" : "SELL"), sub_path, lot, sl_pips, price, sl_price,
-      //                               comment));
+      // entry_signal Info emit suppressed (IMPL-FIX-011 R-13 (d) — see prior banner)
 
-      //--- IMPL-FIX-003: submit broker order via RiskManager.OpenOrder wrapper (ea.md mandate)
       m_risk.OpenOrder(req, "T");
-
-      //--- Transition PMR to EXECUTED state (force-clear counter resets)
       m_pending.TransitionExecuted(PM_T);
      }
 

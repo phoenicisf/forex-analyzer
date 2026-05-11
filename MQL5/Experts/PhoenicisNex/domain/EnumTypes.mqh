@@ -36,6 +36,21 @@ enum EPSubMode {           // P-Pending sub-mode per `04-data-flow.md § 4.4` + 
    PSUB_E    = 4            // P_Extra extension entry
 };
 
+//--- Slot_T 5-state pending sub-path classifier (CodeWiki §3.15:7 + diagnostic § 1.1)
+//    Legacy `BusinessLogic_T` Phase A sets pending state with one of 5 distinct
+//    sub-path tags; `BusinessLogic_PendingT` Phase B dispatches to the matching
+//    trigger predicate based on sub-path. Pre-Fix-C rewrite collapsed all 5 to
+//    a single composite predicate — loses the path-specific gates entirely.
+//    Encoded as integer in pending_payload JSON `"sub":N` for compactness.
+//    Added 2026-05-11 IMPL-FIX-011a Fix C per diagnostic § 3 row C.
+enum EPendingSubPathT {
+   PSUBT_T_MAIN   = 0,    // fall-through direct main-path (legacy comment T,H/D,A/B,...)
+   PSUBT_T_TB_TD  = 1,    // TB or TD entry (peak/Sto/BB composite trigger)
+   PSUBT_T_THAF   = 2,    // strong-zone non-Day; trigger = FractalLow[3] < Hull[3]
+   PSUBT_T_THADEM = 3,    // ≥2 bars Low<BBBot in pending history
+   PSUBT_T_TDWD   = 4     // isDay+cloud-violation; trigger = ADX-A dom + BBTop<IchiMin + ask<BBMid
+};
+
 //--- Sub-demand/support zone strength classifier (CodeWiki §4 SubDemCalcModel*)
 //    Legacy `SubDemCalcModelH4Support.strength` enum used to gate THAF entry paths
 //    in Slot_T (§3.15:2 + §3.15:7) — ZONE_PROVEN required for non-Day THAF, otherwise
