@@ -176,6 +176,12 @@ bool CSlotT::_IsTBuySupportZone(const MarketContext &ctx) const
   {
    if(!ctx.subdem_h4.has_support) return false;
    double bb_pct = ctx.bb_h4.bb_ratio * 100.0;
+   //--- IMPL-FIX-011a iter-11 spurious-fire suppression: floor bb_pct ≥ 0.
+   //    iter-10 telemetry showed spurious BUY fires at 01-08 (bb_pct=-6.23)
+   //    and 01-15 (bb_pct=-0.87) — bid BELOW lower band = breakdown, not
+   //    mean-reversion oversold. Legacy `pricePercentRange` formula may not
+   //    produce negatives (clamped to 0-100); we enforce same semantic here.
+   if(bb_pct < 0.0) return false;
    return (bb_pct < InpTBollBandPctBuy);
   }
 
@@ -186,6 +192,8 @@ bool CSlotT::_IsTSellResistanceZone(const MarketContext &ctx) const
   {
    if(!ctx.subdem_h4.has_demand) return false;
    double bb_pct = ctx.bb_h4.bb_ratio * 100.0;
+   //--- IMPL-FIX-011a iter-11: ceiling bb_pct ≤ 100 (no breakouts above bb_top).
+   if(bb_pct > 100.0) return false;
    return (bb_pct > InpTBollBandPctSell);
   }
 
@@ -287,25 +295,24 @@ bool CSlotT::_IsTBuyBaseSignal(const MarketContext &ctx, CPortfolioState &port) 
   {
    //--- §3.15:1 (no active T) — caller already checks; redundant guard skipped
    //--- §3.15:2a Hull-vs-Support outer gate (legacy line 18449 — IMPL-FIX-011a iter-5)
+   //    IMPL-FIX-011a iter-11: dropped D1 fallback OR-clause — iter-10 telemetry
+   //    showed spurious BUY fires at 01-08/01-15/02-04/03-23/03-25 all had h4=0 d1=1
+   //    (only D1 path active) while MATCH bar 01-06 had h4=1 d1=0. D1 fallback
+   //    via MA-Slow proxy too lax; legacy primary path is H4. Reintroduce D1
+   //    fallback if 01-19/02-26/03-30 buckets need it (Q1 iter-11 verification).
    bool hull_below_h4_support = (ctx.subdem_h4.has_support &&
                                  ctx.hull_h4.hull > 0.0 &&
                                  ctx.subdem_h4.demand_zone > 0.0 &&
                                  ctx.hull_h4.hull < ctx.subdem_h4.demand_zone);
-   bool hull_below_d1_support = (ctx.subdem_d1.has_support &&
-                                 ctx.hull_h4.hull > 0.0 &&
-                                 ctx.subdem_d1.demand_zone > 0.0 &&
-                                 ctx.hull_h4.hull < ctx.subdem_d1.demand_zone);
-   if(!hull_below_h4_support && !hull_below_d1_support)
+   if(!hull_below_h4_support)
      {
       _DebugEmitPredicate(ctx, "BUY/HullVsSupport", "FAIL",
-         StringFormat("hull=%.5f h4_demand=%.5f h4_has=%d d1_demand=%.5f d1_has=%d",
-                      ctx.hull_h4.hull, ctx.subdem_h4.demand_zone, ctx.subdem_h4.has_support,
-                      ctx.subdem_d1.demand_zone, ctx.subdem_d1.has_support));
+         StringFormat("hull=%.5f h4_demand=%.5f h4_has=%d (D1 fallback dropped iter-11)",
+                      ctx.hull_h4.hull, ctx.subdem_h4.demand_zone, ctx.subdem_h4.has_support));
       return false;
      }
    _DebugEmitPredicate(ctx, "BUY/HullVsSupport", "pass",
-      StringFormat("hull=%.5f h4=%d d1=%d",
-                   ctx.hull_h4.hull, hull_below_h4_support, hull_below_d1_support));
+      StringFormat("hull=%.5f h4=1", ctx.hull_h4.hull));
    //--- §3.15:2b zone + BB% (price near lower band)
    if(!_IsTBuySupportZone(ctx))
      {
@@ -360,24 +367,20 @@ bool CSlotT::_IsTBuyBaseSignal(const MarketContext &ctx, CPortfolioState &port) 
 bool CSlotT::_IsTSellBaseSignal(const MarketContext &ctx, CPortfolioState &port) const
   {
    //--- Hull-vs-Resistance outer gate (SELL mirror of line 18449)
+   //    iter-11: drop D1 fallback (same rationale as BUY).
    bool hull_above_h4_resist = (ctx.subdem_h4.has_demand &&
                                 ctx.hull_h4.hull > 0.0 &&
                                 ctx.subdem_h4.support_zone > 0.0 &&
                                 ctx.hull_h4.hull > ctx.subdem_h4.support_zone);
-   bool hull_above_d1_resist = (ctx.subdem_d1.has_demand &&
-                                ctx.hull_h4.hull > 0.0 &&
-                                ctx.subdem_d1.support_zone > 0.0 &&
-                                ctx.hull_h4.hull > ctx.subdem_d1.support_zone);
-   if(!hull_above_h4_resist && !hull_above_d1_resist)
+   if(!hull_above_h4_resist)
      {
       _DebugEmitPredicate(ctx, "SELL/HullVsResist", "FAIL",
-         StringFormat("hull=%.5f h4_support=%.5f h4_has_demand=%d d1_support=%.5f d1_has_demand=%d",
-                      ctx.hull_h4.hull, ctx.subdem_h4.support_zone, ctx.subdem_h4.has_demand,
-                      ctx.subdem_d1.support_zone, ctx.subdem_d1.has_demand));
+         StringFormat("hull=%.5f h4_support=%.5f h4_has_demand=%d (D1 fallback dropped iter-11)",
+                      ctx.hull_h4.hull, ctx.subdem_h4.support_zone, ctx.subdem_h4.has_demand));
       return false;
      }
    _DebugEmitPredicate(ctx, "SELL/HullVsResist", "pass",
-      StringFormat("hull=%.5f h4=%d d1=%d", ctx.hull_h4.hull, hull_above_h4_resist, hull_above_d1_resist));
+      StringFormat("hull=%.5f h4=1", ctx.hull_h4.hull));
    if(!_IsTSellResistanceZone(ctx))
      {
       _DebugEmitPredicate(ctx, "SELL/ResistZone", "FAIL",
@@ -460,10 +463,23 @@ bool CSlotT::_IsTargetDebugBar(const MarketContext &ctx) const
    MqlDateTime dt;
    TimeToStruct(ctx.tick_time, dt);
    if(dt.year != 2021) return false;
-   if(dt.mon == 1 && dt.day ==  6 && dt.hour >= 0 && dt.hour < 4)  return true;
-   if(dt.mon == 1 && dt.day == 19 && dt.hour >= 0 && dt.hour < 4)  return true;
-   if(dt.mon == 2 && dt.day == 26 && dt.hour >= 4 && dt.hour < 8)  return true;
-   if(dt.mon == 3 && dt.day == 30 && dt.hour >= 8 && dt.hour < 12) return true;
+   //--- IMPL-FIX-011a iter-10: comparator set — MATCHED (legacy + rewrite) vs
+   //    SPURIOUS (rewrite-only). Goal: find predicate discriminator that lets
+   //    01-06 fire but suppresses 01-08/01-15/02-04/03-23/03-25 spurious fires.
+   //--- MATCHED bar (legacy + rewrite both fire)
+   if(dt.mon == 1 && dt.day ==  6 && dt.hour >= 0  && dt.hour <  4)  return true;
+   //--- SPURIOUS bars (rewrite-only fires; want to suppress)
+   if(dt.mon == 1 && dt.day ==  8 && dt.hour >= 8  && dt.hour < 12)  return true;
+   if(dt.mon == 1 && dt.day == 15 && dt.hour >= 16 && dt.hour < 20)  return true;
+   if(dt.mon == 2 && dt.day ==  4 && dt.hour >= 16 && dt.hour < 20)  return true;
+   if(dt.mon == 3 && dt.day == 23 && dt.hour >= 12 && dt.hour < 16)  return true;
+   if(dt.mon == 3 && dt.day == 25 && dt.hour >= 16 && dt.hour < 20)  return true;
+   //--- LEGACY-MISSED bars (legacy fires; rewrite silent — likely blocked
+   //    by _HasActiveTOrder from spurious; check what predicates LOOK like
+   //    if we ever reach them)
+   if(dt.mon == 1 && dt.day == 19 && dt.hour >= 0  && dt.hour <  4)  return true;
+   if(dt.mon == 2 && dt.day == 26 && dt.hour >= 4  && dt.hour <  8)  return true;
+   if(dt.mon == 3 && dt.day == 30 && dt.hour >= 8  && dt.hour < 12)  return true;
    return false;
   }
 
