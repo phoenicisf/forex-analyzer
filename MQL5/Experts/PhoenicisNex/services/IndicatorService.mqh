@@ -190,7 +190,11 @@ bool CIndicatorService::CreateHandles()
    //--- Row 2: Force Index (H4) — ADR-003 inventory row 2
    //    Slots: C, J, G, GO, M, L, B, P
    //    TODO IMPL-005-tune: verify CodeWiki §1.4 row 2 Force period
-   m_handles[IDX_FORCE_H4] = iForce(_Symbol, PERIOD_H4, 13, MODE_SMA, VOLUME_TICK);
+   //--- IMPL-FIX-011-FORCE-PERIOD (2026-05-11): period changed 13 → 21 per legacy
+   //    `FIDValue = 21` (PhoenicisN2.10_stable.mq5:28 + iForce call at line 98).
+   //    Cross-cutting fix affects all Force-dependent slots (C/G/G2/K/M/T).
+   //    Surfaced via iter-15 Slot_K telemetry showing Force value drift.
+   m_handles[IDX_FORCE_H4] = iForce(_Symbol, PERIOD_H4, 21, MODE_SMA, VOLUME_TICK);
 
    //--- Row 3: ADX (H4 + D1) — ADR-003 inventory row 3
    //    Slots: C, K, G
