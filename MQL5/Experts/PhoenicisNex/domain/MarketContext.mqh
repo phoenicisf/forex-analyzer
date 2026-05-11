@@ -43,7 +43,7 @@ struct BBFields     { double bb_top, bb_mid, bb_bot, bb_width, bb_ratio; };
 struct DemFields    { double dem; };
 
 //--- Stochastic oscillator fields (M10 and H4 timeframes)
-struct StochFields  { double k_main; double d_signal; };
+struct StochFields  { double k_main; double d_signal; double k_prev; };  // k_prev = K_main[bar 1] for Slot_G β2 dual-bar OR (IMPL-FIX-011c Phase 1)
 
 //--- MACD indicator fields (M10 and D1 timeframes)
 struct MacdFields   { double macd; double signal; double hist; int same_sign_loss_bars; };

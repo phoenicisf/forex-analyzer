@@ -385,9 +385,25 @@ void CSlotG::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    if(!priceOk) return;
 
    //--- Condition 4 (Stochastic M10 oversold/overbought confirmation)
-   double stoch_k = ctx.stoch_m10.k_main;
-   if(buySignal  && stoch_k >= InpGStochOversold)  return;
-   if(sellSignal && stoch_k <= InpGStochOverbought) return;
+   //--- IMPL-FIX-011c Phase 1 gate β2 — Stochastic dual-bar OR (legacy lines
+   //    5036 BUY / 5096 SELL: `!(Sto[0]<25 OR Sto[1]<25) → return`). Pre-Fix
+   //    rewrite used single-bar k_main only; legacy is permissive across 2
+   //    bars but BOTH must miss to fail. iter-12 spurious BUY at 2021-03-18
+   //    01:00 likely had Sto[0]≥25 — dual-bar gate may suppress if Sto[1]
+   //    was also ≥25 (Stoch rising past oversold in mid-March).
+   double stoch_k  = ctx.stoch_m10.k_main;
+   double stoch_k1 = ctx.stoch_m10.k_prev;
+   if(buySignal  && !(stoch_k <  InpGStochOversold   || stoch_k1 <  InpGStochOversold))   return;
+   if(sellSignal && !(stoch_k >  InpGStochOverbought || stoch_k1 >  InpGStochOverbought)) return;
+
+   //--- IMPL-FIX-011c Phase 1 gate δ1 — ADX +DI vs -DI directional dominance
+   //    (legacy line 5071 BUY: `IDXPlus[0]<=IDXMinus[0] OR IDXWPlus[0]<=
+   //    IDXWMinus[0] → return`; mirror 5130). Pre-Fix rewrite gate 4 (line
+   //    372-374) checks ADX sum-dominance (`adx > both ±DI`) but not
+   //    direction. Phase 1 conservative drops ADX-W half — accept ADX-only.
+   //    BUY requires +DI > -DI (bullish); SELL requires +DI < -DI (bearish).
+   if(buySignal  && ctx.adx_h4.di_plus <= ctx.adx_h4.di_minus) return;
+   if(sellSignal && ctx.adx_h4.di_plus >= ctx.adx_h4.di_minus) return;
 
    //--- IMPL-FIX-011 Session C — §3.6:9 Force peaks not exhausted
    //    8-bar window peak count (|F| > 11) must be ≤ InpGForcePeakMaxAbove11 (3)

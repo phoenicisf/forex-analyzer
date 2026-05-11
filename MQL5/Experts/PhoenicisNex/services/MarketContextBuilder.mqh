@@ -384,16 +384,18 @@ void CMarketContextBuilder::PopulateStoch(int handle, StochFields &out) const
    ArraySetAsSeries(bufK, true);
    ArraySetAsSeries(bufD, true);
 
-   int c0 = CopyBuffer(handle, 0, 0, 1, bufK);
+   // IMPL-FIX-011c Phase 1: copy 2 bars for k_main + k_prev (legacy `Sto[0] OR Sto[1]` dual-bar gate)
+   int c0 = CopyBuffer(handle, 0, 0, 2, bufK);
    int c1 = CopyBuffer(handle, 1, 0, 1, bufD);
 
-   if (c0 < 1 || c1 < 1)
+   if (c0 < 2 || c1 < 1)
      {
       if (m_logger != NULL)
          m_logger.Warn("market_context", "copybuffer_short", 0,
                        StringFormat("stoch handle=%d copies=%d/%d", handle, c0, c1));
      }
    out.k_main   = (c0 > 0) ? bufK[0] : 0.0;
+   out.k_prev   = (c0 > 1) ? bufK[1] : out.k_main;  // fallback to current if short
    out.d_signal = (c1 > 0) ? bufD[0] : 0.0;
   }
 

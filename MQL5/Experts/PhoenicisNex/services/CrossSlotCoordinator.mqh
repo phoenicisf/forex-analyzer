@@ -965,25 +965,25 @@ bool CCrossSlotCoordinator::SelfTest(CLogger *logger)
    ctx.tick_time = 0; ctx.bid = 0; ctx.ask = 0; ctx.spread_pip = 0; ctx.bar_index_h4 = 0;
 
    //--- Case 8: stoch K<D + macd hist<0 → +1 (cut BUY losses)
-   ctx.stoch_m10.k_main = 20.0; ctx.stoch_m10.d_signal = 50.0;
+   ctx.stoch_m10.k_main = 20.0; ctx.stoch_m10.k_prev = 20.0; ctx.stoch_m10.d_signal = 50.0;
    ctx.macd_d1.hist = -0.5;
    if(_ForceCutlossSignal(ctx) != +1)
      { Print("[xslot] SelfTest C8 FAIL force_cut bear"); return false; }
 
    //--- Case 9: stoch K>D + macd hist>0 → -1 (cut SELL losses)
-   ctx.stoch_m10.k_main = 80.0; ctx.stoch_m10.d_signal = 50.0;
+   ctx.stoch_m10.k_main = 80.0; ctx.stoch_m10.k_prev = 80.0; ctx.stoch_m10.d_signal = 50.0;
    ctx.macd_d1.hist = 0.5;
    if(_ForceCutlossSignal(ctx) != -1)
      { Print("[xslot] SelfTest C9 FAIL force_cut bull"); return false; }
 
    //--- Case 10: mismatch (stoch bear + macd bull) → 0
-   ctx.stoch_m10.k_main = 20.0; ctx.stoch_m10.d_signal = 50.0;
+   ctx.stoch_m10.k_main = 20.0; ctx.stoch_m10.k_prev = 20.0; ctx.stoch_m10.d_signal = 50.0;
    ctx.macd_d1.hist = 0.5;
    if(_ForceCutlossSignal(ctx) != 0)
      { Print("[xslot] SelfTest C10 FAIL force_cut mismatch"); return false; }
 
    //--- Case 11: K==D + hist==0 → 0 (neither bear nor bull qualifies)
-   ctx.stoch_m10.k_main = 50.0; ctx.stoch_m10.d_signal = 50.0;
+   ctx.stoch_m10.k_main = 50.0; ctx.stoch_m10.k_prev = 50.0; ctx.stoch_m10.d_signal = 50.0;
    ctx.macd_d1.hist = 0.0;
    if(_ForceCutlossSignal(ctx) != 0)
      { Print("[xslot] SelfTest C11 FAIL force_cut flat"); return false; }
@@ -1090,7 +1090,7 @@ bool CCrossSlotCoordinator::SelfTest(CLogger *logger)
     MarketContext bare;
     bare.tick_time = 0; bare.bid = 0; bare.ask = 0;
     bare.spread_pip = 0; bare.bar_index_h4 = 0;
-    bare.stoch_m10.k_main = 50.0; bare.stoch_m10.d_signal = 50.0;
+    bare.stoch_m10.k_main = 50.0; bare.stoch_m10.k_prev = 50.0; bare.stoch_m10.d_signal = 50.0;
     bare.macd_d1.hist = 0.0;
     bare.derived.ichi_double_bounce_active = false;
     RunForceCutloss(bare);           // exit-side, allowed in HALTED — reaches signal eval
