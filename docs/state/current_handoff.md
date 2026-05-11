@@ -1785,3 +1785,64 @@ no runnable surface until IMPL-018+ entry wiring; precedent from parallel batch 
 1. **IMPL-052** [S] [ea] — `EAState` halt-wiring (unblocked by IMPL-043 ✅; wires `journal_halt` deferred AC from deferred-ac-registry row IMPL-043).
 2. **IMPL-049** [XL] [ea] — `PendingMachineRegistry` (unblocked by IMPL-043 ✅; largest remaining P2 task).
 3. After IMPL-049 closes — `/impl-review all` code review trigger for IMPL-043+044+049+052 batch.
+
+---
+
+## 2026-05-11 — IMPL-FIX-011 Step 4 iter-3 re-canary EMPIRICALLY FALSIFIES Session C predicates
+
+> ⚠️ **Handoff catch-up note:** entries above this section are stale (P2 era, 2026-05-03). State has progressed substantially through P3 23/23 ✅, P4 17/17 structural ✅, IMPL-FIX-001..010 closed, IMPL-FIX-011 in active multi-session cycle. Refer to `docs/state/impl-plan.md` (primary SoT) for authoritative status. This section captures the iter-3 outcome only.
+
+**Last completed action:** `/impl-task IMPL-FIX-011 — รัน Step 4 iter-3 re-canary` (this session).
+
+**Outcome:** S-AC #4 NOT MET. Iter-3 paired Q1 rewrite produced top-5 |Δ| sum = 10 (Step 2 baseline 15) = **33% reduction vs ≥75% gate**. Final balance **$1,659.93** vs legacy $2,071.17 = **-19.9%** outside ±10% Net Profit gate.
+
+**Per-slot iter-3 verdict (vs Step 2 baseline):**
+| Slot/event | Step 2 |Δ| | iter-3 |Δ| | Predicate verdict |
+|---|---|---|---|
+| S/entry | 6 | 0 ✅ | Slot_S Session A §3.16 STILL VALIDATED at iter-3 |
+| T/entry | 3 | 3 ❌ | §3.15 4-sub-path rewrite FAILED — bucket misalignment (rw 03-11, lg 01-06/01-19/02-26/03-30) |
+| T/exit | 2 | 3 ❌ | Cascade from T/entry under-fire (got worse by 1) |
+| G2/entry | 2 | 2 ❌ | §3.7:5/6/9 history predicates FAILED — bucket-shifted from iter-2 (01-08/01-12 → 01-04/01-15) but still rewrite-only |
+| G/entry | 2 | 1 ⚠️ | §3.6:9/11/12 PARTIAL — Jan-14 suppressed, Mar-30 new fire emerged |
+| B/entry+exit | 0 | 1+1 NEW | Slot_B not patched — surfaced in iter-3 top-10 because S/G2/T no longer dominate |
+
+**(d) entry_* Print bulk-suppress STILL EFFECTIVE** — tester log 237 KB vs iter-1's 1.41 GB = -99.98% volume reduction.
+
+**Wall-clock + tester:** 0:02:20 (-39% vs iter-2); 5.5M ticks / 372 bars; 10 journal records (7 entry / 3 exit).
+
+**cap-3 per-session iteration budget hit** per task-block § 1747 → **DEFER to next operator session.**
+
+**Files changed:** state-only (no MQL5 source changes this session).
+- `docs/state/impl-plan.md` (TL;DR + Status + Next Best Action + Mid-Phase Audit Log row)
+- `docs/state/overview.md` (row 19 Impl Plan Notes append; date 2026-05-11)
+- `docs/state/current_handoff.md` (this section)
+- `docs/state/_session-handoff/IMPL-FIX-011-q1_rewrite_postpatch_202605110933.jsonl` (NEW; 6536 bytes)
+- `docs/state/_session-handoff/IMPL-FIX-011-q1-postpatch-20260511-iter3.md` (NEW; § 0 engineer verdict synthesis + auto journal_diff output)
+- `docs/state/_session-handoff/IMPL-FIX-011-q1-postpatch-20260511-iter3.json` (NEW; sidecar)
+- `simulation/scripts/_iter3_run.sh` (NEW; UNCOMMITTED — ad-hoc wrapper around runner script, bypasses UTF-16 origin.txt resolve via Python `chr(92)` path conversion; reusable when origin.txt is UTF-16LE)
+
+**Recommended next session — Option A (engineer's leading hypothesis):**
+1. Add per-bar Logger.Debug emit in Slot_T / Slot_G2 / Slot_G predicate evaluation
+2. Re-run Q1 canary; capture predicate values at SAME divergent H4 buckets:
+   - Slot_T: 2021-01-06 00:00Z, 2021-01-19 00:00Z, 2021-02-26 04:00Z, 2021-03-11 08:00Z, 2021-03-30 08:00Z
+   - Slot_G2: 2021-01-04 16:00Z, 2021-01-15 08:00Z
+   - Slot_G: 2021-03-30 08:00Z
+3. Decode legacy `PhoenicisN2.10_stable.mq5` at same buckets via either (a) source-level inspection of CodeWiki §3.6/§3.7/§3.15 thresholds vs rewrite literals, or (b) instrumented legacy build with parallel Logger.Debug emit
+4. Adjust rewrite thresholds / index ranges / direction signs to align
+5. iter-4 re-canary; if ≥75% top-5 reduction + ±10% Net Profit → close S-AC #4
+6. Estimated 1-2 sessions per slot × 3 slots = 3-6 sessions total
+
+**Alternatives (higher cost, operator decision):**
+- Option B `/impl-plan-review all` — re-validate task decomposition + AC dual-track (75% gate may be unrealistic for single-pass predicate translation)
+- Option C `/backtrack sd` — architectural impedance hypothesis; last-resort per task-block § 1763 Risk
+
+**Open Risks impacted:** R-13 still OPEN (cap-3 hit but task multi-session by design). R-2 / R-3 / R-7 closure paths still blocked.
+
+**Blocks (unchanged):** Bucket A NFR-1.1 acceptance signal + IMPL-063 Bucket B paired regression + P4 Tier 2 Phase Gate empirical demo + MVP delivery.
+
+**State Reconciliation 3-file rule (Phase 5 gates 1+5+6+11 verified):**
+- ✅ Layer 1 `impl-plan.md` — TL;DR (line 5) + Next Best Action (line 116) + Status (line 1774) + Mid-Phase Audit Log row (post-line 1999) updated
+- ✅ Layer 2 `overview.md` — row 19 Impl Plan Notes append (iter-3 verdict + per-slot table + Option A leading) + date 2026-05-10 → 2026-05-11
+- ✅ Layer 3 `current_handoff.md` (this section) + evidence sidecars at `_session-handoff/IMPL-FIX-011-q1-postpatch-20260511-iter3.{md,json,jsonl}`
+
+**G1 / G2 status:** unchanged from Session C close (HEAD `b9079c7`; G1 PASS 0err/0warn/4887ms; .ex5 mtime 2026-05-10 23:53 reflects latest source). No source edits this session — iter-3 was empirical re-canary only.
