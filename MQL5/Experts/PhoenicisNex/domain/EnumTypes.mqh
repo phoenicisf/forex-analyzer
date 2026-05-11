@@ -36,6 +36,22 @@ enum EPSubMode {           // P-Pending sub-mode per `04-data-flow.md § 4.4` + 
    PSUB_E    = 4            // P_Extra extension entry
 };
 
+//--- Sub-demand/support zone strength classifier (CodeWiki §4 SubDemCalcModel*)
+//    Legacy `SubDemCalcModelH4Support.strength` enum used to gate THAF entry paths
+//    in Slot_T (§3.15:2 + §3.15:7) — ZONE_PROVEN required for non-Day THAF, otherwise
+//    fall-through main path. Pre-Fix-E rewrite proxied this via subdem.has_support
+//    boolean only (binary present/absent) — loses the strength dimension.
+//    Real population deferred to dedicated SubDemCalcModel indicator wiring (P4); for
+//    now PopulateSubDem assigns ZONE_NONE as placeholder so THAF predicates fail-closed
+//    until real classifier lands.
+//    Added 2026-05-11 IMPL-FIX-011a Fix E per diagnostic § 3 row E.
+enum EZoneStrength {
+   ZONE_NONE    = 0,        // no zone detected
+   ZONE_WEAK    = 1,        // zone exists but unconfirmed
+   ZONE_TESTED  = 2,        // zone touched ≥1 time
+   ZONE_PROVEN  = 3         // zone touched ≥2 times (gates Slot_T THAF non-Day)
+};
+
 static const int MAGIC_CD = 200;  // C, D shared
 static const int MAGIC_F  = 201;
 static const int MAGIC_H  = 205;

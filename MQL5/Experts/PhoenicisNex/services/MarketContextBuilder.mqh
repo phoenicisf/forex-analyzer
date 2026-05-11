@@ -562,6 +562,12 @@ void CMarketContextBuilder::PopulateSubDem(int handle, SubDemFields &out) const
    out.demand_zone  = MathMax(ma0, ma1);
    out.has_support  = (out.support_zone > 0.0);
    out.has_demand   = (out.demand_zone  > 0.0);
+   //--- IMPL-FIX-011a Fix E placeholder (2026-05-11) — real SubDemCalcModel
+   //    classifier deferred to P4 indicator wiring; ZONE_NONE + 0 ensures
+   //    THAF non-Day path fails closed (requires ZONE_PROVEN + zone_hit>=2).
+   //    Fall-through main path still functions on has_support/has_demand.
+   out.zone_strength = ZONE_NONE;
+   out.zone_hit      = 0;
   }
 
 //+------------------------------------------------------------------+

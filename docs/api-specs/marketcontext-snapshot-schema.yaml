@@ -227,10 +227,12 @@ properties:
   subdem_h4:
     type: object
     additionalProperties: false
-    description: "SubDem custom H4 — referenced by DrawProfitTags visual hook"
+    description: "SubDem custom H4 — referenced by DrawProfitTags visual hook. zone_strength + zone_hit added 2026-05-11 IMPL-FIX-011a Fix E per diagnostic § 3 row E (Slot_T §3.15:2 + §3.15:7 THAF gates)."
     properties:
       support_zone: { type: [number, "null"] }
       demand_zone: { type: [number, "null"] }
+      zone_strength: { type: integer, minimum: 0, maximum: 3, description: "0=NONE, 1=WEAK, 2=TESTED, 3=PROVEN per EZoneStrength enum" }
+      zone_hit: { type: integer, minimum: 0, description: "Count of times zone has been touched/respected — ≥2 gates Slot_T THAF non-Day path" }
 
   subdem_d1:
     type: object
@@ -238,6 +240,8 @@ properties:
     properties:
       support_zone: { type: [number, "null"] }
       demand_zone: { type: [number, "null"] }
+      zone_strength: { type: integer, minimum: 0, maximum: 3 }
+      zone_hit: { type: integer, minimum: 0 }
 
   bb_h4_history:
     type: object

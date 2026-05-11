@@ -61,7 +61,18 @@ struct FractalFields{ double upper_fractal; double lower_fractal; bool has_upper
 struct ZigZagFields { double last_high; double last_low; };
 
 //--- Sub-demand/support zone fields (H4 and D1 timeframes)
-struct SubDemFields { double support_zone; double demand_zone; bool has_support; bool has_demand; };
+//    zone_strength + zone_hit added 2026-05-11 IMPL-FIX-011a Fix E per diagnostic § 3 row E.
+//    Legacy Slot_T §3.15:2 + §3.15:7 THAF gates on `strength == ZONE_PROVEN` + `zone_hit >= 2`.
+//    Real classifier population deferred to P4 SubDemCalcModel indicator wiring — PopulateSubDem
+//    currently assigns ZONE_NONE / 0 placeholder (THAF fail-closed until real values land).
+struct SubDemFields {
+   double         support_zone;
+   double         demand_zone;
+   bool           has_support;
+   bool           has_demand;
+   EZoneStrength  zone_strength;   // CodeWiki §4: NONE/WEAK/TESTED/PROVEN
+   int            zone_hit;        // count of times zone has been touched/respected
+};
 
 //--- Bollinger Bands history (15-bar bb_top + bb_bot buffer per CodeWiki §3.6:11 + §3.7 + §3.15:5)
 //    bb_top[0] / bb_bot[0] = current bar (newest); index 14 = oldest; series-indexed.
