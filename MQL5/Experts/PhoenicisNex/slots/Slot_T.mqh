@@ -176,21 +176,31 @@ bool CSlotT::_IsTSellResistanceZone(const MarketContext &ctx) const
   }
 
 //+------------------------------------------------------------------+
-//| _IsPriceAboveHull / _IsPriceBelowHull — §3.15:4                   |
-//| Hull MA H4 currently proxied via IDX_MA_FAST_H4 SMA-50 per IMPL-  |
-//| 006; sufficient for filter shape. Full Hull replacement deferred  |
-//| to P4 IMPL-062 if 5-yr Bucket A surfaces drift on Slot_T entries. |
+//| _IsPriceAboveHull / _IsPriceBelowHull — §3.15:1 Hull gate         |
+//| IMPL-FIX-011a R-13 (gap A) Hull direction per CodeWiki §3.15:1 +  |
+//| diagnostic § 3: legacy `BusinessLogic_T` line 18449 (BUY) /       |
+//| line 18644 (SELL) uses MEAN-REVERSION semantics —                 |
+//|   BUY  outer gate: `Hull[0] < H4Support.hi` ⇒ price PULLED BACK   |
+//|        to Hull at oversold support → entry expects `bid <= Hull`  |
+//|   SELL outer gate: mirror with Resist → `ask >= Hull`             |
+//| Pre-fix predicates `bid > Hull` / `ask < Hull` were trend-        |
+//| following (opposite signal); falsified at iter-3 (T/entry |Δ|=3   |
+//| spurious 2021-03-11 BUY + silent at all 4 legacy buckets).        |
+//| Helper names retained for §3.15 spec-mapping; semantics now       |
+//| mean-reversion per legacy decode. Hull MA H4 proxied via          |
+//| IDX_MA_FAST_H4 SMA-50 (IMPL-006); true Hull deferred to P4        |
+//| IMPL-062 if Bucket A drift remains.                               |
 //+------------------------------------------------------------------+
 bool CSlotT::_IsPriceAboveHull(const MarketContext &ctx) const
   {
    if(ctx.hull_h4.hull <= 0.0) return false;  // unwired; degrade-but-continue
-   return (ctx.bid > ctx.hull_h4.hull);
+   return (ctx.bid <= ctx.hull_h4.hull);       // BUY mean-reversion: bid pulled back to Hull
   }
 
 bool CSlotT::_IsPriceBelowHull(const MarketContext &ctx) const
   {
    if(ctx.hull_h4.hull <= 0.0) return false;
-   return (ctx.ask < ctx.hull_h4.hull);
+   return (ctx.ask >= ctx.hull_h4.hull);       // SELL mean-reversion: ask pulled up to Hull
   }
 
 //+------------------------------------------------------------------+
