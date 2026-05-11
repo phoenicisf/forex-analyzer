@@ -205,34 +205,40 @@ bool CSlotT::_IsPriceBelowHull(const MarketContext &ctx) const
 
 //+------------------------------------------------------------------+
 //| _BBTopBelowIchiMaxCount — §3.15:5 BUY scan                        |
-//| Count of bars in last InpTBBHistWindow (≤15) where bb_top<ichi_max|
+//| IMPL-FIX-011a R-13 (gap B) Ichi cloud-edge per CodeWiki §3.15:5 + |
+//| diagnostic § 3 row B: legacy `BollBTop[z] < MathMin(SenkouA[z],   |
+//| SenkouB[z])` per-bar (strict cloud-LOW edge, not current-bar      |
+//| derived `max(cloud_high, tenkan[0], kijun[0])` which mixed        |
+//| tenkan/kijun into cloud gate). Helper name retained for §3.15:5   |
+//| spec-mapping; semantics now per-bar `bb_top[i] < cloud_low[i]`.   |
 //+------------------------------------------------------------------+
 int CSlotT::_BBTopBelowIchiMaxCount(const MarketContext &ctx) const
   {
-   if(!ctx.bb_h4_history.has_data) return 0;
-   double ichi_max = _IchiMaxH4(ctx);
+   if(!ctx.bb_h4_history.has_data || !ctx.ichi_h4_history.has_data) return 0;
    int n = (InpTBBHistWindow < 15) ? InpTBBHistWindow : 15;
    int count = 0;
    for(int i = 0; i < n; i++)
-      if(ctx.bb_h4_history.bb_top[i] < ichi_max) count++;
+      if(ctx.bb_h4_history.bb_top[i] < ctx.ichi_h4_history.cloud_low[i]) count++;
    return count;
   }
 
 //+------------------------------------------------------------------+
-//| _BBBotAboveIchiMinCount — §3.15:5 SELL mirror (proxy via 1 - top) |
-//| For SELL: legacy spec is "BBBot > IchiMin"; we don't carry a 15-  |
-//| bar bb_bot history (would double the buffer cost). Proxy: count   |
-//| of bars where (bb_top - 2*bb_width_estimate) > ichi_min via       |
-//| symmetric assumption — Phase 1 conservative; full SELL scan in    |
-//| P4 IMPL-062 if 5-yr Bucket A drift surfaces.                      |
-//| For now we approximate: same count as BUY scan (symmetric         |
-//| condition under typical BB envelope) — risk noted in C3 banner.   |
+//| _BBBotAboveIchiMinCount — §3.15:5 SELL mirror                     |
+//| IMPL-FIX-011a R-13 (gap B) SELL completion: now uses proper       |
+//| per-bar `bb_bot[i] > cloud_high[i]` matching legacy line 18644    |
+//| `BollBBot[z] > MathMax(SenkouA[z], SenkouB[z])`. Pre-Fix-B was a  |
+//| symmetric proxy reusing BUY scan because bb_bot history + per-bar |
+//| cloud_high didn't exist — both added 2026-05-11 (BBHistoryFields  |
+//| bb_bot[15] + IchimokuHistoryFields cloud_high[15]).               |
 //+------------------------------------------------------------------+
 int CSlotT::_BBBotAboveIchiMinCount(const MarketContext &ctx) const
   {
-   //--- Phase 1 conservative proxy: assume symmetric condition.
-   //    Future: extend BBHistoryFields with bb_bot[15] companion buffer.
-   return _BBTopBelowIchiMaxCount(ctx);
+   if(!ctx.bb_h4_history.has_data || !ctx.ichi_h4_history.has_data) return 0;
+   int n = (InpTBBHistWindow < 15) ? InpTBBHistWindow : 15;
+   int count = 0;
+   for(int i = 0; i < n; i++)
+      if(ctx.bb_h4_history.bb_bot[i] > ctx.ichi_h4_history.cloud_high[i]) count++;
+   return count;
   }
 
 //+------------------------------------------------------------------+

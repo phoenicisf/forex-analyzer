@@ -63,12 +63,33 @@ struct ZigZagFields { double last_high; double last_low; };
 //--- Sub-demand/support zone fields (H4 and D1 timeframes)
 struct SubDemFields { double support_zone; double demand_zone; bool has_support; bool has_demand; };
 
-//--- Bollinger Bands history (15-bar bb_top buffer per CodeWiki §3.6:11 + §3.7 + §3.15:5)
-//    bb_top[0] = current bar (newest); bb_top[14] = oldest; series-indexed.
-//    has_data = false if CopyBuffer short on any bar (degrade-but-continue per NFR-2.2).
-//    Consumers: Slot_G §3.6:11 "15-bar BBTop<IchiMax scan", Slot_T §3.15:5 "≥7 of last 10 BBTop<IchiMax", Slot_G2 §3.7 BB conditions.
+//--- Bollinger Bands history (15-bar bb_top + bb_bot buffer per CodeWiki §3.6:11 + §3.7 + §3.15:5)
+//    bb_top[0] / bb_bot[0] = current bar (newest); index 14 = oldest; series-indexed.
+//    has_data = false if CopyBuffer short on any band/bar (degrade-but-continue per NFR-2.2).
+//    Consumers: Slot_G §3.6:11 "15-bar BBTop<IchiMax scan", Slot_T §3.15:5 "≥7 of last 10
+//      BBTop<IchiCloudLow / BBBot>IchiCloudHigh", Slot_G2 §3.7 BB conditions.
+//    bb_bot[15] added 2026-05-11 (IMPL-FIX-011a Fix B) to support proper SELL mirror scan
+//      `bb_bot[i] > cloud_high[i]` per legacy `BollBBot > IchiMin` (line 18644); pre-Fix-B
+//      SELL scan reused BUY's `bb_top<cloud_low` count as Phase 1 conservative proxy.
 struct BBHistoryFields {
    double bb_top[15];
+   double bb_bot[15];   // IMPL-FIX-011a Fix B — §3.15:5 SELL mirror
+   bool   has_data;
+};
+
+//--- Ichimoku cloud-edge history (15-bar per-bar cloud edges per CodeWiki §3.15:5)
+//    cloud_low[i]  = MathMin(senkou_a[i], senkou_b[i]) — bottom edge at bar i (legacy IchiMin)
+//    cloud_high[i] = MathMax(senkou_a[i], senkou_b[i]) — top edge at bar i (legacy IchiMax)
+//    Index 0 = current bar (newest); index 14 = oldest; series-indexed.
+//    has_data = false if CopyBuffer short on SenkouA/SenkouB (degrade-but-continue per NFR-2.2).
+//    Consumer: Slot_T §3.15:5 per-bar `bb_top[i] < cloud_low[i]` (BUY) / `bb_bot[i] > cloud_high[i]`
+//      (SELL) scan. Pre-Fix-B rewrite used current-bar `MathMax(cloud_high, tenkan[0], kijun[0])`
+//      as IchiMax proxy — semantically wrong (mixes tenkan/kijun into cloud-edge gate). Legacy
+//      `BollBTop[z] < MathMin(SenkouA[z], SenkouB[z])` is strict cloud-only per-bar.
+//    Added 2026-05-11 IMPL-FIX-011a Fix B per diagnostic § 3 row B.
+struct IchimokuHistoryFields {
+   double cloud_low[15];
+   double cloud_high[15];
    bool   has_data;
 };
 
@@ -161,10 +182,11 @@ struct MarketContext {
    // --- IMPL-FIX-011 Session C history-based predicate fields ---
    //     Source: CodeWiki §3.6:9/11/12 (Slot_G), §3.7:5/6/9 (Slot_G2), §3.15:5 (Slot_T).
    //     Populated once per tick by MarketContextBuilder (ADR-004 immutability preserved).
-   BBHistoryFields    bb_h4_history;     // §3.6:11 + §3.7 + §3.15:5 — 15-bar bb_top scan
-   ForceHistoryFields force_h4_history;  // §3.6:9 + §3.7:6 + §3.7:9 — 8-bar Force buffer + peak count
-   DemRollingFields   dem_h4_rolling;    // §3.6:12 — 25-bar DEM rolling sum × 100
-   AdxHistoryFields   adx_h4_history;    // §3.7:5 — 3-bar ADX/+DI/-DI history + adxw_no_trap_bars_1_3
+   BBHistoryFields       bb_h4_history;     // §3.6:11 + §3.7 + §3.15:5 — 15-bar bb_top + bb_bot scan
+   ForceHistoryFields    force_h4_history;  // §3.6:9 + §3.7:6 + §3.7:9 — 8-bar Force buffer + peak count
+   DemRollingFields      dem_h4_rolling;    // §3.6:12 — 25-bar DEM rolling sum × 100
+   AdxHistoryFields      adx_h4_history;    // §3.7:5 — 3-bar ADX/+DI/-DI history + adxw_no_trap_bars_1_3
+   IchimokuHistoryFields ichi_h4_history;   // §3.15:5 — 15-bar per-bar cloud_low/cloud_high (IMPL-FIX-011a Fix B)
 
    // --- 1 derived signals field ---
    // Note: schema YAML name is "derived_signals"; struct field name is "derived"

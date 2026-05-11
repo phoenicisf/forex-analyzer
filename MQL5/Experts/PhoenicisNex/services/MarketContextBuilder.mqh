@@ -102,10 +102,12 @@ private:
    void PopulateSubDem  (int handle, SubDemFields   &out) const;
 
    //--- IMPL-FIX-011 Session C history populate helpers (per CodeWiki §3.6/§3.7/§3.15)
-   void PopulateBBHistory   (int handle, BBHistoryFields    &out) const;
-   void PopulateForceHistory(int handle, ForceHistoryFields &out) const;
-   void PopulateDemRolling  (int handle, DemRollingFields   &out) const;
-   void PopulateAdxHistory  (int handle, AdxHistoryFields   &out) const;
+   void PopulateBBHistory   (int handle, BBHistoryFields       &out) const;
+   void PopulateForceHistory(int handle, ForceHistoryFields    &out) const;
+   void PopulateDemRolling  (int handle, DemRollingFields      &out) const;
+   void PopulateAdxHistory  (int handle, AdxHistoryFields      &out) const;
+   //--- IMPL-FIX-011a Fix B (2026-05-11) — per-bar Ichimoku cloud-edge history
+   void PopulateIchiHistory (int handle, IchimokuHistoryFields &out) const;
 
    //--- Derived signal precompute helpers (ADR-004: computed once, slot reads flag)
    //    Replaces EA เดิม global RunCheckWPRWaveWithIchimoku2 + CheckADXWithForcePeakValid2
@@ -174,10 +176,12 @@ MarketContext CMarketContextBuilder::Build() const
    //--- IMPL-FIX-011 Session C history-based field population
    //    Reuses existing IDX_BBANDS_H4 / IDX_FORCE_H4 / IDX_DEMARK_H4 / IDX_ADX_H4 handles
    //    (no new indicator handles needed — IndicatorService inventory unchanged).
-   PopulateBBHistory   (m_indicators.GetHandle(MCB_IDX_BBANDS_H4), ctx.bb_h4_history);    // §3.6:11 + §3.7 + §3.15:5
+   PopulateBBHistory   (m_indicators.GetHandle(MCB_IDX_BBANDS_H4), ctx.bb_h4_history);    // §3.6:11 + §3.7 + §3.15:5 (bb_top + bb_bot)
    PopulateForceHistory(m_indicators.GetHandle(MCB_IDX_FORCE_H4),  ctx.force_h4_history); // §3.6:9 + §3.7:6 + §3.7:9
    PopulateDemRolling  (m_indicators.GetHandle(MCB_IDX_DEMARK_H4), ctx.dem_h4_rolling);   // §3.6:12
    PopulateAdxHistory  (m_indicators.GetHandle(MCB_IDX_ADX_H4),    ctx.adx_h4_history);   // §3.7:5
+   //--- IMPL-FIX-011a Fix B — per-bar Ichimoku cloud edges (reuses IDX_ICHI_H4; no new handle)
+   PopulateIchiHistory (m_indicators.GetHandle(MCB_IDX_ICHI_H4),   ctx.ichi_h4_history);  // §3.15:5
 
    //--- 1 derived signals field (computed from raw fields — no DRY violation, ADR-004) ---
    ctx.derived.wpr_wave_signal          = ComputeWprWaveSignal(ctx);
@@ -611,22 +615,61 @@ bool CMarketContextBuilder::ComputeIchiDoubleBounce(const MarketContext &ctx) co
 //+------------------------------------------------------------------+
 
 //+------------------------------------------------------------------+
-//| PopulateBBHistory — 15-bar bb_top history from Bollinger H4       |
-//| buffer_index 1 = Upper band; series-indexed (newest=[0]).         |
+//| PopulateBBHistory — 15-bar bb_top + bb_bot history from BB H4     |
+//| buffer_index 1 = Upper band, 2 = Lower band; series-indexed       |
+//| (newest=[0]). bb_bot[] added 2026-05-11 IMPL-FIX-011a Fix B       |
+//| to support Slot_T §3.15:5 SELL mirror (`bb_bot[i]>cloud_high[i]`).|
 //| Used by Slot_G §3.6:11 + Slot_G2 §3.7 + Slot_T §3.15:5.           |
 //+------------------------------------------------------------------+
 void CMarketContextBuilder::PopulateBBHistory(int handle, BBHistoryFields &out) const
   {
-   double buf[];
-   ArraySetAsSeries(buf, true);
-   int copied = CopyBuffer(handle, 1, 0, MCB_BARS_BB_HIST, buf);
-   out.has_data = (copied >= MCB_BARS_BB_HIST);
+   double bufUp[], bufLo[];
+   ArraySetAsSeries(bufUp, true);
+   ArraySetAsSeries(bufLo, true);
+   int copiedUp = CopyBuffer(handle, 1, 0, MCB_BARS_BB_HIST, bufUp);
+   int copiedLo = CopyBuffer(handle, 2, 0, MCB_BARS_BB_HIST, bufLo);
+   out.has_data = (copiedUp >= MCB_BARS_BB_HIST && copiedLo >= MCB_BARS_BB_HIST);
    if(!out.has_data && m_logger != NULL)
       m_logger.Warn("market_context", "copybuffer_short", 0,
-                    StringFormat("bb_history handle=%d copied=%d expected=%d",
-                                 handle, copied, MCB_BARS_BB_HIST));
+                    StringFormat("bb_history handle=%d copiedUp=%d copiedLo=%d expected=%d",
+                                 handle, copiedUp, copiedLo, MCB_BARS_BB_HIST));
    for(int i = 0; i < MCB_BARS_BB_HIST; i++)
-      out.bb_top[i] = (i < copied) ? buf[i] : 0.0;
+     {
+      out.bb_top[i] = (i < copiedUp) ? bufUp[i] : 0.0;
+      out.bb_bot[i] = (i < copiedLo) ? bufLo[i] : 0.0;
+     }
+  }
+
+//+------------------------------------------------------------------+
+//| PopulateIchiHistory — 15-bar per-bar cloud_low + cloud_high       |
+//| buffer_index 2=SenkouA, 3=SenkouB; cloud_low[i]=min(A[i],B[i]),   |
+//| cloud_high[i]=max(A[i],B[i]); series-indexed (newest=[0]).        |
+//| IMPL-FIX-011a Fix B (2026-05-11) per CodeWiki §3.15:5 + diagnostic|
+//| § 3 row B. Pre-Fix-B Slot_T used current-bar derived cloud_low /  |
+//| cloud_high mixed with tenkan[0]/kijun[0] — wrong semantics. Now   |
+//| each bar's strict cloud edge is available for legacy-fidelity     |
+//| `BollBTop[z] < MathMin(SenkouA[z], SenkouB[z])` (BUY) +           |
+//| `BollBBot[z] > MathMax(SenkouA[z], SenkouB[z])` (SELL) scans.     |
+//+------------------------------------------------------------------+
+void CMarketContextBuilder::PopulateIchiHistory(int handle, IchimokuHistoryFields &out) const
+  {
+   double senkouA[], senkouB[];
+   ArraySetAsSeries(senkouA, true);
+   ArraySetAsSeries(senkouB, true);
+   int cA = CopyBuffer(handle, 2, 0, MCB_BARS_BB_HIST, senkouA);
+   int cB = CopyBuffer(handle, 3, 0, MCB_BARS_BB_HIST, senkouB);
+   out.has_data = (cA >= MCB_BARS_BB_HIST && cB >= MCB_BARS_BB_HIST);
+   if(!out.has_data && m_logger != NULL)
+      m_logger.Warn("market_context", "copybuffer_short", 0,
+                    StringFormat("ichi_history handle=%d cA=%d cB=%d expected=%d",
+                                 handle, cA, cB, MCB_BARS_BB_HIST));
+   for(int i = 0; i < MCB_BARS_BB_HIST; i++)
+     {
+      double a = (i < cA) ? senkouA[i] : 0.0;
+      double b = (i < cB) ? senkouB[i] : 0.0;
+      out.cloud_low [i] = MathMin(a, b);
+      out.cloud_high[i] = MathMax(a, b);
+     }
   }
 
 //+------------------------------------------------------------------+

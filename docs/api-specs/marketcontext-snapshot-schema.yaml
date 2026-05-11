@@ -49,6 +49,7 @@ required:
   - force_h4_history
   - dem_h4_rolling
   - adx_h4_history
+  - ichi_h4_history
   - derived_signals
 
 properties:
@@ -240,8 +241,8 @@ properties:
   bb_h4_history:
     type: object
     additionalProperties: false
-    description: "IMPL-FIX-011 Session C — 15-bar bb_top history for §3.6:11 + §3.7 + §3.15:5 BBTop<IchiMax scan"
-    required: [bb_top, has_data]
+    description: "IMPL-FIX-011 Session C + IMPL-FIX-011a Fix B (2026-05-11) — 15-bar bb_top + bb_bot history for §3.6:11 + §3.7 + §3.15:5 BBTop<IchiCloudLow / BBBot>IchiCloudHigh scans"
+    required: [bb_top, bb_bot, has_data]
     properties:
       bb_top:
         type: array
@@ -249,9 +250,37 @@ properties:
         minItems: 15
         maxItems: 15
         description: "Bollinger upper band by H4 bar; series-indexed bb_top[0]=current, bb_top[14]=oldest"
+      bb_bot:
+        type: array
+        items: { type: number }
+        minItems: 15
+        maxItems: 15
+        description: "Bollinger lower band by H4 bar; series-indexed bb_bot[0]=current, bb_bot[14]=oldest. Added 2026-05-11 IMPL-FIX-011a Fix B for §3.15:5 SELL mirror scan."
       has_data:
         type: boolean
-        description: "False if CopyBuffer short on any bar (degrade-but-continue per NFR-2.2)"
+        description: "False if CopyBuffer short on either band/any bar (degrade-but-continue per NFR-2.2)"
+
+  ichi_h4_history:
+    type: object
+    additionalProperties: false
+    description: "IMPL-FIX-011a Fix B (2026-05-11) — 15-bar per-bar Ichimoku cloud edges (min/max of SenkouA/SenkouB) for §3.15:5 BBTop<CloudLow / BBBot>CloudHigh scans per CodeWiki + diagnostic § 3 row B"
+    required: [cloud_low, cloud_high, has_data]
+    properties:
+      cloud_low:
+        type: array
+        items: { type: number }
+        minItems: 15
+        maxItems: 15
+        description: "min(senkou_a[i], senkou_b[i]) per H4 bar; series-indexed [0]=current, [14]=oldest. Equivalent to legacy IchiMin per-bar."
+      cloud_high:
+        type: array
+        items: { type: number }
+        minItems: 15
+        maxItems: 15
+        description: "max(senkou_a[i], senkou_b[i]) per H4 bar; series-indexed. Equivalent to legacy IchiMax per-bar."
+      has_data:
+        type: boolean
+        description: "False if CopyBuffer short on SenkouA or SenkouB (degrade-but-continue per NFR-2.2)"
 
   force_h4_history:
     type: object
