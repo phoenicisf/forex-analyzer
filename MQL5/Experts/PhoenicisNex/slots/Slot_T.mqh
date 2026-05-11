@@ -83,6 +83,7 @@ private:
    bool              _IsTSellTrigger(const MarketContext &ctx, CPortfolioState &port) const;
    string            _ResolveTSubPath(const MarketContext &ctx) const;       // §3.15:7 D/H sub-path
    double            _ComputeTSlPips(const MarketContext &ctx, bool isBuy) const; // §3.15:9 SL anchor
+   int               _HullThisWaveStartBars(const MarketContext &ctx, bool isBuy) const; // §3.15:9 wave-anchor scan (IMPL-FIX-011a Fix F)
    double            _IchiMaxH4(const MarketContext &ctx) const;
    double            _IchiMinH4(const MarketContext &ctx) const;
 
@@ -310,30 +311,79 @@ string CSlotT::_ResolveTSubPath(const MarketContext &ctx) const
   }
 
 //+------------------------------------------------------------------+
-//| _ComputeTSlPips — §3.15:9 SL = max(hull-distance, BBWidth pips,   |
+//| _HullThisWaveStartBars — §3.15:9 wave-anchor scan                 |
+//| IMPL-FIX-011a R-13 (gap F) per CodeWiki §3.15:9 + diagnostic § 3  |
+//| row F: legacy `_diffHullWith0 = (BollBMid[hullThisWaveStartBars-1]|
+//| - BollBMid[0])` reads BBMid at the bar where Hull's CURRENT       |
+//| directional leg started. Walk Hull history back from bar 0 while  |
+//| Hull continues in the same direction; return the bar count.       |
+//| BUY mean-reversion entry implies Hull is descending (price moving |
+//| down to Hull at support) — wave-start = oldest bar k where        |
+//| `hull[k-1] > hull[k]` chain held from k down to 1. SELL inverts.  |
+//| Min return = 1 (no history → treat current as the start);         |
+//| Max return = MCB_BARS_BB_HIST - 1 = 14 (buffer cap).               |
+//+------------------------------------------------------------------+
+int CSlotT::_HullThisWaveStartBars(const MarketContext &ctx, bool isBuy) const
+  {
+   if(!ctx.hull_h4_history.has_data) return 1;
+   int max_scan = 14;  // index 1..14 (need pair hull[i-1] vs hull[i])
+   for(int i = 1; i <= max_scan; i++)
+     {
+      double prev = ctx.hull_h4_history.hull[i];     // older bar
+      double curr = ctx.hull_h4_history.hull[i - 1]; // newer bar (toward 0)
+      if(prev <= 0.0 || curr <= 0.0) return i;       // hit unwired tail
+      // BUY descent: prev > curr (Hull moving down toward present)
+      // SELL ascent: prev < curr (Hull moving up toward present)
+      bool same_direction = isBuy ? (prev > curr) : (prev < curr);
+      if(!same_direction) return i;                  // direction flipped at bar i
+     }
+   return max_scan;
+  }
+
+//+------------------------------------------------------------------+
+//| _ComputeTSlPips — §3.15:9 SL = max(wave-anchor BBMid distance,    |
+//|                                    BBWidth pips,                  |
 //|                                    InpTSlPipsCodeWikiFloor=90)    |
+//| IMPL-FIX-011a R-13 (gap F) per CodeWiki §3.15:9 + diagnostic § 3  |
+//| row F: pre-Fix-F used current-bar `(bid - hull) / pip` for the    |
+//| hull-distance component — wrong axis. Legacy uses BBMid range     |
+//| FROM the bar BEFORE Hull wave-start TO current bar, i.e. multi-   |
+//| bar wave size, not instantaneous price-to-Hull gap. BUY:          |
+//| `bbmid[k-1] - bbmid[0]` positive when BBMid dropped (descent      |
+//| wave). SELL: `bbmid[0] - bbmid[k-1]` positive when BBMid rose.    |
+//| Fall back to current-bar bid/Hull gap if history short.            |
 //+------------------------------------------------------------------+
 double CSlotT::_ComputeTSlPips(const MarketContext &ctx, bool isBuy) const
   {
    double pip_size = _PipSize();
    if(pip_size <= 0.0) return InpTSlPipsCodeWikiFloor;
 
-   //--- Hull-distance component
-   double hull_pips = 0.0;
-   if(ctx.hull_h4.hull > 0.0)
+   //--- §3.15:9 wave-anchor BBMid range component (replaces current-bar bid/Hull gap)
+   double wave_pips = 0.0;
+   int    k         = _HullThisWaveStartBars(ctx, isBuy);
+   if(ctx.bb_h4_history.has_data && k >= 1 && k <= 14)
      {
+      double mid_anchor = ctx.bb_h4_history.bb_mid[k - 1];
+      double mid_now    = ctx.bb_h4_history.bb_mid[0];
+      double diff_price = isBuy ? (mid_anchor - mid_now)
+                                : (mid_now - mid_anchor);
+      wave_pips = MathMax(0.0, diff_price / pip_size);
+     }
+   else if(ctx.hull_h4.hull > 0.0)
+     {
+      //--- Fallback (history unwired): current-bar bid/Hull gap (pre-Fix-F path)
       double hull_dist_price = isBuy ? (ctx.bid - ctx.hull_h4.hull)
                                      : (ctx.hull_h4.hull - ctx.ask);
-      hull_pips = MathMax(0.0, hull_dist_price / pip_size);
+      wave_pips = MathMax(0.0, hull_dist_price / pip_size);
      }
 
-   //--- BBWidth component
+   //--- BBWidth component (unchanged)
    double bb_width_pips = (ctx.bb_h4.bb_width > 0.0)
                           ? (ctx.bb_h4.bb_width / pip_size)
                           : 0.0;
 
    //--- §3.15:9 max of three components
-   double sl_pips = MathMax(hull_pips, MathMax(bb_width_pips, InpTSlPipsCodeWikiFloor));
+   double sl_pips = MathMax(wave_pips, MathMax(bb_width_pips, InpTSlPipsCodeWikiFloor));
    return sl_pips;
   }
 

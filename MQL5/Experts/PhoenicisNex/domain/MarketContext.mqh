@@ -85,6 +85,21 @@ struct SubDemFields {
 struct BBHistoryFields {
    double bb_top[15];
    double bb_bot[15];   // IMPL-FIX-011a Fix B — §3.15:5 SELL mirror
+   double bb_mid[15];   // IMPL-FIX-011a Fix F — §3.15:9 wave-anchor SL `BollBMid[k] - BollBMid[0]`
+   bool   has_data;
+};
+
+//--- Hull MA history (15-bar buffer per CodeWiki §3.15:9 wave-anchor SL)
+//    hull[0] = current bar (newest); hull[14] = oldest; series-indexed.
+//    has_data = false if CopyBuffer short (degrade-but-continue per NFR-2.2).
+//    Consumer: Slot_T `_HullThisWaveStartBars` walks back finding bar where
+//      Hull direction last reversed; SL distance then read off BBMid history
+//      at that wave-start anchor (per legacy `_diffHullWith0` formula).
+//    Hull MA proxied via IDX_MA_FAST_H4 SMA-50 (per IMPL-006); real Hull MA
+//      indicator deferred to P4 IMPL-062 — same proxy as `HullFields.hull`.
+//    Added 2026-05-11 IMPL-FIX-011a Fix F per diagnostic § 3 row F.
+struct HullHistoryFields {
+   double hull[15];
    bool   has_data;
 };
 
@@ -214,6 +229,7 @@ struct MarketContext {
    AdxHistoryFields      adx_h4_history;    // §3.7:5 — 3-bar ADX/+DI/-DI history + adxw_no_trap_bars_1_3
    IchimokuHistoryFields ichi_h4_history;   // §3.15:5 — 15-bar per-bar cloud_low/cloud_high (IMPL-FIX-011a Fix B)
    FractalHistoryFields  fractal_h4_history;// §3.15:7 — 5-bar real iFractals buffer for THAF (IMPL-FIX-011a Fix D)
+   HullHistoryFields     hull_h4_history;   // §3.15:9 — 15-bar Hull MA history for wave-anchor SL (IMPL-FIX-011a Fix F)
 
    // --- 1 derived signals field ---
    // Note: schema YAML name is "derived_signals"; struct field name is "derived"

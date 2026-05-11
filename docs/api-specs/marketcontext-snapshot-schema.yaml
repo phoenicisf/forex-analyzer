@@ -51,6 +51,7 @@ required:
   - adx_h4_history
   - ichi_h4_history
   - fractal_h4_history
+  - hull_h4_history
   - derived_signals
 
 properties:
@@ -246,8 +247,8 @@ properties:
   bb_h4_history:
     type: object
     additionalProperties: false
-    description: "IMPL-FIX-011 Session C + IMPL-FIX-011a Fix B (2026-05-11) — 15-bar bb_top + bb_bot history for §3.6:11 + §3.7 + §3.15:5 BBTop<IchiCloudLow / BBBot>IchiCloudHigh scans"
-    required: [bb_top, bb_bot, has_data]
+    description: "IMPL-FIX-011 Session C + IMPL-FIX-011a Fix B (2026-05-11) — 15-bar bb_top + bb_bot history for §3.6:11 + §3.7 + §3.15:5 BBTop<IchiCloudLow / BBBot>IchiCloudHigh scans; bb_mid added IMPL-FIX-011a Fix F for §3.15:9 wave-anchor SL distance"
+    required: [bb_top, bb_bot, bb_mid, has_data]
     properties:
       bb_top:
         type: array
@@ -261,9 +262,31 @@ properties:
         minItems: 15
         maxItems: 15
         description: "Bollinger lower band by H4 bar; series-indexed bb_bot[0]=current, bb_bot[14]=oldest. Added 2026-05-11 IMPL-FIX-011a Fix B for §3.15:5 SELL mirror scan."
+      bb_mid:
+        type: array
+        items: { type: number }
+        minItems: 15
+        maxItems: 15
+        description: "Bollinger middle band by H4 bar; series-indexed bb_mid[0]=current, bb_mid[14]=oldest. Added 2026-05-11 IMPL-FIX-011a Fix F for §3.15:9 wave-anchor SL `BollBMid[k-1] - BollBMid[0]` (legacy _diffHullWith0)."
       has_data:
         type: boolean
-        description: "False if CopyBuffer short on either band/any bar (degrade-but-continue per NFR-2.2)"
+        description: "False if CopyBuffer short on any band (Upper/Lower/Middle) (degrade-but-continue per NFR-2.2)"
+
+  hull_h4_history:
+    type: object
+    additionalProperties: false
+    description: "IMPL-FIX-011a Fix F (2026-05-11) — 15-bar Hull MA H4 history for §3.15:9 wave-anchor SL distance (legacy _diffHullWith0). Hull proxied via MA-Fast SMA-50 same as HullFields.hull; real Hull MA deferred to P4 IMPL-062."
+    required: [hull, has_data]
+    properties:
+      hull:
+        type: array
+        items: { type: number }
+        minItems: 15
+        maxItems: 15
+        description: "Hull MA value per H4 bar (proxied SMA-50); series-indexed [0]=current, [14]=oldest"
+      has_data:
+        type: boolean
+        description: "False if CopyBuffer short (degrade-but-continue per NFR-2.2)"
 
   fractal_h4_history:
     type: object

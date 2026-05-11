@@ -112,6 +112,8 @@ private:
    void PopulateIchiHistory (int handle, IchimokuHistoryFields &out) const;
    //--- IMPL-FIX-011a Fix D (2026-05-11) — 5-bar real iFractals H4 buffer
    void PopulateFractalH4History(int handle, FractalHistoryFields &out) const;
+   //--- IMPL-FIX-011a Fix F (2026-05-11) — 15-bar Hull MA H4 history (proxied via MA-Fast SMA-50)
+   void PopulateHullHistory     (int handle, HullHistoryFields &out) const;
 
    //--- Derived signal precompute helpers (ADR-004: computed once, slot reads flag)
    //    Replaces EA เดิม global RunCheckWPRWaveWithIchimoku2 + CheckADXWithForcePeakValid2
@@ -188,6 +190,8 @@ MarketContext CMarketContextBuilder::Build() const
    PopulateIchiHistory (m_indicators.GetHandle(MCB_IDX_ICHI_H4),   ctx.ichi_h4_history);  // §3.15:5
    //--- IMPL-FIX-011a Fix D — real iFractals H4 5-bar buffer (new IDX_FRACTAL_H4=24)
    PopulateFractalH4History(m_indicators.GetHandle(MCB_IDX_FRACTAL_H4), ctx.fractal_h4_history); // §3.15:7
+   //--- IMPL-FIX-011a Fix F — 15-bar Hull H4 history (reuses MA_FAST_H4 SMA-50 Hull proxy)
+   PopulateHullHistory     (m_indicators.GetHandle(MCB_IDX_MA_FAST_H4), ctx.hull_h4_history);    // §3.15:9
 
    //--- 1 derived signals field (computed from raw fields — no DRY violation, ADR-004) ---
    ctx.derived.wpr_wave_signal          = ComputeWprWaveSignal(ctx);
@@ -635,21 +639,49 @@ bool CMarketContextBuilder::ComputeIchiDoubleBounce(const MarketContext &ctx) co
 //+------------------------------------------------------------------+
 void CMarketContextBuilder::PopulateBBHistory(int handle, BBHistoryFields &out) const
   {
-   double bufUp[], bufLo[];
-   ArraySetAsSeries(bufUp, true);
-   ArraySetAsSeries(bufLo, true);
-   int copiedUp = CopyBuffer(handle, 1, 0, MCB_BARS_BB_HIST, bufUp);
-   int copiedLo = CopyBuffer(handle, 2, 0, MCB_BARS_BB_HIST, bufLo);
-   out.has_data = (copiedUp >= MCB_BARS_BB_HIST && copiedLo >= MCB_BARS_BB_HIST);
+   double bufUp[], bufLo[], bufMid[];
+   ArraySetAsSeries(bufUp,  true);
+   ArraySetAsSeries(bufLo,  true);
+   ArraySetAsSeries(bufMid, true);
+   int copiedUp  = CopyBuffer(handle, 1, 0, MCB_BARS_BB_HIST, bufUp);
+   int copiedLo  = CopyBuffer(handle, 2, 0, MCB_BARS_BB_HIST, bufLo);
+   int copiedMid = CopyBuffer(handle, 0, 0, MCB_BARS_BB_HIST, bufMid);  // IMPL-FIX-011a Fix F — middle band for wave-anchor SL
+   out.has_data = (copiedUp  >= MCB_BARS_BB_HIST &&
+                   copiedLo  >= MCB_BARS_BB_HIST &&
+                   copiedMid >= MCB_BARS_BB_HIST);
    if(!out.has_data && m_logger != NULL)
       m_logger.Warn("market_context", "copybuffer_short", 0,
-                    StringFormat("bb_history handle=%d copiedUp=%d copiedLo=%d expected=%d",
-                                 handle, copiedUp, copiedLo, MCB_BARS_BB_HIST));
+                    StringFormat("bb_history handle=%d copiedUp=%d copiedLo=%d copiedMid=%d expected=%d",
+                                 handle, copiedUp, copiedLo, copiedMid, MCB_BARS_BB_HIST));
    for(int i = 0; i < MCB_BARS_BB_HIST; i++)
      {
-      out.bb_top[i] = (i < copiedUp) ? bufUp[i] : 0.0;
-      out.bb_bot[i] = (i < copiedLo) ? bufLo[i] : 0.0;
+      out.bb_top[i] = (i < copiedUp)  ? bufUp [i] : 0.0;
+      out.bb_bot[i] = (i < copiedLo)  ? bufLo [i] : 0.0;
+      out.bb_mid[i] = (i < copiedMid) ? bufMid[i] : 0.0;
      }
+  }
+
+//+------------------------------------------------------------------+
+//| PopulateHullHistory — 15-bar Hull MA H4 history                  |
+//| Proxied via MA-Fast SMA-50 (same proxy as `HullFields.hull` per  |
+//| IMPL-006). Real Hull MA indicator deferred to P4 IMPL-062.       |
+//| buffer_index 0 = MA value; series-indexed (newest=[0]).          |
+//| Consumer: Slot_T `_HullThisWaveStartBars` per CodeWiki §3.15:9   |
+//| wave-anchor SL distance (`_diffHullWith0`).                      |
+//| IMPL-FIX-011a Fix F (2026-05-11) per diagnostic § 3 row F.       |
+//+------------------------------------------------------------------+
+void CMarketContextBuilder::PopulateHullHistory(int handle, HullHistoryFields &out) const
+  {
+   double buf[];
+   ArraySetAsSeries(buf, true);
+   int copied = CopyBuffer(handle, 0, 0, MCB_BARS_BB_HIST, buf);  // reuse 15-bar window
+   out.has_data = (copied >= MCB_BARS_BB_HIST);
+   if(!out.has_data && m_logger != NULL)
+      m_logger.Warn("market_context", "copybuffer_short", 0,
+                    StringFormat("hull_history handle=%d copied=%d expected=%d",
+                                 handle, copied, MCB_BARS_BB_HIST));
+   for(int i = 0; i < MCB_BARS_BB_HIST; i++)
+      out.hull[i] = (i < copied) ? buf[i] : 0.0;
   }
 
 //+------------------------------------------------------------------+
