@@ -129,11 +129,19 @@ public:
          return;
 
       //--- Entry condition 4: price outside Ichimoku cloud matches direction
+      //--- IMPL-FIX-011d Phase 1 (2026-05-11) — Slot_K direction inversion fix
+      //    per legacy `BusinessLogic_K` lines 3643-3649: legacy uses MEAN-
+      //    REVERSION semantics — `if bid<lowMain → BUY` (oversold bounce);
+      //    `else if bid>highMain → SELL` (overbought reversal). Rewrite
+      //    pre-fix used TREND-FOLLOWING (bid>cloud→BUY). Same defect class
+      //    as Slot_T Fix A (IMPL-FIX-011a). Q1 legacy fire 2021-02-16 20:00
+      //    BUY with comment `K,34,61,15,B,...` confirms mean-reversion path
+      //    (FI-cross-up + bid below cloud → BUY = anticipated bounce up).
       double cloud_high = ctx.ichi_h4.cloud_high;
       double cloud_low  = ctx.ichi_h4.cloud_low;
 
-      bool buy_signal  = fi_cross_up && (ctx.bid > cloud_high);
-      bool sell_signal = fi_cross_dw && (ctx.bid < cloud_low);
+      bool buy_signal  = fi_cross_up && (ctx.bid < cloud_low);   // mean-reversion BUY (oversold)
+      bool sell_signal = fi_cross_dw && (ctx.bid > cloud_high);  // mean-reversion SELL (overbought)
       if(!buy_signal && !sell_signal)
          return;
 
