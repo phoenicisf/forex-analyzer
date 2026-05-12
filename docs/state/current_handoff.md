@@ -4,6 +4,61 @@
 
 ## Last completed action
 
+**🟢 SD Rebuttal Round 04 ✅ CLOSED 2026-05-12 — BT-001 Bucket A/B cascade propagation across SD package (11 accept / 0 reject of 11 claims).**
+
+**Trigger:** Operator invoked `/sd-rebuttal claim-review-05.md`. Round 05 review caught 11 SD-side propagation gaps post BA rebuttal-04 + Round 05 clean closure (`ba/claim-review-05.md` 0 finding); SD package = 2 voices vs BA (pre-BT-001 "unintended rewrite drift" / "separate budget" / "user re-decide if drift > 25%" / "rewrite without G4 fixes vs baseline" framing across 5 SD files + ADR-009).
+
+**Patch surface — 5 files, 14 edits:**
+
+| File | Edits | Sections |
+|------|-------|----------|
+| `docs/design-docs/02-high-level-architecture.md` | 5 | § 1.2 NFR Trace L71, § 2 Pillar #1 L137, § 8 Glossary L441/L442 (Bucket A/B), § 9 ADR Digest L469 (ADR-009 row), header L5 |
+| `docs/design-docs/03-deep-dive.md` | 4 | § 1.3 Impl outline L43, § 1.5 Validation L57+L59 (Bucket A target + Bucket B framing), header L5 |
+| `docs/design-docs/05-security.md` | 2 | § 6 Operational Risks L205 (detection threshold + mitigation re-anchored to NFR-1.1 Bucket A gate), header L5 |
+| `docs/design-docs/08-product-breakdown.md` | 5 | § 1.10 IMPL-062 L129 + IMPL-063 L130 (task description rewrite), § 3 Phase Hint P4 L245, § 4 Per-task metadata L293+L294, header L5 |
+| `docs/adr/009-bi-sl-inheritance-pip-arithmetic.md` | 5 | Amendment header row, § Decision Validation L91 heading + L95 step 3, § Consequences L107, § Revisit-when L115 |
+
+**Decision arithmetic preserved:** ADR-009 Option A (earliest B parent SL distance + Bollinger fallback) **unchanged**; amendment confined to prose Validation/Consequences/Revisit-when cascade per BT-001 BA re-baseline. No new ADR (12 ADRs locked).
+
+**Verdict distribution:** 11 accept / 0 reject / 0 partial. Accept rate 100% — justified by post-BT-001 cascade work-in-progress + 0 SD propagation ก่อน Round 05; mirror BA Round 04 finding-spike pattern. All 3 CRITICAL = direct contract conflict with BA truth post-rebuttal-04.
+
+**Cross-doc alignment after fixes:**
+- BA Glossary `01 § 8` L208/L209 ↔ SD Glossary `02 § 8` L441/L442 ✅ verbatim mirror
+- BA NFR `03 § NFR-1.1 Verification` L32 ↔ SD `08 § 1.10` IMPL-062 ✅ aligned (DISABLE_G4_FIXES build ห้ามชัดทั้ง 2 ไฟล์)
+- BA NFR `03 § NFR-1.8` L131 (no acceptance gate) ↔ SD `08 § 1.10` IMPL-063 + `02 § 1.2` NFR Trace + ADR-009 ✅ aligned
+- BA BR `04 § BR-9.5` L530 (single-pass invariant) ↔ SD `08 § 3` Phase Hint P4 ✅ aligned
+
+**Phase 4 sweep (consistency + language):**
+- Tree-wide grep ของ 10 stale patterns ("Bucket B drift > 25", "re-decide if drift > 25", "without G4 fixes", "baseline vs rewrite (with + without", "documented separately per fix", "documented แยก", "separate budget", "bucket B drift via ADR", "user re-decide trigger", "with G4 fixes — ADR-009") → **0 hits** ใน `docs/design-docs/` + `docs/adr/`
+- Remaining "Bucket A drift" generic refs (03 L11/19/308/319, 05 L267, 07 L120, ADR-008 L22/71/83) verified semantically valid post-BT-001 (Bucket A now includes G4 fix contribution)
+- Schedule-leakage check: clean (no sprint/calendar/capacity introduced; "single-pass" = methodology, "2026-05-12" = BT-001 cite)
+- Language Rule: bilingual code-switched preserved (Thai narrative + English tech terms)
+
+**Rebuttal artifact:** `docs/design-docs/claim-review-and-rebuttal/rebuttal-round-04.md` (5,000+ word formal rebuttal with per-claim Verdict + Rationale + Changes + Evidence; Strength Assessment table; next steps per `ba/claim-review-05.md § Recommended action sequence`).
+
+**State reconciliation (3-file rule, Phase 1B docs):**
+- ✅ Layer 1 primary SD package source-of-truth — 5 files modified with 14 edits + ADR-009 amendment row
+- ✅ Layer 2 `docs/state/overview.md` — Design (SD) row bumped `⚠️ Pending re-validation (BT-001)` → `✅ Complete + Rebuttal Round 04 (post-BT-001 cascade applied)`; rebuttal-04 summary appended
+- ✅ Layer 3 `docs/state/current_handoff.md` — THIS section (new Last completed action)
+
+**Verification status:**
+- ✅ Phase 4 consistency sweep clean (10 stale patterns purged tree-wide)
+- ✅ Language Rule compliance verified
+- ✅ Cross-doc BA↔SD alignment matrix verified (4 pillars)
+- ⏳ Round 06 verify-only review pending — expect 0 finding (mirror BA Round 04 → Round 05 trajectory)
+
+**Recommended next session:**
+1. **`/sd-review all`** as Round 06 → expect 0 finding (clean closure)
+2. After Round 06 pass: `/td-review all` + `/qa-review all` + `/impl-plan-review all` per BT-001 downstream chain (ref `ba/claim-review-05.md § Recommended action sequence`). TD `02-backend-design § 13` Strategy Tester audit contract + QA Plan must verify Bucket A measurement = single-pass G4-ON (NOT 2-pass with/without G4)
+3. After full design-package re-validation clean: close BT-001 entry ใน `backtrack-log.md § BT-001` (populate Resolution column)
+4. Parallel impl track (IMPL-FIX-011d Slot_T/G2/G predicate diagnostic per Q1 paired canary divergence) continues independently — SD rebuttal does not impact impl work
+
+**Blocks unblocked by this closure:** SD ↔ BA voice unification (downstream TD/QA agents can now consume single-voice vocabulary). No `[x]` AC newly closed (this is Phase 1B docs cascade, not impl task closure); Phase 5 mechanical gates (forbidden-pattern, denominator, sentinel, etc.) N/A for Phase 1B rebuttal scope.
+
+---
+
+## Previous action (2026-05-12 IMPL-062 Bucket A 5-yr Run #2)
+
 **🔴 IMPL-062 Bucket A 5-yr Run #2 EXECUTED 2026-05-12 with IMPL-FIX-003 Phase 1B build — NFR-1.1 FAIL (drift ≈ 99.998%); CircuitBreaker BR-3.6 ping_pong HALTED at sim 2021-01-14.**
 
 **Trigger:** Operator picked option (a) post-Phase-1B G3+G4 closure → run Bucket A 5-yr retry `regression_5yr_no_g4.ini` to observe whether long-tail slot activation closes drift gap vs $24.27M baseline.

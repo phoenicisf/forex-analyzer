@@ -2,7 +2,7 @@
 
 > **Phase:** Phase 1B (System Design) — Doc 4/6
 > **Author:** Architect agent (`/sd` workflow)
-> **Last updated:** 2026-05-02
+> **Last updated:** 2026-05-12 (BT-001 cascade — § 6 Operational Risks bug-fix row detection threshold re-anchored to Bucket A rewrite-G4-ON gate per BT-001 re-baseline 2026-05-12)
 > **Reads:** `02-high-level-architecture.md`, `03-deep-dive.md`, `docs/ba/03-non-functional-requirements.md § 5 Note`, `docs/ba/04-business-rules.md § 9 Invariants`
 > **Audience:** Tech Lead (Phase 1D TD), QA (Phase 3T), Red Team reviewer
 
@@ -202,7 +202,7 @@ EA = single-process, single-user, no network listener — no AuthN/AuthZ surface
 | User leaves PC unattended in HALTED state with open positions | None — solo operator no monitoring service | FR-7.7 known gap (Phase 2 escalation policy: auto-close after N hours, Telegram notification) — documented in `02-functional-requirements.md § FR-7.7` |
 | Live spread widens beyond modeled range (FBS event-driven) | EA continues with degraded fills | NFR considers; user accepts at C-8 risk profile |
 | User changes input mid-session via input dialog | EA reinit (per MT5 behavior) | NFR-6.1 reattach ≤ 30s; state.json persists across reinit |
-| Bug-fix changes (ADR-009 BI SL, BR-7.2 J magic) cut profitable trades unexpectedly | Bucket B drift > 25% Net Profit | NFR-1.8 + `trading-baseline.md § Validation` — user re-decides if so |
+| Bug-fix changes (ADR-009 BI SL, BR-7.2 J magic) cut profitable trades unexpectedly | NFR-1.1 Bucket A drift > 25% Net Profit บน rewrite-G4-ON build (G4 fix contribution included per BT-001 2026-05-12) | NFR-1.1 Bucket A gate; NFR-1.8 informational delta sign + magnitude record ถ้า partial G4-OFF window measurable (per BA `03 § NFR-1 Empirical Citation`) — user investigates journal `signal_context` ของ BI/J entries หากตี gate |
 | Strategy Tester results diverge from live (slippage / spread) | User compares regression vs live equity | Beyond NFR scope — solo operator manages |
 | Long-running EA reveals memory leak / handle leak | MT5 process memory growth observable | OnDeinit `IndicatorService.ReleaseHandles()` + `TradeJournal.Close()` + `StatePersistence.Save()`; reviewer checklist |
 | Broker maintenance window mid-tick | EA ack timeout; positions might be in-flight | MT5 retries at platform layer; EA logs reject events; reconcile next tick |

@@ -2,7 +2,7 @@
 
 > **Phase:** Phase 1B (System Design) — Doc 2/6
 > **Author:** Architect agent (`/sd` workflow)
-> **Last updated:** 2026-05-02
+> **Last updated:** 2026-05-12 (BT-001 cascade — Challenge 1 § 1.3 Impl outline row + § 1.5 Bucket A/B validation re-framed to rewrite-G4-ON single-pass per BT-001 re-baseline 2026-05-12)
 > **Reads:** `02-high-level-architecture.md`, `docs/adr/*`, `docs/ba/03-non-functional-requirements.md`
 > **Audience:** Tech Lead (Phase 1D TD), Implementation Engineer (Phase 3I), QA (Phase 3T)
 
@@ -40,7 +40,7 @@ Specifically dangerous transitions:
 | `wpr_wave_signal` + `adx_force_peak_valid` precomputed in MarketContextBuilder (avoid timing drift) | ADR-004 | Implementation phase |
 | Comment parser unit-style spike (Strategy Tester scenario) | TD Phase 1D | spike before lock |
 | Per-slot regression tolerance table | QA Phase 3T | extract from baseline |
-| Bug-fix bucket B documentation per case | QA Phase 3T | per-fix |
+| Bucket A measurement (rewrite-G4-ON build, single-pass per BT-001 2026-05-12) absorbs G4 fix contribution; NFR-1.8 informational delta optional (record เฉพาะ partial G4-OFF window measurable ก่อน CircuitBreaker BR-3.6 trigger per IMPL-062 Run #2) | QA Phase 3T | per-fix observability (informational) |
 
 ### 1.4 Failure modes
 
@@ -54,9 +54,9 @@ Specifically dangerous transitions:
 
 ### 1.5 Validation
 
-- **Bucket A target:** ≤ 25% Net Profit drift (NFR-1.1) — primary acceptance
+- **Bucket A target:** ≤ 25% Net Profit drift (NFR-1.1) บน rewrite default build (G4 fixes ON, single-pass per BT-001 2026-05-12, G4 fix contribution included) — primary acceptance
 - **Per-slot:** ≤ ±15% trade count drift, > 30% = investigate (NFR-1.6)
-- **Bucket B:** documented separately per fix; PF ไม่ลด, Max DD% ไม่เพิ่ม (NFR-1.8)
+- **Bucket B:** Informational delta (NFR-1.8) `rewrite-G4-ON − rewrite-G4-OFF` — sign + magnitude ของ G4 fix contribution ถ้า partial G4-OFF window measurable ก่อน CircuitBreaker trigger; **no acceptance gate** (Should priority post-BT-001 2026-05-12). Portfolio-level PF (NFR-1.2 ≤ 0.2 drop) + Max DD (NFR-1.5 ≤ +10pp) gate via Bucket A measurement
 - **Test environment:** FBS-Real Build ≥ 5833, $1k init, 1:500 leverage, 1-min OHLC tick model 0% real (per `trading-baseline.md`); 5-yr period 2021.01.03 → 2025.12.30
 
 ---

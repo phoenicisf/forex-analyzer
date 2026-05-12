@@ -2,7 +2,7 @@
 
 > **Phase:** Phase 1B (System Design) — Doc 6/6
 > **Author:** Architect agent (`/sd` workflow)
-> **Last updated:** 2026-05-02
+> **Last updated:** 2026-05-12 (BT-001 cascade — IMPL-062/063 task description § 1.10 + Phase Hint P4 rationale § 3 + per-task metadata § 4 re-framed to rewrite-G4-ON single-pass per BT-001 re-baseline 2026-05-12)
 > **Reads:** `02-high-level-architecture.md`, `docs/adr/*`, all BA docs
 > **Audience:** Impl Planner (next phase consumer), Tech Lead (Phase 1D TD), QA (Phase 3T)
 
@@ -126,8 +126,8 @@
 | Task | Size | Unlocks | Arch rationale | ADR |
 |------|------|---------|---------------|-----|
 | IMPL-061 — Build per-slot baseline parser (extract `(slot, count, net_pnl, win_rate)` from `ReportTester-25045474.html`) | M | NFR-1.6 per-slot regression check | NFR-1.6 ✅ OQ-7 + AC-2.1.2 | — |
-| IMPL-062 — Run regression: rewrite (without G4 fixes) vs baseline → Bucket A drift | M | acceptance signal | NFR-1.1 ถึง NFR-1.7 primary acceptance | — |
-| IMPL-063 — Run regression: rewrite (with G4 fixes — ADR-009 + BR-7.2) vs baseline → Bucket B drift | M | G4 acceptance signal | NFR-1.8; user re-decide trigger | ADR-009 |
+| IMPL-062 — Run regression: rewrite **default build (G4 fixes ON, single-pass)** vs baseline → Bucket A drift gate (NFR-1.1 ≤ 25%, G4 fix contribution included per BT-001 re-baseline 2026-05-12). ห้ามใช้ `#define DISABLE_G4_FIXES` build (Bucket A semantic ไม่รองรับ pre-G4 measurement post-BT-001; IMPL-062 Run #2 empirical แสดง CircuitBreaker halt at sim 2021-01-14 → drift ≈ 99.998% unmeetable) | M | acceptance signal | NFR-1.1 ถึง NFR-1.7 primary acceptance + BA `03 § NFR-1 Empirical Citation` | — |
+| IMPL-063 — Measure Bucket B **informational delta** `rewrite-G4-ON − rewrite-G4-OFF` (sign + magnitude ของ G4 fix contribution — ADR-009 BI SL + BR-7.2 J magic). Record เฉพาะ partial pre-CircuitBreaker window ของ `#define DISABLE_G4_FIXES` build ที่ measurable (per BT-001 + IMPL-062 Run #2 empirical แสดง full-window unmeetable). **No acceptance gate** — informational only per NFR-1.8 (Should priority, BT-001 re-classification 2026-05-12) | M | G4 fix observability | NFR-1.8 informational delta | ADR-009 |
 | IMPL-064 — Atomic write kill-100 stress test (NFR-3.1 verification) | S | reliability sign-off | NFR-3.1 + ADR-007 assumption A2 | ADR-007 |
 | IMPL-065 — Tick latency measurement protocol (NFR-2.1: ≥ 5,000 ticks; avg + p95 + p99) | M | perf sign-off | NFR-2.1 | — |
 | IMPL-066 — Journal write latency measurement (NFR-2.2: ≥ 200 events; avg + p95) | S | perf sign-off | NFR-2.2 + ADR-006 degrade-warn | ADR-006 |
@@ -242,7 +242,7 @@ graph LR
 - **IMPL-059, IMPL-060** (Orchestrator + entry point .mq5) — reason: integration root
 - **IMPL-013** (per-slot inputs files × 21) — reason: can be drafted in parallel with slot impl P3 — Impl Planner decides whether to bundle with slot or do batch
 - **IMPL-017** (Strategy Tester optimization compatibility verify) — reason: post-input lock
-- **IMPL-061..068** (QA validation suite) — reason: regression after E2-E8 complete; baseline vs rewrite (with + without G4)
+- **IMPL-061..068** (QA validation suite) — reason: regression after E2-E8 complete; **single-pass measurement บน rewrite default build (G4 fixes ON)** per NFR-1.1 Bucket A (BT-001 re-baseline 2026-05-12); IMPL-063 informational delta `rewrite-G4-ON − rewrite-G4-OFF` (NFR-1.8 no-gate) ถ้า partial G4-OFF window measurable ก่อน CircuitBreaker BR-3.6 trigger
 
 ---
 
@@ -290,8 +290,8 @@ graph LR
 | IMPL-059 | medium | IMPL-060 | F1 pipeline integration | composition root | ADR-012 |
 | IMPL-060 | low | binary deliverable | EA entry point | ADR-012 thin wrapper | ADR-012 |
 | IMPL-061 | medium | IMPL-062,063 | per-slot baseline data | NFR-1.6, AC-2.1.2 | — |
-| **IMPL-062** | **high** | acceptance | Bucket A regression sign-off | NFR-1.1 primary acceptance contract | — |
-| **IMPL-063** | **high** | acceptance | Bucket B regression sign-off | NFR-1.8; user re-decide trigger if drift > 25% | ADR-009 |
+| **IMPL-062** | **high** | acceptance | Bucket A regression sign-off (rewrite-G4-ON build, single-pass per BT-001) | NFR-1.1 primary acceptance contract (G4 fix contribution included) + BA `03 § NFR-1 Empirical Citation` | — |
+| **IMPL-063** | **medium** | acceptance | Bucket B informational delta sign-off | NFR-1.8 informational only (no gate, no re-decide trigger; sign + magnitude ของ G4 fix contribution ถ้า partial G4-OFF window measurable post-BT-001 re-baseline 2026-05-12) | ADR-009 |
 | IMPL-064 | medium | acceptance | NFR-3.1 verification | atomic write 100/100 kill test | ADR-007 |
 | IMPL-065 | medium | acceptance | NFR-2.1 verification | tick latency budget validate | — |
 | IMPL-066 | low | acceptance | NFR-2.2 verification | journal latency verify | ADR-006 |

@@ -6,6 +6,7 @@
 | **Date** | 2026-05-02 |
 | **Deciders** | Architect (Phase 1B) |
 | **Goal trace** | G4, FR-3.3, BR-7.1, OQ-3.3 (✅ resolved 2026-05-01 — semantic locked, this ADR locks arithmetic) |
+| **Amendment** | 2026-05-12 — Validation + Consequences + Revisit-when sections cascade-updated per BT-001 (BA NFR-1.1 + NFR-1.8 re-baseline 2026-05-12) — Bucket B framing demoted to informational delta, Revisit-when trigger re-anchored to Bucket A (rewrite-G4-ON build). Decision arithmetic (Option A — earliest B parent SL distance + Bollinger fallback) unchanged |
 
 ## Context
 
@@ -88,11 +89,11 @@ else (SELL):
 - Field `parent_ticket_id` (FR-4.1 schema) populate ด้วย `B_parent_ticket` ตอน BI entry event
 - Field `signal_context` ใส่ `"sl_inherit=B_parent_<ticket>;sl_distance_pip=<N>"` หรือ `"sl_inherit=fallback_bollinger"` ตอน fallback ทำงาน — สำหรับ retrospective audit
 
-**Validation (NFR-1.8 bucket B):**
-- QA Phase: รัน regression with bug fix → inspect BI trade journal entries
+**Validation (NFR-1.1 Bucket A + NFR-1.8 informational delta, BT-001 re-baseline 2026-05-12):**
+- QA Phase: รัน regression บน rewrite default build (G4 fixes ON, single-pass per BT-001) → inspect BI trade journal entries
 - ตรวจ `sl > 0` ทุกราย (AC-3.3.2)
 - ตรวจ `(BI_entry − BI_sl)` pip distance = `(B_entry − B_sl)` pip distance ของ parent ticket เดียวกัน
-- Bucket B drift documented แยก: PF ไม่ลด, Max DD% ไม่เพิ่ม
+- Bucket A measurement (rewrite-G4-ON build, NFR-1.1 ≤ 25%) absorbs BI SL fix drift; portfolio-level PF (NFR-1.2 ≤ 0.2 drop) + Max DD (NFR-1.5 ≤ +10pp) gate at portfolio level. NFR-1.8 informational delta (`rewrite-G4-ON − rewrite-G4-OFF`) record sign + magnitude เฉพาะ partial pre-CircuitBreaker window measurable (ดู BA `03 § NFR-1 Empirical Citation`)
 
 ## Consequences
 
@@ -104,7 +105,7 @@ else (SELL):
 **Negative / trade-off**
 - ต้องเก็บ `ticket_ids[]` array ใน `SlotState` (PortfolioState ADR-005 ครอบคลุมแล้ว)
 - ⚠️ Assumption: oldest-ticket selection = correct anchor (vs newest, average) — ผ่าน semantic argument ของ "base risk" — ถ้า QA แสดง drift > expected → revisit
-- Bucket B drift estimate (per `trading-baseline.md § Deviation Budget`):
+- Bucket A measurement absorbs BI SL fix per NFR-1.1 (rewrite-G4-ON vs baseline); informational delta estimate (per BA `03 § NFR-1 Empirical Citation` post-BT-001 2026-05-12):
   - Win rate: BI ที่เคย naked = ตอนนี้มี SL → อาจถูก stop out บ้างใน losing scenario → win rate ลดเล็กน้อย
   - Net Profit: ลดลงได้ใน bear scenario (BI โดน stop), เพิ่มขึ้นได้ใน trend reversal scenario (BI หลีก deep DD)
   - PF: ควรนิ่ง (ทั้ง gross profit + gross loss ลดลง proportional)
@@ -112,5 +113,5 @@ else (SELL):
 
 ## Revisit-when
 
-- QA regression แสดง bucket B drift > 25% Net Profit (= bug fix "ตัดได้กำไร") → user re-decide per `trading-baseline.md § Validation Strategy`
+- ถ้า QA regression แสดง Bucket A (rewrite-G4-ON vs baseline) drift > 25% Net Profit → user re-decide per BA `03 § NFR-1.1 Verification` + `01 § 10` resolved OQs (BT-001 re-baseline 2026-05-12 subsumes G4 fix contribution into Bucket A; ไม่มี Bucket B threshold trigger)
 - Phase 2 ถ้าเพิ่ม slot pyramid pattern อื่น (เช่น JI, GI) → apply same arithmetic + ADR template

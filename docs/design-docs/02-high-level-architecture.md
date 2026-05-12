@@ -2,7 +2,7 @@
 
 > **Phase:** Phase 1B (System Design) — Doc 1/6 (v1.2: gaps 01/06 — merged into this doc)
 > **Author:** Architect agent (`/sd` workflow)
-> **Last updated:** 2026-05-02
+> **Last updated:** 2026-05-12 (BT-001 cascade — Bucket A/B propagation: Glossary § 8 + ADR Digest § 9 ADR-009 row + NFR Traceability § 1.2 NFR-1.x row + Pillar § 2 #1 clarification)
 > **Reads:** `docs/ba/01-05` (BA package — authoritative for FR/NFR/BR), `docs/foundation-input-sources/*` (CodeWiki, baseline, ideation, improvement-targets)
 > **Audience:** Tech Lead (Phase 1D TD), Implementation Engineer (Phase 3I), QA (Phase 3T), reviewer
 
@@ -68,7 +68,7 @@ PhoenicisNex ออกแบบเป็น **modular monolith intra-process** �
 
 | BA NFR-ID | Target | SD section / mechanism |
 |-----------|--------|------------------------|
-| NFR-1.1 ถึง NFR-1.8 | Behavioral parity (regression contract) | architecture preserves slot/RiskManager/cross-slot logic 1:1 + bucket B drift via ADR-009 |
+| NFR-1.1 ถึง NFR-1.8 | Behavioral parity (regression contract) | architecture preserves slot/RiskManager/cross-slot logic 1:1; G4 fix (ADR-009 BI SL + BR-7.2 J magic) contribution absorbed via NFR-1.1 Bucket A measurement (rewrite-G4-ON default build, BT-001 2026-05-12); NFR-1.8 informational delta optional |
 | NFR-2.1 | Tick latency overhead ≤ 10% | `03 § 2 — Tick Latency Budget` performance analysis |
 | NFR-2.2 | Journal write ≤ 5 ms/tick | ADR-006 sync-write + degrade-warn-but-continue |
 | NFR-2.3 | Strategy Tester ≤ 1.5× original | FR-8.1 cache + slot abstraction overhead within budget |
@@ -134,7 +134,7 @@ PhoenicisNex ออกแบบเป็น **modular monolith intra-process** �
 
 ก่อน design ต่อให้รู้ว่าอะไรเป็น **non-negotiable invariants** ของระบบ:
 
-1. **Behavioral parity (G3)** — 5-yr backtest 2021-2025 EURUSD H4 บน FBS-Real ต้องไม่ deviate Net Profit > 25% (Bucket A) จาก baseline $24.27M; PF ≥ 8.76; Max Equity DD% ≤ 16.39%. ทุก architecture decision ที่กระทบ slot logic ต้อง defendable ผ่านมุมนี้
+1. **Behavioral parity (G3)** — 5-yr backtest 2021-2025 EURUSD H4 บน FBS-Real ต้องไม่ deviate Net Profit > 25% (Bucket A — **rewrite default build with G4 fixes ON, single-pass measurement per BT-001 2026-05-12**; G4 fix contribution included) จาก baseline $24.27M; PF ≥ 8.76; Max Equity DD% ≤ 16.39%. ทุก architecture decision ที่กระทบ slot logic ต้อง defendable ผ่านมุมนี้
 2. **Single-process embedded EA (NFR-7.2 + C-12)** — 0 external DLLs, 0 server-side, 0 installer, 0 cloud. ทุก capability (journal, state, log, alert) ต้อง implement ภายใน MT5 sandbox + native MQL5 + standard library เท่านั้น
 3. **Auditability (G2)** — ทุก order entry/exit/modify/halt → JSON-Lines journal record พร้อม signal context + indicator snapshot ที่ user เปิดใน VS Code/Notepad++ และ filter ผ่าน jq ได้
 4. **Crash-safe persistence (G4 + NFR-3.1)** — `state.json` ต้องไม่ corrupt 100% หลัง random kill 100 รอบ; pending state machines + ban dates + WatchProfits restore 100% field equivalence หลัง reload
@@ -438,8 +438,8 @@ User เป็น solo operator — observability surface:
 | **JSON-Lines (JSONL)** | Format = 1 JSON object per line, no enclosing array; append-only friendly + line-by-line parseable (https://jsonlines.org/). ใช้ใน trade journal (ADR-006) |
 | **Schema version** | Field `schema_version` ใน persisted file — bump เมื่อ breaking change ของ schema. Backward-compat policy: old loader ignore unknown field |
 | **Force-clear** | Safety policy ของ pending state machine M/T/Q — clear pending หลัง N H4 bars elapsed (ADR-008 — resolves OQ-A1/A2/A3) |
-| **Bucket A drift** | Behavioral deviation จาก code rewrite ที่ไม่ตั้งใจ (ต้อง ≤ 25% Net Profit per NFR-1.1) |
-| **Bucket B drift** | Behavioral deviation จาก intentional bug fix (BI SL + ExtraTakeProfit_J magic per NFR-1.8) — separate budget, document แยก |
+| **Bucket A drift** | Behavioral deviation ของ rewrite default build (G4 fixes ON) เทียบ legacy baseline — ต้อง ≤ 25% Net Profit per NFR-1.1 (regression contract). **Includes** intentional G4 fix contribution (BT-001 re-baseline 2026-05-12 — ดู `ba/03 § NFR-1 Empirical Citation`) |
+| **Bucket B drift** | Informational delta `rewrite-G4-ON − rewrite-G4-OFF` ที่บันทึก sign + magnitude ของ intentional G4 fix contribution — **no acceptance gate** per NFR-1.8 (Should priority, BT-001 re-classification 2026-05-12). `DISABLE_G4_FIXES` build อาจ measurable เฉพาะ partial pre-CircuitBreaker window |
 | **OQ-A1/A2/A3** | Architecture-domain Open Questions raised by BA at `01 § 10.1` — M/T/Q-Pending force-clear safety policies; resolved by ADR-008 |
 | **DigitMultipier** | Integer 10 ถ้า broker 5-digit pricing (FBS Standard); 1 ถ้า 4-digit. Auto-detect ใน OnInit (BR-9.3); ทุก pip arithmetic คูณด้วยค่านี้ |
 | **NTFS atomic rename** | Windows file system guarantee: `MoveFileEx` ของ same volume = single transaction; file system observable state อยู่ใน old หรือ new เท่านั้น (no partial rename) |
@@ -466,7 +466,7 @@ User เป็น solo operator — observability surface:
 | ADR-006 | Trade journal = JSON-Lines | Accepted | JSON-Lines + monthly rotation + tester namespace | Sync write ~1-3 ms/event; bulk-close burst exceeds 5ms — degrade-warn-but-continue. **Sustained fail (≥ 10 consecutive) → halt EA via ADR-010** | Async queue if p95 > 10ms | [006](../adr/006-trade-journal-jsonlines.md) |
 | ADR-007 | State persistence atomic temp+rename | Accepted | Single state.json + FileMove rename (primary path conditional บน A2 spike); Option B double-buffered swap = designed-but-not-primary fallback (ready-to-activate ถ้า A2 fail) | ⚠️ A2: assume MT5 sandbox FileMove = NTFS atomic; verify in TD spike (IMPL-046) | If atomic test fails → activate Option B (designed in ADR-007) | [007](../adr/007-state-persistence-atomic-temp-rename.md) |
 | ADR-008 | M/T/Q-Pending force-clear policy | Accepted | M=150 / T=80 / Q=100 H4 bars + journal event | Safety net vs preserve-strict; configurable per input | QA shows force_clear_count > 0 in baseline | [008](../adr/008-pending-state-safety-force-clear.md) |
-| ADR-009 | BI SL inheritance pip arithmetic | Accepted | Earliest B parent SL distance + Bollinger fallback | Bucket B drift expected: PF stable, Max DD% ลด, Net Profit ขึ้น/ลง | Bucket B drift > 25% Net Profit (re-decide) | [009](../adr/009-bi-sl-inheritance-pip-arithmetic.md) |
+| ADR-009 | BI SL inheritance pip arithmetic | Accepted (Amended 2026-05-12 per BT-001) | Earliest B parent SL distance + Bollinger fallback | Bucket A drift absorbed (NFR-1.1 rewrite-G4-ON build, G4 fix contribution included): PF stable, Max DD% ลด, Net Profit ขึ้น/ลง; informational delta per NFR-1.8 (BT-001 2026-05-12) | Bucket A (rewrite-G4-ON vs baseline) drift > 25% Net Profit (re-decide) | [009](../adr/009-bi-sl-inheritance-pip-arithmetic.md) |
 | ADR-010 | Halted state exit-only semantic | Accepted | RUNNING / HALTED / HALTED_STABLE; entry pass skip | Long-running halt + away user = naked window (Phase 2 escalation) | Phase 2 promote OQ-6 | [010](../adr/010-halted-state-exit-only.md) |
 | ADR-011 | Tagged structured logger | Accepted | `CLogger` class + injected; severity routing + Alert throttle | Tag overhead ~10 µs/log; ERROR throttle อาจ suppress consecutive errors | Log overhead > 5% tick latency | [011](../adr/011-tagged-structured-logger.md) |
 | ADR-012 | File layout & module split discipline | Accepted | Layered tree: core/slots/services/domain/helpers + 1 file/slot | Discipline burden — `#include` direction enforce ผ่าน reviewer | Slot file > 5,000 LOC | [012](../adr/012-file-layout-module-split-discipline.md) |
