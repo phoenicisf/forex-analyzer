@@ -1,0 +1,100 @@
+﻿CS	0	09:44:25.702	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:00   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.702	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:00   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.702	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:00   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:00   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:00   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:00   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:00   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:00   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:00   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:00   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:00   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:00   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:01   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:01   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:01   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:01   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:01   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:01   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:02   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:02   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:02   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:02   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:02   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:02   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:02   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:02   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:02   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:02   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:02   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:02   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:03   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:03   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:03   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:03   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:03   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:03   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:03   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:03   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:03   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:03   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:03   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:03   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:04   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:04   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:04   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:04   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:04   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:04   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:04   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:04   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.703	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:04   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:04   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:04   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:04   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:04   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:04   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:04   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:05   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:05   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:05   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:05   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:05   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:05   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:05   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:05   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:05   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:05   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:05   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:05   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:05   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:05   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:05   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:06   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:06   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:06   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:06   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:06   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:06   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:06   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:06   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:06   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:06   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:06   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:06   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:06   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:06   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:06   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:07   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:07   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:07   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:07   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:07   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:07   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:07   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:07   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:07   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:08   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:08   [FIX011d-iter17-K][2021.02.16 16:00][G2_d1guard][PASS] d1_now=2021.02.16 00:00 last_order_d1=2021.02.09 00:00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:08   [FIX011d-iter17-K][2021.02.16 16:00][G3_force][BLOCK] f1=-0.4789 f2=1.6937 f3=-0.0281 cross_up=F cross_dw=F thr_hi=0.50 thr_lo=-0.20 alt_hi=1.00
+CS	0	09:44:25.704	PhoenicisNex (EURUSD,H4)	2021.02.16 16:00:08   [FIX011d-iter17-K][2021.02.16 16:00][G1_count][PASS] k_open=0 max=1

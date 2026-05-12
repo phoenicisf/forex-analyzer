@@ -87,32 +87,6 @@ private:
       return st.buy_count + st.sell_count;
      }
 
-   //--- IMPL-FIX-011d Phase 2 (2026-05-12) — iter-17 telemetry gate.
-   //    Re-introduced post-revert (commit 57397d7) per FORCE-PERIOD registry
-   //    row: Force-period 13→21 fix landed iter-16 but Slot_K STILL silent
-   //    at 2021-02-16 20:00 → next-blocker discovery. Window covers legacy K
-   //    fire bucket + 1 bar before/after for context (4hrs each).
-   bool              _IsTargetDebugBar(const MarketContext &ctx) const
-     {
-      MqlDateTime dt;
-      TimeToStruct(ctx.tick_time, dt);
-      if(dt.year != 2021 || dt.mon != 2 || dt.day != 16) return false;
-      // legacy K fires at H4 bar 20:00 (covers 20:00..00:00 + we want 16:00..00:00)
-      return (dt.hour >= 16 && dt.hour < 24);
-     }
-
-   //--- IMPL-FIX-011d Phase 2 iter-17 — predicate-decision telemetry helper.
-   //    Mirrors Slot_T iter-10 pattern (`PrintFormat`, not Logger.Debug, so
-   //    output survives any severity filter and is grep-stable).
-   void              _DebugEmitGate(const MarketContext &ctx, string gate,
-                                    string verdict, string detail) const
-     {
-      if(!_IsTargetDebugBar(ctx)) return;
-      PrintFormat("[FIX011d-iter17-K][%s][%s][%s] %s",
-                  TimeToString(ctx.tick_time, TIME_DATE|TIME_MINUTES),
-                  gate, verdict, detail);
-     }
-
 public:
    //--- Constructor: zero-init member state
    CSlotK() : m_last_order_d1_time(0) {}
@@ -136,28 +110,14 @@ public:
       if(!InpEnableSlotK)
          return;
 
-      //--- IMPL-FIX-011d Phase 2 iter-17 — gate 1 telemetry (count_k_open)
-      int k_open = _CountKOrders(port);
-      _DebugEmitGate(ctx, "G1_count",
-                     (k_open >= InpKMaxOrders) ? "BLOCK" : "PASS",
-                     StringFormat("k_open=%d max=%d", k_open, InpKMaxOrders));
-
       //--- Entry condition 1: no existing K order open
       // CodeWiki เธขเธ3.5 เนโฌโ€ max 1 K order (KExtra defer P4)
-      if(k_open >= InpKMaxOrders)
+      if(_CountKOrders(port) >= InpKMaxOrders)
          return;
 
       //--- Entry condition 2: one K per day (D1 timestamp guard)
       // CodeWiki เธขเธ3.5 entry condition 2
       datetime d1_bar_time = iTime(_Symbol, PERIOD_D1, 0);
-
-      //--- IMPL-FIX-011d Phase 2 iter-17 — gate 2 telemetry (D1 once-per-day)
-      _DebugEmitGate(ctx, "G2_d1guard",
-                     (d1_bar_time <= m_last_order_d1_time) ? "BLOCK" : "PASS",
-                     StringFormat("d1_now=%s last_order_d1=%s",
-                                  TimeToString(d1_bar_time, TIME_DATE|TIME_MINUTES),
-                                  TimeToString(m_last_order_d1_time, TIME_DATE|TIME_MINUTES)));
-
       if(d1_bar_time <= m_last_order_d1_time)
          return;
 
@@ -165,20 +125,6 @@ public:
       // CodeWiki เธขเธ3.5 entry condition 3 เนโฌโ€ isFICrossUp / isFICrossDw
       bool fi_cross_up = _IsFICrossUp(ctx.force_h4);
       bool fi_cross_dw = _IsFICrossDw(ctx.force_h4);
-
-      //--- IMPL-FIX-011d Phase 2 iter-17 — gate 3 telemetry (Force crossover)
-      //    Verifies post-period-21 fix lifts isFICrossUp blocker at 2021-02-16
-      //    20:00 (iter-15 pre-fix had f2=-0.072 failing primary AND alternate).
-      _DebugEmitGate(ctx, "G3_force",
-                     (!fi_cross_up && !fi_cross_dw) ? "BLOCK" : "PASS",
-                     StringFormat("f1=%.4f f2=%.4f f3=%.4f cross_up=%s cross_dw=%s "
-                                  "thr_hi=%.2f thr_lo=%.2f alt_hi=%.2f",
-                                  ctx.force_h4.f1, ctx.force_h4.f2, ctx.force_h4.f3,
-                                  fi_cross_up ? "T" : "F",
-                                  fi_cross_dw ? "T" : "F",
-                                  InpKFICrossThreshHigh, InpKFICrossThreshLow,
-                                  InpKFICrossAltHigh));
-
       if(!fi_cross_up && !fi_cross_dw)
          return;
 
@@ -196,29 +142,8 @@ public:
 
       bool buy_signal  = fi_cross_up && (ctx.bid < cloud_low);   // mean-reversion BUY (oversold)
       bool sell_signal = fi_cross_dw && (ctx.bid > cloud_high);  // mean-reversion SELL (overbought)
-
-      //--- IMPL-FIX-011d Phase 2 iter-17 — gate 4 telemetry (cloud-direction)
-      //    Verifies whether mean-reversion direction match passes at the legacy
-      //    K fire bar. If bid is INSIDE the cloud (cloud_low <= bid <= cloud_high)
-      //    neither side fires → silent regardless of Force-period fix.
-      _DebugEmitGate(ctx, "G4_cloud",
-                     (!buy_signal && !sell_signal) ? "BLOCK" : "PASS",
-                     StringFormat("bid=%.5f cloud_lo=%.5f cloud_hi=%.5f "
-                                  "buy_sig=%s sell_sig=%s pos_vs_cloud=%s",
-                                  ctx.bid, cloud_low, cloud_high,
-                                  buy_signal ? "T" : "F",
-                                  sell_signal ? "T" : "F",
-                                  (ctx.bid < cloud_low) ? "BELOW" :
-                                  (ctx.bid > cloud_high) ? "ABOVE" : "INSIDE"));
-
       if(!buy_signal && !sell_signal)
          return;
-
-      //--- IMPL-FIX-011d Phase 2 iter-17 — final reach telemetry (would-fire)
-      _DebugEmitGate(ctx, "REACH",
-                     "PASS",
-                     StringFormat("dir=%s ALL_GATES_PASSED",
-                                  buy_signal ? "BUY" : "SELL"));
 
       //--- Lot sizing via RiskManager (no direct CTrade เนโฌโ€ ADR-002 rule)
       if(m_risk == NULL)
@@ -241,21 +166,31 @@ public:
                                     : _NormalizeBrokerPrice(price + sl_dist);
       string           comment    = "K,layer,1";
 
-      //--- Submit order via RiskManager (which wraps CTrade per ea.md)
-      //    RiskManager::OpenOrder wired through core/Orchestrator.mqh.
-      //    Until then: log intent + update D1 guard so SelfTest/smoke
-      //    verifies the entry path without panicking on NULL CTrade.
-      // IMPL-FIX-011 R-13 (d): entry_buy/sell Info emit suppressed (per-tick
-      // stub spam bloated Q1 canary log to 1.41 GB / ~30 GB extrapolated over
-      // 5-yr; restore when RiskManager::OpenOrder wires real send + this
-      // becomes one-shot post-fill milestone). Mirrors IMPL-FIX-008 R-10.
-      // if(m_logger != NULL)
-      //    m_logger.Info("Slot_K", buy_signal ? "entry_buy" : "entry_sell",
-      //                  Magic(),
-      //                  StringFormat("lot=%.2f price=%.5f sl=%.5f comment=%s",
-      //                               lot, price, sl_price, comment));
+      //--- IMPL-FIX-011d Phase 2 iter-18 (2026-05-12): wire RiskManager.OpenOrder
+      //    per IMPL-FIX-003 Phase 1A pattern (mirror Slot_C.mqh:262-289).
+      //    iter-17 telemetry empirically proved all 4 predicate gates PASS at
+      //    legacy K fire bar 2021-02-16 20:00:00 (G1=PASS k_open=0; G2=PASS
+      //    d1_now=02-16 last=02-09; G3=PASS f1=-1.5631 cross_dw=T alternate;
+      //    G4=PASS bid=1.21098 > cloud_high=1.20757 → SELL). Slot_K silence
+      //    was NOT a predicate problem — it was an unwired OrderSend stub
+      //    on the deferred IMPL-FIX-003 Phase 1B follow-up list.
+      MqlTradeRequest req  = {};
+      MqlTradeResult  res  = {};
 
-      //--- Update D1 guard AFTER logging intent (prevents re-entry same day)
+      req.action       = TRADE_ACTION_DEAL;
+      req.symbol       = _Symbol;
+      req.volume       = lot;
+      req.type         = order_type;
+      req.price        = _NormalizeBrokerPrice(price);
+      req.sl           = sl_price;
+      req.tp           = 0.0;    // TP = 0; profit gate managed in ManageExits
+      req.comment      = comment;
+      req.magic        = MAGIC_K;
+      req.type_filling = ORDER_FILLING_FOK;  // broker filling detection per Orchestrator wiring path
+
+      m_risk.OpenOrder(req, "K");
+
+      //--- Update D1 guard AFTER OrderSend (prevents re-entry same day)
       m_last_order_d1_time = d1_bar_time;
      }
 

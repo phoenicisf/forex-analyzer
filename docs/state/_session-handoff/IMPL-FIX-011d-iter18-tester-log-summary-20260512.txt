@@ -1,0 +1,19 @@
+﻿CS	0	09:51:18.758	PhoenicisNex (EURUSD,H4)	2021.01.01 00:00:00   [Phoenicis][2021-01-01 00:00:00.000][INFO][slot=system][ev=logger_init_ok][magic=0] Logger initialised; min_level=INFO alert_on_error=true escalation_n=10
+CS	0	09:51:18.758	PhoenicisNex (EURUSD,H4)	2021.01.01 00:00:00   [Phoenicis][2021-01-01 00:00:00.000][INFO][slot=RiskManager][ev=init_ok][magic=0] main_risk=1.0000 max_lot_ratio=2.9000 port=wired
+CS	0	09:51:18.758	PhoenicisNex (EURUSD,H4)	2021.01.01 00:00:00   [Phoenicis][2021-01-01 00:00:00.000][INFO][slot=CircuitBreaker][ev=cb_init_ok][magic=0] CircuitBreaker initialised; buffer_size=16 ping_threshold=3s near_miss_threshold=5s
+CS	0	09:51:18.758	PhoenicisNex (EURUSD,H4)	2021.01.01 00:00:00   [Phoenicis][2021-01-01 00:00:00.000][INFO][slot=TimeGate][ev=init_ok][magic=0] window=5 spread_thr=10 holiday=12/21..1/3
+CS	0	09:51:18.758	PhoenicisNex (EURUSD,H4)	2021.01.01 00:00:00   [Phoenicis][2021-01-01 00:00:00.000][INFO][slot=PortfolioMonitor][ev=init_ok][magic=0] eq_high=0.00 worst_dd=0.0000 cur_dd=0.0000
+CS	0	09:51:18.844	PhoenicisNex (EURUSD,H4)	2021.01.01 00:00:00   [Phoenicis][2021-01-01 00:00:00.086][INFO][slot=system][ev=init_ok][magic=0] handles=25 slots=21 magics=17 state=EA_STATE_RUNNING
+CS	0	09:51:19.172	PhoenicisNex (EURUSD,H4)	2021.01.04 00:29:22   [Phoenicis][2021-01-04 00:29:22.415][INFO][slot=C][ev=order_sent][magic=200] ticket=2 dir=ORDER_TYPE_BUY lot=0.30 price=1.22401 sl=1.21901 comment=C,MA,N,1,SL
+CS	0	09:51:19.172	PhoenicisNex (EURUSD,H4)	2021.01.04 00:29:22   [Phoenicis][2021-01-04 00:29:22.415][INFO][slot=M][ev=order_sent][magic=210] ticket=3 dir=ORDER_TYPE_BUY lot=0.40 price=1.22401 sl=1.21901 comment=M,MA,N,1,SL
+CS	0	09:51:20.377	PhoenicisNex (EURUSD,H4)	2021.01.04 14:57:35   [Phoenicis][2021-01-04 14:57:35.619][INFO][slot=Q][ev=order_sent][magic=212] ticket=5 dir=ORDER_TYPE_SELL lot=0.30 price=1.23040 sl=1.23540 comment=Q,MA,N,1,SL
+CS	0	09:51:23.047	PhoenicisNex (EURUSD,H4)	2021.01.05 16:00:00   [Phoenicis][2021-01-05 16:00:00.290][INFO][slot=K][ev=order_sent][magic=207] ticket=6 dir=ORDER_TYPE_SELL lot=0.22 price=1.22638 sl=1.23538 comment=K,layer,1
+CS	0	09:51:24.680	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:53   [Phoenicis][2021-01-06 02:50:53.922][INFO][slot=T][ev=order_sent][magic=219] ticket=7 dir=ORDER_TYPE_SELL lot=0.18 price=1.23236 sl=1.24310 comment=T,S,D,0,107
+CS	0	09:51:26.409	PhoenicisNex (EURUSD,H4)	2021.01.06 13:52:14   [Phoenicis][2021-01-06 13:52:14.652][INFO][slot=T][ev=order_sent][magic=219] ticket=12 dir=ORDER_TYPE_SELL lot=0.17 price=1.23391 sl=1.24625 comment=T,S,D,0,123
+CS	0	09:51:28.648	PhoenicisNex (EURUSD,H4)	2021.01.07 11:45:38   [Phoenicis][2021-01-07 11:45:38.890][INFO][slot=S][ev=order_sent][magic=217] ticket=13 dir=ORDER_TYPE_BUY lot=0.17 price=1.22749 sl=1.22149 comment=S,post,1
+CS	0	09:51:29.911	PhoenicisNex (EURUSD,H4)	2021.01.08 00:05:00   [Phoenicis][2021-01-08 00:05:00.153][INFO][slot=K][ev=order_sent][magic=207] ticket=14 dir=ORDER_TYPE_SELL lot=0.23 price=1.22660 sl=1.23560 comment=K,layer,1
+CS	0	09:51:32.479	PhoenicisNex (EURUSD,H4)	2021.01.11 01:06:07   [Phoenicis][2021-01-11 01:06:07.721][INFO][slot=G2][ev=order_sent][magic=208] ticket=16 dir=ORDER_TYPE_SELL lot=0.20 price=1.22107 sl=1.22607 comment=G2,F1,N,1,SL
+CS	0	09:53:54.198	Tester	final balance 4380.59 USD
+CS	0	09:53:54.198	PhoenicisNex (EURUSD,H4)	2021.03.30 23:59:58   [Phoenicis][2021-03-30 23:59:58.440][INFO][slot=system][ev=deinit_cleanup][magic=0] reason=1 state=EA_STATE_RUNNING
+CS	0	09:53:54.206	Tester	EURUSD,H4: 5500180 ticks, 372 bars generated. Environment synchronized in 0:00:00.024. Test passed in 0:02:35.494 (including ticks preprocessing 0:00:00.297).
+CS	0	09:53:54.206	Tester	test Experts\PhoenicisNex\PhoenicisNex.ex5 on EURUSD,H4 thread finished
