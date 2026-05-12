@@ -2,7 +2,7 @@
 
 > **Phase:** Phase 1A (BA Requirements Discovery) — Doc 2/5
 > **Author:** BA agent (`/ba` workflow, v1.2)
-> **Last updated:** 2026-05-01
+> **Last updated:** 2026-05-12 (BT-001 cascade — Bucket A/B propagation: FR-3.3 Why + AC-3.3.3 + AC-3.4.3 re-framed to NFR-1.1/1.6/1.8)
 > **Reads:** `01-project-brief.md` (goals, scope, glossary)
 > **Audience:** Architect (Phase 1B) — แปลง requirements เหล่านี้เป็น component design
 
@@ -285,7 +285,7 @@ EA เดิมมี risk module ที่ smeared across ~20 helper + 18 globa
 **As a** Trader, **I want** Slot BI (pyramid child of B) เปิด order ด้วย SL ที่อิง parent B slot, **so that** ผมไม่มี naked exposure จาก pyramid order ตอน trend reverse
 
 - **Priority:** Must
-- **Why:** ปัจจุบัน BI เปิดด้วย `SL=0` (CodeWiki §6.2 CRITICAL `:20326 :20357`) → unlimited downside risk; user decision 2026-05-01 = **FIX** (G4); drift จาก fix นี้นับใน **bucket B** ของ regression budget แยกจาก 25% ceiling
+- **Why:** ปัจจุบัน BI เปิดด้วย `SL=0` (CodeWiki §6.2 CRITICAL `:20326 :20357`) → unlimited downside risk; user decision 2026-05-01 = **FIX** (G4); G4 fix contribution วัดผ่าน NFR-1.1 Bucket A (≤ 25% บน rewrite-G4-ON default build) + NFR-1.8 informational delta (BT-001 re-baseline 2026-05-12 — ดู `03 § NFR-1 Empirical Citation`)
 - **Source:** CodeWiki §4.2 (BI row), §6.2 CRITICAL; improvement-targets P1.3; ideation-brief OQ-1 resolved
 - **Goal trace:** G4
 - **Acceptance Criteria:**
@@ -295,9 +295,9 @@ EA เดิมมี risk module ที่ smeared across ~20 helper + 18 globa
   - **AC-3.3.2:** Given trade journal entry ของ BI order
     When inspect field `sl`
     Then ค่า > 0 และอ้างถึง B parent's SL reference (record parent ticket ID ใน journal)
-  - **AC-3.3.3:** Given QA regression run พร้อม bug fix
+  - **AC-3.3.3:** Given QA regression run บน rewrite default build (G4 fixes ON)
     When เปรียบเทียบ Net Profit + PF + DD กับ baseline
-    Then bucket B drift documented (ไม่นับใน 25% pattern parity bucket A); PF ลดลง ≤ 0.2 จุด, Max DD% ไม่เพิ่ม
+    Then NFR-1.1 Bucket A gate ใช้ได้ (|ΔNet Profit| ≤ 25% บน rewrite-G4-ON build, G4 fix contribution included); NFR-1.2 PF ลดลง ≤ 0.2 จุด; NFR-1.5 Max Equity DD% ไม่เพิ่ม > +10pp; NFR-1.8 informational delta (G4-ON − G4-OFF) บันทึก sign + magnitude ถ้า partial G4-OFF window measurable ก่อน CircuitBreaker BR-3.6 trigger (BT-001 2026-05-12 — ดู `03 § NFR-1 Empirical Citation`)
 
 > ✅ **OQ-3.3 resolved 2026-05-01 (rule domain — locked ใน `04 § BR-7.1`):** BI inheritance semantic = **(a) same SL distance** — BI ใช้ pip distance เดียวกับ B parent's SL วัดจาก BI entry price (symmetric per-position risk)
 
@@ -316,9 +316,9 @@ EA เดิมมี risk module ที่ smeared across ~20 helper + 18 globa
   - **AC-3.4.2:** Given QA regression run พร้อม bug fix
     When inspect trade journal สำหรับ J slot exits
     Then ทุก J close event มี `triggering_function = "ExtraTakeProfit_J"` (ไม่ใช่ `_F`); F close events ไม่อ้างถึง J
-  - **AC-3.4.3:** Given regression result
-    When เปรียบเทียบ J slot trade count + win rate + Net Profit กับ baseline
-    Then drift ของ J + F slot นับใน bucket B (intentional fix); portfolio-level: PF ไม่ลด, Max DD% ไม่เพิ่ม
+  - **AC-3.4.3:** Given regression result บน rewrite default build (G4 fixes ON)
+    When เปรียบเทียบ J slot + F slot trade count + win rate + Net Profit กับ baseline
+    Then per-slot drift J/F อยู่ใน NFR-1.6 tolerance (±15% / >30% investigation flag / ±2 absolute ถ้า baseline < 5 trades); portfolio-level NFR-1.2 PF ลดลง ≤ 0.2 จุด, NFR-1.5 Max Equity DD% ไม่เพิ่ม > +10pp; NFR-1.8 informational delta (G4-ON − G4-OFF) บันทึก J/F contribution sign + magnitude ถ้า partial G4-OFF window measurable (BT-001 2026-05-12 — ดู `03 § NFR-1 Empirical Citation`)
 
 ### FR-3.5 — Trailing / breakeven behavior preservation
 

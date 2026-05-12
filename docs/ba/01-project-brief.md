@@ -2,7 +2,7 @@
 
 > **Phase:** Phase 1A (BA Requirements Discovery) — Doc 1/5
 > **Author:** BA agent (`/ba` workflow, v1.2)
-> **Last updated:** 2026-05-01
+> **Last updated:** 2026-05-12 (BT-001 cascade — Bucket A/B propagation: glossary `§ 8` + Goal G4 KPI `§ 3` + reference table `§ 9`)
 > **Audience:** Architect (Phase 1B), Tech Lead (Phase 1D), Sponsor / Trader (sign-off) — ทุกบทบาทในโปรเจคนี้คือ user คนเดียว (solo)
 
 ## TL;DR
@@ -57,7 +57,7 @@ EA ปัจจุบันมีผล backtest ดีมาก (5-yr 2021-2025
 | **G1** | **Maintainability** — code อ่าน/แก้/tune ได้โดยไม่ recompile | ≥ 80 magic numbers (CodeWiki §6.1) ทั้งหมดเป็น `input`/`sinput` ใน MT5 input dialog; ทุกไฟล์ ≤ 5,000 LOC | ปัจจุบัน tune ที = recompile + restart MT5 + state อาจ corrupt; Strategy Tester sweep ทำไม่ได้ → user ไม่สามารถ optimize ได้ตลอดอายุการใช้งาน |
 | **G2** | **Observability** — ทุก trade ค้นย้อนได้ | ทุก order entry/exit/modification → trade journal record (slot, magic, signal context, indicator snapshot, lot, SL, TP, comment, timestamp) ที่ query/filter ได้ภายหลัง | *"ไม่ค่อยมีหลักฐานการเทรดให้ไปเรียนรู้จากความผิดพลาด"* (user Q4.1) — ขาด journal = ไม่มีทาง improve strategy ภายหลัง |
 | **G3** | **Behavioral preservation** — เทรด pattern คล้ายเดิม | Backtest 2021-2025 EURUSD H4 บน FBS Standard: \|ΔTotal Net Profit\| ≤ **25%** ของ baseline ($24.27M ≈ ±$6.07M); Profit Factor ลดลง ≤ 0.2 จุด (≥ 8.76) | ห้ามทำ EA ที่ทำงานดีอยู่แล้วเสีย — user สูญเสียมูลค่ากำไร backtest ที่ตรวจสอบแล้ว |
-| **G4** | **Safety remediation** — fix 2 critical bugs | (a) `BI` orders ต้องมี SL อิง parent `B` slot (รายละเอียด distance vs absolute = open question สำหรับ SD); (b) `ExtraTakeProfit_J` iterate `MagicJ` (=206), ไม่ใช่ `MagicF` (=201). Drift จาก fix นี้นับใน **bucket B** ของ regression budget (แยกจาก 25% pattern parity) | BI = naked exposure (live ขาดทุนได้ไม่จำกัด); J bug = exit logic ของ J ไม่ทำงานเลย → live risk ที่ user ไม่ควรรับสืบทอด (decision: FIX, 2026-05-01) |
+| **G4** | **Safety remediation** — fix 2 critical bugs | (a) `BI` orders ต้องมี SL อิง parent `B` slot (semantic locked "same SL distance" per OQ-3.3 — `04 § BR-7.1`); (b) `ExtraTakeProfit_J` iterate `MagicJ` (=206), ไม่ใช่ `MagicF` (=201). G4 fix contribution วัดผ่าน **NFR-1.1 Bucket A** (rewrite-G4-ON vs baseline ≤ 25%, default build, fix contribution included) + **NFR-1.8 informational delta** (no acceptance gate, post-BT-001 re-baseline 2026-05-12) | BI = naked exposure (live ขาดทุนได้ไม่จำกัด); J bug = exit logic ของ J ไม่ทำงานเลย → live risk ที่ user ไม่ควรรับสืบทอด (decision: FIX, 2026-05-01) |
 
 > **Operating envelope (ไม่ใช่ acceptance criteria)** — EA เดิมตั้งเป้า 10–30% ROI/เดือน, max drawdown ≤ 50% (User C-8 = High Risk profile). ตัวเลขเหล่านี้สำหรับ live; rewrite ไม่ต้องบรรลุตรง — แค่ไม่เสีย behavioral parity ตาม **G3**.
 
@@ -205,15 +205,15 @@ EA ปัจจุบันมีผล backtest ดีมาก (5-yr 2021-2025
 | **Baseline** | ผล Strategy Tester ของ `PhoenicisN2.10_stable.mq5` ตาม `trading-baseline.md` ที่ใช้เป็น regression contract |
 | **Behavioral parity** | Rewrite ต้องเทรดด้วย pattern คล้ายเดิม + Total Net Profit deviation ≤ 25% (ไม่ต้อง tick-by-tick เหมือน) |
 | **Bug-for-bug compatibility** | Preserve bugs ของเดิมไว้ใน rewrite เพื่อไม่ให้ behavioral parity เสียไป — **ตรงข้าม** กับการ fix bugs (decision G4 = FIX, ไม่ preserve) |
-| **Bucket A drift** | Behavioral deviation ที่เกิดจาก code rewrite ไม่ตั้งใจ — ต้อง ≤ 25% Net Profit (regression contract) |
-| **Bucket B drift** | Behavioral deviation ที่เกิดจาก intentional bug fix (BI SL + Magic-J) — separate budget, document แยกแต่ละ case |
+| **Bucket A drift** | Behavioral deviation ของ rewrite default build (G4 fixes ON) เทียบ legacy baseline — ต้อง ≤ 25% Net Profit per NFR-1.1 (regression contract). **Includes** intentional G4 fix contribution (BT-001 re-baseline 2026-05-12 — ดู `03 § NFR-1 Empirical Citation`) |
+| **Bucket B drift** | Informational delta `rewrite-G4-ON − rewrite-G4-OFF` ที่บันทึก sign + magnitude ของ intentional G4 fix contribution — **no acceptance gate** per NFR-1.8 (Should priority, BT-001 re-classification 2026-05-12). `DISABLE_G4_FIXES` build อาจ measurable เฉพาะ partial pre-CircuitBreaker window |
 | **Slot orchestrator** | ตัวเรียก `BusinessLogic_X` + `ExtraTakeProfit_X` ตามลำดับ exit-before-entry ทุก tick (CodeWiki §2.2) |
 | **MarketContext snapshot** | Indicator-value bundle ที่ build ครั้งเดียวต่อ tick + ทุก slot อ่านจาก bundle เดียวกัน (เป้าหมายของ rewrite ตาม CodeWiki §7.2) — concrete struct/class shape ลงรายละเอียดใน TD |
 | **PortfolioState** | Per-slot state lookup (buyCount/sellCount/totalLots/totalProfit/lastOpenDate/pendingState) ที่ slot อ่านได้ผ่าน magic identifier ใน O(1) แทน global variable swarm `BuyOrders__X / SellOrders__X / *Lots / *Profit / *Date` ของ EA เดิม (CodeWiki §7.2) — concrete data structure (associative container, struct array, ฯลฯ) = TD decide |
 | **Trade Journal** | Local file (format = JSON-lines per OQ-3 ✅ 2026-05-01) ใน `MQL5/Files/` ที่บันทึกทุก order event ของ EA — **ไม่ใช่** MT5 broker history (ซึ่งเก็บเฉพาะ trade summary) |
 | **Force-pending** | Cross-slot pending state ที่ใช้กับ slot CD เมื่อ `ForceDivergentWorking` set flag (CodeWiki §2.5) |
 | **Safe port** | คำเรียก `OrderGroupStartWorkflow` cleanup — ปิด weak orders 10 slots พร้อมกันเมื่อ avg badPIP > 55 + currentProfit > 0 (CodeWiki §5.5) |
-| **Bug-fix bucket** | Regression accounting category — ดู `trading-baseline.md § Validation Strategy → Deviation Budget — 2 Buckets` |
+| **Bug-fix bucket** | (deprecated post-BT-001 2026-05-12) — เดิมหมายถึง 2-bucket deviation budget แยก Bucket A pattern parity จาก Bucket B intentional fix; ปัจจุบัน Bucket B ไม่เป็น budget แล้ว — ดู NFR-1.8 + `03 § NFR-1 Empirical Citation` แทน |
 | **Regression contract** | Acceptance threshold ที่ rewrite ต้องผ่านใน QA: \|ΔNet Profit\| ≤ 25%, ΔPF ≥ −0.2, ΔTrade count ±15%, ΔWin rate ±5pp (ดู `trading-baseline.md`) |
 | **EET** | Eastern European Time — broker server timezone ของ FBS (Winter GMT+2; Summer GMT+3 DST). DST switch = last Sunday of March (start) / October (end) |
 | **DST** | Daylight Saving Time — broker server shift +1 hour; กระทบ time filters ใน EA |
@@ -276,7 +276,7 @@ EA เดิมใช้ naming convention ของ helper function ที่ F
 | `project-overview.md` | Identity + stakeholders + constraints |
 | `ideation-brief.md` | Phase 0 chosen direction (D1-D7) + Not-Doing list + open questions |
 | `improvement-targets.md` | Ranked pain inventory (P1-P4) cross-reference CodeWiki §6/§7 |
-| `trading-baseline.md` | Regression contract + 2-bucket deviation budget (Bucket A pattern parity, Bucket B intentional bug-fix) |
+| `trading-baseline.md` | Regression contract + Bucket A (rewrite-G4-ON vs baseline per NFR-1.1) + Bucket B (informational delta per NFR-1.8 — no acceptance gate, post-BT-001 re-baseline 2026-05-12) |
 | `PhoenicisN2.10_CodeWiki.md` | As-Is technical analysis (8 sections) ใช้เป็น spec ของ rewrite |
 | `ReportTester-25045474.html` | Raw Strategy Tester report — source ของ baseline numbers |
 | `notebooklm.md` | 8 NotebookLM notebooks (queryable via MCP) — เน้น #5 news, #6 time-series, #8 retail-stats |

@@ -2,7 +2,7 @@
 
 > **Phase:** Phase 1A (BA Requirements Discovery) — Doc 4/5
 > **Author:** BA agent (`/ba` workflow, v1.2)
-> **Last updated:** 2026-05-01
+> **Last updated:** 2026-05-12 (BT-001 cascade — Bucket A/B propagation: rule type tag legend `§ 1` + BR-7 intro `§ 8` + BR-7.1/7.2 validation hints + BR-9.5 invariant)
 > **Reads:** `01-project-brief.md` (glossary), `02-functional-requirements.md` (FR-X.Y refs), `trading-baseline.md`
 > **Audience:** Architect (Phase 1B), Tech Lead (Phase 1D) — แปลงเป็น decision logic + state machine + invariants
 
@@ -28,7 +28,7 @@
 
 **Rule type tag:**
 - 🔒 **Preserve 1:1** — ห้ามเปลี่ยน, replicate exact ของ EA เดิม
-- ⚠️ **Bug-fix** — intentional change per G4 (drift นับใน Bucket B)
+- ⚠️ **Bug-fix** — intentional change per G4 (drift รวมอยู่ใน NFR-1.1 Bucket A measurement บน rewrite-G4-ON default build; NFR-1.8 Bucket B = informational delta only, post-BT-001 re-baseline 2026-05-12)
 - 🔧 **Refactor-safe** — semantic เหมือนเดิมแต่ implementation อาจเปลี่ยน (ผ่าน slot abstraction; concrete API = TD decide)
 
 ---
@@ -419,7 +419,7 @@ IsForcePendingActionBuyOrder|SellOrder = true
 
 ## 8. BR-7 — Bug Fix Semantics ⚠️ (G4)
 
-หมวดนี้คือ 2 intentional rule changes ที่ user decision 2026-05-01 = **FIX** (drift นับใน Bucket B ของ regression budget — `trading-baseline.md`).
+หมวดนี้คือ 2 intentional rule changes ที่ user decision 2026-05-01 = **FIX**. G4 fix contribution วัดผ่าน NFR-1.1 Bucket A (rewrite-G4-ON vs baseline ≤ 25%, default build, contribution included) + NFR-1.8 informational delta (no acceptance gate, BT-001 re-baseline 2026-05-12) — ดู `03 § NFR-1 Empirical Citation` + `trading-baseline.md`.
 
 ### BR-7.1 — BI SL inheritance ⚠️ (CRITICAL fix) ✅ semantic resolved
 
@@ -430,7 +430,7 @@ IsForcePendingActionBuyOrder|SellOrder = true
 - **Why:** ปัจจุบัน BI เปิดด้วย `SL=0` (CodeWiki §6.2 CRITICAL `:20326 :20357`) → naked exposure unlimited; user decision 2026-05-01 = FIX with semantic (a)
 - **Source:** CodeWiki §6.2 CRITICAL P1.3, ideation-brief OQ-1 resolved, OQ-3.3 user resolved 2026-05-01
 - **Related FR:** FR-3.3
-- **Validation hint:** QA inspect BI trade journal entries — `sl > 0` ทุกราย; verify `(BI_entry - BI_sl)` ≈ `(B_entry - B_sl)` ใน pip distance; bucket B drift documented
+- **Validation hint:** QA inspect BI trade journal entries — `sl > 0` ทุกราย; verify `(BI_entry - BI_sl)` ≈ `(B_entry - B_sl)` ใน pip distance; portfolio-level drift roll up via NFR-1.1 Bucket A (rewrite-G4-ON build); NFR-1.8 informational delta optional (record เฉพาะ partial G4-OFF window measurable)
 
 > ✅ **OQ-3.3 resolved 2026-05-01:** Semantic locked = (a) same SL distance — SD agent (Phase 1B) ลงรายละเอียด exact pip arithmetic; TD lock implementation ใน Phase 1D
 
@@ -442,7 +442,7 @@ IsForcePendingActionBuyOrder|SellOrder = true
 - **Source:** CodeWiki §6.2 HIGH P1.4, ideation-brief OQ-1 resolved
 - **Related FR:** FR-3.4
 - **Expected drift:** J win rate ลดเล็กน้อย (exit เข้มงวดกว่าเดิม), F อาจดีขึ้นเล็กน้อย, portfolio-level อาจดีขึ้น
-- **Validation hint:** QA inspect trade journal — ทุก J close event มี `triggering_function = "ExtraTakeProfit_J"` (ไม่ใช่ "_F"); F close ไม่อ้างถึง J; bucket B drift documented
+- **Validation hint:** QA inspect trade journal — ทุก J close event มี `triggering_function = "ExtraTakeProfit_J"` (ไม่ใช่ "_F"); F close ไม่อ้างถึง J; per-slot J/F drift check via NFR-1.6 (rewrite-G4-ON build); NFR-1.8 informational delta optional
 
 ---
 
@@ -527,8 +527,8 @@ EA เดิมมี cleanup mechanism ที่ทำงานข้าม slo
 
 ### BR-9.5 — Behavioral parity invariant 🔒
 
-**Invariant:** Backtest 2021-2025 EURUSD H4 ของ rewrite อยู่ใน regression budget (NFR-1.1 ถึง NFR-1.7) — ตรวจ 2 รอบ: (a) without G4 fixes (verify Bucket A only), (b) with G4 fixes (Bucket A + Bucket B documented)
-- **Source:** `trading-baseline.md`, NFR-1.x
+**Invariant:** Backtest 2021-2025 EURUSD H4 ของ rewrite default build (G4 fixes ON) อยู่ใน regression budget (NFR-1.1 ถึง NFR-1.7) — **single-pass measurement บน rewrite-G4-ON build เท่านั้น** (BT-001 re-baseline 2026-05-12; `DISABLE_G4_FIXES` build halts pre-window per IMPL-062 Run #2 → ห้ามใช้เป็น verification vehicle ต่อ NFR-1.1). Bucket B (NFR-1.8) = **informational delta** ที่ record sign + magnitude ถ้า `DISABLE_G4_FIXES` build รัน partial pre-CircuitBreaker window ได้ — ไม่ใช่ acceptance gate.
+- **Source:** `trading-baseline.md`, NFR-1.x, BT-001 (2026-05-12) re-baseline — ดู `03 § NFR-1 Empirical Citation`
 
 ---
 
