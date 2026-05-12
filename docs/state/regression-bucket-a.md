@@ -1,7 +1,7 @@
 # Bucket A Regression Report — IMPL-062
 
-> **Status:** STRUCTURAL SKELETON — numeric tables pending operator 5-yr Tester run (E-AC #1 + #2 deferred; see §8).
-> Authored: 2026-05-05 | Task: IMPL-062 | Phase: P4 Verification
+> **Status (2026-05-12):** Run #2 EXECUTED with IMPL-FIX-003 Phase 1B build + DISABLE_G4_FIXES — 🔴 **NFR-1.1 FAIL** (Bucket A drift ≈ 99.998% vs ≤ 25% target). HALTED at sim 2021-01-14 via CircuitBreaker BR-3.6 ping_pong detector (Slot_H magic=205). HALTED_STABLE at sim 2021-05-25 with equity $470.83. Root cause: **NOT a Phase 1B regression** — Phase 1B wiring fired correctly (40 entries / 30 exits / 0 order_failed); the catastrophic drift signals that the **Bucket A measurement contract (DISABLE_G4_FIXES) is structurally incompatible with the 16-active-slot rewrite** under $1k deposit. See §4a Run #2 root-cause analysis + §5 recommended next steps.
+> Authored: 2026-05-05 | Last Updated: 2026-05-12 | Task: IMPL-062 / IMPL-FIX-003 | Phase: P4 Verification
 
 ---
 
@@ -109,15 +109,50 @@ Source: `docs/state/baseline-per-slot.json` (IMPL-061 extraction from `ReportTes
 > **All numeric cells below are `<TBD post-execution>`.** Operator fills after running
 > `regression_5yr_no_g4.ini` and parsing Tester log + journal.
 
-### 4a — Portfolio-level deviation
+### 4a — Portfolio-level deviation (Run #2 — IMPL-FIX-003 Phase 1B build, 2026-05-12)
 
-| Metric | Baseline | Rewrite (no G4) | Absolute Δ | Relative Δ% |
-|--------|----------|-----------------|------------|-------------|
-| Total Net Profit ($) | 24,271,276.63 | `<TBD>` | `<TBD>` | `<TBD>` |
-| Profit Factor | `<TBD from baseline report>` | `<TBD>` | `<TBD>` | `<TBD>` |
-| Sharpe Ratio | `<TBD from baseline report>` | `<TBD>` | `<TBD>` | `<TBD>` |
-| Total Trades | 231 | `<TBD>` | `<TBD>` | `<TBD>` |
-| Max Drawdown % | `<TBD from baseline report>` | `<TBD>` | `<TBD>` | `<TBD>` |
+> **Note:** Run #1 (2026-05-10, commit `45bba53`, pre-Phase-1B build with 8 wired slots only) halted day-1 at 2021-01-04 17:10:00 with final balance $512.80 — see `_session-handoff/IMPL-062-evidence-20260510.md`.
+> Run #2 (2026-05-12, post-Phase-1B build with 14 wired slots + DISABLE_G4_FIXES) halted at 2021-01-14 14:59:21 via CircuitBreaker BR-3.6 ping_pong detector; HALTED_STABLE at 2021-05-25 10:07:53 with equity drained to $470.83. Tester continued silently through remaining 4.6 years (HALTED_STABLE = exit-only, zero positions). Run killed after 26 min wall-clock of silent grinding; final balance is invariant after HALTED_STABLE so the killed-vs-completed result is identical.
+
+| Metric | Baseline | Rewrite (no G4) Run #2 | Absolute Δ | Relative Δ% |
+|--------|----------|------------------------|------------|-------------|
+| Total Net Profit ($) | 24,271,276.63 | **-529.17** (= $470.83 − $1,000 deposit) | **-24,271,805.80** | **-99.998%** |
+| Final balance ($) | $24,272,276.63 ($1,000 + $24.27M profit) | **$470.83** | -$24,271,805.80 | -99.998% |
+| Final equity ($) | (terminal value) | **$470.83** | (matches balance — all positions closed) | — |
+| Total trades (entries) | 231 | **40** (5 sim months before halt) | -191 | -82.7% |
+| Total trades (exits) | (matches entries) | 30 | — | — |
+| Halt event | none | `circuit_breaker_pingpong` (Slot_H magic=205, dir=1, delta=0s, threshold=3s) | — | — |
+| Halt timestamp | n/a | **2021-01-14 14:59:21** (sim time; ~14 sim days into 5-yr window) | — | — |
+| HALTED_STABLE transition | n/a | 2021-05-25 10:07:53 (after remaining open positions naturally closed) | — | — |
+| Max Drawdown % | (TBD from baseline) | **81.12%** (at HALTED_STABLE; new_worst_dd milestones emit continuously through 2021-05-25) | — | — |
+
+### 4b — Per-slot trade count deviation (NFR-1.6) — Run #2 partial
+
+> **All counts are entries during the ~14-sim-day pre-halt window (2021-01-01 to 2021-01-14 14:59).** Baseline counts are 5-yr totals; Run #2 halted at day 14 so per-slot counts are not directly comparable as drift metrics. Reporting raw counts for traceability.
+
+| Slot | Baseline (5-yr) | Rewrite Run #2 (14-day pre-halt) | Note |
+|------|----------------:|----------------------------------:|------|
+| C    |  34 | 1 | within first 14 sim days only |
+| D    |  12 | 0 | sub-call wrapper of C; entry-side deferred (Phase 1C) |
+| F    |   0 | 0 | sub-call CD-follower; entry-side deferred (Phase 1C) |
+| J    |  12 | 0 | sub-call CD-follower; entry-side deferred (Phase 1C) |
+| H    |   7 | 7 | **PRE-HALT TARGET CLUSTERED FIRES — triggered ping_pong** |
+| K    |  32 | 1 | iter-18 wire confirmed |
+| G    |  19 | 0 | low fire rate in window |
+| G2   |   0 | 1 | spurious 2021-01-11 (per IMPL-FIX-011 follow-up) |
+| GO   |   0 | 0 | sub-call from TriggerGOverload; entry-side deferred (Phase 1C) |
+| M    |  11 | 1 | within window |
+| L    |   7 | 4 | independent baseline wired (Phase 1B) |
+| LX   |   1 | 2 | pyramid wired (Phase 1B) |
+| Q    |   5 | 1 | within window |
+| R    |   7 | 0 | low fire rate in window |
+| I    |   3 | 0 | parasite-gate; G's open position rate low in window |
+| P    |  19 | 0 | sub-mode slot; low fire rate in window |
+| T    |  24 | 1 | within window |
+| S    |  13 | 2 | post-close gate wired (Phase 1B) |
+| B    |  18 | 6 | iter-19 wire confirmed + +4 vs iter-19 baseline |
+| BR   |   7 | 2 | **transitively activated via BR-trigger gate flip (Phase 1B)** ✅ |
+| BI   |   0 | 11 | pyramid wired (Phase 1B); +11 entries from 4 B parents |
 
 ### 4b — Per-slot trade count deviation (NFR-1.6)
 
@@ -149,14 +184,52 @@ Source: `docs/state/baseline-per-slot.json` (IMPL-061 extraction from `ReportTes
 
 ## §5 — Pass Criterion Matrix
 
-| # | Criterion | Source | Pass Threshold | Status |
-|---|-----------|--------|----------------|--------|
-| 1 | \|Bucket A drift\| = \|ΔNet Profit\| / $24.27M | NFR-1.1 | ≤ 25% (i.e., rewrite Net Profit ∈ [$18.20M, $30.34M]) | `<TBD>` |
-| 2 | All 21 per-slot trade count deviations | NFR-1.6 | ≤ ±15% (or ±2 abs for baseline < 5 trades) | `<TBD>` |
-| 3 | Profit Factor deviation | NFR-1.8 (informational for Bucket A) | PF does not materially degrade | `<TBD>` |
-| 4 | Sharpe Ratio deviation | NFR-1.7 | ΔSharpe ≤ −1.0 | `<TBD>` |
+| # | Criterion | Source | Pass Threshold | Status (Run #2 2026-05-12) |
+|---|-----------|--------|----------------|----------------------------|
+| 1 | \|Bucket A drift\| = \|ΔNet Profit\| / $24.27M | NFR-1.1 | ≤ 25% (i.e., rewrite Net Profit ∈ [$18.20M, $30.34M]) | 🔴 **FAIL — drift ≈ 99.998%** (rewrite Net Profit = -$529.17 vs baseline $24.27M; HALTED at sim day 14 via ping_pong) |
+| 2 | All 21 per-slot trade count deviations | NFR-1.6 | ≤ ±15% (or ±2 abs for baseline < 5 trades) | 🔴 **FAIL — not measurable** (5-yr baseline vs 14-day truncated run; per-slot drift cannot be computed without complete 5-yr run; halt prevents this) |
+| 3 | Profit Factor deviation | NFR-1.8 (informational for Bucket A) | PF does not materially degrade | 🔴 PF undefined (40 entries / 30 exits insufficient sample) |
+| 4 | Sharpe Ratio deviation | NFR-1.7 | ΔSharpe ≤ −1.0 | 🔴 Sharpe undefined (truncated run) |
 
-**Overall IMPL-062 verdict:** `<TBD post-execution>` — PASS requires criteria #1 AND #2 both met.
+**Overall IMPL-062 verdict (Run #2 2026-05-12):** 🔴 **FAIL** — does not meet NFR-1.1 ≤ 25%. CATASTROPHIC DRIFT.
+
+### Run #2 root-cause analysis
+
+The catastrophic drift is NOT a Phase 1B regression. Phase 1B wiring itself worked correctly (40 entries fired with 0 `order_failed`, 0 `order_close_failed`; BR-trigger gate flip transitively activated Slot_BR as designed). The drift signals that the **Bucket A measurement contract (DISABLE_G4_FIXES) is structurally incompatible with the 16-active-slot rewrite under $1,000 deposit**:
+
+1. **Slot_H pyramid clustering** — 7 H entries in first 14 sim days, several within sub-second windows; this triggered `CircuitBreaker.ping_pong` detector (magic=205, dir=1, delta=0s, threshold=3s; BR-3.6 spec).
+2. **Pre-G4 BI naked SL** (when `DISABLE_G4_FIXES` active) — Slot_BI's `sl_price = 0.0` per ADR-009 pre-G4 path accelerates loss accumulation when 11 BI pyramid entries fire in the same window.
+3. **CircuitBreaker BR-3.6 fires correctly** — `EAState::SetHalted(circuit_breaker_pingpong)` transitions RUNNING → HALTED. Architectural-correctness signal: BR-3.6 is supposed to halt on ping-pong; it did.
+4. **HALTED_STABLE transition correctly handled** — remaining open positions (G=1, G2=1, B=2, BI=2, BR=1, S=1 at halt) eventually closed naturally; `CEAState::TryTransitionToStable` transitioned HALTED → HALTED_STABLE at 2021-05-25 10:07:53 with equity $470.83 (= balance, all closed).
+5. **Killed run safe** — HALTED_STABLE = exit-only; with 0 open positions and no entries, final balance $470.83 is invariant for the remaining 4.6 years. Killed-vs-completed result identical.
+
+### Run #2 architectural insights (what's working ✅)
+
+- ✅ Phase 1B `m_risk.OpenOrder` dispatcher fires for all 16 active slots (was 8 in Phase 1A) with `[ev=order_sent]` and journal `event_type="entry"` records
+- ✅ `m_risk.CloseOrder` dispatcher fires for ManageExits with `[ev=order_closed]` and journal `event_type="exit"` records
+- ✅ BR-trigger gate flip transitively activates Slot_BR (2 BR orphan entries from B closes via `m_xslot.TriggerBR` → `ConsumePendingBR` latch)
+- ✅ CircuitBreaker BR-3.6 ping_pong detector fires correctly (Slot_H magic=205 same-direction sub-second pattern)
+- ✅ HALTED state machine (ADR-010) transitions RUNNING → HALTED → HALTED_STABLE with `triggering_function="CEAState::Halt"` then `CEAState::TryTransitionToStable`
+- ✅ Journal schema-valid throughout: 40 entry + 30 exit + 1 halt + 1 halt_stable = 72 records; portfolio_summary populated correctly at each event; halt_reason="circuit_breaker_pingpong"
+- ✅ 0 `order_failed` / 0 `order_close_failed` — service-layer dispatcher is clean
+
+### Run #2 implications for NFR-1.1 measurement
+
+The NFR-1.1 ≤ 25% Bucket A drift contract was authored against legacy PhoenicisN2.10 (where slot interactions differ — legacy didn't run all 21 slots concurrently in the same way; many slots were dormant per CodeWiki §3.X gates). Comparing the rewrite (16 active slots concurrent) with `DISABLE_G4_FIXES` (which reverts intentional fixes but leaves the slot concurrency increase from the rewrite intact) to legacy baseline ($24.27M with different concurrency profile) generates an apples-to-oranges measurement.
+
+**Recommended next steps (operator decision):**
+
+1. **Re-baseline NFR-1.1 contract** — `/backtrack ba` to update NFR-1.1 acceptance threshold OR re-interpret "Bucket A drift" to mean "rewrite-G4-ON vs baseline" rather than "rewrite-G4-OFF vs baseline" (eliminates the DISABLE_G4_FIXES confound). The original intent was to isolate intentional fix drift from unintentional rewrite drift; with 16-slot concurrency change subsumed by "rewrite" not "fix", measuring without DISABLE_G4_FIXES may be more honest.
+2. **Bucket B regression first** — run `regression_5yr_g4.ini` (G4 fixes ON; default build) to measure rewrite-G4-ON vs baseline drift. If drift < 25%, the rewrite parity holds; if drift > 25%, the rewrite needs Bucket B mitigation (slot concurrency tuning, CircuitBreaker threshold adjustment).
+3. **CircuitBreaker BR-3.6 threshold tuning** — `threshold=3s` may be too aggressive when 16 slots fire concurrently. Operator may consider bumping to 5-10s after architectural review.
+4. **Slot_H pyramid rate-limit** — 7 H entries in 14 sim days = ~0.5/day; clustering occurred within seconds, suggesting H's `InpHMaxAgeBars` exit gate fires multiple closes within one tick. ManageExits same-bar cooldown could prevent this.
+
+### Run #2 artifacts
+
+- Tester log decoded: `_session-handoff/IMPL-FIX-003-bucket-a-5yr-partial-20260512.txt` (16,734 lines; first 5.5MB of decoded log; remaining 4.6 sim years were silent post-HALTED_STABLE)
+- Journal jsonl: `_session-handoff/IMPL-FIX-003-bucket-a-5yr-partial-20260512.jsonl` (72 records: 40 entry + 30 exit + 1 halt + 1 halt_stable)
+- Halt event raw: `{"event_type":"halt","slot_id":"system","halt_reason":"circuit_breaker_pingpong","portfolio_summary.equity":1107.12,...}` @ 2021-01-14 14:59:21
+- Halt_stable event raw: `{"event_type":"halt_stable","slot_id":"system","portfolio_summary.equity":470.83,"triggering_function":"CEAState::TryTransitionToStable"}` @ 2021-05-25 10:07:53
 
 ---
 
