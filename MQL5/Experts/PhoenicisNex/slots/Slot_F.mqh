@@ -193,8 +193,14 @@ void CSlotF::ManageExits(CPortfolioState &port)
          profit_pips = (open_price - cur_price) / pip_size;
 
       //--- Profit gate: โฅ InpFTpProfitPips (40 pip default โ€” mirrors C/D tier)
+      //--- IMPL-FIX-003 Phase 1B (2026-05-12): wire RiskManager.CloseOrder
+      //    Slot_F is the CD-chain follower (own MAGIC_F=201); Evaluate-side
+      //    entry routes through CD-chain dispatch (deferred — coordinator
+      //    OpenOrderCD chain). ManageExits CloseOrder wired here.
       if(profit_pips >= InpFTpProfitPips)
         {
+         if(m_risk != NULL)
+            m_risk.CloseOrder(ticket, "F");
          // IMPL-FIX-008 R-10: exit_profit_gate Info emit suppressed (Phase-1 stub spam
          // caused 5-yr regression to bloat log + halt processing pace; restore when
          // RiskManager::CloseOrder wires + this becomes one-shot post-close milestone)

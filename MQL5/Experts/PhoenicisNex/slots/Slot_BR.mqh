@@ -124,12 +124,69 @@ void CSlotBR::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //--- Sub-call guard: early-return when not enabled or service not wired
    //    (Phase 1 MVP โ€” real signal arrives from TriggerBR at Orchestrator wiring path (core/Orchestrator.mqh))
    if(!InpEnableSlotBR) return;
-   if(m_logger == NULL) return;
+   if(m_logger == NULL || m_risk == NULL || m_xslot == NULL) return;
 
    //--- Own-active guard: max InpBRMaxOrders BR orders simultaneously
    if(_CountBROrders(port) >= InpBRMaxOrders) return;
 
-   //--- Phase-1 stub: no entry signal in main topo โ€” TriggerBR sub-call
+   //--- IMPL-FIX-003 Phase 1B (2026-05-12): drain BR pending latch.
+   //    Slot_B::ManageExits sets the latch via m_xslot.TriggerBR(...) at
+   //    the moment a B parent closes via profit gate. We drain here and
+   //    submit the orphan entry in the OPPOSITE direction (BR-2.2 spec
+   //    literal: "BR is orphan-exit only spawn, fires AFTER B close").
+   int    parent_dir         = 0;
+   double parent_lot         = 0.0;
+   double parent_profit_pips = 0.0;
+   string parent_mode_tag    = "";
+   if(!m_xslot.ConsumePendingBR(parent_dir, parent_lot, parent_profit_pips, parent_mode_tag))
+      return;   // no pending B-close trigger this tick
+
+   //--- Direction inversion: BR fires opposite to closed B parent
+   bool buy_signal = (parent_dir == POSITION_TYPE_SELL);
+
+   //--- Lot sizing via RiskManager (per ADR-002)
+   double balance = AccountInfoDouble(ACCOUNT_BALANCE);
+   double lot     = m_risk.ComputeLot("BR", InpBRSlPipsFloor, balance);
+   if(lot <= 0.0)
+     {
+      m_logger.Warn("SlotBR", "zero_lot_skip", MAGIC_BR,
+                    "ComputeLot returned 0 — skipping BR orphan entry");
+      return;
+     }
+
+   //--- Build order params (orphan-tier SL: InpBRSlPipsFloor)
+   double pip_sz   = _PipSize();
+   double price    = buy_signal ? SymbolInfoDouble(_Symbol, SYMBOL_ASK)
+                                : SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double sl_dist  = InpBRSlPipsFloor * pip_sz;
+   double sl_price = buy_signal
+                     ? _NormalizeBrokerPrice(price - sl_dist)
+                     : _NormalizeBrokerPrice(price + sl_dist);
+   string comment  = "BR,orphan,1";
+
+   ENUM_ORDER_TYPE order_type = buy_signal ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
+   MqlTradeRequest req = {};
+   req.action       = TRADE_ACTION_DEAL;
+   req.symbol       = _Symbol;
+   req.volume       = lot;
+   req.type         = order_type;
+   req.price        = _NormalizeBrokerPrice(price);
+   req.sl           = sl_price;
+   req.tp           = 0.0;
+   req.comment      = comment;
+   req.magic        = MAGIC_BR;
+   req.type_filling = ORDER_FILLING_FOK;
+
+   m_risk.OpenOrder(req, "BR");
+
+   m_logger.Info("SlotBR", "orphan_entry_from_b_close", MAGIC_BR,
+                 StringFormat("parent_dir=%d parent_lot=%.2f parent_profit_pips=%.1f mode=%s br_dir=%s",
+                              parent_dir, parent_lot, parent_profit_pips, parent_mode_tag,
+                              (buy_signal ? "BUY" : "SELL")));
+
+   //--- Phase-1 stub: legacy block below retained as inert comment (see above);
+   //    `false` guard kept to elide at compile time — same pattern as Slot_B.
+   //    Original prose: no entry signal in main topo (TriggerBR sub-call
    //    wires through core/Orchestrator.mqh (cross-slot coupling per ea.md).
    //    Observable milestone for E-AC [log-assertion] once that wires:
    //

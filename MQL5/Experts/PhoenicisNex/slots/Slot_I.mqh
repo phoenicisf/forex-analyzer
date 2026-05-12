@@ -272,26 +272,24 @@ void CSlotI::Evaluate(const MarketContext &ctx, CPortfolioState &port)
    //--- Comment: "I,fib,1" per CodeWiki ยง3.I "I,..." pattern
    string comment = "I,fib,1";
 
-   //--- fix-round-12 ยง 12.8 โ€” Phase 1 emits entry_signal Logger.Info as
-   //    the observable milestone; actual OrderSend lives in
-   //    `RiskManager::OpenOrder` per `.claude/rules/ea.md` (IMPL-017 +
-   //    IMPL-062 5-yr regression).
-   //    Observable milestone for E-AC [log-assertion]:
-   // IMPL-FIX-011 R-13 (d): entry_signal Info emit suppressed (per-tick stub
-   // spam bloated Q1 canary log to 1.41 GB / ~30 GB extrapolated over 5-yr;
-   // restore when RiskManager::OpenOrder wires real send + this becomes
-   // one-shot post-fill milestone). Mirrors IMPL-FIX-008 R-10.
-   // m_logger.Info("SlotI", "entry_signal", MAGIC_I,
-   //               StringFormat("dir=%s lot=%.2f sl_pips=%.1f price=%.5f sl=%.5f comment=%s fib_level=%.2f g_dir=%s",
-   //                            (isBuy ? "BUY" : "SELL"), lot, sl_pips, price, sl_price, comment,
-   //                            InpIFibLevel, (g_dir == POSITION_TYPE_BUY ? "G_BUY" : "G_SELL")));
+   //--- IMPL-FIX-003 Phase 1B (2026-05-12): wire RiskManager.OpenOrder
+   //    per Phase 1A pattern (mirror Slot_K iter-18 + Slot_B iter-19).
+   //    Slot_I is the Fibonacci parasite child of Slot_G (own MAGIC_I=210;
+   //    direction inherited from G's open position).
+   ENUM_ORDER_TYPE order_type = isBuy ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
+   MqlTradeRequest req = {};
+   req.action       = TRADE_ACTION_DEAL;
+   req.symbol       = _Symbol;
+   req.volume       = lot;
+   req.type         = order_type;
+   req.price        = _NormalizeBrokerPrice(price);
+   req.sl           = sl_price;
+   req.tp           = 0.0;
+   req.comment      = comment;
+   req.magic        = MAGIC_I;
+   req.type_filling = ORDER_FILLING_FOK;
 
-   //--- CrossSlotCoordinator stub
-   if(m_xslot != NULL && false /* enable when CrossSlotCoordinator declared (Orchestrator wiring path (core/Orchestrator.mqh)) */)
-     {
-      //--- Stub: Fibonacci parasite coupling
-      //    wires through core/Orchestrator.mqh (cross-slot coupling per ea.md).
-     }
+   m_risk.OpenOrder(req, "I");
   }
 
 //+------------------------------------------------------------------+
@@ -338,11 +336,13 @@ void CSlotI::ManageExits(CPortfolioState &port)
          profit_pips = (open_price - cur_price) / pip_size;
 
       //--- Profit gate: >= InpITpProfitPips (25 pip โ€” shorter-horizon Fibonacci target)
+      //--- IMPL-FIX-003 Phase 1B (2026-05-12): wire RiskManager.CloseOrder
+      //    (mirror Slot_K iter-18 OpenOrder pattern, exit-side symmetric).
       if(profit_pips >= InpITpProfitPips)
         {
-         // IMPL-FIX-008 R-10: exit_profit_gate Info emit suppressed (Phase-1 stub spam
-         // caused 5-yr regression to bloat log + halt processing pace; restore when
-         // RiskManager::CloseOrder wires + this becomes one-shot post-close milestone)
+         if(m_risk != NULL)
+            m_risk.CloseOrder(ticket, "I");
+         // legacy stub block (kept as no-op below; removed body):
 //          m_logger.Info("SlotI", "exit_profit_gate", MAGIC_I,
 //                        StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f โ’ close",
 //                                     ticket, profit_pips, InpITpProfitPips));

@@ -175,8 +175,14 @@ void CSlotGO::ManageExits(CPortfolioState &port)
          profit_pips = (open_price - cur_price) / pip_size;
 
       //--- Profit gate: โฅ InpGOTpProfitPips (40 pip default โ€” between G's 50 and G2's 30)
+      //--- IMPL-FIX-003 Phase 1B (2026-05-12): wire RiskManager.CloseOrder
+      //    Slot_GO is sub-call only from G's TriggerGOverload (own MAGIC_GO=209);
+      //    Evaluate-side entry routes through coordinator dispatch (deferred —
+      //    TriggerGOverload TODO). ManageExits CloseOrder wired here.
       if(profit_pips >= InpGOTpProfitPips)
         {
+         if(m_risk != NULL)
+            m_risk.CloseOrder(ticket, "GO");
          // IMPL-FIX-008 R-10: exit_profit_gate Info emit suppressed (Phase-1 stub spam
          // caused 5-yr regression to bloat log + halt processing pace; restore when
          // RiskManager::CloseOrder wires + this becomes one-shot post-close milestone)

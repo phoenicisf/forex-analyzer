@@ -126,6 +126,17 @@ public:
    //    Slot ห้าม instantiate CTrade ตรง per ea.md; here we use raw OrderSend (no CTrade dep).
    bool              OpenOrder(MqlTradeRequest &req, string slot_id);
 
+   //--- CloseOrder (IMPL-FIX-003 Phase 1B) — close existing market position via raw OrderSend
+   //    Slot passes the ticket id of an open position; this method:
+   //      - selects the position by ticket
+   //      - builds DEAL request in opposite direction at current bid/ask
+   //      - submits via OrderSend (same filling/deviation override as OpenOrder)
+   //    On TRADE_RETCODE_DONE: emit Logger.Info(slot_id, "order_closed") + WriteEvent(exit record) if
+   //                           m_journal != NULL → return true.
+   //    Else:                  emit Logger.Error(slot_id, "order_close_failed", ...) → return false.
+   //    Mirrors OpenOrder design — slot ห้าม instantiate CTrade ตรง; raw OrderSend keeps service-layer slim.
+   bool              CloseOrder(ulong ticket, string slot_id);
+
   }; // end class CRiskManager
 
 //+------------------------------------------------------------------+
@@ -929,6 +940,118 @@ bool CRiskManager::OpenOrder(MqlTradeRequest &req, string slot_id)
                      StringFormat("rc=%u sent=%s lot=%.2f price=%.5f sl=%.5f comment=%s deal=%I64u",
                                   res.retcode, (sent ? "true" : "false"),
                                   req.volume, req.price, req.sl, req.comment, res.deal));
+      return false;
+     }
+  }
+
+//+------------------------------------------------------------------+
+//| CloseOrder (IMPL-FIX-003 Phase 1B) — close market position       |
+//|                                                                  |
+//| Slot passes ticket id of an open position; we build the inverse  |
+//| DEAL request at current bid/ask + submit via raw OrderSend.       |
+//| Filling mode + deviation reuse the OpenOrder cache (detected on   |
+//| first OpenOrder call). On TRADE_RETCODE_DONE we emit Logger.Info  |
+//| + journal exit record (if m_journal wired). Same Result<T> +      |
+//| WriteEvent contract as OpenOrder.                                 |
+//|                                                                  |
+//| Symmetric defense: pre-flight bail if ticket not selectable +    |
+//| post-call retcode check. No CTrade dep — service layer stays slim.|
+//+------------------------------------------------------------------+
+bool CRiskManager::CloseOrder(ulong ticket, string slot_id)
+  {
+   if(m_logger == NULL)
+     {
+      Print("[Phoenicis][RiskManager][ev=order_skipped] logger NULL ห้าม CloseOrder");
+      return false;
+     }
+
+   if(!PositionSelectByTicket(ticket))
+     {
+      m_logger.Error(slot_id, "order_close_failed", 0,
+                     StringFormat("ticket=%I64u select_failed (position absent or wrong account)", ticket));
+      return false;
+     }
+
+   //--- Capture position state for inverse build
+   long   pos_magic  = PositionGetInteger(POSITION_MAGIC);
+   ENUM_POSITION_TYPE pos_type = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+   double pos_volume = PositionGetDouble(POSITION_VOLUME);
+   string pos_symbol = PositionGetString(POSITION_SYMBOL);
+
+   //--- Detect filling mode lazily (same logic as OpenOrder; safe re-detect if not cached)
+   if(!m_filling_detected)
+     {
+      uint fm = (uint)SymbolInfoInteger(pos_symbol, SYMBOL_FILLING_MODE);
+      if((fm & SYMBOL_FILLING_IOC) != 0)
+         m_filling_mode = ORDER_FILLING_IOC;
+      else if((fm & SYMBOL_FILLING_FOK) != 0)
+         m_filling_mode = ORDER_FILLING_FOK;
+      else
+         m_filling_mode = ORDER_FILLING_RETURN;
+      m_filling_detected = true;
+     }
+
+   //--- Build inverse-direction DEAL at current opposite price
+   MqlTradeRequest req = {};
+   req.action       = TRADE_ACTION_DEAL;
+   req.symbol       = pos_symbol;
+   req.volume       = pos_volume;
+   req.position     = ticket;
+   req.magic        = pos_magic;
+   req.deviation    = 20;
+   req.type_filling = m_filling_mode;
+   if(pos_type == POSITION_TYPE_BUY)
+     {
+      req.type  = ORDER_TYPE_SELL;
+      req.price = SymbolInfoDouble(pos_symbol, SYMBOL_BID);
+     }
+   else
+     {
+      req.type  = ORDER_TYPE_BUY;
+      req.price = SymbolInfoDouble(pos_symbol, SYMBOL_ASK);
+     }
+   req.comment = slot_id + ",close";
+
+   MqlTradeResult res = {};
+   bool sent = OrderSend(req, res);
+
+   if(sent && res.retcode == TRADE_RETCODE_DONE)
+     {
+      m_logger.Info(slot_id, "order_closed", (int)pos_magic,
+                    StringFormat("ticket=%I64u dir=%s lot=%.2f price=%.5f",
+                                 ticket, EnumToString(pos_type), pos_volume, req.price));
+
+      if(m_journal != NULL)
+        {
+         JournalEvent ev;
+         ev.timestamp_seconds      = TimeCurrent();
+         ev.timestamp_microseconds = (ulong)((GetMicrosecondCount()) % 1000000);
+         ev.event_type             = "exit";
+         ev.slot_id                = slot_id;
+         ev.magic                  = (int)pos_magic;
+         ev.ticket_id              = ticket;
+         ev.symbol                 = pos_symbol;
+         ev.order_type             = EnumToString(req.type);
+         ev.lot                    = pos_volume;
+         ev.price                  = req.price;
+         ev.sl                     = 0.0;
+         ev.tp                     = 0.0;
+         ev.comment                = req.comment;
+         ev.signal_context         = "";
+         ev.triggering_function    = "";
+         ev.parent_ticket_id       = 0;
+         ev.halt_reason            = "";
+         ev.pending_age_bars       = 0;
+         m_journal.WriteEvent(ev);
+        }
+      return true;
+     }
+   else
+     {
+      m_logger.Error(slot_id, "order_close_failed", (int)pos_magic,
+                     StringFormat("rc=%u sent=%s ticket=%I64u lot=%.2f price=%.5f deal=%I64u",
+                                  res.retcode, (sent ? "true" : "false"),
+                                  ticket, pos_volume, req.price, res.deal));
       return false;
      }
   }

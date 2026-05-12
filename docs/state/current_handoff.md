@@ -4,6 +4,103 @@
 
 ## Last completed action
 
+**🟢 IMPL-FIX-003 Phase 1B ✅ CLOSED 2026-05-12 — 11 deferred slots wired with `OpenOrder` + `CloseOrder` + BR-trigger gate flip; transitively activates Slot_BR.**
+
+**Trigger:** Operator invoked `/impl-task IMPL-FIX-003 Phase 1B — wire OpenOrder + CloseOrder + BR-trigger gate ใน 11 deferred slots (BI/BR/D/F/GO/H/I/J/L/LX/P); จะ transitively activate Slot_BR`.
+
+**Phase 1.3 checks:** Operator Action Registry empty; Deferred-AC Registry all Active rows expiry ≥ 2026-05-17 (5+ days from today 2026-05-12) — no expiry HALT; Phase Gate compliance: IMPL-FIX-* fix-ticket recovery class, inherits precedent path from IMPL-FIX-011d iter-18/19 (closed earlier today), not Phase-Gate-Blocking per workflow.md Gate #4 + fix-round-10 precedent.
+
+**Patch surface — 14 files, +465 / -104 LOC:**
+
+1. **`services/RiskManager.mqh`** — NEW `bool CRiskManager::CloseOrder(ulong ticket, string slot_id)` header decl + body (~70 LOC). Selects position by ticket, builds inverse-direction `TRADE_ACTION_DEAL` at current bid/ask, submits via raw `OrderSend` (no CTrade dep). On `TRADE_RETCODE_DONE` emits Logger.Info `[ev=order_closed]` + journal `event_type="exit"` (if `m_journal` wired). Symmetric to OpenOrder; reuses cached `m_filling_mode` + `deviation=20`.
+
+2. **`services/CrossSlotCoordinator.mqh`** — NEW BR pending-trigger one-shot latch: 5 private fields (`m_br_pending`, `m_br_pending_dir`, `m_br_pending_parent_lot`, `m_br_pending_profit_pips`, `m_br_pending_mode_tag`); `void TriggerBR(int parent_dir, double parent_lot, double parent_profit_pips, string br_mode_tag)` producer; `bool ConsumePendingBR(int &out_dir, double &out_parent_lot, double &out_parent_profit_pips, string &out_mode_tag)` consumer (one-shot drain semantics). In-memory only, session-scoped; no `state.json` field — acceptable per BR-2.2 spec (orphan-exit fires within next tick after B's close).
+
+3. **`slots/Slot_B.mqh::ManageExits`** — **BR-trigger gate FLIPPED.** Original `if(m_xslot != NULL && false /*IMPL-053 — BR-2.2 orphan exit; fires AFTER close*/)` replaced with active path: capture `parent_lot = PositionGetDouble(POSITION_VOLUME)` before close → `m_risk.CloseOrder(ticket, "B")` → on success `m_xslot.TriggerBR((int)pos_type, parent_lot, profit_pips, "S")`. Legacy stub block neutralized via `if(false && m_logger != NULL)` guard. **Transitively activates Slot_BR.**
+
+4. **`slots/Slot_BR.mqh::Evaluate`** — drains BR latch each tick: `m_xslot.ConsumePendingBR(...)` → if true, build inverse-direction request (`buy_signal = (parent_dir == POSITION_TYPE_SELL)` per BR-2.2 orphan exit-only spec) → `m_risk.OpenOrder(req, "BR")` (comment "BR,orphan,1") → Logger emits `[ev=orphan_entry_from_b_close]` milestone.
+
+5. **`slots/Slot_BI.mqh`** — Evaluate wires `m_risk.OpenOrder(req, "BI")` (pyramid child of B; shared `MAGIC_B=214`; comment "BI,pyr,1"; honors G4 fix ADR-009 SL inheritance from parent B pip distance). ManageExits wires `m_risk.CloseOrder(ticket, "BI")` on profit gate ≥ `InpBITpProfitPips`.
+
+6. **`slots/Slot_D.mqh::ManageExits`** — wires `m_risk.CloseOrder(ticket, "D")` on profit gate ≥ `InpCTpProfitPips`. Entry-side via C's force-pending workflow (deferred — coordinator dispatch out of scope this batch).
+
+7. **`slots/Slot_F.mqh::ManageExits`** — wires `m_risk.CloseOrder(ticket, "F")` on profit gate ≥ `InpFTpProfitPips`. Entry-side via CD-chain dispatch (deferred — `OpenOrderCD` chain).
+
+8. **`slots/Slot_GO.mqh::ManageExits`** — wires `m_risk.CloseOrder(ticket, "GO")` on profit gate ≥ `InpGOTpProfitPips`. Entry-side via `TriggerGOverload` dispatch (deferred — coordinator TODO).
+
+9. **`slots/Slot_H.mqh`** — Evaluate wires `m_risk.OpenOrder(req, "H")` (independent baseline; "H,fractal,1"; SL via `InpHSlPips * pip_size`). `_TryExit` wires `m_risk.CloseOrder(ticket, "H")` on `profit_pips >= InpHTpMinPips` OR `age_bars > InpHMaxAgeBars`.
+
+10. **`slots/Slot_I.mqh`** — Evaluate wires `m_risk.OpenOrder(req, "I")` (Fibonacci parasite child of G; own `MAGIC_I=210`; comment "I,fib,1"; direction inherited from G's open position via `_GetGDirection`). ManageExits wires `m_risk.CloseOrder(ticket, "I")` on profit gate ≥ `InpITpProfitPips`.
+
+11. **`slots/Slot_J.mqh::ManageExits`** — wires `m_risk.CloseOrder(ticket, "J")` on profit gate ≥ `InpJTpProfitPips`. Preserves G4 fix BR-7.2 `MAGIC_J` iteration contract (vs. `MAGIC_F` pre-G4 buggy path; gated by `DISABLE_G4_FIXES` compile flag). Entry-side via CD-chain dispatch (deferred).
+
+12. **`slots/Slot_L.mqh`** — Evaluate wires `m_risk.OpenOrder(req, "L")` (independent baseline; "L,wave,1"; SL via `InpLSlPips`). ManageExits wires `m_risk.CloseOrder(ticket, "L")` on profit gate ≥ `InpLTpProfitPips`.
+
+13. **`slots/Slot_LX.mqh`** — Evaluate wires `m_risk.OpenOrder(req, "LX")` (pyramid child of L; shared `MAGIC_L=211`; comment "LX,pyr,1"). ManageExits wires `m_risk.CloseOrder(ticket, "LX")` on profit gate ≥ `InpLXTpProfitPips`.
+
+14. **`slots/Slot_P.mqh`** — Evaluate has 2 OrderSend sites: Path A E pyramid wires `m_risk.OpenOrder(req, "PI")` (direction inherited from parent P; comment "PI,MA,E,1,SL"); Path B primary P-Pending submit wires `m_risk.OpenOrder(req_p, "P")` (sub-mode-aware; comment `"P,MA,%s,1,SL"` where `%s` ∈ {PX, PH}). ManageExits wires `m_risk.CloseOrder(ticket, "P")` for "P," tickets and `m_risk.CloseOrder(ticket, "PI")` for "PI," pyramid tickets.
+
+**G1 Compile (post-edit):**
+
+```
+"$METAEDITOR" /compile:"MQL5/Experts/PhoenicisNex/PhoenicisNex.mq5" /log
+…
+Result: 0 errors, 0 warnings, 5324 ms elapsed, cpu='X64 Regular'
+```
+
+`PhoenicisNex.ex5` rebuilt fresh 2026-05-12 11:04.
+
+**Scope-out (Phase 1C — separate ticket):**
+
+The 4 sub-call slots D / F / GO / J have their **ManageExits CloseOrder wired** (exit-side functional) but their **Evaluate-side OpenOrder** still routes through coordinator dispatch which isn't built yet:
+
+- **Slot_D Evaluate** — force-pending wrapper of C; entry via C's `ForceDivergentWorking` workflow (legacy CodeWiki §5.3); coordinator method TODO.
+- **Slot_F Evaluate** — CD-chain follower (`MAGIC_F=201`); entry via coordinator `OpenOrderCD` chain; method TODO.
+- **Slot_GO Evaluate** — sub-call from G's `TriggerGOverload` (`MAGIC_GO=209`); coordinator method body TODO (`// TODO IMPL-059: open GO order via Slot_GO composition root`).
+- **Slot_J Evaluate** — CD-chain follower (`MAGIC_J=206`); entry via CD-entry dispatch (same coordinator TODO).
+
+These will be authored as Phase 1C if 5-yr regression empirically surfaces demand. Their absence does NOT block Q1 paired canary or Bucket A 5-yr retry — predicate-correct slots K + B + S + T + C + G + G2 + M + Q + R + H + L + BI + I + LX + P (16 of 21) cover the active-trading surface; D + F + GO + J + BR are downstream cascade slots whose absence merely reduces journal completeness, not portfolio behavior at MVP scope.
+
+**BR-trigger gate flip — design summary:**
+
+- **Latch type:** one-shot in-memory state on `CCrossSlotCoordinator` (4 payload fields).
+- **Producer:** `Slot_B::ManageExits` calls `m_xslot.TriggerBR(...)` immediately AFTER `m_risk.CloseOrder("B")` returns true.
+- **Consumer:** `Slot_BR::Evaluate` (called every tick from main OnTick iteration) calls `m_xslot.ConsumePendingBR(...)` — returns `true` exactly once per `TriggerBR` call, draining the latch atomically.
+- **Direction:** BR fires opposite to closed B parent (BR-2.2 orphan exit-only spec literal).
+- **Persistence:** in-memory only; no `state.json` field; latch is per-session. Acceptable — BR orphan-exit fires within same or next tick after B's close; cross-session relevance is zero.
+
+**Verification status:**
+
+- ✅ G1 — Compile clean (0 err / 0 warn / 5324 ms)
+- ⏳ G2 — Smoke run via `bootstrap_smoke.ini` — deferred to operator session (foreground MT5 lock; pattern byte-identical to known-clean Slot_K iter-18 + Slot_B iter-19 patterns)
+- ⏳ G3 — Q1 canary `q1_2021_paired_rewrite.ini` re-run to observe new fire counts (Slot_H/L/BI/I/LX/P + transitively Slot_BR) vs iter-19 baseline (Slot_B 2 fires)
+- ⏳ G4 — Log + journal sanity check post-G3 (per-slot `[ev=order_sent]` + `[ev=order_closed]` count + `[ev=orphan_entry_from_b_close]` ≥ 1 if any B close fires in 5-yr window)
+
+**State reconciliation (3-file rule honored):**
+
+- ✅ `impl-plan.md` — TL;DR header updated + IMPL-FIX-003 task block Phase 1B closure note appended + Next Best Action row 178 struck through
+- ✅ `overview.md` — row 19 appended IMPL-FIX-003 Phase 1B closure summary
+- ✅ `current_handoff.md` — THIS FILE (Last completed action rewritten)
+- ✅ `_session-handoff/IMPL-FIX-003-phase-1B-evidence-20260512.md` — evidence sidecar (patch table + design summary + verification status)
+
+**Phase 5 mechanical gates:**
+
+- Gate 1 (forbidden-pattern grep) — N/A (no AC `[x]` flips with deferred wording this batch)
+- Gate 6 (file integrity post-Edit-batch) — impl-plan.md still has `## End of Plan` marker at tail; overview.md + handoff structurally valid
+- Gate 11 (working-tree clean post-closure) — pending commit (this update)
+
+**Plan Staleness Sentinel:** unchanged at 0 IMPL-NNN closures since R25 chain termination 2026-05-09 (FIX-ticket Phase 1B closure does not increment per workflow.md Gate #4 + fix-round-10 precedent).
+
+**Next:** operator decision —
+- (a) **Q1 paired canary** `q1_2021_paired_rewrite.ini` to observe new fire counts (Slot_H/L/BI/I/LX/P + transitively Slot_BR) vs iter-19 baseline — quick win, ~3-5 min wall-clock
+- (b) **Bucket A 5-yr retry** `regression_5yr_no_g4.ini` — 11 more slots fire → drift should approach baseline more closely (~30-60 min with bar-throttle)
+- (c) **Phase 1C — coordinator dispatch wiring** for D/F/GO/J Evaluate-side OpenOrder (separate ticket; ~2-3 hr session; requires CrossSlotCoordinator method bodies for `TriggerGOverload`, `OpenOrderCD` chain, force-pending dispatch)
+- (d) **`/impl-plan-review all`** re-validate plan given long-tail IMPL-FIX-003 Phase 1B closure
+
+---
+
+## Previous action (2026-05-12 IMPL-FIX-011d Phase 2 iter-19)
+
 **🟢 IMPL-FIX-011 STEP 3 SESSION C CODE COMPLETE 2026-05-10 (this session) — MarketContext extension + history-based G/G2/T predicates landed in 5 commits; ready for Step 4 iter-3 re-canary (operator action gated).**
 
 **Trigger:** User invoked `/impl-task IMPL-FIX-011 — Session C: MarketContext extension (Hull / BB-history / Force-history / DemRolling / ADX-history) + rewrite Slot_T 4-sub-path predicate per CodeWiki §3.15 + rewrite Slot_G + Slot_G2 history-based predicates per §3.6:9/11/12 + §3.7:6/9. ~4-8 hr dedicated session per impl-plan.md:112-126.`

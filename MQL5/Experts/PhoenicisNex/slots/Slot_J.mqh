@@ -209,8 +209,13 @@ void CSlotJ::ManageExits(CPortfolioState &port)
          profit_pips = (open_price - cur_price) / pip_size;
 
       //--- Profit gate: โฅ InpJTpProfitPips (40 pip default โ€” symmetric with C/D/F)
+      //--- IMPL-FIX-003 Phase 1B (2026-05-12): wire RiskManager.CloseOrder
+      //    Slot_J has no Evaluate-side OrderSend (CD-chain sub-call); only
+      //    ManageExits CloseOrder. G4 fix BR-7.2 attestation captured below.
       if(profit_pips >= InpJTpProfitPips)
         {
+         if(m_risk != NULL)
+            m_risk.CloseOrder(ticket, "J");
          //--- fix-round-17 ยง 17.1 โ€” log magic + attestation tag MUST follow the
          //    active build branch so Bucket A regression journal records do not
          //    falsely attest "G4 fix" while running the pre-G4 buggy path.

@@ -162,15 +162,11 @@ void CSlotH::_TryExit(ulong ticket, double open_price, datetime open_time,
    bool should_exit = (profit_pips >= InpHTpMinPips) || (age_bars > InpHMaxAgeBars);
    if(!should_exit) return;
 
-   //--- Phase-1 stub: log intent โ€” m_risk.CloseOrder(ticket) wires through core/Orchestrator.mqh
-   //    Observable milestone for E-AC [log-assertion] when wired.
-   if(m_logger != NULL) {}
-      // IMPL-FIX-008 R-10: exit_profit_gate Info emit suppressed (Phase-1 stub spam
-      // caused 5-yr regression to bloat log + halt processing pace; restore when
-      // RiskManager::CloseOrder wires + this becomes one-shot post-close milestone)
-//       m_logger.Info("Slot_H", "exit_profit_gate", MAGIC_H,
-//                     StringFormat("ticket=%I64u profit_pips=%.1f age=%d",
-//                                  ticket, profit_pips, age_bars));
+   //--- IMPL-FIX-003 Phase 1B (2026-05-12): wire RiskManager.CloseOrder
+   //    (mirror Slot_K iter-18 OpenOrder pattern, exit-side symmetric).
+   //    Slot_H was on the deferred 11-slot IMPL-FIX-003 Phase 1B follow-up list.
+   if(m_risk != NULL)
+      m_risk.CloseOrder(ticket, "H");
   }
 
 //+------------------------------------------------------------------+
@@ -257,18 +253,24 @@ void CSlotH::Evaluate(const MarketContext &ctx, CPortfolioState &port)
                      ? _NormalizeBrokerPrice(price - InpHSlPips * pip_size)
                      : _NormalizeBrokerPrice(price + InpHSlPips * pip_size);
 
-   // IMPL-FIX-011 R-13 (d): entry_buy/sell Info emit suppressed (per-tick stub
-   // spam bloated Q1 canary log to 1.41 GB / ~30 GB extrapolated over 5-yr;
-   // restore when RiskManager::OpenOrder wires real send + this becomes
-   // one-shot post-fill milestone). Mirrors IMPL-FIX-008 R-10.
-   // if(m_logger != NULL)
-   //    m_logger.Info("Slot_H", is_buy ? "entry_buy" : "entry_sell", MAGIC_H,
-   //                  StringFormat("lot=%.2f price=%.5f sl=%.5f bar=%d comment=%s",
-   //                               lot, price, sl_price, ctx.bar_index_h4, comment_str));
+   //--- IMPL-FIX-003 Phase 1B (2026-05-12): wire RiskManager.OpenOrder
+   //    per IMPL-FIX-003 Phase 1A pattern (mirror Slot_K iter-18 + Slot_B iter-19).
+   //    Slot_H was on the deferred 11-slot Phase 1B list (independent baseline).
+   MqlTradeRequest req = {};
+   req.action       = TRADE_ACTION_DEAL;
+   req.symbol       = _Symbol;
+   req.volume       = lot;
+   req.type         = order_type;
+   req.price        = _NormalizeBrokerPrice(price);
+   req.sl           = sl_price;
+   req.tp           = 0.0;
+   req.comment      = comment_str;
+   req.magic        = MAGIC_H;
+   req.type_filling = ORDER_FILLING_FOK;
 
-   //--- Update cooldown bar โ€” prevents re-entry on same H4 bar even when
-   //    OrderSend wiring lands and the actual broker call may fail. Same
-   //    semantic as updating m_last_order_d1_time after intent log in Slot_K.
+   m_risk.OpenOrder(req, "H");
+
+   //--- Update cooldown bar AFTER submit (prevents re-entry on same H4 bar)
    m_last_bar_entered = ctx.bar_index_h4;
   }
 

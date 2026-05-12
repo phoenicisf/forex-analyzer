@@ -153,19 +153,23 @@ public:
                                     : _NormalizeBrokerPrice(price + sl_dist);
       string           comment    = "L,wave,1";
 
-      //--- Submit order via RiskManager (which wraps CTrade per ea.md)
-      //    RiskManager::OpenOrder wired through core/Orchestrator.mqh.
-      //    Until then: log intent so SelfTest/smoke verifies entry path
-      //    without panicking on NULL CTrade.
-      // IMPL-FIX-011 R-13 (d): entry_buy/sell Info emit suppressed (per-tick
-      // stub spam bloated Q1 canary log to 1.41 GB / ~30 GB extrapolated over
-      // 5-yr; restore when RiskManager::OpenOrder wires real send + this
-      // becomes one-shot post-fill milestone). Mirrors IMPL-FIX-008 R-10.
-      // if(m_logger != NULL)
-      //    m_logger.Info("Slot_L", buy_signal ? "entry_buy" : "entry_sell",
-      //                  Magic(),
-      //                  StringFormat("lot=%.2f price=%.5f sl=%.5f comment=%s",
-      //                               lot, price, sl_price, comment));
+      //--- IMPL-FIX-003 Phase 1B (2026-05-12): wire RiskManager.OpenOrder
+      //    per Phase 1A pattern (mirror Slot_K iter-18 + Slot_B iter-19).
+      //    Slot_L was on the deferred 11-slot Phase 1B list (independent baseline;
+      //    LX pyramid + S post-close children fire downstream once L entries land).
+      MqlTradeRequest req = {};
+      req.action       = TRADE_ACTION_DEAL;
+      req.symbol       = _Symbol;
+      req.volume       = lot;
+      req.type         = order_type;
+      req.price        = _NormalizeBrokerPrice(price);
+      req.sl           = sl_price;
+      req.tp           = 0.0;
+      req.comment      = comment;
+      req.magic        = MAGIC_L;
+      req.type_filling = ORDER_FILLING_FOK;
+
+      m_risk.OpenOrder(req, "L");
      }
 
    //--- 4. ManageExits() เนโฌโ€ exit pass; runs in BOTH RUNNING and HALTED
@@ -206,16 +210,10 @@ public:
          if(profit_pips < InpLTpProfitPips)
             continue;
 
-         if(m_logger != NULL) {}
-            // IMPL-FIX-008 R-10: exit_profit_gate Info emit suppressed (Phase-1 stub spam
-            // caused 5-yr regression to bloat log + halt processing pace; restore when
-            // RiskManager::CloseOrder wires + this becomes one-shot post-close milestone)
-//             m_logger.Info("Slot_L", "exit_profit_gate", Magic(),
-//                           StringFormat("ticket=%I64u profit_pips=%.1f",
-//                                        ticket, profit_pips));
-
-         //--- Close order via RiskManager (CTrade wired through core/Orchestrator.mqh)
-         //    Log intent only until wiring complete (same pattern as Evaluate).
+         //--- IMPL-FIX-003 Phase 1B (2026-05-12): wire RiskManager.CloseOrder
+         //    (mirror Slot_K iter-18 OpenOrder pattern, exit-side symmetric).
+         if(m_risk != NULL)
+            m_risk.CloseOrder(ticket, "L");
         }
      }
 

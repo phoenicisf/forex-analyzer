@@ -170,6 +170,25 @@ public:
                                   : NormalizeDouble(price + sl_dist, digits);
       string           comment  = "LX,pyr,1";
 
+      //--- IMPL-FIX-003 Phase 1B (2026-05-12): wire RiskManager.OpenOrder
+      //    per Phase 1A pattern (mirror Slot_K iter-18 + Slot_B iter-19).
+      //    Slot_LX is the pyramid child of Slot_L (shared MAGIC_L=211,
+      //    "LX," comment-prefix disambig from "L," parent).
+      ENUM_ORDER_TYPE order_type = buy_signal ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
+      MqlTradeRequest req = {};
+      req.action       = TRADE_ACTION_DEAL;
+      req.symbol       = _Symbol;
+      req.volume       = lot;
+      req.type         = order_type;
+      req.price        = _NormalizeBrokerPrice(price);
+      req.sl           = sl_price;
+      req.tp           = 0.0;
+      req.comment      = comment;
+      req.magic        = MAGIC_L;
+      req.type_filling = ORDER_FILLING_FOK;
+
+      m_risk.OpenOrder(req, "LX");
+
       //--- fix-round-12 ยง 12.8 โ€” Phase 1 emits entry_signal Logger.Info as
       //    the observable milestone; actual OrderSend lives in
       //    `RiskManager::OpenOrder` per `.claude/rules/ea.md` (IMPL-017 +
@@ -221,8 +240,11 @@ public:
          double profit_pips = _PositionProfitPips();
 
          //--- Exit condition: pyramid profit >= InpLXTpProfitPips (25 pip default)
+         //--- IMPL-FIX-003 Phase 1B (2026-05-12): wire RiskManager.CloseOrder
          if(profit_pips >= InpLXTpProfitPips)
            {
+            if(m_risk != NULL)
+               m_risk.CloseOrder(ticket, "LX");
             string pos_comment = PositionGetString(POSITION_COMMENT);
             // IMPL-FIX-008 R-10: exit_profit_gate Info emit suppressed (Phase-1 stub spam
             // caused 5-yr regression to bloat log + halt processing pace; restore when

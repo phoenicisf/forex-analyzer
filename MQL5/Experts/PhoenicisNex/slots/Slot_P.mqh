@@ -346,13 +346,23 @@ void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
             //    (Orchestrator wiring path (core/Orchestrator.mqh) 5-yr regression). Slot_BI / Slot_R
             //    follow the same pattern. (review-round-07 Finding 07.4)
             string comment = "PI,MA,E,1,SL";
-            string dir_str = parent_isBuy ? "BUY" : "SELL";
-            m_logger.Info("SlotP", "entry_signal_pyramid", MAGIC_P,
-                          StringFormat("sub_mode=E dir=%s lot=%.2f sl_pips=%.1f "
-                                       "price=%.5f sl=%.5f comment=%s parent_open=%.5f "
-                                       "(Phase 1 logger-only; OrderSend at Orchestrator wiring path (core/Orchestrator.mqh))",
-                                       dir_str, lot, sl_pips, price, sl_price,
-                                       comment, parent_open));
+
+            //--- IMPL-FIX-003 Phase 1B (2026-05-12): wire RiskManager.OpenOrder
+            //    Path A (E pyramid) — direction inherited from parent P; mirrors Slot_K iter-18.
+            ENUM_ORDER_TYPE order_type = parent_isBuy ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
+            MqlTradeRequest req = {};
+            req.action       = TRADE_ACTION_DEAL;
+            req.symbol       = _Symbol;
+            req.volume       = lot;
+            req.type         = order_type;
+            req.price        = _NormalizeBrokerPrice(price);
+            req.sl           = sl_price;
+            req.tp           = 0.0;
+            req.comment      = comment;
+            req.magic        = MAGIC_P;
+            req.type_filling = ORDER_FILLING_FOK;
+
+            m_risk.OpenOrder(req, "PI");
            }
          //--- Pyramid path complete this tick โ€” primary lifecycle still runs below
         }
@@ -471,6 +481,23 @@ void CSlotP::Evaluate(const MarketContext &ctx, CPortfolioState &port)
       string sub_str = (sub == PSUB_PX) ? "PX" : "PH";
       string comment = StringFormat("P,MA,%s,1,SL", sub_str);
 
+      //--- IMPL-FIX-003 Phase 1B (2026-05-12): wire RiskManager.OpenOrder
+      //    Path B (primary P-Pending submit) — mirrors Slot_K iter-18.
+      ENUM_ORDER_TYPE order_type_p = isBuy ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
+      MqlTradeRequest req_p = {};
+      req_p.action       = TRADE_ACTION_DEAL;
+      req_p.symbol       = _Symbol;
+      req_p.volume       = lot;
+      req_p.type         = order_type_p;
+      req_p.price        = _NormalizeBrokerPrice(price);
+      req_p.sl           = sl_price;
+      req_p.tp           = 0.0;
+      req_p.comment      = comment;
+      req_p.magic        = MAGIC_P;
+      req_p.type_filling = ORDER_FILLING_FOK;
+
+      m_risk.OpenOrder(req_p, "P");
+
       //--- fix-round-12 ยง 12.8 โ€” Phase 1 emits entry_signal Logger.Info as
       //    the observable milestone; actual OrderSend lives in
       //    `RiskManager::OpenOrder` per `.claude/rules/ea.md` (IMPL-017 +
@@ -544,8 +571,11 @@ void CSlotP::ManageExits(CPortfolioState &port)
                            : (open_price - cur_price) / pip_size;
 
       double gate = _TpPipsForSubMode(c);
+      //--- IMPL-FIX-003 Phase 1B (2026-05-12): wire RiskManager.CloseOrder
       if(profit_pips >= gate)
         {
+         if(m_risk != NULL)
+            m_risk.CloseOrder(ticket, "P");
          // IMPL-FIX-008 R-10: exit_profit_gate Info emit suppressed (Phase-1 stub spam
          // caused 5-yr regression to bloat log + halt processing pace; restore when
          // RiskManager::CloseOrder wires + this becomes one-shot post-close milestone)
@@ -573,8 +603,11 @@ void CSlotP::ManageExits(CPortfolioState &port)
                            ? (cur_price - open_price) / pip_size
                            : (open_price - cur_price) / pip_size;
 
+      //--- IMPL-FIX-003 Phase 1B (2026-05-12): wire RiskManager.CloseOrder (PI pyramid)
       if(profit_pips >= InpPTpPipsE)
         {
+         if(m_risk != NULL)
+            m_risk.CloseOrder(ticket, "PI");
          // IMPL-FIX-008 R-10: exit_profit_gate Info emit suppressed (Phase-1 stub spam
          // caused 5-yr regression to bloat log + halt processing pace; restore when
          // RiskManager::CloseOrder wires + this becomes one-shot post-close milestone)

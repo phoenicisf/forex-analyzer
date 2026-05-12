@@ -141,6 +141,14 @@ private:
    bool              m_eoverload_latched;
    bool              m_coverload_latched;
 
+   //--- IMPL-FIX-003 Phase 1B (2026-05-12) — BR pending-trigger one-shot latch
+   //    Set by Slot_B::ManageExits post-close; consumed by Slot_BR::Evaluate.
+   bool              m_br_pending;
+   int               m_br_pending_dir;       // POSITION_TYPE_BUY/SELL of parent B
+   double            m_br_pending_parent_lot;
+   double            m_br_pending_profit_pips;
+   string            m_br_pending_mode_tag;
+
 public:
                      CCrossSlotCoordinator()
       : m_portfolio(NULL),
@@ -149,7 +157,12 @@ public:
         m_pip(NULL),
         m_halted(false),
         m_eoverload_latched(false),
-        m_coverload_latched(false) {}
+        m_coverload_latched(false),
+        m_br_pending(false),
+        m_br_pending_dir(0),
+        m_br_pending_parent_lot(0.0),
+        m_br_pending_profit_pips(0.0),
+        m_br_pending_mode_tag("") {}
 
    //--- Composition Root injection (Orchestrator OnInit step 6+ per TD-02 §7.4)
    //    RiskManager is intentionally NOT injected — bulk-close uses the
@@ -177,6 +190,21 @@ public:
    //--- Post-exit hooks — invoked by slot ManageExits via injection
    void              TriggerGOverload(double closing_lot, int direction);  // BR-8.4 — TODO IMPL-057
    void              EvaluateBR_OrphanExit();                              // BR-2.1 (B → BR) — TODO IMPL-038/057
+
+   //--- IMPL-FIX-003 Phase 1B (2026-05-12) — BR trigger latch
+   //    Slot_B::ManageExits calls TriggerBR(...) immediately AFTER its
+   //    profit-gate CloseOrder; Slot_BR::Evaluate (next tick) calls
+   //    ConsumePendingBR(...) to drain the latch + submit an orphan BR
+   //    entry in the opposite direction (BR-2.2 spec literal). The latch
+   //    is one-shot: ConsumePendingBR resets it. The signature mirrors the
+   //    inline-comment in Slot_B::ManageExits (parent_type + parent_lot +
+   //    profit_pips + br_mode tag) so we capture all 4 dimensions.
+   void              TriggerBR(int parent_dir, double parent_lot,
+                               double parent_profit_pips,
+                               string br_mode_tag);
+   bool              ConsumePendingBR(int &out_dir, double &out_parent_lot,
+                                      double &out_parent_profit_pips,
+                                      string &out_mode_tag);
 
    //--- Inline SelfTest (G1 spike harness)
    bool              SelfTest(CLogger *logger);
@@ -916,6 +944,59 @@ void CCrossSlotCoordinator::TriggerGOverload(double closing_lot, int direction)
 void CCrossSlotCoordinator::EvaluateBR_OrphanExit()
   {
    // TODO IMPL-038/057: BR-2.1 B → BR orphan-exit hook
+  }
+
+//+------------------------------------------------------------------+
+//| TriggerBR (IMPL-FIX-003 Phase 1B) — set BR pending one-shot latch |
+//|                                                                  |
+//| Called by Slot_B::ManageExits at the moment a B parent position  |
+//| is closed via profit gate. Captures parent direction / lot /     |
+//| profit_pips / br_mode_tag so Slot_BR::Evaluate (next tick) can   |
+//| build the orphan BR entry. The latch is idempotent — if a second |
+//| TriggerBR call lands before ConsumePendingBR drains, the latest  |
+//| payload overwrites (rare under FBS-Real H4 tick cadence; most    |
+//| recent B-close wins per BR-2.2 spec literal).                    |
+//+------------------------------------------------------------------+
+void CCrossSlotCoordinator::TriggerBR(int parent_dir,
+                                      double parent_lot,
+                                      double parent_profit_pips,
+                                      string br_mode_tag)
+  {
+   m_br_pending             = true;
+   m_br_pending_dir         = parent_dir;
+   m_br_pending_parent_lot  = parent_lot;
+   m_br_pending_profit_pips = parent_profit_pips;
+   m_br_pending_mode_tag    = br_mode_tag;
+   if(m_logger != NULL)
+      m_logger.Info("xslot", "br_trigger_latched", MAGIC_BR,
+                    StringFormat("parent_dir=%d parent_lot=%.2f profit_pips=%.1f mode=%s",
+                                 parent_dir, parent_lot, parent_profit_pips, br_mode_tag));
+  }
+
+//+------------------------------------------------------------------+
+//| ConsumePendingBR (IMPL-FIX-003 Phase 1B) — drain the latch       |
+//|                                                                  |
+//| Slot_BR::Evaluate calls this each tick. Returns true exactly     |
+//| once after each TriggerBR call. On true, out params reflect the  |
+//| captured parent state + latch is cleared.                        |
+//+------------------------------------------------------------------+
+bool CCrossSlotCoordinator::ConsumePendingBR(int &out_dir,
+                                             double &out_parent_lot,
+                                             double &out_parent_profit_pips,
+                                             string &out_mode_tag)
+  {
+   if(!m_br_pending) return false;
+   out_dir                = m_br_pending_dir;
+   out_parent_lot         = m_br_pending_parent_lot;
+   out_parent_profit_pips = m_br_pending_profit_pips;
+   out_mode_tag           = m_br_pending_mode_tag;
+   //--- one-shot drain
+   m_br_pending             = false;
+   m_br_pending_dir         = 0;
+   m_br_pending_parent_lot  = 0.0;
+   m_br_pending_profit_pips = 0.0;
+   m_br_pending_mode_tag    = "";
+   return true;
   }
 
 //+------------------------------------------------------------------+

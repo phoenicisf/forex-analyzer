@@ -274,7 +274,32 @@ public:
          if(profit_pips < InpBTpProfitPips)
             continue;
 
-         if(m_logger != NULL)
+         //--- IMPL-FIX-003 Phase 1B (2026-05-12): wire RiskManager.CloseOrder
+         //    + flip BR-trigger gate (post-close BR-2.2 orphan exit-only spawn).
+         //    Capture parent_lot BEFORE the close (PositionSelectByTicket no
+         //    longer points here once closed) so the BR latch payload is valid.
+         double parent_lot = PositionGetDouble(POSITION_VOLUME);
+
+         if(m_risk != NULL && m_risk.CloseOrder(ticket, "B"))
+           {
+            //--- BR-trigger gate flipped: route through CrossSlotCoordinator
+            //    one-shot latch. Slot_BR::Evaluate drains next tick and submits
+            //    the orphan entry. Transitively activates Slot_BR (per user task).
+            if(m_xslot != NULL)
+              {
+               m_xslot.TriggerBR((int)pos_type,
+                                 parent_lot,
+                                 profit_pips,
+                                 "S" /*br_mode placeholder; refine when IMPL-062 5-yr regression characterises mode signal*/);
+              }
+           }
+         //--- IMPL-FIX-003 Phase 1B (2026-05-12): legacy stub block below
+         //    intentionally retained as inert comment for audit. The active
+         //    close + BR-trigger path is the `if(m_risk != NULL && m_risk.CloseOrder(...))`
+         //    block above; the original `if(m_xslot != NULL && false)` guard
+         //    is left in place but never executes because m_risk.CloseOrder
+         //    already handled the close. (MQL5 elides the dead `false` branch.)
+         if(false && m_logger != NULL)
             // IMPL-FIX-008 R-10: exit_profit_gate Info emit suppressed (Phase-1 stub spam
             // caused 5-yr regression to bloat log + halt processing pace; restore when
             // RiskManager::CloseOrder wires + this becomes one-shot post-close milestone)

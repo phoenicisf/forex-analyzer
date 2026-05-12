@@ -201,8 +201,14 @@ void CSlotD::ManageExits(CPortfolioState &port)
          profit_pips = (open_price - cur_price) / pip_size;
 
       //--- Profit gate: โฅ InpCTpProfitPips (40 pip default โ€” mirrors C)
+      //--- IMPL-FIX-003 Phase 1B (2026-05-12): wire RiskManager.CloseOrder
+      //    Slot_D is the force-pending wrapper of C (shared MAGIC_CD=200);
+      //    Evaluate-side entry still routes through C's force-pending workflow
+      //    (deferred — coordinator dispatch). ManageExits CloseOrder wired here.
       if(profit_pips >= InpCTpProfitPips)
         {
+         if(m_risk != NULL)
+            m_risk.CloseOrder(ticket, "D");
          // IMPL-FIX-008 R-10: exit_profit_gate Info emit suppressed (Phase-1 stub spam
          // caused 5-yr regression to bloat log + halt processing pace; restore when
          // RiskManager::CloseOrder wires + this becomes one-shot post-close milestone)

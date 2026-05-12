@@ -226,25 +226,25 @@ public:
       string g4_tag = "(G4 fix ADR-009)";
 #endif
 
-      //--- fix-round-12 ยง 12.8 โ€” Phase 1 emits entry_signal Logger.Info as
-      //    the observable milestone; actual OrderSend lives in
-      //    `RiskManager::OpenOrder` per `.claude/rules/ea.md` (IMPL-017 +
-      //    IMPL-062 5-yr regression). Log intent โ€” observable milestone for
-      //    E-AC [log-assertion] + [db-inspect] (sl_distance_pip > 0 invariant
-      //    verifiable in journal via signal_context once RiskManager wires).
-      // IMPL-FIX-011 R-13 (d): entry_pyramid_buy/sell Info emit suppressed
-      // (per-tick stub spam bloated Q1 canary log to 1.41 GB / ~30 GB
-      // extrapolated over 5-yr; restore when RiskManager::OpenOrder wires
-      // real send + this becomes one-shot post-fill milestone). IMPL-FIX-008 R-10.
-      // m_logger.Info("Slot_BI", buy_signal ? "entry_pyramid_buy" : "entry_pyramid_sell",
-      //               MAGIC_B,
-      //               StringFormat("parent_ticket=%I64u parent_profit_pips=%.1f "
-      //                            "dir=%s lot=%.2f bi_entry=%.5f sl=%.5f "
-      //                            "sl_distance_pip=%.1f %s comment=%s %s",
-      //                            parent_ticket, profit_pips,
-      //                            (buy_signal ? "BUY" : "SELL"),
-      //                            lot, bi_entry, sl_price,
-      //                            sl_distance_pip, sl_inherit_tag, comment, g4_tag));
+      //--- IMPL-FIX-003 Phase 1B (2026-05-12): wire RiskManager.OpenOrder
+      //    per Phase 1A pattern (mirror Slot_K iter-18 + Slot_B iter-19).
+      //    Slot_BI is the pyramid child of Slot_B (shared MAGIC_B=214,
+      //    "BI," comment-prefix disambig). G4 fix ADR-009 Option A applies
+      //    real SL (parent_pip distance) per active build branch above.
+      ENUM_ORDER_TYPE order_type = buy_signal ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
+      MqlTradeRequest req = {};
+      req.action       = TRADE_ACTION_DEAL;
+      req.symbol       = _Symbol;
+      req.volume       = lot;
+      req.type         = order_type;
+      req.price        = _NormalizeBrokerPrice(bi_entry);
+      req.sl           = sl_price;
+      req.tp           = 0.0;
+      req.comment      = comment;
+      req.magic        = MAGIC_B;
+      req.type_filling = ORDER_FILLING_FOK;
+
+      m_risk.OpenOrder(req, "BI");
      }
 
    //--- 4. ManageExits() โ€” exit pass; runs in BOTH RUNNING and HALTED (ADR-010)
@@ -272,15 +272,12 @@ public:
          double profit_pips = _SelectedProfitPips();
 
          //--- Exit condition: BI pyramid profit >= InpBITpProfitPips (30 pip)
+         //--- IMPL-FIX-003 Phase 1B (2026-05-12): wire RiskManager.CloseOrder
+         //    (mirror Slot_K iter-18 OpenOrder pattern, exit-side symmetric).
          if(profit_pips >= InpBITpProfitPips)
            {
-            // IMPL-FIX-008 R-10: exit_profit_gate Info emit suppressed (Phase-1 stub spam
-            // caused 5-yr regression to bloat log + halt processing pace; restore when
-            // RiskManager::CloseOrder wires + this becomes one-shot post-close milestone)
-//             m_logger.Info("Slot_BI", "exit_profit_gate", MAGIC_B,
-//                           StringFormat("ticket=%I64u profit_pips=%.1f >= gate=%.1f -> close",
-//                                        ticket, profit_pips, InpBITpProfitPips));
-            //--- Phase-1 stub: logger-only milestone; broker close wired through services/RiskManager.mqh (CTrade wrapper) per ea.md.
+            if(m_risk != NULL)
+               m_risk.CloseOrder(ticket, "BI");
            }
         }
      }
