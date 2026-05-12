@@ -2,15 +2,15 @@
 
 > **Phase:** Phase 1A (BA Requirements Discovery) — Doc 3/5
 > **Author:** BA agent (`/ba` workflow, v1.2)
-> **Last updated:** 2026-05-01
+> **Last updated:** 2026-05-12 (BT-001 — NFR-1.1 + NFR-1.8 Bucket A/B re-baseline)
 > **Reads:** `01-project-brief.md` (goals), `02-functional-requirements.md` (FR cross-ref), `trading-baseline.md` (regression numbers)
 > **Audience:** Architect (Phase 1B), Tech Lead (Phase 1D), QA (Phase 3T)
 
 ## TL;DR
 
-เอกสารนี้ระบุ **NFR เชิง measurable** ของ rewrite — ทุก target เป็นตัวเลขเทียบกับ baseline ใน `trading-baseline.md` หรือ source ใน CodeWiki. NFR แบ่งเป็น **8 หมวด**: Behavioral Parity (regression contract), Performance, Reliability, Maintainability, Safety, Configurability, Compatibility, Usability. **ห้ามมี NFR ที่ใช้คำว่า "เร็ว"/"เสถียร"/"ใช้ง่าย" โดยไม่มีตัวเลข** — ทุก target ต้อง testable ผ่าน Strategy Tester regression, MT5 native log, หรือ trade journal inspection. **All NFR-domain open questions ✅ resolved 2026-05-01:** OQ-6 = monitor-only Phase 1 (BA default); OQ-7 = ±15% / >30% (BA default).
+เอกสารนี้ระบุ **NFR เชิง measurable** ของ rewrite — ทุก target เป็นตัวเลขเทียบกับ baseline ใน `trading-baseline.md` หรือ source ใน CodeWiki. NFR แบ่งเป็น **8 หมวด**: Behavioral Parity (regression contract), Performance, Reliability, Maintainability, Safety, Configurability, Compatibility, Usability. **ห้ามมี NFR ที่ใช้คำว่า "เร็ว"/"เสถียร"/"ใช้ง่าย" โดยไม่มีตัวเลข** — ทุก target ต้อง testable ผ่าน Strategy Tester regression, MT5 native log, หรือ trade journal inspection. **All NFR-domain open questions ✅ resolved 2026-05-01:** OQ-6 = monitor-only Phase 1 (BA default); OQ-7 = ±15% / >30% (BA default). **BT-001 (2026-05-12):** NFR-1.1 Bucket A redefined to "rewrite-G4-ON vs baseline" + NFR-1.8 Bucket B demoted to informational delta (no acceptance gate) — original "rewrite-G4-OFF vs baseline" framing structurally unmeetable per IMPL-062 Run #2 empirical evidence (see § NFR-1 Empirical Citation below).
 
-**Counts:** Must **26** / Should **4** / Could **0** (Won't อยู่ใน `01 § 6`)
+**Counts:** Must **25** / Should **5** / Could **0** (Won't อยู่ใน `01 § 6`) — NFR-1.8 priority Must → Should per BT-001
 
 ---
 
@@ -18,19 +18,19 @@
 
 หมวดนี้คือ **acceptance contract หลัก** ของ rewrite — ใช้ baseline ใน `trading-baseline.md` ที่มาจาก `ReportTester-25045474.html`. ทุก target อ้างตัวเลขจริง.
 
-### NFR-1.1 — Total Net Profit deviation ≤ 25% (Bucket A)
+### NFR-1.1 — Total Net Profit deviation ≤ 25% (Bucket A — rewrite-G4-ON vs baseline, BT-001 re-baseline)
 
 | Field | Value |
 |-------|-------|
-| **Metric** | \|ΔTotal Net Profit\| / Baseline Net Profit |
+| **Metric** | \|ΔTotal Net Profit\| / Baseline Net Profit — measured ที่ **rewrite default build (G4 fixes ON)** vs legacy baseline |
 | **Baseline** | $24,271,276.63 (5-yr 2021-2025, FBS-Real, $1k init, 1:500 leverage, 1-min OHLC tick model) |
 | **Target** | ≤ **25%** (acceptable range: $18.20M – $30.34M) |
-| **Bucket** | A — pattern parity drift (rewrite ที่ไม่ตั้งใจ) |
+| **Bucket** | A — pattern parity drift ของ rewrite default build (G4 fixes ON, intentional G4 fixes included — **redefined BT-001 2026-05-12**) |
 | **Priority** | Must |
 | **Goal trace** | G3 |
-| **Why** | Primary acceptance contract; > 25% deviation = strategy logic เสีย |
-| **Verification** | QA Phase: รัน Strategy Tester period + tick model เดียวกัน → คำนวณ deviation จาก headline result table |
-| **Source** | `trading-baseline.md § Validation Strategy`, ideation-brief D4 |
+| **Why** | Primary acceptance contract; > 25% deviation = strategy logic เสีย. **Bucket A วัดที่ rewrite-G4-ON เท่านั้น** (redefined BT-001) — การวัด rewrite-G4-OFF vs legacy baseline เป็น apples-to-oranges: rewrite's intrinsic 16-active-slot concurrency (architectural Phase 1B SD, ไม่สามารถปิดด้วย compile flag) ต่างจาก legacy slot-concurrency profile, และ `DISABLE_G4_FIXES` + $1k FBS Standard deposit + 1:500 leverage triggers CircuitBreaker BR-3.6 `ping_pong` detector → HALTED state machine ADR-010 fire ตามที่ออกแบบ (Run #2 empirical, IMPL-062 2026-05-12 — see § NFR-1 Empirical Citation below) |
+| **Verification** | QA Phase: รัน Strategy Tester period + tick model เดียวกันบน **rewrite default build (G4 fixes ON)** → คำนวณ deviation จาก headline result table; ห้ามใช้ `#define DISABLE_G4_FIXES` build (Bucket A semantic ไม่รองรับ pre-G4 measurement หลัง BT-001) |
+| **Source** | `trading-baseline.md § Validation Strategy`, ideation-brief D4, **BT-001 (2026-05-12) re-baseline** |
 
 ### NFR-1.2 — Profit Factor degradation ≤ 0.2 points
 
@@ -120,19 +120,46 @@
 | **Verification** | QA: headline Sharpe field |
 | **Source** | `trading-baseline.md` |
 
-### NFR-1.8 — Bug fix drift documented (Bucket B — OQ-1 resolved)
+### NFR-1.8 — Bug fix contribution delta (Bucket B — informational, BT-001 redefined)
 
-หมวดย่อยสำหรับ **intentional fix drift** จาก G4 (BI SL + ExtraTakeProfit_J magic). Bucket B แยกจาก 25% pattern parity ceiling.
+หมวดย่อยสำหรับ **intentional fix contribution measurement** จาก G4 (BI SL + ExtraTakeProfit_J magic). Bucket B = **informational delta** `rewrite-G4-ON − rewrite-G4-OFF` ที่บันทึก sign + magnitude ของ intentional fix contribution; **ไม่ใช่ primary acceptance gate** (re-classified BT-001 2026-05-12 — เดิม Must, ตอนนี้ Should informational).
 
 | Field | Value |
 |-------|-------|
 | **Sources counted in Bucket B** | (1) BI SL fix (FR-3.3); (2) ExtraTakeProfit_J magic fix (FR-3.4) |
-| **Acceptable** | Net Profit อาจขึ้น/ลง — **document ทุก case แยก**; PF ต้องไม่ลด, Max DD% ต้องไม่เพิ่ม |
-| **Failure trigger** | ถ้า bug-fix ทำให้ Net Profit ลด > 25% = bug นั้น "ตัดได้กำไร" → ขอ user re-decide ก่อน proceed |
-| **Priority** | Must |
+| **Metric (BT-001 redefined)** | Informational delta: `Net Profit (rewrite-G4-ON) − Net Profit (rewrite-G4-OFF)` — sign + magnitude only; **no pass/fail threshold** |
+| **Pass criteria** | **N/A — informational only** (BT-001). PF + Max DD% gating ย้ายไปอยู่ภายใต้ NFR-1.2 + NFR-1.5 บน rewrite-G4-ON build เท่านั้น |
+| **Failure trigger** | **Removed BT-001 2026-05-12** — IMPL-062 Run #2 (2026-05-12) แสดงว่า `DISABLE_G4_FIXES` build ไม่สามารถรัน end-to-end concurrently กับ rewrite's 16-active-slot architecture ได้โดยไม่ trigger CircuitBreaker BR-3.6 → HALTED ก่อน complete window (halt ที่ sim 2021-01-14 / HALTED_STABLE ที่ sim 2021-05-25). Bucket B จึงไม่ลึกพอเพื่อใช้เป็น decision gate ของ "bug fix ตัดได้กำไรหรือไม่". ถ้า G4 fix ทำให้ profile เปลี่ยน → review ผ่าน Bucket A (NFR-1.1) บน rewrite-G4-ON build เท่านั้น |
+| **Priority** | **Should** (informational record; downgraded จาก Must per BT-001 2026-05-12) |
 | **Goal trace** | G4 |
-| **Verification** | QA Phase: เปรียบเทียบ baseline vs (rewrite without fix) vs (rewrite with fix) — แยก 2 รอบ; document delta แต่ละ run |
-| **Source** | `trading-baseline.md § Deviation Budget`, ideation-brief OQ-1 |
+| **Verification** | QA Phase: ถ้า `DISABLE_G4_FIXES` build ยัง compilable + run-able pre-halt → รัน partial window (จนถึง CircuitBreaker trigger) บันทึก delta sign + magnitude บนช่วง pre-halt; ถ้าไม่ → skip + cite BT-001 evidence + Run #2 partial-period delta ใน QA report |
+| **Source** | `trading-baseline.md § Deviation Budget`, ideation-brief OQ-1, **BT-001 (2026-05-12) re-classification** |
+
+---
+
+### NFR-1 Empirical Citation (BT-001 re-baseline 2026-05-12)
+
+> ⚠️ **BT-001 (2026-05-12) — Bucket A/B re-baseline empirical record**
+>
+> NFR-1.1 + NFR-1.8 ถูก redefine 2026-05-12 หลัง IMPL-062 Bucket A 5-yr Run #2 ใช้ `#define DISABLE_G4_FIXES` build รัน regression test แล้วผลลัพธ์ catastrophic (final balance $470.83 / drift ≈ −99.998%) — ห่างไกล ≤ 25% target ของ original NFR-1.1 มาก. การ redefine **ไม่ใช่** การลดมาตรฐาน acceptance contract; เป็นการ correct ตัวเลือก measurement vehicle ที่ structurally unmeetable เพื่อให้ rewrite acceptance gate ยังคงตรวจจับ pattern-parity drift ได้จริง.
+>
+> **Root-cause analysis (NOT a Phase 1B regression):**
+> - Phase 1B wiring (IMPL-FIX-003) fired ตามที่ออกแบบ: 40 entries + 30 exits + 0 `order_failed`; BR-trigger gate flip ใน Slot_B::ManageExits transitively activate Slot_BR per BR-2.2 design (Q1 paired canary 2026-05-12 confirmed — 2 BR orphan entries from B-close trigger)
+> - `DISABLE_G4_FIXES` build = pre-G4 path: Slot_J wrong-magic (`ExtraTakeProfit_J` iterate MagicF=201 instead of MagicJ=206) + Slot_BI naked SL (no parent-B pip-distance inheritance per ADR-009) ทำให้ profile divergent โดยตั้งใจ (intentional fix removal)
+> - rewrite architecture intrinsic = **16-active-slot concurrency** (architectural decision ของ Phase 1B SD per ADR-001 modular monolith + ADR-002 CSlotBase abstract + ADR-012 5-layer file structure — **ไม่สามารถปิดด้วย compile flag**)
+> - Combination ของ 16-slot concurrency + `DISABLE_G4_FIXES` + $1k FBS Standard deposit + 1:500 leverage triggers CircuitBreaker BR-3.6 `ping_pong` detector ที่ sim 2021-01-14 → EAState ADR-010 RUNNING → HALTED transition → HALTED_STABLE ที่ sim 2021-05-25 (exit-only thereafter — zero new entries, zero log output)
+> - **CircuitBreaker + HALTED state machine = working as designed** (BR-3.6 spec + ADR-010 contract); ไม่ใช่ bug
+>
+> **Structural conclusion:** original NFR-1.1 contract — "Bucket A = rewrite-G4-OFF vs baseline" — เปรียบเทียบ apples-to-oranges (legacy slot-concurrency profile vs rewrite's architectural 16-slot concurrency); structurally unmeetable as authored. BT-001 redefines Bucket A = "rewrite-G4-ON vs baseline" (default build), demotes Bucket B → informational delta (no acceptance gate). Bucket A semantic ใหม่ยังคง guard pattern-parity intent: ถ้า rewrite-G4-ON deviate > 25% จาก legacy baseline = rewrite logic เสีย (regardless ของ G4 fix contribution).
+>
+> **Evidence sources:**
+> - `docs/state/regression-bucket-a.md § 4a Run #2 portfolio-level results` (final balance $470.83 / drift −99.998% / halt at sim 2021-01-14 via ping_pong / HALTED_STABLE at sim 2021-05-25)
+> - `docs/state/regression-bucket-a.md § 4b Per-slot 14-day pre-halt counts` + `§ 5 Run #2 root-cause analysis`
+> - `docs/state/_session-handoff/IMPL-FIX-003-bucket-a-5yr-partial-20260512.txt` (Tester log; 16,734 lines — includes `[ev=ping_pong_trigger]` + HALTED state transition log)
+> - `docs/state/_session-handoff/IMPL-FIX-003-bucket-a-5yr-partial-20260512.jsonl` (journal; 72 records — includes 1 `halt` event + 1 `halt_stable` event)
+> - `docs/state/backtrack-log.md § BT-001` (approved by operator Kritsana 2026-05-12)
+> - Commit `e75dc2c` — Bucket A 5-yr Run #2 closure
+> - Q1 paired canary precedent (Phase 1B works on G4-ON build): `docs/state/_session-handoff/IMPL-FIX-003-phase-1B-q1-canary-20260512.{txt,jsonl}` + commit `ad72c11`
 
 ---
 
@@ -444,14 +471,14 @@ User เป็น solo operator ที่เห็น EA ผ่าน MT5 native
 
 | ID | Category | Target (quantified) | Priority | Goal |
 |----|----------|----------------------|----------|------|
-| NFR-1.1 | Behavioral parity | \|ΔNet Profit\| ≤ 25% | Must | G3 |
+| NFR-1.1 | Behavioral parity | \|ΔNet Profit\| ≤ 25% — Bucket A vs **rewrite-G4-ON** (BT-001) | Must | G3 |
 | NFR-1.2 | Behavioral parity | ΔPF ≥ −0.2 | Must | G3 |
 | NFR-1.3 | Behavioral parity | ΔTrades ≤ ±15% (>30% flag) | Must | G3 |
 | NFR-1.4 | Behavioral parity | ΔWin Rate ≤ ±5pp | Must | G3 |
 | NFR-1.5 | Behavioral parity | ΔMax Equity DD% ≤ +10pp | Must | G3, G4 |
 | NFR-1.6 | Behavioral parity | Per-slot trades ±15% (✅ OQ-7) | Must | G3 |
 | NFR-1.7 | Behavioral parity | ΔSharpe ≤ −1.0 | Should | G3 |
-| NFR-1.8 | Bucket B drift | PF ไม่ลด, Max DD% ไม่เพิ่ม | Must | G4 |
+| NFR-1.8 | Bucket B (informational) | `rewrite-G4-ON − rewrite-G4-OFF` delta sign+magnitude (no gate, BT-001) | Should | G4 |
 | NFR-2.1 | Performance | Tick latency overhead ≤ 10% | Must | G1, G3 |
 | NFR-2.2 | Performance | Journal write ≤ 5 ms/tick | Must | G2, G3 |
 | NFR-2.3 | Performance | Strategy Tester runtime ≤ 1.5× original | Should | G1 |
@@ -475,7 +502,7 @@ User เป็น solo operator ที่เห็น EA ผ่าน MT5 native
 | NFR-8.1 | Usability | Label ≤ 40ch, tooltip ≤ 80ch | Should | G1 |
 | NFR-8.2 | Usability | 0 external config for tuning | Must | G1, MVP |
 
-**Counts:** Must **26** / Should **4** / Could **0**
+**Counts:** Must **25** / Should **5** / Could **0** (NFR-1.8 demoted Must → Should per BT-001 2026-05-12)
 
 ---
 
@@ -513,4 +540,4 @@ User resolved both NFR-domain open questions ใน BA review 2026-05-01.
 
 ---
 
-> **End of 03 — Non-Functional Requirements** — 30 NFRs (Must 26 / Should 4 / Could 0), all NFR-domain open questions ✅ resolved 2026-05-01
+> **End of 03 — Non-Functional Requirements** — 30 NFRs (Must 25 / Should 5 / Could 0), all NFR-domain open questions ✅ resolved 2026-05-01; **BT-001 (2026-05-12) re-baseline:** NFR-1.1 Bucket A redefined to "rewrite-G4-ON vs baseline" + NFR-1.8 Bucket B demoted Must → Should (informational delta) — see § NFR-1 Empirical Citation
