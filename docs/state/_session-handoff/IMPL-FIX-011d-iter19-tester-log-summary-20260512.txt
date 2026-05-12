@@ -1,0 +1,28 @@
+﻿CS	0	10:18:04.159	Trades	2021.01.04 00:29:22   deal #2 buy 0.3 EURUSD at 1.22401 done (based on order #2)
+CS	0	10:18:04.159	PhoenicisNex (EURUSD,H4)	2021.01.04 00:29:22   [Phoenicis][2021-01-04 00:29:22.438][INFO][slot=C][ev=order_sent][magic=200] ticket=2 dir=ORDER_TYPE_BUY lot=0.30 price=1.22401 sl=1.21901 comment=C,MA,N,1,SL
+CS	0	10:18:04.159	Trades	2021.01.04 00:29:22   deal #3 buy 0.4 EURUSD at 1.22401 done (based on order #3)
+CS	0	10:18:04.159	PhoenicisNex (EURUSD,H4)	2021.01.04 00:29:22   [Phoenicis][2021-01-04 00:29:22.438][INFO][slot=M][ev=order_sent][magic=210] ticket=3 dir=ORDER_TYPE_BUY lot=0.40 price=1.22401 sl=1.21901 comment=M,MA,N,1,SL
+CS	0	10:18:04.167	Trades	2021.01.04 00:40:20   deal #4 sell 0.3 EURUSD at 1.22364 done (based on order #4)
+CS	0	10:18:04.589	Trades	2021.01.04 07:58:41   deal #5 sell 0.25 EURUSD at 1.22605 done (based on order #5)
+CS	0	10:18:04.589	PhoenicisNex (EURUSD,H4)	2021.01.04 07:58:41   [Phoenicis][2021-01-04 07:58:41.868][INFO][slot=B][ev=order_sent][magic=214] ticket=5 dir=ORDER_TYPE_SELL lot=0.25 price=1.22605 sl=1.23405 comment=B,anti,1
+CS	0	10:18:05.505	Trades	2021.01.04 14:57:35   deal #6 sell 0.3 EURUSD at 1.23040 done (based on order #6)
+CS	0	10:18:05.505	PhoenicisNex (EURUSD,H4)	2021.01.04 14:57:35   [Phoenicis][2021-01-04 14:57:35.785][INFO][slot=Q][ev=order_sent][magic=212] ticket=6 dir=ORDER_TYPE_SELL lot=0.30 price=1.23040 sl=1.23540 comment=Q,MA,N,1,SL
+CS	0	10:18:08.426	Trades	2021.01.05 16:00:00   deal #7 sell 0.22 EURUSD at 1.22638 done (based on order #7)
+CS	0	10:18:08.426	PhoenicisNex (EURUSD,H4)	2021.01.05 16:00:00   [Phoenicis][2021-01-05 16:00:00.705][INFO][slot=K][ev=order_sent][magic=207] ticket=7 dir=ORDER_TYPE_SELL lot=0.22 price=1.22638 sl=1.23538 comment=K,layer,1
+CS	0	10:18:09.771	Trades	2021.01.06 02:50:53   deal #8 sell 0.18 EURUSD at 1.23236 done (based on order #8)
+CS	0	10:18:09.771	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:53   [Phoenicis][2021-01-06 02:50:53.050][INFO][slot=T][ev=order_sent][magic=219] ticket=8 dir=ORDER_TYPE_SELL lot=0.18 price=1.23236 sl=1.24310 comment=T,S,D,0,107
+CS	0	10:18:10.742	Trade	2021.01.06 09:42:53   stop loss triggered #5 sell 0.25 EURUSD 1.22605 sl: 1.23405 [#9 buy 0.25 EURUSD at 1.23405]
+CS	0	10:18:10.742	Trades	2021.01.06 09:42:53   deal #9 buy 0.25 EURUSD at 1.23407 done (based on order #9)
+CS	0	10:18:10.742	Trades	2021.01.06 09:42:53   deal #10 sell 0.2 EURUSD at 1.23397 done (based on order #10)
+CS	0	10:18:10.742	PhoenicisNex (EURUSD,H4)	2021.01.06 09:42:53   [Phoenicis][2021-01-06 09:42:53.021][INFO][slot=B][ev=order_sent][magic=214] ticket=10 dir=ORDER_TYPE_SELL lot=0.20 price=1.23397 sl=1.24197 comment=B,anti,1
+CS	0	10:18:20.676	Trades	2021.01.11 01:06:07   deal #11 sell 0.17 EURUSD at 1.22107 done (based on order #11)
+CS	0	10:18:20.676	PhoenicisNex (EURUSD,H4)	2021.01.11 01:06:07   [Phoenicis][2021-01-11 01:06:07.956][INFO][slot=G2][ev=order_sent][magic=208] ticket=11 dir=ORDER_TYPE_SELL lot=0.17 price=1.22107 sl=1.22607 comment=G2,F1,N,1,SL
+CS	0	10:18:20.750	Trade	2021.01.11 01:44:29   stop loss triggered #3 buy 0.4 EURUSD 1.22401 sl: 1.21901 [#12 sell 0.4 EURUSD at 1.21901]
+CS	0	10:18:20.750	Trades	2021.01.11 01:44:29   deal #12 sell 0.4 EURUSD at 1.21901 done (based on order #12)
+CS	0	10:21:21.123	Trades	2021.03.30 23:59:58   deal #13 buy 0.17 EURUSD at 1.17188 done (based on order #13)
+CS	0	10:21:21.123	Trades	2021.03.30 23:59:58   deal #14 buy 0.2 EURUSD at 1.17188 done (based on order #14)
+CS	0	10:21:21.123	Trades	2021.03.30 23:59:58   deal #15 buy 0.18 EURUSD at 1.17188 done (based on order #15)
+CS	0	10:21:21.123	Trades	2021.03.30 23:59:58   deal #16 buy 0.22 EURUSD at 1.17188 done (based on order #16)
+CS	0	10:21:21.123	Trades	2021.03.30 23:59:58   deal #17 buy 0.3 EURUSD at 1.17188 done (based on order #17)
+CS	0	10:21:21.123	Tester	final balance 6968.33 USD
+CS	0	10:21:21.131	Tester	EURUSD,H4: 5500180 ticks, 372 bars generated. Environment synchronized in 0:00:00.021. Test passed in 0:03:17.479 (including ticks preprocessing 0:00:00.312).

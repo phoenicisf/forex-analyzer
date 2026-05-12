@@ -205,19 +205,30 @@ public:
                                     : _NormalizeBrokerPrice(price + sl_dist);
       string           comment    = "B,anti,1";
 
-      //--- Submit order via RiskManager (which wraps CTrade per ea.md)
-      //    RiskManager::OpenOrder wired through core/Orchestrator.mqh.
-      //    Until then: log intent so SelfTest/smoke verifies entry path
-      //    without panicking on NULL CTrade.
-      // IMPL-FIX-011 R-13 (d): entry_buy/sell Info emit suppressed (per-tick
-      // stub spam bloated Q1 canary log to 1.41 GB / ~30 GB extrapolated over
-      // 5-yr; restore when RiskManager::OpenOrder wires real send + this
-      // becomes one-shot post-fill milestone). Mirrors IMPL-FIX-008 R-10.
-      // if(m_logger != NULL)
-      //    m_logger.Info("Slot_B", buy_signal ? "entry_buy" : "entry_sell",
-      //                  Magic(),
-      //                  StringFormat("lot=%.2f price=%.5f sl=%.5f comment=%s",
-      //                               lot, price, sl_price, comment));
+      //--- IMPL-FIX-011d Phase 2 iter-19 (2026-05-12): wire RiskManager.OpenOrder
+      //    per IMPL-FIX-003 Phase 1A pattern (mirror Slot_C.mqh:262-289 +
+      //    Slot_K.mqh post-iter-18). Slot_B was on the deferred IMPL-FIX-003
+      //    Phase 1B follow-up list; legacy fires at Q1 2021-03-04 10:25 with
+      //    comment `B,131,9.5,1,5,3,2,73`, rewrite silent because the submit
+      //    block never called OpenOrder. Predicate path (anti-trend fractal
+      //    reversal + ADX + cloud distance + tenkan/kijun direction) was
+      //    already correct from IMPL-037; only the OrderSend wire-up missing.
+      //    Same root-cause class as Slot_K iter-17→iter-18 telemetry verdict.
+      MqlTradeRequest req  = {};
+      MqlTradeResult  res  = {};
+
+      req.action       = TRADE_ACTION_DEAL;
+      req.symbol       = _Symbol;
+      req.volume       = lot;
+      req.type         = order_type;
+      req.price        = _NormalizeBrokerPrice(price);
+      req.sl           = sl_price;
+      req.tp           = 0.0;    // TP = 0; profit gate managed in ManageExits
+      req.comment      = comment;
+      req.magic        = MAGIC_B;
+      req.type_filling = ORDER_FILLING_FOK;  // broker filling detection per Orchestrator wiring path
+
+      m_risk.OpenOrder(req, "B");
      }
 
    //--- 4. ManageExits() เนโฌโ€ exit pass; runs in BOTH RUNNING and HALTED
