@@ -4,6 +4,97 @@
 
 ## Last completed action
 
+**🟢 IMPL-FIX-012 iter-1 ✅ CLOSED 2026-05-14 — ADR-013 DEAL_REASON_EXPERT filter applied at `core/Orchestrator.mqh::OnTradeTransaction` (3 LOC + ADR-013 NEW ~210 LOC); G1 PASS + G2 bootstrap_smoke 3-day PASS; Step 3 Run #4 deferred to next operator session per cap-3 iteration budget.**
+
+**Trigger:** Operator invoked `/impl-task IMPL-FIX-012` per impl-plan Next Best Action (post-IMPL-062 Run #3 closure pivot — start Step 0 diagnostic per cap-3 iteration budget).
+
+**Phase 1.3 compliance scans (passed):** Phase Gate (P4 current open ✅); Operator Action Registry empty ✅; Deferred-AC Registry no expired (today 2026-05-14; earliest expiry 2026-05-17 = 3d slack); IMPL-FIX-012 row Active (NEW 2026-05-14 expiry 2026-05-28).
+
+**Step 0 Diagnostic (this session) — empirical falsification of original hypothesis:**
+
+Parsed Run #3 journal `_session-handoff/IMPL-062-bucket-a-5yr-run3-20260514.jsonl` for Slot_H entry/exit timestamps + clustering pattern.
+
+| Slot_H Entries (7 total / 6 sim days 2021-01-07..13) | Inter-event gaps |
+|------------------------------------------------------|------------------|
+| t#36 SELL 2021-01-07T12:24:43 | (first) |
+| t#37 SELL 2021-01-07T16:00:00 | Δ=12,917s (3h 35m) |
+| t#39 SELL 2021-01-08T03:16:13 | Δ=40,573s (11h 16m) |
+| t#41 SELL 2021-01-08T10:04:21 | Δ=24,488s (6h 48m) |
+| t#57 SELL 2021-01-08T22:33:21 | Δ=44,940s (12h 29m) |
+| t#71 BUY  2021-01-13T04:38:33 | Δ=367,512s (4d 6h 5m) |
+| t#72 BUY  2021-01-13T09:29:48 | Δ=17,474s (4h 51m) |
+
+**No sub-second clustering at entry side.** All gaps measured in hours/days. Slot_H::Evaluate already enforces same-H4-bar cooldown at line 211 + max-orders cap (`_CountHOrders >= InpHMaxOrders=2`) at line 208.
+
+**Halt trigger reverse-engineered from journal:**
+- Halt event @ sim 2021-01-14 14:59:21 with `magic=205 dir=1 delta=0s threshold=3s`
+- direction=1 = broker SELL deal = closing a BUY position
+- Only open BUY positions on 2021-01-14: tickets **71 + 72** (both opened 2021-01-13)
+- Both have **identical SL=1.21311** (same `bid - InpHSlPips × pip_size` formula at same fill price 1.22211)
+- When EURUSD price falls to 1.21311 on 2021-01-14 14:59:21, **both broker SLs trigger on the same tick** → 2 broker close deals at Δ=0s with same magic+dir → CircuitBreaker.RecordClose called twice → CheckPingPong returns true → halt
+
+**Original ManageExits cooldown hypothesis FALSIFIED:** broker-side SL fills don't traverse Slot_H::ManageExits (they go through MT5's broker engine → OnTradeTransaction → Orchestrator → CircuitBreaker.RecordClose); cooldown wouldn't affect broker-side SL triggers.
+
+**Revised intervention identified (ADR-013):** filter `OnTradeTransaction` → `RecordClose` to only `DEAL_REASON_EXPERT`. Skip broker-driven closures (`DEAL_REASON_SL`/`TP`/`SO`/`ROLLOVER`/`VMARGIN`/`SPLIT`/`CLIENT`/`MOBILE`/`WEB`). Preserves BR-3.6 detector for true EA-driven ping-pong. Threshold unchanged at 3s.
+
+**Step 1 Patch (this session) — ADR-013 surgical 3-LOC + comment in `core/Orchestrator.mqh::OnTradeTransaction`:**
+
+```mql5
+// Between L835 DEAL_TYPE filter and L842 direction derivation:
+ENUM_DEAL_REASON reason = (ENUM_DEAL_REASON)HistoryDealGetInteger(deal, DEAL_REASON);
+if(reason != DEAL_REASON_EXPERT) return;
+```
+
+**ADR-013 authored** at `docs/adr/013-circuitbreaker-pingpong-deal-reason-filter.md` (~210 LOC):
+- Status: Accepted; Date: 2026-05-14
+- Context: Run #2 + Run #3 byte-identical halt class confirmed false-positive
+- Decision: DEAL_REASON_EXPERT filter at producer side
+- 4 alternatives considered (A: threshold tune REJECTED; B: ManageExits cooldown REJECTED; C: ticket-dedup in CheckPingPong REJECTED for complexity; D: Slot_H SL jitter REJECTED for being band-aid)
+- Consequences (positive/negative/neutral)
+- Decision validation (empirical evidence + verification protocol)
+- Revisit-when (Phase 2 multi-broker / Run #4 outcome / SelfTest expansion / iter-3 escalation)
+- References (BR-3.6 / ADR-010 / ADR-011 / TD-02 §5.8 / fix-round-10 / fix-round-11 / IMPL-062 evidence)
+
+**Step 2 G1 + G2 verification (this session):**
+
+| Gate | Action | Result |
+|------|--------|--------|
+| G1 Compile | `MetaEditor64.exe /compile:PhoenicisNex.mq5 /log` | ✅ `Result: 0 errors, 0 warnings, 4705 ms`; .ex5 360,588 bytes mtime 23:43:03 |
+| G2 Bootstrap_smoke 3-day | `terminal64.exe /config:simulation/headless-tests/bootstrap_smoke.ini` | ✅ 16s wall-clock; final balance $502.66 (identical to pre-patch smoke = behavioral parity; ADR-013 patch correctly inert for 3-day window with no multi-position SL collision); 0 ev=halt + 0 [ERROR] markers |
+
+**Step 3 G3 5-yr Bucket A retry (Run #4) DEFERRED to next operator session** per cap-3 iteration budget — paired with IMPL-062 E-AC #1+#2 retry; ~30-60 min wall-clock per IMPL-FIX-009 perf restoration.
+
+**State edits applied (this session):**
+
+- `MQL5/Experts/PhoenicisNex/core/Orchestrator.mqh` — 3-LOC + 8-line comment patch in OnTradeTransaction (between L835 DEAL_TYPE filter and L842 direction derivation)
+- `docs/adr/013-circuitbreaker-pingpong-deal-reason-filter.md` (NEW; ~210 LOC)
+- `docs/state/_session-handoff/IMPL-FIX-012-slot-H-clustering-diagnostic-20260514.md` (NEW; ~280 LOC: §1 entries + §2 exits + §3 halt trigger reverse-engineered + §4 falsification + §5 revised intervention + §6 verification plan + §7 cap-3 sequencing + §8 closure)
+- `impl-plan.md` — TL;DR top entry (iter-1 closure narrative) + Last-updated rewrite + Open Risks R-3 mitigation iter-1 narrative + Next Best Action pivot to Run #4 + IMPL-FIX-012 task block S-AC #1+#2+#3 [x] + Status iter-1 closure + Mid-Phase Audit Log row 2026-05-14 IMPL-FIX-012 + Plan Staleness Sentinel preserved + Closure Hygiene Status updated + Phase Status Snapshot P4 row updated
+- `overview.md` — row 19 (Impl Plan) + row 20 (Impl Tasks) prepended with IMPL-FIX-012 iter-1 narrative
+- `current_handoff.md` — THIS section (new Last completed action)
+
+**Plan Staleness Sentinel:** unchanged at **1 IMPL-NNN main task closure since R09** (impl-plan-review chain; FIX-ticket sub-iter closures ไม่ increment counter per `workflow.md` Gate #4 + fix-round-10 precedent). IMPL-FIX-012 iter-1 closure = engineer-side rework + verification, not main task closure.
+
+**Phase 5 mechanical gates:** #1 (forbidden-pattern grep on impl-plan.md = 1 sanctioned false-positive per claim-review-14 §At-a-Glance precedent — regex .* greediness; same accepted class) + #6 (single `## End of Plan` marker + clean trailer ✅) + #10 (stash-clean G1 PASS 0err/0warn/4705 ms post-patch ✅) + #11 (working-tree clean post-commit pending) verified inline.
+
+**State Reconciliation 3-file rule:** ✅ Layer 1 primary `impl-plan.md` (TL;DR + IMPL-FIX-012 task block + Open Risks R-3 + Next Best Action + Mid-Phase Audit Log + Sentinel + Closure Hygiene + Phase Status Snapshot); ✅ Layer 2 `overview.md` (rows 19+20); ✅ Layer 3 `current_handoff.md` (THIS section) + 2 NEW evidence/source artifacts (`_session-handoff/IMPL-FIX-012-slot-H-clustering-diagnostic-20260514.md` + `docs/adr/013-circuitbreaker-pingpong-deal-reason-filter.md`) + 1 source patch (`core/Orchestrator.mqh`).
+
+**Cap-3 sequencing:** iter-1 ✅ (this session); iter-2 conditional pending Run #4 outcome; iter-3 escalation gate at iter-3 fail → `/impl-plan-review all` or `/backtrack sd`.
+
+**Recommended next session:**
+
+1. **Operator session: `/impl-task IMPL-FIX-012` Step 3 G3 5-yr Bucket A retry (Run #4)** — launch `terminal64.exe /config:simulation/headless-tests/regression_5yr_g4.ini` (~30-60 min wall-clock per IMPL-FIX-009 perf restoration). Verify:
+   - **(a)** simulation reaches ≥ 3 sim months past Slot_H Jan-14 storm point without `circuit_breaker_pingpong` halt → ADR-013 confirmed effective at eliminating false-positive class
+   - **(b)** if reaches 5-yr completion AND drift ≤ 25% → IMPL-062 E-AC #1+#2 close + cascade IMPL-068 force-clear validation + IMPL-066 journal latency long-sample + Tier 1.5 walk batch-4 → P2/P3/P4 Tier 2 Phase Gate close path opens → MVP NFR-1.1 acceptance signal achieved
+   - **(c)** if reaches 5-yr completion BUT drift > 25% → ADR-013 fixed halt class but R-13 long-tail has another slot causing drift → next IMPL-FIX-013 iteration on different slot
+   - **(d)** if still halts via different class (e.g., journal sustained-write failure NFR-2.2 / margin-call NFR-7.1 / different ping_pong pattern) → diagnose new class via ADR-014 or further IMPL-FIX-NNN
+
+**Blocks unblocked by this closure:** IMPL-FIX-012 iter-1 ✅ CLOSED (1 of 3 cap-3 iters budget consumed); ADR-013 architectural decision documented + applied. **Blocks identified:** Step 3 Run #4 still required for empirical verification of ADR-013 effectiveness + IMPL-062 E-AC retry — **all gated on next operator session 30-60 min wall-clock**.
+
+---
+
+## Prior action (2026-05-14 — IMPL-062 Run #3)
+
 **🔴 IMPL-062 Run #3 EXECUTED 2026-05-14 (rewrite-G4-ON BT-001 single-pass methodology) — NFR-1.1 FAIL drift = 100.0022%; same halt class as Run #2 (`circuit_breaker_pingpong` Slot_H magic=205 @ sim 2021-01-14 14:59:21); IMPL-063 ✅ CLOSED via Run #3 cascade; IMPL-FIX-012 NEW authored (Slot_H pyramid same-bar cooldown — HIGH severity).**
 
 **Trigger:** Operator invoked `/impl-task IMPL-062` per impl-plan Next Best Action L171 (R11 §11.2 post-BT-001 closure pivot — re-execute rewrite-G4-ON Bucket A 5-yr regression default build, paired with IMPL-063 informational Bucket B same operator session).

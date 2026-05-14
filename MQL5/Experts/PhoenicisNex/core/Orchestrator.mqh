@@ -833,6 +833,19 @@ void COrchestrator::OnTradeTransaction(const MqlTradeTransaction &trans,
    //   explicit type check protects against Phase 2 broker-mode change
    //   per BA `03 § 5 Note`.
    if(dt != DEAL_TYPE_BUY && dt != DEAL_TYPE_SELL) return;
+
+   // ADR-013 (IMPL-FIX-012, 2026-05-14) — DEAL_REASON_EXPERT filter:
+   //   only EA-driven closes feed BR-3.6. Broker-driven closes (SL/TP/SO/
+   //   rollover/etc.) on independent positions can fire at the same tick
+   //   when multiple positions share an SL price — this is legitimate
+   //   market behavior, NOT EA ping-pong. BR-3.6's intent (per spec +
+   //   ADR-010) is to detect EA runaway loops, not concurrent broker fills.
+   //   IMPL-062 Run #2 + Run #3 both halted at sim 2021-01-14 14:59:21
+   //   from this exact false-positive class (2 H BUY positions w/ identical
+   //   SL=1.21311 hit broker SL same tick). See ADR-013 § Decision Validation.
+   ENUM_DEAL_REASON reason = (ENUM_DEAL_REASON)HistoryDealGetInteger(deal, DEAL_REASON);
+   if(reason != DEAL_REASON_EXPERT) return;
+
    // Hedging-mode mapping (C-5 + ADR-001). Closing deal type is opposite of
    //   the original position direction:
    //     DEAL_TYPE_SELL closes a long  ⇒ direction = 1 (was BUY)
