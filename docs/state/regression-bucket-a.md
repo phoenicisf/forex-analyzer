@@ -1,7 +1,8 @@
 # Bucket A Regression Report — IMPL-062
 
-> **Status (2026-05-12):** Run #2 EXECUTED with IMPL-FIX-003 Phase 1B build + DISABLE_G4_FIXES — 🔴 **NFR-1.1 FAIL** (Bucket A drift ≈ 99.998% vs ≤ 25% target). HALTED at sim 2021-01-14 via CircuitBreaker BR-3.6 ping_pong detector (Slot_H magic=205). HALTED_STABLE at sim 2021-05-25 with equity $470.83. Root cause: **NOT a Phase 1B regression** — Phase 1B wiring fired correctly (40 entries / 30 exits / 0 order_failed); the catastrophic drift signals that the **Bucket A measurement contract (DISABLE_G4_FIXES) is structurally incompatible with the 16-active-slot rewrite** under $1k deposit. See §4a Run #2 root-cause analysis + §5 recommended next steps.
-> Authored: 2026-05-05 | Last Updated: 2026-05-12 | Task: IMPL-062 / IMPL-FIX-003 | Phase: P4 Verification
+> **Status (2026-05-14):** Run #3 EXECUTED with rewrite-G4-ON default build (BT-001 single-pass methodology) — 🔴 **NFR-1.1 FAIL** (Bucket A drift = 100.0022% vs ≤ 25% target). HALTED at sim 2021-01-14 14:59:21 via CircuitBreaker BR-3.6 ping_pong (Slot_H magic=205, dir=1, delta=0s, threshold=3s) — **identical halt class as Run #2**. HALTED_STABLE at sim 2021-05-25 10:07:53 with equity **$470.83** (byte-identical to Run #2). **G4 fix contribution = $0 at portfolio level** — IMPL-063 informational delta `rewrite-G4-ON − rewrite-G4-OFF` = $0 (halt fires before BI/J differential matters). 11/11 BI entries verified `sl != 0` (G4 BI SL fix working at slot level ✅) but proximate trigger of ping_pong is **Slot_H pyramid clustering** (7 H entries in 14 sim days, sub-second windows) — a slot NOT addressed by IMPL-FIX-011a/b/c/d (which targeted T/G/G2/B/K only). Reveals **R-13 long-tail trading-logic translation gap** as the actual NFR-1.1 blocker, not the BT-001 measurement methodology (which closed correctly). New IMPL-FIX-012 follow-up authored to target Slot_H same-bar cooldown.
+> Prior Status (2026-05-12): Run #2 with DISABLE_G4_FIXES → 🔴 FAIL (drift ≈ 99.998%; same halt class). Triggered BT-001 measurement-methodology re-baseline. BT-001 closed 2026-05-13; Run #3 confirms BT-001 was necessary but not sufficient.
+> Authored: 2026-05-05 | Last Updated: 2026-05-14 (Run #3 + IMPL-FIX-012 follow-up) | Task: IMPL-062 / IMPL-063 / IMPL-FIX-012 | Phase: P4 Verification
 
 ---
 
@@ -104,12 +105,27 @@ Source: `docs/state/baseline-per-slot.json` (IMPL-061 extraction from `ReportTes
 
 ---
 
-## §4 — Result Tables (TBD post-execution)
+## §4 — Result Tables
 
-> **All numeric cells below are `<TBD post-execution>`.** Operator fills after running
-> `regression_5yr_no_g4.ini` and parsing Tester log + journal.
+### 4a — Portfolio-level deviation (Run #3 — rewrite-G4-ON default build, 2026-05-14, BT-001 single-pass methodology)
 
-### 4a — Portfolio-level deviation (Run #2 — IMPL-FIX-003 Phase 1B build, 2026-05-12)
+> **Operator session:** 2026-05-14 22:22:39 launch → 22:40 killed (per Run #2 precedent — HALTED_STABLE invariant after sim 2021-05-25; silent grind through 2025-12-31 produces zero new info). G1 PASS pre-flight `Result: 0 errors, 0 warnings, 4977 ms` (default build, no `#define DISABLE_G4_FIXES`); G3 launched `regression_5yr_g4.ini`; G4 parse via `simulation/scripts/impl062_parse_run.sh` + Python journal scan. Evidence: `_session-handoff/IMPL-062-bucket-a-5yr-run3-20260514.{jsonl,tester.txt}` (72 records + abridged Tester log).
+
+| Metric | Baseline | Rewrite (G4-ON) Run #3 | Absolute Δ | Relative Δ% |
+|--------|----------|------------------------|------------|-------------|
+| Total Net Profit ($) | 24,271,276.63 | **-529.17** (= $470.83 − $1,000 deposit) | **-24,271,805.80** | **-100.0022%** |
+| Final balance ($) | $24,272,276.63 ($1,000 + $24.27M profit) | **$470.83** | -$24,271,805.80 | -100.0022% |
+| Final equity ($) | (terminal value) | **$470.83** | (matches balance — all positions closed) | — |
+| Total trades (entries) | 231 | **40** (5 sim months before halt) | -191 | -82.7% |
+| Total trades (exits) | (matches entries) | 30 | — | — |
+| Halt event | none | `circuit_breaker_pingpong` (Slot_H magic=205, dir=1, delta=0s, threshold=3s) | — | — |
+| Halt timestamp | n/a | **2021-01-14 14:59:21** (sim time; ~14 sim days into 5-yr window) | — | — |
+| HALTED_STABLE transition | n/a | **2021-05-25 10:07:53** (after remaining open positions naturally closed) | — | — |
+| Max Drawdown % | (TBD baseline) | **81.12%** (at HALTED_STABLE; matches Run #2 EXACTLY) | — | — |
+
+**Run #3 vs Run #2 comparison (G4 fix portfolio impact):** $0 — final equity, halt timestamp, halt_stable timestamp, slot_counts at halt all **byte-identical** between Run #3 (G4-ON) and Run #2 (G4-OFF). Confirms IMPL-063 informational delta `rewrite-G4-ON − rewrite-G4-OFF` = **$0**.
+
+### 4a-r2 — Portfolio-level deviation (Run #2 — IMPL-FIX-003 Phase 1B build, 2026-05-12, DISABLE_G4_FIXES, **superseded by Run #3 + BT-001 closure 2026-05-13**)
 
 > **Note:** Run #1 (2026-05-10, commit `45bba53`, pre-Phase-1B build with 8 wired slots only) halted day-1 at 2021-01-04 17:10:00 with final balance $512.80 — see `_session-handoff/IMPL-062-evidence-20260510.md`.
 > Run #2 (2026-05-12, post-Phase-1B build with 14 wired slots + DISABLE_G4_FIXES) halted at 2021-01-14 14:59:21 via CircuitBreaker BR-3.6 ping_pong detector; HALTED_STABLE at 2021-05-25 10:07:53 with equity drained to $470.83. Tester continued silently through remaining 4.6 years (HALTED_STABLE = exit-only, zero positions). Run killed after 26 min wall-clock of silent grinding; final balance is invariant after HALTED_STABLE so the killed-vs-completed result is identical.
@@ -126,7 +142,37 @@ Source: `docs/state/baseline-per-slot.json` (IMPL-061 extraction from `ReportTes
 | HALTED_STABLE transition | n/a | 2021-05-25 10:07:53 (after remaining open positions naturally closed) | — | — |
 | Max Drawdown % | (TBD from baseline) | **81.12%** (at HALTED_STABLE; new_worst_dd milestones emit continuously through 2021-05-25) | — | — |
 
-### 4b — Per-slot trade count deviation (NFR-1.6) — Run #2 partial
+### 4b — Per-slot trade count deviation (NFR-1.6) — Run #3 (rewrite-G4-ON) 14-day pre-halt window (2026-05-14)
+
+> **All counts are entries during the ~14-sim-day pre-halt window (2021-01-01 to 2021-01-14 14:59).** Baseline counts are 5-yr totals; Run #3 halted at sim day 14 so per-slot counts are not comparable as 5-yr drift metrics. Reporting raw counts for traceability + cross-check vs Run #2 (which had identical halt class).
+
+| Slot | Baseline (5-yr) | Run #3 (14-day pre-halt G4-ON) | Run #2 (14-day pre-halt G4-OFF) | Δ Run #3 vs Run #2 | Note |
+|------|----------------:|-------------------------------:|--------------------------------:|-------------------:|------|
+| C    |  34 | 1 | 1 | 0 | identical — within first 14 sim days only |
+| D    |  12 | 0 | 0 | 0 | sub-call wrapper of C; entry-side deferred (Phase 1C) |
+| F    |   0 | 0 | 0 | 0 | sub-call CD-follower; entry-side deferred (Phase 1C) |
+| J    |  12 | 0 | 0 | 0 | sub-call CD-follower; entry-side deferred (Phase 1C) — no J fires in window so G4 magic-J fix not exercised |
+| H    |   7 | 7 | 7 | 0 | **PRE-HALT TARGET CLUSTERED FIRES — triggered ping_pong (identical to Run #2)** |
+| K    |  32 | 1 | 1 | 0 | iter-18 wire confirmed |
+| G    |  19 | 0 | 0 | 0 | low fire rate in window |
+| G2   |   0 | 1 | 1 | 0 | spurious 2021-01-11 (per IMPL-FIX-011 follow-up) |
+| GO   |   0 | 0 | 0 | 0 | sub-call from TriggerGOverload; entry-side deferred (Phase 1C) |
+| M    |  11 | 1 | 1 | 0 | within window |
+| L    |   7 | 4 | 4 | 0 | independent baseline wired (Phase 1B) |
+| LX   |   1 | 2 | 2 | 0 | pyramid wired (Phase 1B) |
+| Q    |   5 | 1 | 1 | 0 | within window |
+| R    |   7 | 0 | 0 | 0 | low fire rate in window |
+| I    |   3 | 0 | 0 | 0 | parasite-gate; G's open position rate low in window |
+| P    |  19 | 0 | 0 | 0 | sub-mode slot; low fire rate in window |
+| T    |  24 | 1 | 1 | 0 | within window |
+| S    |  13 | 2 | 2 | 0 | post-close gate wired (Phase 1B) |
+| B    |  18 | 6 | 6 | 0 | iter-19 wire confirmed |
+| BR   |   7 | 2 | 2 | 0 | transitively activated via BR-trigger gate flip (Phase 1B) ✅ |
+| BI   |   0 | 11 | 11 | 0 | pyramid wired (Phase 1B); +11 entries from 4 B parents — **G4 SL fix verified: 11/11 entries with `sl != 0`** ✅ (Run #2 had `sl = 0` per DISABLE_G4_FIXES; Run #3 has parent-pip-anchored SL per ADR-009) |
+
+**Per-slot Run #3 vs Run #2:** **0 delta on every slot count.** G4 fixes (BI parent-SL + J magic-J) are correctly applied at the slot level (BI verified 11/11) but the halt fires before the per-slot differential matters at portfolio scale.
+
+### 4b-r2 — Per-slot trade count deviation (NFR-1.6) — Run #2 partial
 
 > **All counts are entries during the ~14-sim-day pre-halt window (2021-01-01 to 2021-01-14 14:59).** Baseline counts are 5-yr totals; Run #2 halted at day 14 so per-slot counts are not directly comparable as drift metrics. Reporting raw counts for traceability.
 
@@ -184,14 +230,32 @@ Source: `docs/state/baseline-per-slot.json` (IMPL-061 extraction from `ReportTes
 
 ## §5 — Pass Criterion Matrix
 
-| # | Criterion | Source | Pass Threshold | Status (Run #2 2026-05-12) |
-|---|-----------|--------|----------------|----------------------------|
-| 1 | \|Bucket A drift\| = \|ΔNet Profit\| / $24.27M | NFR-1.1 | ≤ 25% (i.e., rewrite Net Profit ∈ [$18.20M, $30.34M]) | 🔴 **FAIL — drift ≈ 99.998%** (rewrite Net Profit = -$529.17 vs baseline $24.27M; HALTED at sim day 14 via ping_pong) |
-| 2 | All 21 per-slot trade count deviations | NFR-1.6 | ≤ ±15% (or ±2 abs for baseline < 5 trades) | 🔴 **FAIL — not measurable** (5-yr baseline vs 14-day truncated run; per-slot drift cannot be computed without complete 5-yr run; halt prevents this) |
-| 3 | Profit Factor deviation | NFR-1.8 (informational for Bucket A) | PF does not materially degrade | 🔴 PF undefined (40 entries / 30 exits insufficient sample) |
-| 4 | Sharpe Ratio deviation | NFR-1.7 | ΔSharpe ≤ −1.0 | 🔴 Sharpe undefined (truncated run) |
+| # | Criterion | Source | Pass Threshold | Status (Run #3 2026-05-14, BT-001 single-pass) | Status (Run #2 2026-05-12, DISABLE_G4_FIXES, superseded) |
+|---|-----------|--------|----------------|------------------------------------------------|----------------------------------------------------------|
+| 1 | \|Bucket A drift\| = \|ΔNet Profit\| / $24.27M | NFR-1.1 (BT-001 redefined: rewrite-G4-ON vs baseline single-pass) | ≤ 25% (i.e., rewrite Net Profit ∈ [$18.20M, $30.34M]) | 🔴 **FAIL — drift = 100.0022%** (rewrite Net Profit = -$529.17 vs baseline $24.27M; HALTED at sim day 14 via Slot_H ping_pong; **identical halt class as Run #2 → BT-001 measurement re-baseline necessary but not sufficient**) | 🔴 FAIL — drift ≈ 99.998% (HALTED via same ping_pong) |
+| 2 | All 21 per-slot trade count deviations | NFR-1.6 | ≤ ±15% (or ±2 abs for baseline < 5 trades) | 🔴 **N/A — not measurable** (5-yr baseline vs 14-day truncated run; halt prevents 5-yr completion; per-slot pre-halt counts byte-identical to Run #2 — see §4b) | 🔴 N/A — same as Run #3 (truncated) |
+| 3 | Profit Factor deviation | NFR-1.8 (informational for Bucket A) | PF does not materially degrade | 🔴 PF undefined (40 entries / 30 exits insufficient sample) | 🔴 PF undefined |
+| 4 | Sharpe Ratio deviation | NFR-1.7 | ΔSharpe ≤ −1.0 | 🔴 Sharpe undefined (truncated run) | 🔴 Sharpe undefined |
 
-**Overall IMPL-062 verdict (Run #2 2026-05-12):** 🔴 **FAIL** — does not meet NFR-1.1 ≤ 25%. CATASTROPHIC DRIFT.
+**Overall IMPL-062 verdict (Run #3 2026-05-14, post-BT-001):** 🔴 **FAIL** — does not meet NFR-1.1 ≤ 25%. CATASTROPHIC DRIFT (same magnitude as Run #2). **G4 fix portfolio impact = $0** (Run #3 vs Run #2 final equity delta = $0; halt timestamps identical). **Root cause is NOT BT-001 measurement methodology** (BT-001 closed correctly 2026-05-13). **Root cause IS R-13 long-tail trading-logic gap** — specifically Slot_H pyramid clustering pattern that triggers `circuit_breaker_pingpong` at sim 2021-01-14 14:59:21, regardless of whether DISABLE_G4_FIXES is on or off. IMPL-FIX-011a/b/c/d only addressed Slot_T/G/G2/B/K (per Q1 paired canary divergence findings); Slot_H clustering pattern is the next slot in the long-tail chain that needs targeted predicate calibration. **Follow-up: IMPL-FIX-012 authored** (Slot_H pyramid same-bar cooldown — see §6 cross-links).
+
+### Run #3 root-cause analysis (2026-05-14, BT-001 single-pass methodology)
+
+The catastrophic drift is **NOT a BT-001 closure regression**. BT-001 (closed 2026-05-13) correctly redefined the measurement methodology from "rewrite-G4-OFF vs baseline" → "rewrite-G4-ON vs baseline single-pass" — eliminating the DISABLE_G4_FIXES vs 16-active-slot-rewrite confound. Run #3 executed precisely the BT-001-mandated configuration (default G4-ON build, no `#define DISABLE_G4_FIXES`, single-pass against `regression_5yr_g4.ini`).
+
+**The Run #3 finding is that BT-001 was necessary but not sufficient.** With G4 fixes ON:
+
+1. **Same halt timestamp as Run #2** — `2021-01-14 14:59:21` (sub-millisecond precision identical)
+2. **Same halt class** — `circuit_breaker_pingpong` Slot_H magic=205, dir=1, delta=0s, threshold=3s
+3. **Same HALTED_STABLE timestamp** — `2021-05-25 10:07:53`
+4. **Same final equity** — $470.83 (matches Run #2 to the cent)
+5. **Same per-slot entry counts in 14-day pre-halt window** — byte-identical to Run #2 across all 21 slots
+6. **G4 BI SL fix verified working** — 11/11 BI entries with `sl != 0` (Run #2 had `sl = 0` per ADR-009 pre-G4 baseline) ✅
+7. **G4 J magic-J fix not exercised** — 0 J entries fire in 14-day pre-halt window (Slot_J is CD-follower; CD chain has only 1 fire in window)
+
+**Conclusion:** G4 fixes ARE correctly applied at the slot level (BI verified 11/11 with proper SL inheritance) but the halt fires before the per-slot differential matters at portfolio scale. The proximate trigger of `circuit_breaker_pingpong` is **Slot_H pyramid clustering** — 7 H entries in 14 sim days, several within sub-second windows. Slot_H is **not** addressed by IMPL-FIX-011a/b/c/d (which targeted T/G/G2/B/K predicates per Q1 paired canary divergence ranking). Slot_H is the next slot in the **R-13 long-tail trading-logic translation gap** (per impl-plan Open Risks R-13).
+
+**Per Run #3 evidence + Open Risks R-13 long-tail framing — Slot_H is the next IMPL-FIX target.** New ticket IMPL-FIX-012 authored to investigate Slot_H pyramid same-bar cooldown (per regression-bucket-a.md §5 step 4 recommendation) + per-bar throttle on `_TryExit` close path (Slot_H's H4-bar age-gate may fire multiple closes within one tick).
 
 ### Run #2 root-cause analysis
 
@@ -224,6 +288,16 @@ The NFR-1.1 ≤ 25% Bucket A drift contract was authored against legacy Phoenici
 3. **CircuitBreaker BR-3.6 threshold tuning** — `threshold=3s` may be too aggressive when 16 slots fire concurrently. Operator may consider bumping to 5-10s after architectural review.
 4. **Slot_H pyramid rate-limit** — 7 H entries in 14 sim days = ~0.5/day; clustering occurred within seconds, suggesting H's `InpHMaxAgeBars` exit gate fires multiple closes within one tick. ManageExits same-bar cooldown could prevent this.
 
+### Run #3 artifacts (2026-05-14)
+
+- Tester log abridged: `_session-handoff/IMPL-062-bucket-a-5yr-run3-20260514-tester.txt` (317 lines; init + entry/exit/halt events + DD milestones every 5%)
+- Journal jsonl: `_session-handoff/IMPL-062-bucket-a-5yr-run3-20260514.jsonl` (72 records: 40 entry + 30 exit + 1 halt + 1 halt_stable; **byte-identical record count + timestamps + slot_counts vs Run #2**)
+- Halt event raw: `{"event_type":"halt","slot_id":"system","halt_reason":"circuit_breaker_pingpong","portfolio_summary.equity":1107.12,...}` @ 2021-01-14 14:59:21
+- Halt_stable event raw: `{"event_type":"halt_stable","slot_id":"system","portfolio_summary.equity":470.83,"triggering_function":"CEAState::TryTransitionToStable"}` @ 2021-05-25 10:07:53
+- G1 compile log: `Result: 0 errors, 0 warnings, 4977 ms elapsed` (default G4-ON build; `#define DISABLE_G4_FIXES` confirmed absent via grep exit=1 + verified via §4b BI sl != 0 evidence)
+- Operator session: 22:22:39 launch → 22:40 killed (per HALTED_STABLE-invariant precedent; full silent grind to 2025-12-31 would have produced zero new info per Run #2 §4 documented behavior)
+- Parse script: `simulation/scripts/impl062_parse_run.sh` (NEW) — bash + jq pipeline; companion PowerShell pipeline used due to jq path issue in this shell
+
 ### Run #2 artifacts
 
 - Tester log decoded: `_session-handoff/IMPL-FIX-003-bucket-a-5yr-partial-20260512.txt` (16,734 lines; first 5.5MB of decoded log; remaining 4.6 sim years were silent post-HALTED_STABLE)
@@ -243,7 +317,11 @@ The NFR-1.1 ≤ 25% Bucket A drift contract was authored against legacy Phoenici
 | IMPL-063 (Bucket B — G4 fixes ON vs OFF delta) | Complement: measures intentional G4 behavioral change (NFR-1.8) |
 | ADR-009 | BI SL inheritance fix — Bucket B classification; DISABLE_G4_FIXES reverts for Bucket A isolation |
 | BR-7.2 | Slot J MAGIC_J fix — Bucket B classification; DISABLE_G4_FIXES reverts for Bucket A isolation |
-| `simulation/headless-tests/regression_5yr_no_g4.ini` | Committed headless Tester config for reproducibility (TD-02 §13.6) |
+| `simulation/headless-tests/regression_5yr_no_g4.ini` | Committed headless Tester config for reproducibility (TD-02 §13.6) — used in Run #2 (DISABLE_G4_FIXES) |
+| `simulation/headless-tests/regression_5yr_g4.ini` | Committed headless Tester config — used in Run #3 (rewrite-G4-ON default build, BT-001 single-pass methodology) |
+| `backtrack-log.md § BT-001` | Resolved 2026-05-13 — measurement-methodology re-baseline (necessary precondition for Run #3) |
+| IMPL-FIX-012 (NEW 2026-05-14) | Slot_H pyramid same-bar cooldown follow-up — addresses R-13 long-tail proximate trigger of `circuit_breaker_pingpong` revealed by Run #3 |
+| Open Risks R-13 (impl-plan.md) | Long-tail trading-logic translation gap — Run #3 confirms R-13 still active for non-T/G/G2/B/K slots; Slot_H is next IMPL-FIX target |
 
 ---
 
@@ -346,9 +424,11 @@ grep "DISABLE_G4_FIXES" MQL5/Experts/PhoenicisNex/PhoenicisNex.mq5
 - [x] S-AC #2: `simulation/headless-tests/regression_5yr_no_g4.ini` committed with standard `[Tester]` block (Model=4, 5-yr window, ShutdownTerminal=1, Visual=0) + operator runbook for compile-flag requirement.
 - [x] S-AC #3: This report skeleton authored with 8 sections, pass criterion matrix, per-slot baseline table, and operator runbook.
 
-**Deferred E-ACs (registered in `docs/state/deferred-ac-registry.md` by orchestrator):**
-- [ ] E-AC #1: `|Bucket A drift| ≤ 25%` NFR-1.1 — requires operator 5-yr Tester run + Net Profit extraction.
-- [ ] E-AC #2: All 21 per-slot deviations ≤ 10% NFR-1.6 — requires operator journal parse + per-slot jq extraction.
+**Deferred E-ACs (originally registered in `docs/state/deferred-ac-registry.md`):**
+- [ ] E-AC #1: `|Bucket A drift| ≤ 25%` NFR-1.1 — **🔴 EXERCISED via Run #3 (2026-05-14) → drift = 100.0022% — FAIL**. Cannot close `[x]`. Stays Active in registry pending IMPL-FIX-012 (Slot_H pyramid same-bar cooldown) closure + Run #4 retry.
+- [ ] E-AC #2: All 21 per-slot deviations ≤ 10% NFR-1.6 — **🔴 N/A** — truncated 14-day pre-halt window vs 5-yr baseline = not measurable; halt prevents 5-yr completion. Stays Active in registry; same blocker as E-AC #1 (gated on IMPL-FIX-012 → Run #4).
 
-**Risk-if-missed:** NFR-1.1 acceptance signal not measured; cannot certify rewrite parity vs PhoenicisN2.10 baseline ($24.27M). Bucket A drift may exceed 25% without detection.
-**Expiry:** 2026-05-19 (14d from 2026-05-05).
+**Run #3 outcome (2026-05-14):** Measurement methodology now correct (BT-001 closed; default G4-ON build, single-pass per BA `03 § NFR-1.1 Verification`); empirical drift catastrophic but G4 fix portfolio impact = $0 (matches Run #2 byte-identical); reveals R-13 long-tail trading-logic gap (Slot_H pyramid clustering) as the actual NFR-1.1 blocker. Follow-up IMPL-FIX-012 authored.
+
+**Risk-if-missed:** NFR-1.1 acceptance signal still not satisfied; rewrite parity vs PhoenicisN2.10 baseline ($24.27M) NOT certified. P4 Tier 2 Phase Gate close + MVP NFR-1.1 acceptance signal blocked until IMPL-FIX-012 closure → Run #4 retry passes ≤ 25%.
+**Expiry:** 2026-05-28 (14d from Run #3 closure 2026-05-14; renewal #1 of max 2 per registry policy).

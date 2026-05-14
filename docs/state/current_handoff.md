@@ -4,6 +4,121 @@
 
 ## Last completed action
 
+**🔴 IMPL-062 Run #3 EXECUTED 2026-05-14 (rewrite-G4-ON BT-001 single-pass methodology) — NFR-1.1 FAIL drift = 100.0022%; same halt class as Run #2 (`circuit_breaker_pingpong` Slot_H magic=205 @ sim 2021-01-14 14:59:21); IMPL-063 ✅ CLOSED via Run #3 cascade; IMPL-FIX-012 NEW authored (Slot_H pyramid same-bar cooldown — HIGH severity).**
+
+**Trigger:** Operator invoked `/impl-task IMPL-062` per impl-plan Next Best Action L171 (R11 §11.2 post-BT-001 closure pivot — re-execute rewrite-G4-ON Bucket A 5-yr regression default build, paired with IMPL-063 informational Bucket B same operator session).
+
+**Empirical execution (operator session 22:22:39 → 22:40 wall-clock = 17.6 min):**
+
+| Gate | Action | Result |
+|------|--------|--------|
+| Phase 1.3 compliance | Phase Gate (P4 current open ✅) + Operator Action Registry empty ✅ + Deferred-AC Registry no expired (today 2026-05-14; earliest expiry 2026-05-17 = 3d slack) ✅ | PASS — proceed |
+| G1 Compile pre-flight | `MetaEditor64.exe /compile:PhoenicisNex.mq5 /log` (default build; `#define DISABLE_G4_FIXES` confirmed absent via grep exit=1) | ✅ `Result: 0 errors, 0 warnings, 4977 ms elapsed`; .ex5 rebuilt 22:15:44 (359,916 bytes) |
+| G3 Headless 5-yr regression | `terminal64.exe /config:simulation/headless-tests/regression_5yr_g4.ini` (Visual=0 + ShutdownTerminal=1; Model=4 every-tick real-ticks; Deposit=$1000 Leverage=500 EURUSD H4 2021.01.01-2025.12.31) | 🔴 HALTED at sim 2021-01-14 14:59:21 via `circuit_breaker_pingpong` (Slot_H magic=205 dir=1 delta=0s threshold=3s); HALTED_STABLE at sim 2021-05-25 10:07:53 with equity $470.83; killed at wall-clock 22:40 per HALTED_STABLE-invariant precedent (silent-grind through 2025-12-31 produces zero new info per Run #2 §4 documentation; killed-vs-completed result identical) |
+| G4 Log + journal review | Decoded Tester log via `iconv UTF-16LE → UTF-8`; parsed journal via Python (jq path issue in this shell); ran `simulation/scripts/impl062_parse_run.sh` (NEW post-run parse pipeline) | 72 journal records (40 entry + 30 exit + 1 halt + 1 halt_stable); per-slot pre-halt entries: BI=11, H=7, B=6, L=4, BR=2, S=2, LX=2, G2=1, C=1, Q=1, M=1, T=1, K=1; G4 BI SL fix VERIFIED 11/11 BI entries with `sl != 0` (sample tickets 6/9/12 with parent-pip-anchored SL ranges [1.23699, 1.23704]); G4 J magic-J fix N/A (no J fires in 14-day pre-halt window — falls back to structural code-level grep) |
+
+**Bucket A drift compute:**
+
+| Metric | Baseline | Rewrite Run #3 | Δ |
+|--------|----------|----------------|---|
+| Total Net Profit ($) | $24,271,276.63 | **-$529.17** (= $470.83 − $1,000 deposit) | **-$24,271,805.80 (-100.0022%)** |
+| NFR-1.1 verdict | ≤ 25% Bucket A drift | 🔴 **FAIL — 100.0022%** | gate breached |
+
+**Comparison vs Run #2 (DISABLE_G4_FIXES build, 2026-05-12) — byte-identical at every measurable axis:**
+
+| Field | Run #2 | Run #3 | Δ |
+|-------|--------|--------|---|
+| Final equity | $470.83 | $470.83 | $0 |
+| Halt timestamp | 2021-01-14 14:59:21 | 2021-01-14 14:59:21 | identical (sub-millisecond) |
+| Halt reason | `circuit_breaker_pingpong` Slot_H magic=205 | identical | — |
+| HALTED_STABLE | 2021-05-25 10:07:53 | 2021-05-25 10:07:53 | identical |
+| Per-slot entry counts (14-day pre-halt window) | identical | identical | 0 |
+
+**Conclusion:** **G4 fix portfolio impact = $0** — IMPL-063 informational delta `rewrite-G4-ON − rewrite-G4-OFF` = $0. **BT-001 (closed 2026-05-13) was necessary but not sufficient** — measurement methodology now correct (rewrite-G4-ON vs baseline single-pass per BA `03 § NFR-1.1 Verification`) but rewrite still fails NFR-1.1 catastrophically. The real NFR-1.1 blocker is **R-13 long-tail trading-logic translation gap**, specifically **Slot_H pyramid clustering** (7 H entries in 14 sim days, sub-second windows) that triggers `circuit_breaker_pingpong` regardless of DISABLE_G4_FIXES on/off. Slot_H |Δ|=0 in Q1 paired canary (covered by IMPL-FIX-011 chain) so wasn't caught by IMPL-FIX-011a/b/c/d sub-tickets — surfaces only at 5-yr scale.
+
+**State edits applied (this session):**
+
+- `regression-bucket-a.md` — status header rewrite + §4a-r3 Run #3 portfolio table + §4b-r3 per-slot Run #3 vs Run #2 table + §5 pass criterion matrix Run #3 column + §Run #3 root-cause analysis + §Run #3 artifacts + §6 cross-links + §8 closure note
+- `regression-bucket-b.md` — status header rewrite ✅ CLOSED + §4a informational delta = $0 + §4c G4 verification table + §5 pass criterion matrix + §8 closure note
+- `impl-plan.md` — TL;DR top entry (Run #3 narrative) + Last-updated rewrite + Phase Status Snapshot P4 row + Open Risks R-3 RE-OPENED + R-13 expanded + Next Best Action pivot to IMPL-FIX-012 + IMPL-062 task block S-AC #1+#2 `[x]` + Status update + IMPL-063 task block all S-AC + E-AC `[x]` + Closed paragraph cascade closure + IMPL-FIX-012 NEW task block + Mid-Phase Audit Log row 2026-05-14 + Plan Staleness Sentinel `1 IMPL-NNN main task closure since R09` + Closure Hygiene Status updated
+- `deferred-ac-registry.md` — IMPL-063 row → Resolved table + IMPL-062 row deferred-reason updated post-Run #3 + expiry renewed 2026-05-28 + IMPL-FIX-012 NEW Active row expiry 2026-05-28
+- `overview.md` — row 19 (Impl Plan) + row 20 (Impl Tasks) prepended with Run #3 + IMPL-FIX-012 narrative
+- `simulation/scripts/impl062_parse_run.sh` — NEW post-run parse pipeline (~80 LOC bash + jq + Python fallback)
+- `_session-handoff/IMPL-062-bucket-a-5yr-run3-20260514.jsonl` — 72 journal records
+- `_session-handoff/IMPL-062-bucket-a-5yr-run3-20260514-tester.txt` — abridged Tester log (317 lines: init + entry/exit + halt events + DD milestones every 5%)
+
+**Plan Staleness Sentinel:** **1 IMPL-NNN main task closure since R09** — IMPL-063 fully closed 2026-05-14 via Run #3 cascade (within ≤10-closure threshold ✅). FIX-ticket activity (IMPL-FIX-012 authored) ไม่ increment counter per `workflow.md` Gate #4 + fix-round-10 precedent.
+
+**Phase 5 mechanical gates:** #1 (forbidden-pattern grep on impl-plan.md = 0 hits ✅) + #6 (single `## End of Plan` marker ✅) verified inline; #11 (working-tree clean post-commit) pending after this commit.
+
+**State Reconciliation 3-file rule:** ✅ Layer 1 primary `impl-plan.md` (TL;DR + 2 task blocks + 1 NEW task block + Phase Status + Open Risks + Next Best Action + Audit Log + Sentinel + Closure Hygiene + registry); ✅ Layer 2 `overview.md` (rows 19 + 20 status string append); ✅ Layer 3 `current_handoff.md` (THIS section) + `_session-handoff/IMPL-062-bucket-a-5yr-run3-20260514.{jsonl,tester.txt}` evidence artifacts; ✅ Aux `regression-bucket-a.md` + `regression-bucket-b.md` reports updated.
+
+**Recommended next session:**
+
+1. **`/impl-task IMPL-FIX-012`** (NEW 2026-05-14) — Step 0 diagnostic: parse `_session-handoff/IMPL-062-bucket-a-5yr-run3-20260514.jsonl` for Slot_H entry timestamps + sub-second clustering pattern; confirm same-bar cooldown is the right intervention (vs CircuitBreaker BR-3.6 threshold tune); compare to legacy Slot_H ManageExits behavior in `PhoenicisN2.10_stable.mq5`. Cap-3 iteration budget per IMPL-FIX-011 sub-ticket precedent.
+2. **THEN IMPL-FIX-012 Step 1 patch** — `m_last_exit_bar` + per-bar throttle in `slots/Slot_H.mqh::ManageExits` (mirror IMPL-FIX-007 v2 H4-bar gate pattern from Slot_G/G2/S; ~30 LOC).
+3. **THEN IMPL-FIX-012 Step 2 G2 smoke** — bootstrap_smoke 3-day verify Slot_H exits ≤ 1 per H4 bar in smoke window.
+4. **THEN IMPL-FIX-012 Step 3 G3 5-yr Bucket A retry (Run #4)** — launch `regression_5yr_g4.ini`; verify simulation reaches ≥ 3 sim months past Slot_H Jan-14 storm point without `circuit_breaker_pingpong` halt.
+5. **IF Run #4 PASS (drift ≤ 25%):** IMPL-062 E-AC #1 + #2 close + IMPL-068 force-clear validation drains alongside + Tier 1.5 walk batch-4 → P2/P3/P4 Tier 2 Phase Gate close path opens.
+6. **IF Run #4 FAIL with different halt class:** triggers next IMPL-FIX-013 long-tail iteration (CircuitBreaker threshold tune via ADR-013 OR next slot in R-13 long-tail).
+
+**Blocks unblocked by this closure:** none (IMPL-063 closure is informational; IMPL-062 still blocked). **Blocks identified:** NFR-1.1 acceptance signal + IMPL-062 E-AC #1+#2 retry + IMPL-068 force-clear validation + IMPL-066 journal latency long-sample + P2/P3/P4 Tier 2 Phase Gate close + MVP delivery — **ALL gated on IMPL-FIX-012 → Run #4**.
+
+---
+
+## Prior action (2026-05-13 — BT-001 closure)
+
+**🟢 Impl Plan Rebuttal Round 12 ✅ CLOSED 2026-05-13 — BT-001 closure + R11 self-introduced defect drain (6/6 Accept: 2 CRITICAL + 2 HIGH + 2 MEDIUM).** Path A applied per claim-review-12.md recommendation: `backtrack-log.md § BT-001` Status flipped `🔄 Open` → `✅ Resolved 2026-05-13` + Resolution populated with 5-step cascade audit trail (R12 IS the Step 3+5 cascade-validation event); IMPL-063 S-AC #1 annotated + S-AC #2/#3 un-`[x]`'d with strikethrough + new `[ ]` re-author (symmetric to R11 §11.1 IMPL-062 surgery — same BT-001 vocabulary-invalidation logic propagated); Phase Status Snapshot P4 row Notes column rewritten post-BT-001 (drops pre-BT-001 PIVOT "contract re-baseline via /backtrack ba" framing); IMPL-062 Closed paragraph appended with R12 §12.4 partial-re-open annotation reflecting R11 un-`[x]` surgery; `deferred-ac-registry.md` IMPL-062 row deferred-reason text appended with BT-001 update (DISABLE_G4_FIXES build path banned by BA `03 § NFR-1.1 Verification`); `current_handoff.md § BT-001 cascade chain` Step 3 + Step 4 + Step 5 flipped ✅ Closed / ⏭ Deferred. Rebuttal artifact: `docs/state/impl-plan-claim-review-and-rebuttal/rebuttal-round-12.md`. **BT-001 lifecycle CLOSED.**
+
+**Prior action (2026-05-13 earlier):** 🟢 Impl Plan Rebuttal Round 11 ✅ CLOSED 2026-05-13 — BT-001 Step 3 impl-plan cascade drain (7/7 Accept: 2 CRITICAL + 3 HIGH + 2 MEDIUM). IMPL-062 task block re-authored per rewrite-G4-ON single-pass methodology (un-`[x]` 2× S-AC DISABLE_G4_FIXES locks + new S-AC default-build; Status R10 §10.4 BLOCKED→READY); IMPL-063 demoted to NFR-1.8 informational delta `rewrite-G4-ON − rewrite-G4-OFF` (no acceptance gate); 9 R10 §10.4 BLOCKED annotations across R-3 + Next Best Action + Phase Gate Empirical Demo + NFR-1.1 check + IMPL-FIX-011 parent 4× E-AC footnote + IMPL-062 Status replaced with ✅ RESOLVED via BT-001; IMPL-FIX-003 Phase 1B closure paragraph registry pointer added (closes task-block vs TL;DR drift R10 §10.5 missed); TL;DR L7 post-BT-001 update annotation appended. Rebuttal artifact: `docs/state/impl-plan-claim-review-and-rebuttal/rebuttal-round-11.md`. BT-001 cascade chain Step 3 ✅ → Step 4 `/td-review all` + Step 5 close BT-001 next.
+
+**Prior action (2026-05-13 earlier):** 🟢 **SD Review Round 06 ✅ CLOSED 2026-05-13 — BT-001 Bucket A/B cascade verify-only sweep returned 0 findings (CRITICAL 0 / HIGH 0 / MEDIUM 0 / LOW 0).**
+
+**Trigger:** Operator invoked `/sd-review all` per `rebuttal-round-04 § Recommendation step 2` (verify-only Round 06 expected to mirror BA Round 05 clean-closure trajectory after the 14-edit BT-001 cascade landed 2026-05-12).
+
+**Sweep results:**
+
+| Check | Result |
+|-------|--------|
+| 14-edit cascade verification (5 files) | ✅ All landed correctly — 02 § 1.2/§ 2/§ 8/§ 9, 03 § 1.3/§ 1.5, 05 § 6, 08 § 1.10/§ 3/§ 4, ADR-009 Amendment row + L91/L95/L107/L115 |
+| Stale-pattern grep (10 patterns) tree-wide on `docs/design-docs/0*.md + docs/adr/*.md` | ✅ 0 hits (matches inside `claim-review-and-rebuttal/*.md` = preserved audit history by design) |
+| Schedule-leakage grep | ✅ 1 hit = `Mar 2021 → Oct 2025` for IMPL-067 DST backtest window (test data, not delivery date) |
+| Invalid-label grep (`^## Phase Plan|Sprint Plan|...`) | ✅ 0 hits |
+| Cross-doc BA↔SD single-voice matrix (8 surfaces) | ✅ All aligned — Glossary verbatim mirror, NFR-1.1 Verification, NFR-1.8 informational-only, BR-7.1/7.2 hints, BR-9.5 single-pass, ADR-009 status + revisit, 02 § 9 ADR Digest row |
+| 22-category attack-vector scan | ✅ All pass (no new finding from cascade-adjacent vectors) |
+| Language Rule compliance (Thai prose coverage) | ✅ Bilingual code-switched preserved across 5 modified files |
+
+**Advisory (out-of-SD-scope, surfaced for downstream `/impl-plan-review all`):** `docs/state/impl-plan.md` L1966 (IMPL-062 task title) + L1988 (IMPL-063 description) ยัง carry pre-BT-001 framing. Not a Round 06 finding because impl-plan is a state-layer artifact owned by `/impl-plan` + `/impl-plan-review`, not by `/sd-review`. Surfaced here so Step 4 ของ BT-001 chain catches it.
+
+**Review artifact:** `docs/design-docs/claim-review-and-rebuttal/claim-review-06.md` — clean closure (mirror BA `claim-review-05.md` pattern); full 22-category checklist + cross-doc verification matrix + Round 06 closure notes + BT-001 chain recommended action sequence.
+
+**State reconciliation (3-file rule, Phase 1B docs):**
+- ✅ Layer 1 primary SD package source-of-truth — no edits needed (Round 06 = verify-only, cascade already landed in rebuttal-round-04)
+- ✅ Layer 2 `docs/state/overview.md` — Design (SD) row bumped `✅ Complete + Rebuttal Round 04 (post-BT-001 cascade applied)` → `✅ Complete + Round 06 (post-BT-001 cascade clean — 0 findings)`; Round 06 summary appended; Last Updated `2026-05-13`
+- ✅ Layer 3 `docs/state/current_handoff.md` — THIS section (new Last completed action)
+
+**BT-001 cascade chain status:**
+
+| Step | Status | Artifact |
+|------|--------|----------|
+| 1. BA cascade (rebuttal-04 + Round 05 verify-only) | ✅ Closed 2026-05-12 | `ba/rebuttal-round-04.md` + `ba/claim-review-05.md` (0 finding) |
+| 2. SD cascade (rebuttal-04 + Round 06 verify-only) | ✅ Closed 2026-05-13 | `design-docs/rebuttal-round-04.md` + `design-docs/claim-review-06.md` (0 finding) |
+| 3. Impl Plan re-validate (`/impl-plan-review all`) | ✅ Closed 2026-05-13 | `impl-plan-claim-review-and-rebuttal/rebuttal-round-11.md` (7/7 Accept) + `claim-review-12.md` / `rebuttal-round-12.md` (6/6 Accept; backtrack-log↔impl-plan SoT reconciliation completed) |
+| 4. TD verify (`/td-review all`, optional parallel) | ⏭ Deferred / not required | SD Round 06 verify-only confirmed `TD-02 § 13` Strategy Tester audit contract was already single-pass G4-ON per grep clean; no TD-side stale framing surfaced |
+| 5. Close BT-001 (populate Resolution + flip Status; trim overview BT-001 markers per Check 0.7 Direction A) | ✅ Closed 2026-05-13 via R12 §12.1 Cascaded Changes | `backtrack-log.md § BT-001` Resolution populated + Status flipped ✅ Resolved; `overview.md` BT-001 markers trim noted in R12 §Cascaded Changes |
+
+**Recommended next session:**
+1. **`/impl-plan-review all`** — re-validate IMPL-062/063 task rows + Phase Hint P4 propagation into `docs/state/impl-plan.md` (advisory pointer above flagged L1966/L1988)
+2. Optional parallel: **`/td-review all`** — verify TD Strategy Tester audit contract single-pass G4-ON
+3. After Steps 1+2 pass clean → operator close BT-001 + trim overview markers
+4. Parallel impl track continues independently — SD review closure does not impact impl work
+
+**Blocks unblocked by this closure:** BT-001 SD-package re-validation closed; downstream Impl Plan + TD agents can now consume single-voice BA+SD vocabulary post-cascade. No `[x]` AC newly closed (Phase 1B docs cascade, not impl task closure); Phase 5 mechanical gates N/A for Phase 1B verify-only scope.
+
+---
+
+## Previous action (2026-05-12 SD Rebuttal Round 04)
+
 **🟢 SD Rebuttal Round 04 ✅ CLOSED 2026-05-12 — BT-001 Bucket A/B cascade propagation across SD package (11 accept / 0 reject of 11 claims).**
 
 **Trigger:** Operator invoked `/sd-rebuttal claim-review-05.md`. Round 05 review caught 11 SD-side propagation gaps post BA rebuttal-04 + Round 05 clean closure (`ba/claim-review-05.md` 0 finding); SD package = 2 voices vs BA (pre-BT-001 "unintended rewrite drift" / "separate budget" / "user re-decide if drift > 25%" / "rewrite without G4 fixes vs baseline" framing across 5 SD files + ADR-009).
