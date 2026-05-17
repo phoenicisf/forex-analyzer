@@ -407,6 +407,36 @@ bool CCircuitBreaker::SelfTest()
    else
       Print("[CircuitBreaker][SelfTest][PASS] Case E: pre-Init Record* dropped as expected");
 
+   //--------------------------------------------------------------------
+   // Case F: DEAL_REASON_EXPERT filter documented at producer side
+   //         (ADR-013, IMPL-FIX-012 iter-1 2026-05-14; review-round-26
+   //         Finding 26.2 / fix-round-26).
+   //
+   //         CircuitBreaker.RecordClose itself is REASON-agnostic — it
+   //         records every close it receives and detects ping-pong on
+   //         (magic, dir, time) tuples regardless of reason. The
+   //         DEAL_REASON_EXPERT filter lives in core/Orchestrator.mqh
+   //         ::OnTradeTransaction (the producer side) so that only
+   //         EA-driven closes feed RecordClose. Broker-driven closes
+   //         (SL/TP/SO/rollover/etc.) are skipped at the producer; they
+   //         never reach RecordClose at all.
+   //
+   //         This means Cases A-E above ARE the unit tests for the
+   //         detector — they exercise CheckPingPong directly with
+   //         synthetic events bypassing the producer-side filter.
+   //         The integration-level test for the filter lives in
+   //         IMPL-FIX-012 Step 3 Run #4 (G3 5-yr Bucket A retry).
+   //
+   //         See ADR-013 § Decision Validation for the empirical
+   //         evidence trail (IMPL-062 Run #2 + Run #3 byte-identical
+   //         false-positive halt class on legitimate concurrent broker
+   //         SL fills of independent positions sharing identical SL).
+   //--------------------------------------------------------------------
+   Print("[CircuitBreaker][SelfTest][NOTE] Case F: DEAL_REASON_EXPERT filter"
+         " enforced at Orchestrator.OnTradeTransaction (ADR-013). RecordClose"
+         " is REASON-agnostic; producer-side filter ensures only EA-driven"
+         " closes feed BR-3.6 detector.");
+
    // Cleanup macro
 #undef CB_SELFTEST_RESET
 

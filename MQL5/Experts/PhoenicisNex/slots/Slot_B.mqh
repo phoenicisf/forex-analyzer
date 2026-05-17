@@ -206,11 +206,17 @@ public:
       string           comment    = "B,anti,1";
 
       //--- IMPL-FIX-011d Phase 2 iter-19 (2026-05-12): wire RiskManager.OpenOrder
-      //    per IMPL-FIX-003 Phase 1A pattern (mirror Slot_C.mqh:262-289 +
-      //    Slot_K.mqh post-iter-18). Slot_B was on the deferred IMPL-FIX-003
-      //    Phase 1B follow-up list; legacy fires at Q1 2021-03-04 10:25 with
-      //    comment `B,131,9.5,1,5,3,2,73`, rewrite silent because the submit
-      //    block never called OpenOrder. Predicate path (anti-trend fractal
+      //    per IMPL-FIX-003 Phase 1A pattern (mirror Slot_C.mqh's
+      //    `MqlTradeRequest req = {}; ... m_risk.OpenOrder(req, "C");`
+      //    order-submission block; line range ~262-289 ancillary navigation
+      //    aid, NOT load-bearing per review-round-26 Finding 26.3 / fix-round-26
+      //    re-anchor to grep-stable symbolic marker). The Slot_K mirror cite
+      //    refers to Slot_K's identical post-iter-18 OpenOrder wire-up
+      //    (mirror Slot_K.mqh's `m_risk.OpenOrder(req, "K");` block).
+      //    Slot_B was on the deferred IMPL-FIX-003 Phase 1B follow-up list;
+      //    legacy fires at Q1 2021-03-04 10:25 with comment
+      //    `B,131,9.5,1,5,3,2,73`, rewrite silent because the submit block
+      //    never called OpenOrder. Predicate path (anti-trend fractal
       //    reversal + ADX + cloud distance + tenkan/kijun direction) was
       //    already correct from IMPL-037; only the OrderSend wire-up missing.
       //    Same root-cause class as Slot_K iter-17→iter-18 telemetry verdict.

@@ -167,7 +167,11 @@ public:
       string           comment    = "K,layer,1";
 
       //--- IMPL-FIX-011d Phase 2 iter-18 (2026-05-12): wire RiskManager.OpenOrder
-      //    per IMPL-FIX-003 Phase 1A pattern (mirror Slot_C.mqh:262-289).
+      //    per IMPL-FIX-003 Phase 1A pattern (mirror Slot_C.mqh's
+      //    `MqlTradeRequest req = {}; ... m_risk.OpenOrder(req, "C");`
+      //    order-submission block; line range ~262-289 ancillary navigation
+      //    aid, NOT load-bearing per review-round-26 Finding 26.3 / fix-round-26
+      //    re-anchor to grep-stable symbolic marker).
       //    iter-17 telemetry empirically proved all 4 predicate gates PASS at
       //    legacy K fire bar 2021-02-16 20:00:00 (G1=PASS k_open=0; G2=PASS
       //    d1_now=02-16 last=02-09; G3=PASS f1=-1.5631 cross_dw=T alternate;
