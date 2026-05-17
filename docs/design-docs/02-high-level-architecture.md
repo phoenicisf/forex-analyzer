@@ -2,7 +2,7 @@
 
 > **Phase:** Phase 1B (System Design) — Doc 1/6 (v1.2: gaps 01/06 — merged into this doc)
 > **Author:** Architect agent (`/sd` workflow)
-> **Last updated:** 2026-05-12 (BT-001 cascade — Bucket A/B propagation: Glossary § 8 + ADR Digest § 9 ADR-009 row + NFR Traceability § 1.2 NFR-1.x row + Pillar § 2 #1 clarification)
+> **Last updated:** 2026-05-17 (BT-002 cascade — BR-3.6 CircuitBreaker ping-pong detector removed legacy-parity; cap-3 iter ADR-013 → ADR-014 superseded; FR-6.6 strikethrough § 1.1, FR-7.7 rewrite § 1.1, Component Catalog row #14 removal § 4.2, Communication Matrix § 5.1 update, Glossary § 8 Bucket B re-author. Prior: 2026-05-12 BT-001 cascade — Bucket A/B propagation: Glossary § 8 + ADR Digest § 9 ADR-009 row + NFR Traceability § 1.2 NFR-1.x row + Pillar § 2 #1 clarification)
 > **Reads:** `docs/ba/01-05` (BA package — authoritative for FR/NFR/BR), `docs/foundation-input-sources/*` (CodeWiki, baseline, ideation, improvement-targets)
 > **Audience:** Tech Lead (Phase 1D TD), Implementation Engineer (Phase 3I), QA (Phase 3T), reviewer
 
@@ -444,11 +444,10 @@ User เป็น solo operator — observability surface:
 | **DigitMultipier** | Integer 10 ถ้า broker 5-digit pricing (FBS Standard); 1 ถ้า 4-digit. Auto-detect ใน OnInit (BR-9.3); ทุก pip arithmetic คูณด้วยค่านี้ |
 | **NTFS atomic rename** | Windows file system guarantee: `MoveFileEx` ของ same volume = single transaction; file system observable state อยู่ใน old หรือ new เท่านั้น (no partial rename) |
 | **Pip vs Point** | Point = smallest price unit (5-digit broker = 0.00001); Pip = 10× point (= 0.0001). PhoenicisNex pip arithmetic = `price_diff / (_Point × DigitMultipier)` |
-| **Halted state semantic** | EA สถานะ HALTED = exit pass run + entry pass skip; HALTED_STABLE = portfolio empty + waiting (ADR-010) |
+| **HALTED state machine (HALTED / HALTED_STABLE)** | EA state per ADR-010 (amended BT-002). **HALTED** = exit pass run + entry pass skip + cross-slot EOverload/GOverload disabled. **HALTED_STABLE** = HALTED + `PortfolioState.TotalActivePositions() == 0` (second Alert emitted). Both states persist via `state.json § ea_state`; OnInit reset to RUNNING |
 | **Tagged logger** | Logger pattern ที่ enforce `[slot=X][ev=...][magic=N]` prefix on every log message → grep-able (FR-4.2, ADR-011) |
 | **Anti-spam throttle** | Logger + Alert pattern ที่ suppress repeated ERROR ของ same `(slot, event)` tuple ภายใน N ticks (ADR-011) |
 | **STRIDE** | Threat modeling framework: Spoofing/Tampering/Repudiation/Information Disclosure/Denial of Service/Elevation of privilege. ใช้ใน `05-security.md` |
-| **HALT vs HALT_STABLE** | HALT = ตัด entry pass; HALT_STABLE = HALT + portfolio.count == 0 (ADR-010) |
 
 ---
 
@@ -470,5 +469,7 @@ User เป็น solo operator — observability surface:
 | ADR-010 | Halted state exit-only semantic | Accepted | RUNNING / HALTED / HALTED_STABLE; entry pass skip | Long-running halt + away user = naked window (Phase 2 escalation) | Phase 2 promote OQ-6 | [010](../adr/010-halted-state-exit-only.md) |
 | ADR-011 | Tagged structured logger | Accepted | `CLogger` class + injected; severity routing + Alert throttle | Tag overhead ~10 µs/log; ERROR throttle อาจ suppress consecutive errors | Log overhead > 5% tick latency | [011](../adr/011-tagged-structured-logger.md) |
 | ADR-012 | File layout & module split discipline | Accepted | Layered tree: core/slots/services/domain/helpers + 1 file/slot | Discipline burden — `#include` direction enforce ผ่าน reviewer | Slot file > 5,000 LOC | [012](../adr/012-file-layout-module-split-discipline.md) |
+| ADR-013 | CircuitBreaker BR-3.6 ping-pong DEAL_REASON_EXPERT filter | **Superseded by BT-002 2026-05-17** | (iter-1 surgical filter — closed broker-driven SL false-positive class; preserved as audit history of cap-3 iter chain) | n/a — superseded | [013](../adr/013-circuitbreaker-pingpong-deal-reason-filter.md) |
+| ADR-014 | CircuitBreaker BR-3.6 ping-pong position_id + event_type dedup | **Superseded by BT-002 2026-05-17** | (iter-2 schema-extending dedup — falsified by iter-3 Slot_BI pyramiding same-tick class; preserved as audit history) | n/a — superseded | [014](../adr/014-circuitbreaker-pingpong-position-event-dedup.md) |
 
-> **End of 02 — High-Level Architecture** — Traceability matrix (41 FR + 30 NFR + 9 BR + 8 OQ), 26 components across 5 layers, 12 ADRs covering all major architectural decisions
+> **End of 02 — High-Level Architecture** — Traceability matrix (41 FR + 30 NFR + 9 BR + 8 OQ), 25 components across 5 layers (CircuitBreaker row removed per BT-002), **12 active ADRs + 2 superseded** (ADR-013/014 preserved as BT-002 cap-3 iter audit history)

@@ -2,7 +2,7 @@
 
 > **Phase:** Phase 1B (System Design) — Doc 6/6
 > **Author:** Architect agent (`/sd` workflow)
-> **Last updated:** 2026-05-12 (BT-001 cascade — IMPL-062/063 task description § 1.10 + Phase Hint P4 rationale § 3 + per-task metadata § 4 re-framed to rewrite-G4-ON single-pass per BT-001 re-baseline 2026-05-12)
+> **Last updated:** 2026-05-17 (BT-002 cascade — BR-3.6 CircuitBreaker ping-pong detector removed legacy-parity; IMPL-051 CANCELLED § 1.7, IMPL-052 amend § 1.7, P2/P4 Phase Hint § 3, per-task metadata § 4, IMPL-062/063 narrative § 1.10, Phase Hint Summary § 5 task count + total recount. Prior: 2026-05-12 BT-001 cascade — IMPL-062/063 task description § 1.10 + Phase Hint P4 rationale § 3 + per-task metadata § 4 re-framed to rewrite-G4-ON single-pass per BT-001 re-baseline 2026-05-12)
 > **Reads:** `02-high-level-architecture.md`, `docs/adr/*`, all BA docs
 > **Audience:** Impl Planner (next phase consumer), Tech Lead (Phase 1D TD), QA (Phase 3T)
 
@@ -127,7 +127,7 @@
 |------|------|---------|---------------|-----|
 | IMPL-061 — Build per-slot baseline parser (extract `(slot, count, net_pnl, win_rate)` from `ReportTester-25045474.html`) | M | NFR-1.6 per-slot regression check | NFR-1.6 ✅ OQ-7 + AC-2.1.2 | — |
 | IMPL-062 — Run regression: rewrite **default build (G4 fixes ON, single-pass)** vs baseline → Bucket A drift gate (NFR-1.1 ≤ 25%, G4 fix contribution included per BT-001 re-baseline 2026-05-12). ห้ามใช้ `#define DISABLE_G4_FIXES` build for Bucket A primary acceptance (semantic ไม่รองรับ pre-G4 measurement post-BT-001). Post-BT-002 (2026-05-17, BR-3.6 detector removed) the rewrite-G4-ON run no longer halts at the false-positive sim 2021-01-14 CircuitBreaker class — drift signal is now legacy-parity comparison without the pre-BT-002 halt artifact (IMPL-FIX-012 iter-3 Run #5 = empirical confirmation BR-3.6 was the iter-3 blocker; cap-3 chain ADR-013 → ADR-014 superseded by BT-002). | M | acceptance signal | NFR-1.1 ถึง NFR-1.7 primary acceptance + BA `03 § NFR-1 Empirical Citation` | — |
-| IMPL-063 — Measure Bucket B **informational delta** `rewrite-G4-ON − rewrite-G4-OFF` (sign + magnitude ของ G4 fix contribution — ADR-009 BI SL + BR-7.2 J magic). Post-BT-002 (2026-05-17, BR-3.6 detector removed) the `DISABLE_G4_FIXES` build runs to natural-end of measurement window — no early-halt artifact constrains the delta sample; full-window G4 contribution measurable if forensic toggle retained at `slots/Slot_J.mqh:180` + `slots/Slot_BI.mqh:212`. **No acceptance gate** — informational only per NFR-1.8 (Should priority, BT-001 re-classification 2026-05-12). | M | G4 fix observability | NFR-1.8 informational delta | ADR-009 |
+| IMPL-063 — Measure Bucket B **informational delta** `rewrite-G4-ON − rewrite-G4-OFF` (sign + magnitude ของ G4 fix contribution — ADR-009 BI SL + BR-7.2 J magic). Post-BT-002 (2026-05-17, BR-3.6 detector removed) the `DISABLE_G4_FIXES` build runs to natural-end of measurement window — no early-halt artifact constrains the delta sample; full-window G4 contribution measurable if forensic toggle retained at `#ifdef DISABLE_G4_FIXES` guards inside `Slot_J::ManageExits()` + `Slot_BI::ComputeSL()` per ADR-009 G4 fix toggle pattern. **No acceptance gate** — informational only per NFR-1.8 (Should priority, BT-001 re-classification 2026-05-12). | M | G4 fix observability | NFR-1.8 informational delta | ADR-009 |
 | IMPL-064 — Atomic write kill-100 stress test (NFR-3.1 verification) | S | reliability sign-off | NFR-3.1 + ADR-007 assumption A2 | ADR-007 |
 | IMPL-065 — Tick latency measurement protocol (NFR-2.1: ≥ 5,000 ticks; avg + p95 + p99) | M | perf sign-off | NFR-2.1 | — |
 | IMPL-066 — Journal write latency measurement (NFR-2.2: ≥ 200 events; avg + p95) | S | perf sign-off | NFR-2.2 + ADR-006 degrade-warn | ADR-006 |
@@ -305,11 +305,11 @@ graph LR
 | Suggested phase | Tasks | Total size | Risk profile |
 |----------------|-------|------------|--------------|
 | **P1 — Foundation + High-Risk Spike** | IMPL-046, 001-011, 012, 014, 015, 016, 042 | XS-M each, ~16 tasks | 1 high (IMPL-046), foundation low-med |
-| **P2 — Core Services + EAState + Pending** | IMPL-040, 041, 043, 044, 045, 047, 048, 049, 050, 051, 052 | XS-XL, ~11 tasks | medium overall, IMPL-049 XL |
+| **P2 — Core Services + EAState + Pending** | IMPL-040, 041, 043, 044, 045, 047, 048, 049, 050, ~~051~~, 052 | XS-XL, ~10 tasks (post-BT-002 IMPL-051 cancellation) | medium overall, IMPL-049 XL |
 | **P3 — 21 Slots** | IMPL-018, 019-039 (22 tasks) | XS-L per slot, total ~22 tasks | 2 high (IMPL-022 J fix, IMPL-039 BI fix); rest medium |
 | **P4 — Cross-slot + Orchestrator + Verification** | IMPL-013, 017, 053-068 (16 tasks) | S-L each, ~16 tasks | 2 high (IMPL-062, 063 regression); rest medium |
 
-**Total task count: ~68 implementation tasks**
+**Total task count: ~67 implementation tasks** (post-BT-002 — was ~68; IMPL-051 `CircuitBreaker::CheckPingPong` cancelled per BT-002 2026-05-17 legacy-parity)
 
 > **Reminder for Impl Planner:**
 > - These are **suggested** phases — Impl Planner may override per actual capacity, sprint length, parallelization opportunities
@@ -317,4 +317,4 @@ graph LR
 > - Force-clear validation (IMPL-068) is QA — should run after IMPL-049 lands; signal fast if ADR-008 thresholds wrong
 > - High-risk tasks (IMPL-022, IMPL-039, IMPL-046, IMPL-062, IMPL-063) deserve own slot in P1/P3/P4 — don't co-schedule with low-risk parallel work
 
-> **End of 08 — Product Breakdown** — 68 implementation tasks across 9 epics + Phase Hints (Suggested) FULL variant + Per-Task Metadata table; no schedule leakage (no sprint/date/capacity)
+> **End of 08 — Product Breakdown** — 67 implementation tasks across 9 epics (post-BT-002 IMPL-051 cancelled) + Phase Hints (Suggested) FULL variant + Per-Task Metadata table; no schedule leakage (no sprint/date/capacity)

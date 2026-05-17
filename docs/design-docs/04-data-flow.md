@@ -2,7 +2,7 @@
 
 > **Phase:** Phase 1B (System Design) — Doc 3/6
 > **Author:** Architect agent (`/sd` workflow)
-> **Last updated:** 2026-05-02
+> **Last updated:** 2026-05-17 (BT-002 cascade — BR-3.6 CircuitBreaker ping-pong detector removed legacy-parity; § 1.1 mermaid CB participant + ping-pong alt-branch removed, § 9.1 cross-slot enable matrix row removed. Initial publish: 2026-05-02)
 > **Reads:** `02-high-level-architecture.md`, `03-deep-dive.md`, `docs/ba/05-user-flows.md` (BA F1-F7 baseline flows), `docs/adr/*`
 > **Audience:** Tech Lead (Phase 1D TD), Implementation Engineer (Phase 3I), QA (Phase 3T)
 
@@ -42,8 +42,6 @@ sequenceDiagram
 
     Orc->>MCB: Build(IS) -> MarketContext (immutable struct)
     Note right of MCB: ~50 us<br/>incl. wpr_wave_signal + adx_force_peak_valid precompute
-
-    Note over Orc: CircuitBreaker.CheckPingPong removed per BT-002 2026-05-17 (legacy-parity)
 
     Orc->>IS: AnyHandleInvalid()
     alt handle invalid runtime (rare)
@@ -117,6 +115,8 @@ sequenceDiagram
     Note over Orc: t approx 1685 us steady state - 4685 us with 1 entry event
     Orc-->>MT5: return - wait next tick
 ```
+
+> **Note (post-BT-002 2026-05-17):** Former `CircuitBreaker::CheckPingPong()` call ที่เคยอยู่ระหว่าง `MarketContextBuilder.Build()` และ `AnyHandleInvalid()` check ถูกลบเป็น legacy-parity. ดู `ADR-010 § Revision history` + `02 § 4.2` Component Catalog removal footer + `backtrack-log.md § BT-002` สำหรับ cap-3 iter chain rationale.
 
 ### 1.2 Key insights
 
