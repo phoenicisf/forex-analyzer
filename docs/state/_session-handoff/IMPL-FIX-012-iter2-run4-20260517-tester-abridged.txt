@@ -1,0 +1,89 @@
+# Run #4 abridged Tester log — see full file for verbatim evidence
+# Generated 2026-05-17T20:49:19+07:00
+# Source:  offset ..
+# Halt events (verbatim):
+CS	0	20:31:15.975	PhoenicisNex (EURUSD,H4)	2021.01.27 15:45:07   [Phoenicis][2021-01-27 15:45:07.692][ERROR][slot=CircuitBreaker][ev=ping_pong][magic=205] ping_pong detected: magic=205 dir=0 delta=0s (threshold=3s); returning true เนโฌโ€ Orchestrator MUST call EAState::SetHalted (IMPL-052 wires this)
+CS	0	20:31:15.975	PhoenicisNex (EURUSD,H4)	2021.01.27 15:45:07   Alert: [Phoenicis][2021-01-27 15:45:07.692][ERROR][slot=CircuitBreaker][ev=ping_pong][magic=205] ping_pong detected: magic=205 dir=0 delta=0s (threshold=3s); returning true เนโฌโ€ Orchestrator MUST call EAState::SetHalted (IMPL-052 wires this)
+CS	0	20:31:15.975	PhoenicisNex (EURUSD,H4)	2021.01.27 15:45:07   [Phoenicis][2021-01-27 15:45:07.692][ERROR][slot=system][ev=halt][magic=0] circuit_breaker_pingpong
+CS	0	20:31:15.975	PhoenicisNex (EURUSD,H4)	2021.01.27 15:45:07   Alert: [Phoenicis][2021-01-27 15:45:07.692][ERROR][slot=system][ev=halt][magic=0] circuit_breaker_pingpong
+CS	0	20:35:30.737	PhoenicisNex (EURUSD,H4)	2021.01.01 00:00:00   [Phoenicis][2021-01-01 00:00:00.093][WARN][slot=system][ev=state_corrupt_starting_fresh][magic=0] GV-recovery attempted for watch_profits subset (per 02 § 6.1.1)
+CS	0	20:36:56.354	PhoenicisNex (EURUSD,H4)	2021.01.27 15:45:07   [Phoenicis][2021-01-27 15:45:07.710][ERROR][slot=CircuitBreaker][ev=ping_pong][magic=205] ping_pong detected: magic=205 dir=0 delta=0s (threshold=3s); returning true เนโฌโ€ Orchestrator MUST call EAState::SetHalted (IMPL-052 wires this)
+CS	0	20:36:56.354	PhoenicisNex (EURUSD,H4)	2021.01.27 15:45:07   Alert: [Phoenicis][2021-01-27 15:45:07.710][ERROR][slot=CircuitBreaker][ev=ping_pong][magic=205] ping_pong detected: magic=205 dir=0 delta=0s (threshold=3s); returning true เนโฌโ€ Orchestrator MUST call EAState::SetHalted (IMPL-052 wires this)
+CS	0	20:36:56.354	PhoenicisNex (EURUSD,H4)	2021.01.27 15:45:07   [Phoenicis][2021-01-27 15:45:07.710][ERROR][slot=system][ev=halt][magic=0] circuit_breaker_pingpong
+CS	0	20:36:56.354	PhoenicisNex (EURUSD,H4)	2021.01.27 15:45:07   Alert: [Phoenicis][2021-01-27 15:45:07.710][ERROR][slot=system][ev=halt][magic=0] circuit_breaker_pingpong
+CS	0	20:40:08.699	PhoenicisNex (EURUSD,H4)	2021.05.25 10:07:53   [Phoenicis][2021-05-25 10:07:53.056][ERROR][slot=system][ev=halt_stable][magic=0] PhoenicisNex halted, all positions closed
+CS	0	20:40:08.699	PhoenicisNex (EURUSD,H4)	2021.05.25 10:07:53   Alert: [Phoenicis][2021-05-25 10:07:53.056][ERROR][slot=system][ev=halt_stable][magic=0] PhoenicisNex halted, all positions closed
+
+# 1-in-1000 line sample (sim-time progression):
+CS	0	20:35:30.625	Tester	  InpHMaxOrders=2
+CS	0	20:35:53.920	PhoenicisNex (EURUSD,H4)	2021.01.06 00:20:15   [FIX011a-iter6][2021.01.06 00:20][SELL/ResistZone][FAIL] has_demand=1 bb_pct=71.66 thresh=95.00
+CS	0	20:35:53.940	PhoenicisNex (EURUSD,H4)	2021.01.06 00:54:30   [FIX011a-iter6][2021.01.06 00:54][BUY/HullVsSupport][FAIL] hull=1.22420 h4_demand=1.21003 h4_has=1 (D1 fallback dropped iter-11)
+CS	0	20:35:53.962	PhoenicisNex (EURUSD,H4)	2021.01.06 01:07:42   [FIX011a-iter6][2021.01.06 01:07][SELL/HullVsResist][pass] hull=1.22420 h4=1
+CS	0	20:35:53.982	PhoenicisNex (EURUSD,H4)	2021.01.06 01:20:47   [FIX011a-iter6][2021.01.06 01:20][SELL/ResistZone][FAIL] has_demand=1 bb_pct=72.94 thresh=95.00
+CS	0	20:35:54.003	PhoenicisNex (EURUSD,H4)	2021.01.06 01:32:14   [FIX011a-iter6][2021.01.06 01:32][BUY/HullVsSupport][FAIL] hull=1.22421 h4_demand=1.21003 h4_has=1 (D1 fallback dropped iter-11)
+CS	0	20:35:54.026	PhoenicisNex (EURUSD,H4)	2021.01.06 01:45:24   [FIX011a-iter6][2021.01.06 01:45][SELL/HullVsResist][pass] hull=1.22421 h4=1
+CS	0	20:35:54.047	PhoenicisNex (EURUSD,H4)	2021.01.06 01:59:29   [FIX011a-iter6][2021.01.06 01:59][SELL/ResistZone][FAIL] has_demand=1 bb_pct=75.99 thresh=95.00
+CS	0	20:35:54.067	PhoenicisNex (EURUSD,H4)	2021.01.06 02:04:06   [FIX011a-iter6][2021.01.06 02:04][BUY/HullVsSupport][FAIL] hull=1.22421 h4_demand=1.21003 h4_has=1 (D1 fallback dropped iter-11)
+CS	0	20:35:54.090	PhoenicisNex (EURUSD,H4)	2021.01.06 02:08:47   [FIX011a-iter6][2021.01.06 02:08][SELL/HullVsResist][pass] hull=1.22421 h4=1
+CS	0	20:35:54.110	PhoenicisNex (EURUSD,H4)	2021.01.06 02:14:55   [FIX011a-iter6][2021.01.06 02:14][SELL/ResistZone][FAIL] has_demand=1 bb_pct=73.57 thresh=95.00
+CS	0	20:35:54.128	PhoenicisNex (EURUSD,H4)	2021.01.06 02:22:38   [FIX011a-iter6][2021.01.06 02:22][BUY/HullVsSupport][FAIL] hull=1.22421 h4_demand=1.21003 h4_has=1 (D1 fallback dropped iter-11)
+CS	0	20:35:54.146	PhoenicisNex (EURUSD,H4)	2021.01.06 02:29:13   [FIX011a-iter6][2021.01.06 02:29][SELL/HullVsResist][pass] hull=1.22421 h4=1
+CS	0	20:35:54.166	PhoenicisNex (EURUSD,H4)	2021.01.06 02:37:41   [FIX011a-iter6][2021.01.06 02:37][SELL/ResistZone][FAIL] has_demand=1 bb_pct=71.84 thresh=95.00
+CS	0	20:35:54.187	PhoenicisNex (EURUSD,H4)	2021.01.06 02:44:28   [FIX011a-iter6][2021.01.06 02:44][BUY/HullVsSupport][FAIL] hull=1.22420 h4_demand=1.21003 h4_has=1 (D1 fallback dropped iter-11)
+CS	0	20:35:54.208	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:39   [FIX011a-iter6][2021.01.06 02:50][SELL/HullVsResist][pass] hull=1.22422 h4=1
+CS	0	20:36:28.369	PhoenicisNex (EURUSD,H4)	2021.01.15 16:00:06   [FIX011a-iter6][2021.01.15 16:00][SELL/ResistZone][FAIL] has_demand=1 bb_pct=10.92 thresh=95.00
+CS	0	20:36:28.387	PhoenicisNex (EURUSD,H4)	2021.01.15 16:01:39   [FIX011a-iter6][2021.01.15 16:01][BUY/HullVsSupport][FAIL] hull=1.22106 h4_demand=1.21751 h4_has=1 (D1 fallback dropped iter-11)
+CS	0	20:36:28.404	PhoenicisNex (EURUSD,H4)	2021.01.15 16:02:51   [FIX011a-iter6][2021.01.15 16:02][SELL/HullVsResist][pass] hull=1.22106 h4=1
+CS	0	20:36:28.421	PhoenicisNex (EURUSD,H4)	2021.01.15 16:04:41   [FIX011a-iter6][2021.01.15 16:04][SELL/ResistZone][FAIL] has_demand=1 bb_pct=8.63 thresh=95.00
+CS	0	20:36:28.437	PhoenicisNex (EURUSD,H4)	2021.01.15 16:06:45   [FIX011a-iter6][2021.01.15 16:06][BUY/HullVsSupport][FAIL] hull=1.22107 h4_demand=1.21751 h4_has=1 (D1 fallback dropped iter-11)
+CS	0	20:36:28.456	PhoenicisNex (EURUSD,H4)	2021.01.15 16:08:55   [FIX011a-iter6][2021.01.15 16:08][SELL/HullVsResist][pass] hull=1.22107 h4=1
+CS	0	20:36:28.475	PhoenicisNex (EURUSD,H4)	2021.01.15 16:12:30   [FIX011a-iter6][2021.01.15 16:12][SELL/ResistZone][FAIL] has_demand=1 bb_pct=7.78 thresh=95.00
+CS	0	20:36:28.494	PhoenicisNex (EURUSD,H4)	2021.01.15 16:17:10   [FIX011a-iter6][2021.01.15 16:17][BUY/HullVsSupport][FAIL] hull=1.22106 h4_demand=1.21751 h4_has=1 (D1 fallback dropped iter-11)
+CS	0	20:36:28.514	PhoenicisNex (EURUSD,H4)	2021.01.15 16:20:11   [FIX011a-iter6][2021.01.15 16:20][SELL/HullVsResist][pass] hull=1.22106 h4=1
+CS	0	20:36:28.532	PhoenicisNex (EURUSD,H4)	2021.01.15 16:23:02   [FIX011a-iter6][2021.01.15 16:23][SELL/ResistZone][FAIL] has_demand=1 bb_pct=8.77 thresh=95.00
+CS	0	20:36:28.550	PhoenicisNex (EURUSD,H4)	2021.01.15 16:27:35   [FIX011a-iter6][2021.01.15 16:27][BUY/HullVsSupport][FAIL] hull=1.22106 h4_demand=1.21751 h4_has=1 (D1 fallback dropped iter-11)
+CS	0	20:36:28.569	PhoenicisNex (EURUSD,H4)	2021.01.15 16:30:41   [FIX011a-iter6][2021.01.15 16:30][SELL/HullVsResist][pass] hull=1.22107 h4=1
+CS	0	20:36:28.588	PhoenicisNex (EURUSD,H4)	2021.01.15 16:33:33   [FIX011a-iter6][2021.01.15 16:33][SELL/ResistZone][FAIL] has_demand=1 bb_pct=9.48 thresh=95.00
+CS	0	20:36:28.606	PhoenicisNex (EURUSD,H4)	2021.01.15 16:36:49   [FIX011a-iter6][2021.01.15 16:36][BUY/HullVsSupport][FAIL] hull=1.22108 h4_demand=1.21751 h4_has=1 (D1 fallback dropped iter-11)
+CS	0	20:36:28.623	PhoenicisNex (EURUSD,H4)	2021.01.15 16:39:29   [FIX011a-iter6][2021.01.15 16:39][SELL/HullVsResist][pass] hull=1.22107 h4=1
+CS	0	20:36:28.642	PhoenicisNex (EURUSD,H4)	2021.01.15 16:42:34   [FIX011a-iter6][2021.01.15 16:42][SELL/ResistZone][FAIL] has_demand=1 bb_pct=7.01 thresh=95.00
+CS	0	20:36:28.660	PhoenicisNex (EURUSD,H4)	2021.01.15 16:45:42   [FIX011a-iter6][2021.01.15 16:45][BUY/HullVsSupport][FAIL] hull=1.22107 h4_demand=1.21751 h4_has=1 (D1 fallback dropped iter-11)
+CS	0	20:36:28.680	PhoenicisNex (EURUSD,H4)	2021.01.15 16:48:18   [FIX011a-iter6][2021.01.15 16:48][SELL/HullVsResist][pass] hull=1.22107 h4=1
+CS	0	20:36:28.698	PhoenicisNex (EURUSD,H4)	2021.01.15 16:50:30   [FIX011a-iter6][2021.01.15 16:50][SELL/ResistZone][FAIL] has_demand=1 bb_pct=5.23 thresh=95.00
+CS	0	20:36:28.720	PhoenicisNex (EURUSD,H4)	2021.01.15 16:53:25   [FIX011a-iter6][2021.01.15 16:53][BUY/HullVsSupport][FAIL] hull=1.22106 h4_demand=1.21751 h4_has=1 (D1 fallback dropped iter-11)
+CS	0	20:36:28.739	PhoenicisNex (EURUSD,H4)	2021.01.15 16:55:39   [FIX011a-iter6][2021.01.15 16:55][BUY/HullVsSupport][FAIL] hull=1.22105 h4_demand=1.21750 h4_has=1 (D1 fallback dropped iter-11)
+CS	0	20:36:28.757	PhoenicisNex (EURUSD,H4)	2021.01.15 16:57:37   [FIX011a-iter6][2021.01.15 16:57][SELL/HullVsResist][pass] hull=1.22104 h4=1
+CS	0	20:36:28.777	PhoenicisNex (EURUSD,H4)	2021.01.15 17:00:00   [FIX011a-iter6][2021.01.15 17:00][BUY/HullVsSupport][FAIL] hull=1.22104 h4_demand=1.21750 h4_has=1 (D1 fallback dropped iter-11)
+CS	0	20:36:28.795	PhoenicisNex (EURUSD,H4)	2021.01.15 17:02:31   [FIX011a-iter6][2021.01.15 17:02][SELL/HullVsResist][pass] hull=1.22105 h4=1
+CS	0	20:36:28.812	PhoenicisNex (EURUSD,H4)	2021.01.15 17:04:45   [FIX011a-iter6][2021.01.15 17:04][SELL/ResistZone][FAIL] has_demand=1 bb_pct=-5.22 thresh=95.00
+CS	0	20:36:28.831	PhoenicisNex (EURUSD,H4)	2021.01.15 17:06:16   [FIX011a-iter6][2021.01.15 17:06][BUY/HullVsSupport][FAIL] hull=1.22102 h4_demand=1.21750 h4_has=1 (D1 fallback dropped iter-11)
+CS	0	20:36:28.848	PhoenicisNex (EURUSD,H4)	2021.01.15 17:07:52   [FIX011a-iter6][2021.01.15 17:07][SELL/HullVsResist][pass] hull=1.22102 h4=1
+CS	0	20:36:28.865	PhoenicisNex (EURUSD,H4)	2021.01.15 17:09:29   [FIX011a-iter6][2021.01.15 17:09][SELL/ResistZone][FAIL] has_demand=1 bb_pct=-8.87 thresh=95.00
+CS	0	20:36:28.882	PhoenicisNex (EURUSD,H4)	2021.01.15 17:11:05   [FIX011a-iter6][2021.01.15 17:11][BUY/HullVsSupport][FAIL] hull=1.22102 h4_demand=1.21750 h4_has=1 (D1 fallback dropped iter-11)
+CS	0	20:36:28.902	PhoenicisNex (EURUSD,H4)	2021.01.15 17:12:52   [FIX011a-iter6][2021.01.15 17:12][SELL/HullVsResist][pass] hull=1.22103 h4=1
+CS	0	20:36:28.922	PhoenicisNex (EURUSD,H4)	2021.01.15 17:15:01   [FIX011a-iter6][2021.01.15 17:15][SELL/ResistZone][FAIL] has_demand=1 bb_pct=-3.29 thresh=95.00
+CS	0	20:36:28.941	PhoenicisNex (EURUSD,H4)	2021.01.15 17:17:34   [FIX011a-iter6][2021.01.15 17:17][BUY/HullVsSupport][FAIL] hull=1.22103 h4_demand=1.21750 h4_has=1 (D1 fallback dropped iter-11)
+CS	0	20:36:28.959	PhoenicisNex (EURUSD,H4)	2021.01.15 17:19:51   [FIX011a-iter6][2021.01.15 17:19][SELL/HullVsResist][pass] hull=1.22104 h4=1
+CS	0	20:36:28.975	PhoenicisNex (EURUSD,H4)	2021.01.15 17:21:49   [FIX011a-iter6][2021.01.15 17:21][SELL/ResistZone][FAIL] has_demand=1 bb_pct=-7.68 thresh=95.00
+
+# Final 20 lines:
+CS	0	20:40:08.686	PhoenicisNex (EURUSD,H4)	2021.05.25 10:04:37   [Phoenicis][2021-05-25 10:04:37.042][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=77.5220 at=2021.05.25 10:04
+CS	0	20:40:08.686	PhoenicisNex (EURUSD,H4)	2021.05.25 10:04:37   [Phoenicis][2021-05-25 10:04:37.042][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=77.6518 at=2021.05.25 10:04
+CS	0	20:40:08.686	PhoenicisNex (EURUSD,H4)	2021.05.25 10:04:37   [Phoenicis][2021-05-25 10:04:37.042][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=77.7673 at=2021.05.25 10:04
+CS	0	20:40:08.686	PhoenicisNex (EURUSD,H4)	2021.05.25 10:04:37   [Phoenicis][2021-05-25 10:04:37.042][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=77.7962 at=2021.05.25 10:04
+CS	0	20:40:08.686	PhoenicisNex (EURUSD,H4)	2021.05.25 10:04:37   [Phoenicis][2021-05-25 10:04:37.042][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=77.8683 at=2021.05.25 10:04
+CS	0	20:40:08.686	PhoenicisNex (EURUSD,H4)	2021.05.25 10:04:37   [Phoenicis][2021-05-25 10:04:37.042][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=77.9260 at=2021.05.25 10:04
+CS	0	20:40:08.686	PhoenicisNex (EURUSD,H4)	2021.05.25 10:04:37   [Phoenicis][2021-05-25 10:04:37.042][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=77.9549 at=2021.05.25 10:04
+CS	0	20:40:08.699	PhoenicisNex (EURUSD,H4)	2021.05.25 10:07:51   [Phoenicis][2021-05-25 10:07:51.055][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=77.9838 at=2021.05.25 10:07
+CS	0	20:40:08.699	PhoenicisNex (EURUSD,H4)	2021.05.25 10:07:51   [Phoenicis][2021-05-25 10:07:51.056][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=77.9982 at=2021.05.25 10:07
+CS	0	20:40:08.699	Trade	2021.05.25 10:07:53   stop loss triggered #58 sell 0.39 EURUSD 1.22107 sl: 1.22607 [#139 buy 0.39 EURUSD at 1.22607]
+CS	0	20:40:08.699	Trades	2021.05.25 10:07:53   deal #139 buy 0.39 EURUSD at 1.22609 done (based on order #139)
+CS	0	20:40:08.699	Trade	2021.05.25 10:07:53   deal performed [#139 buy 0.39 EURUSD at 1.22609]
+CS	0	20:40:08.699	Trade	2021.05.25 10:07:53   order performed buy 0.39 at 1.22609 [#139 buy 0.39 EURUSD at 1.22607]
+CS	0	20:40:08.699	PhoenicisNex (EURUSD,H4)	2021.05.25 10:07:53   [Phoenicis][2021-05-25 10:07:53.056][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=78.0559 at=2021.05.25 10:07
+CS	0	20:40:08.699	PhoenicisNex (EURUSD,H4)	2021.05.25 10:07:53   [Phoenicis][2021-05-25 10:07:53.056][ERROR][slot=system][ev=halt_stable][magic=0] PhoenicisNex halted, all positions closed
+CS	0	20:40:08.699	PhoenicisNex (EURUSD,H4)	2021.05.25 10:07:53   Alert: [Phoenicis][2021-05-25 10:07:53.056][ERROR][slot=system][ev=halt_stable][magic=0] PhoenicisNex halted, all positions closed
+CS	0	20:40:08.699	PhoenicisNex (EURUSD,H4)	2021.05.25 10:07:53   Alert: PhoenicisNex HALTED_STABLE reason=circuit_breaker_pingpong + 2 throttled alerts cumulative — check Experts log
+CS	0	20:47:21.839	127.0.0.1	prepare for shutdown
+CS	0	20:47:21.840	Tester	test Experts\PhoenicisNex\PhoenicisNex.ex5 on EURUSD,H4 thread finished
+CS	0	20:47:21.840	127.0.0.1	shutdown finished

@@ -819,7 +819,13 @@ void COrchestrator::OnTradeTransaction(const MqlTradeTransaction &trans,
    if(deal_symbol != _Symbol) return;
 
    ENUM_DEAL_ENTRY entry = (ENUM_DEAL_ENTRY)HistoryDealGetInteger(deal, DEAL_ENTRY);
-   if(entry != DEAL_ENTRY_OUT) return;     // only closes feed BR-3.6
+   // ADR-014 (IMPL-FIX-012 iter-3, 2026-05-17) — admit BOTH DEAL_ENTRY_IN
+   //   (opens) and DEAL_ENTRY_OUT (closes). Pre-ADR-014 only OUT was wired,
+   //   so the ring contained only close events and CheckPingPong could not
+   //   distinguish mass-close (close+close) from ping-pong (close+open).
+   //   Now opens feed RecordOpen and closes feed RecordClose; CheckPingPong
+   //   requires DIFFERENT event_type to fire halt (see ADR-014 § Decision).
+   if(entry != DEAL_ENTRY_IN && entry != DEAL_ENTRY_OUT) return;
 
    int magic = (int)HistoryDealGetInteger(deal, DEAL_MAGIC);
    // fix-round-11 § 11.2 — own-magic-range filter. Manual closes (magic=0)
@@ -834,8 +840,8 @@ void COrchestrator::OnTradeTransaction(const MqlTradeTransaction &trans,
    //   per BA `03 § 5 Note`.
    if(dt != DEAL_TYPE_BUY && dt != DEAL_TYPE_SELL) return;
 
-   // ADR-013 (IMPL-FIX-012, 2026-05-14) — DEAL_REASON_EXPERT filter:
-   //   only EA-driven closes feed BR-3.6. Broker-driven closes (SL/TP/SO/
+   // ADR-013 (IMPL-FIX-012 iter-1, 2026-05-14) — DEAL_REASON_EXPERT filter:
+   //   only EA-driven deals feed BR-3.6. Broker-driven closes (SL/TP/SO/
    //   rollover/etc.) on independent positions can fire at the same tick
    //   when multiple positions share an SL price — this is legitimate
    //   market behavior, NOT EA ping-pong. BR-3.6's intent (per spec +
@@ -843,19 +849,38 @@ void COrchestrator::OnTradeTransaction(const MqlTradeTransaction &trans,
    //   IMPL-062 Run #2 + Run #3 both halted at sim 2021-01-14 14:59:21
    //   from this exact false-positive class (2 H BUY positions w/ identical
    //   SL=1.21311 hit broker SL same tick). See ADR-013 § Decision Validation.
+   //
+   //   ADR-014 (iter-3, 2026-05-17): filter remains; ADR-014 adds two more
+   //   defense layers at the detector itself (event_type + position_id
+   //   dedup) for the EA-driven mass-close false-positive class that
+   //   ADR-013 alone cannot catch (Run #4 sim 2021-01-27 via
+   //   OrderGroupStartWorkflow SafePort batch close, all DEAL_REASON_EXPERT).
    ENUM_DEAL_REASON reason = (ENUM_DEAL_REASON)HistoryDealGetInteger(deal, DEAL_REASON);
    if(reason != DEAL_REASON_EXPERT) return;
 
-   // Hedging-mode mapping (C-5 + ADR-001). Closing deal type is opposite of
-   //   the original position direction:
+   // Direction mapping (C-5 hedging mode + ADR-001):
+   //   For DEAL_ENTRY_OUT (close): deal type is OPPOSITE the position direction.
    //     DEAL_TYPE_SELL closes a long  ⇒ direction = 1 (was BUY)
    //     DEAL_TYPE_BUY  closes a short ⇒ direction = 0 (was SELL)
-   //   Netting-mode brokers use DEAL_ENTRY_INOUT for partial-close-and-reverse
-   //   — out-of-scope per Phase 1; revisit if multi-broker evolves.
-   int direction = (dt == DEAL_TYPE_SELL) ? 1 : 0;
-   datetime t = (datetime)HistoryDealGetInteger(deal, DEAL_TIME);
+   //   For DEAL_ENTRY_IN (open): deal type IS the position direction.
+   //     DEAL_TYPE_BUY  opens a long   ⇒ direction = 1 (BUY)
+   //     DEAL_TYPE_SELL opens a short  ⇒ direction = 0 (SELL)
+   //   Convention in ring buffer: direction encodes the POSITION direction
+   //   (1=BUY, 0=SELL), consistent across opens and closes so CheckPingPong
+   //   can compare apples to apples.
+   int direction;
+   if(entry == DEAL_ENTRY_OUT)
+      direction = (dt == DEAL_TYPE_SELL) ? 1 : 0;   // close inverts
+   else  // DEAL_ENTRY_IN
+      direction = (dt == DEAL_TYPE_BUY)  ? 1 : 0;   // open is direct
 
-   m_breaker.RecordClose(magic, direction, t);
+   datetime t = (datetime)HistoryDealGetInteger(deal, DEAL_TIME);
+   ulong position_id = (ulong)HistoryDealGetInteger(deal, DEAL_POSITION_ID);
+
+   if(entry == DEAL_ENTRY_OUT)
+      m_breaker.RecordClose(magic, direction, t, position_id);
+   else  // DEAL_ENTRY_IN
+      m_breaker.RecordOpen(magic, direction, t, position_id);
   }
 
 //+------------------------------------------------------------------+

@@ -13,7 +13,7 @@
 
 | ID | Task | Action verb + object | Why agent cannot do it | How operator does it (link/command) | Opened | Resume task on completion |
 |----|------|----------------------|------------------------|-------------------------------------|--------|---------------------------|
-| _empty — registry initialized 2026-05-02_ | | | | | | |
+| _empty — registry initialized 2026-05-02; OPS-001 reverted 2026-05-17 (mis-diagnosis: PID 6916 is from `C:\Program Files\FBS MetaTrader 5\` separate install, not the repo's `5ph` install per origin.txt → no data-dir lock conflict); OPS-002 resolved 2026-05-17 (operator ran GUI backtest at 20:29-20:32 refreshing tick cache → headless Run #4 launch at 20:35 succeeded, ran 5 min effective wall-clock to halt point sim 2021-01-27 — see Done section + `_session-handoff/IMPL-FIX-012-iter2-run4-blocked-20260517.md`)_ | | | | | | |
 
 ---
 
@@ -21,7 +21,7 @@
 
 | ID | Task | Action | Confirmed on | Verified-by evidence (artifact) |
 |----|------|--------|--------------|---------------------------------|
-| _empty_ | | | | |
+| OPS-002 | IMPL-FIX-012 (iter-2 Run #4 prereq) | Operator opened 5ph GUI MT5 + ran Strategy Tester backtest on EURUSD (2026-05-17 20:29:31 → 20:32:47) which refreshed local `.tkc` cache + warmed tester agent state | 2026-05-17 (verified empirically — engineer's subsequent headless launch at 20:35:24 succeeded vs 3 prior attempts in same session that failed at 0:00:00.000) | `.tkc` mtime evidence: `202605.tkc` mtime 2026-05-17 20:30 (refreshed during operator's GUI session); engineer's headless launch attempt #4 produced 88 MB tester log + 127 schema-valid journal records at `docs/state/_session-handoff/IMPL-FIX-012-iter2-run4-20260517.jsonl` + halt event captured at sim 2021-01-27 15:45:07 (vs Runs #1-3 of this session which produced 0-byte agent logs) ⇒ tick-cache freshness was the actual blocker, and operator's GUI run resolved it |
 
 ---
 
