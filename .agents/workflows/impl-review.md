@@ -85,6 +85,8 @@ Walk through the **review dimensions** against the target code. For each dimensi
 | 9 | **Technical Design Compliance** | API impl matches `docs/api-specs/*.yaml` (field types, validation, error codes)? Backend matches `02-backend-design.md` (interfaces, DTOs)? Frontend matches `03-frontend-design.md` (components, state)? DB matches `04-database-design.md` (columns, constraints, indexes)? |
 | 10 | **Test Code Quality & Defensive Patterns** | Regex catastrophic backtracking risk (nested quantifiers, ambiguous greedy `.*` กับ multi-line input, alternation overlap)? Regex calls มี timeout (C# `TimeSpan`, Node `re2`/`safe-regex2`, Python `regex.TIMEOUT`)? Loops ใน tests มี explicit upper bound (ไม่มี `while(true)`)? Test fixtures มี cleanup (Dispose/teardown — ไม่มี process / file / connection leak)? ไม่มี shared mutable state ระหว่าง cases? Per-test runtime คาดเดาได้ (ไม่มี "depends on data size" ที่ unbounded)? |
 | 11 | **Empirical AC Closure Verification** | Task with E-AC: handoff มี evidence artifact ที่ระบุใน `docs/state/_session-handoff/<task-id>-evidence-*` หรือไม่? Artifact reproducible? Probe/capture/inspect output ตรงกับ AC text? AC checkbox `[x]` พร้อม "deferred to operator-runtime" / "deferred to post-launch operator phase" / "deferred per <task> precedent" → CRITICAL finding (closure-rule violation per `andm-impl-engineer/SKILL.md § Forbidden Closure Patterns`). E-AC ระบุ `[evidence-kind]` แต่ artifact เป็น in-process test log → HIGH finding (kind mismatch — empirical kinds require live-system observation, not test runner output) |
+| 12 | **IMPL-FIX Sibling Ban** | Grep `docs/state/impl-plan.md` + `docs/code-review/` + `docs/state/_session-handoff/` filenames for pattern `IMPL-FIX-\d+[a-z]` หรือ `IMPL-FIX-\d+-[A-Z]+`. Any match = CRITICAL finding (Cap-3 Decision Gate bypass via sibling naming). Required remediation: rename sibling tickets to fresh `IMPL-FIX-MMM` numbers, close original parent as `[scope-replaced → MMM, ...]`. Also check iteration trail per IMPL-FIX ticket: if ≥3 falsified iterations exist without a Cap-3 Decision Gate audit-trail entry (BACKTRACK / re-decompose / defer with operator sign-off) → HIGH finding (silent 4th iteration). Reference: `GLOSSARY.md § IMPL-FIX Sibling Ban` + `§ Cap-3 Decision Gate` |
+| 13 | **Handoff Artifact Archive Hygiene** | Glob `docs/state/_session-handoff/<closed-ticket>*` for tickets closed `[x]` หรือ `[scope-replaced]` > 14 days ago + not referenced by `deferred-ac-registry.md` Active row. Any unarchived match = LOW finding (cleanup needed) if count <10, MEDIUM if 10-30, HIGH if >30 (per-ticket sprawl risk). Verify archive directory `docs/state/_session-handoff/archive/<ticket>.tar.gz` exists for archived tickets + handoff.md pointers updated if referenced. Reference: `GLOSSARY.md § Handoff Artifact Archive Policy` |
 
 **No artificial caps on findings.** Generate as many valid findings as the code warrants.
 
@@ -100,6 +102,42 @@ Use Grep across services to verify consistency:
 | Configuration alignment | Check env vars and config match across services |
 
 Raise contradictions as separate findings.
+
+### 2.2.5 Defect Class Recurrence Check (METHODOLOGY-REDESIGN Trigger)
+
+> **Glossary:** `GLOSSARY.md § METHODOLOGY-REDESIGN Ticket`. Stops the "fix the rule to fix the fix that fixed the rule" meta-loop before clause-explosion.
+
+Before drafting findings, scan recent review-round history (last 3 rounds — `docs/code-review/review-round-{N-2..N-1}.md` + this round in-progress):
+
+1. **Identify clause patches** — findings in prior rounds that result in a Gate / checklist clause being added or strengthened (e.g., "Gate #9 clause (h) added", "Dimension #N strengthened with exemption regex")
+2. **Detect repetition** — same Gate / clause receiving clause additions across **3 consecutive rounds** (N-2, N-1, N) for the same defect class (same root cause, same surface, same evasion pattern)
+3. **HALT trigger:** if recurrence detected →
+
+   ```
+   🛑 DEFECT CLASS RECURRENCE — METHODOLOGY-REDESIGN REQUIRED
+
+   Gate / Clause: <name + ID, e.g., "Gate #9 clause">
+   Defect class: <one-line description>
+   Rounds affected: R<N-2>, R<N-1>, R<N (current)>
+   Clause growth: <e.g., "clause (g) → (h) → (i)">
+
+   The mechanism (grep / regex / checklist) is being patched repeatedly to catch defects
+   it structurally cannot reliably detect. Adding clause (j) is FORBIDDEN until redesign closes.
+
+   Required action: spawn `docs/code-review/methodology-redesign/METHODOLOGY-REDESIGN-NNN.md`:
+     (1) Name the defect class + 3-round evidence trail (link rounds)
+     (2) Question whether current mechanism can ever reliably catch the class
+     (3) Propose alternative — AST analysis / structural tool / dedicated workflow step / scope removal
+     (4) Owner + close date + methodology-owner sign-off
+
+   This review round closes WITHOUT adding a new clause to <Gate name>.
+   Other unrelated findings proceed as normal.
+   ```
+
+4. If trigger fires → reviewer SKIPs the affected clause-patch finding for this round; documents the deferral in `## Methodology Findings` section instead (defer-with-reason format)
+5. If no trigger → proceed to 2.3
+
+> **Defect class motivating:** PhoenicisNex Gate #9 explosion 2026-05 — 7 review rounds × 5 axes × 9 clauses ≈ 3,000 words of regex specification; 5th axis ("reviewer-authoring contract") still open at R26 with no halt mechanism. Sample retro: `real-problems/methodology-retrospective-day17.md § 4.1`
 
 ### 2.3 E-AC Evidence Cross-Check (Mandatory if any task in scope has E-AC)
 

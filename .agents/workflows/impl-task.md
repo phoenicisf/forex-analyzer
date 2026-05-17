@@ -188,6 +188,72 @@ Options for each expired row:
 4. If user picks renewal → cap at 2 renewals per row; on 3rd attempt force escalate to `/impl-plan-review all` (or upstream `/backtrack` if design flaw)
 5. Block proceeds only after all expired rows actioned
 
+#### 1.3.3 Cap-3 Decision Gate (IMPL-FIX-NNN tickets only)
+
+> **Glossary:** `GLOSSARY.md § Cap-3 Decision Gate` + `§ IMPL-FIX Sibling Ban`. Applies only when `{{input}}` is an IMPL-FIX-NNN ticket (regression / parity / behavioral defect repair). Skip for IMPL-NNN main tasks.
+
+After phase + registry checks pass, scan iteration history for the IMPL-FIX ticket:
+
+1. **Sibling-naming check (HARD BLOCK):**
+   - If `{{input}}` matches regex `IMPL-FIX-\d+[a-z]` or `IMPL-FIX-\d+-[A-Z]+` (e.g., `IMPL-FIX-011a`, `IMPL-FIX-011-FORCE-PERIOD`) → **HALT**:
+     ```
+     🛑 IMPL-FIX SIBLING BAN
+
+     Ticket `{{input}}` uses forbidden sibling naming (parent letter/suffix on existing IMPL-FIX-NNN).
+     Sibling naming inherits new cap-3 per child → effective cap bypass + audit-trail noise.
+
+     Required action: spawn fresh `IMPL-FIX-MMM` with a NEW ticket number, then close parent
+     as `[scope-replaced → MMM]` (not `[x]`).
+
+     Reference: GLOSSARY.md § IMPL-FIX Sibling Ban + § Cap-3 Decision Gate
+     ```
+     Do not proceed with this ticket ID. Operator must re-spawn under a fresh number.
+
+2. **Iteration count check:**
+   - Read `impl-plan.md` `IMPL-FIX-NNN` block + grep commit history `git log --grep="IMPL-FIX-NNN iter-" --pretty=format:"%h %s"` for past iteration closures
+   - Count successive **falsified** iterations (commit / handoff mentions "FALSIFIES" / "EMPIRICALLY FALSIFIED" / "regression" / "no reduction")
+   - If falsified-count ≥ 3 → **HALT — Cap-3 Decision Gate:**
+
+   ```
+   🛑 CAP-3 DECISION GATE — IMPL-FIX-NNN
+
+   Ticket `IMPL-FIX-NNN` has <N> falsified iterations. Cap-3 budget exhausted.
+   Empirical signal: current hypothesis space cannot close this defect.
+
+   Iteration trail:
+     iter-1: <one-line outcome>
+     iter-2: <one-line outcome>
+     iter-3: <one-line outcome>
+
+   You MUST select ONE explicit option before any 4th iteration:
+
+   (a) BACKTRACK — problem premise (BA/SD/UX/TD) is wrong
+       → run `/backtrack ba` / `/backtrack sd` / `/backtrack ux` / `/backtrack td`
+       → full cascade reaches impl; close this IMPL-FIX-NNN as [scope-replaced → BT-NNN]
+
+   (b) Re-decompose — premise valid, decomposition wrong
+       → spawn ≥1 fresh `IMPL-FIX-MMM` ticket(s) with new sub-scope
+       → close this IMPL-FIX-NNN as [scope-replaced → MMM, OOO, ...]
+       → each fresh ticket gets its own cap-3
+       → FORBIDDEN: `IMPL-FIX-NNNa/b/c` sibling naming (see step 1)
+
+   (c) Defer / partial close — accept partial scope
+       → register row in `deferred-ac-registry.md` (owner + expiry ≤14d + risk-if-missed)
+       → operator sign-off required (named approver in closure note)
+       → closure note must cite specific deferred ACs verbatim
+       → close as [x] partial — NOT silent scope-narrow
+
+   FORBIDDEN: continue to iter-4 without picking one of (a)/(b)/(c).
+   ห้าม proceed without explicit user choice.
+   ```
+
+3. If operator picks (a) → halt this `/impl-task` invocation; route to `/backtrack`
+4. If operator picks (b) → halt; route to `/impl-plan-review` for fresh ticket numbering + plan amendment
+5. If operator picks (c) → log deferred-AC row, then closure note in `impl-plan.md` cites the registered row + named approver, then close ticket — exit this `/impl-task` invocation without 4th iteration
+6. If iteration count < 3 → continue to 1.4
+
+> **Defect class motivating:** PhoenicisNex IMPL-FIX-011 chain (2026-05) — 5 sibling tickets (`011`, `011a/b/c/d`, `011-FORCE-PERIOD`) × cap-3 each = effective cap-15 + 19 iter + 80 handoff artifacts; closed scope-narrow as "entry-parity-complete, exit-deferred" instead of root-cause fix or backtrack. Gate forces the decision at iter-3 instead of letting it implicit-pivot.
+
 ### 1.4 Auto-Detect Size & Select Process
 
 | Size | Scope tag | Detection Criteria | Process |
@@ -490,6 +556,21 @@ Update `docs/state/{module}/handoff.md` with:
 - **Next suggested task** from impl-plan — verify this task ID exists in plan AND is ready (deps done) BEFORE writing the pointer
 
 Save E-AC evidence artifact (per Phase 3.3 Gate B) to `docs/state/_session-handoff/<task-id>-evidence-<YYYYMMDD>.{md,txt,png,...}` if task has E-ACs.
+
+**Handoff Artifact Archive (on ticket close `[x]` or `[scope-replaced]`):**
+
+- ถ้า ticket นี้คือ closure ของ IMPL-NNN / IMPL-FIX-NNN → archive related artifacts:
+  ```bash
+  # Find all artifacts for ticket (excluding last-14-days hot context)
+  find docs/state/_session-handoff/ -maxdepth 1 -name "<ticket>*" -mtime +14 -type f
+  # If any found AND ticket has no Active row in deferred-ac-registry.md:
+  tar -czf docs/state/_session-handoff/archive/<ticket>.tar.gz \
+      docs/state/_session-handoff/<ticket>*
+  rm docs/state/_session-handoff/<ticket>*-evidence-* 2>/dev/null  # keep iter files only if archived
+  ```
+- ห้าม archive artifacts ที่ referenced โดย `deferred-ac-registry.md` Active row (still hot context).
+- Update `docs/state/{module}/handoff.md` pointer ให้ reference archive path ถ้า downstream อาจค้นหา
+- Reference: `GLOSSARY.md § Handoff Artifact Archive Policy`
 
 **Reconciliation Self-Check (mandatory before commit):**
 

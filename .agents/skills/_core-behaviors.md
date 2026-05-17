@@ -174,6 +174,9 @@ Recommended action:
 | 11 | ปิด task ด้วย structural evidence อย่างเดียวทั้งที่ AC มี E-AC ที่บังคับ empirical | AC checkbox `[x]` แต่ไม่มี evidence artifact ใน `_session-handoff/` |
 | 12 | เขียน closure note ว่า "deferred to operator-runtime" แล้วปิด task | ใช้ Split-or-Register แทน — open followup task หรือบันทึกใน `deferred-ac-registry.md` (ดู `andm-impl-engineer/SKILL.md`) |
 | 13 | Workflow nudge over user signal — user รายงาน breakage แต่ agent ยังเดินตาม `/next` recommendation ไป Phase Gate ถัดไป | User report ของ functional breakage = ground truth; ดู Behavior #7 Override Template — triage ก่อน progression เสมอ |
+| 14 | IMPL-FIX sibling sprawl — spawn `NNNa/b/c` siblings after cap-3 falsified instead of fresh ticket | Ticket name pattern `IMPL-FIX-\d+[a-z]` หรือ `IMPL-FIX-\d+-[A-Z]+` ใน `impl-plan.md`. Sibling naming inherits new cap-3 per child → cap-3 bypass. หลัง 3 iter falsified → ต้องเลือก (a) BACKTRACK / (b) fresh `IMPL-FIX-MMM` / (c) Defer with operator sign-off ตาม `GLOSSARY.md § Cap-3 Decision Gate` |
+| 15 | Meta-loop clause patching — review-round N+2 adds clause (j) เพราะ clause (i) จาก round N ยังจับ defect class เดิมไม่ครบ | Same Gate / checklist clause ถูกแก้ใน ≥3 consecutive review rounds + defect class identical. ห้าม add clause ต่อ — spawn `METHODOLOGY-REDESIGN-NNN.md` ที่ `docs/code-review/methodology-redesign/` แทน (ดู `GLOSSARY.md § METHODOLOGY-REDESIGN Ticket`). 9-clause Gate = signal mechanism is wrong, not under-specified |
+| 16 | Handoff artifact sprawl — `_session-handoff/` ไม่มี archive boundary | Closed IMPL-NNN / IMPL-FIX-NNN ยังมี artifact files >14 days ใน `_session-handoff/` root. Per-ticket sprawl ทำให้ grep cost โต linear. ต้อง archive ลง `_session-handoff/archive/<ticket>.tar.gz` ตอน ticket close (ดู `GLOSSARY.md § Handoff Artifact Archive Policy`) |
 
 ---
 

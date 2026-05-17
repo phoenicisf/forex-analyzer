@@ -516,26 +516,93 @@ Read: docs/state/impl-plan.md frontmatter
 
 Read: docs/state/impl-plan-claim-review-and-rebuttal/ (latest claim-review-XX.md)
   - If exists: extract last review Date
-  - Compute: tasks_closed_since_review = count [x] tasks with closure date > last review Date
+  - Compute: main_task_closures_since_review =
+              count IMPL-NNN (non-FIX) [x] tasks with closure date > last review Date
+  - Compute: fix_iter_closures_since_review =
+              count IMPL-FIX-NNN iter-N closures since last review Date
+              (commit-message-counted: `git log --grep="IMPL-FIX-.*iter-.*CLOSED" --since=<lastReviewDate>` |
+               wc -l; or count handoff artifacts matching IMPL-FIX-*-iter*-*.{md,json,jsonl})
 
 Triggers (any one fires):
-  - age_days > 30 AND no claim-review-*.md exists yet
-  - age_days > 30 AND tasks_closed_since_review > 10
-  - impl-plan.md edited since last review Date (file mtime > last claim-review-XX.md Date — direct edits to add Phase Gate tasks, fix-tickets, or scope adjustments may have bypassed Plan QA)
+  - (a) age_days > 30 AND no claim-review-*.md exists yet
+  - (b) age_days > 30 AND main_task_closures_since_review > 10
+  - (c) fix_iter_closures_since_review > 20
+        (per-iter closures encode forward progress on one problem, but 20 iters on a single
+         fix-chain = scope-drift signal warranting plan re-review — catches PhoenicisNex IMPL-FIX-011
+         pattern where Sentinel showed 0 main closures despite 19 fix-iter closures)
+  - (d) impl-plan.md edited since last review Date (file mtime > last claim-review-XX.md Date
+        — direct edits to add Phase Gate tasks, fix-tickets, or scope adjustments may have
+        bypassed Plan QA)
 ```
 
 **If trigger fires:**
 ```
 ⚠️ Plan Staleness Sentinel
 
-Plan approved <X days> ago, <N> tasks closed since last review (or never reviewed).
-Reality may have drifted from plan — risk of working from stale phasing/AC.
+Plan approved <X days> ago.
+  Main task closures since last review: <N> (threshold 10)
+  Fix-iter closures since last review:  <M> (threshold 20)
+  Trigger: <which of (a)/(b)/(c)/(d) fired>
+
+Reality may have drifted from plan — risk of working from stale phasing/AC/decomposition.
 
 Status: 🟡 Plan executable แต่ confidence ลดลงตามเวลา
-Next Action: 
-  Option (a) Run `/impl-plan-review all` (recommended — re-validate phasing, AC dual-track, registry hygiene)
+Next Action:
+  Option (a) Run `/impl-plan-review all` (recommended — re-validate phasing, AC dual-track,
+              registry hygiene, IMPL-FIX-NNN scope drift)
   Option (b) Continue with current plan + acknowledge staleness — note ใน next handoff
   Option (c) Re-plan: `/impl-plan <next-sprint>` ถ้า scope ขยาย/หด มาก
+```
+→ **Report to user (advisory, not blocking — operator decides)** then proceed to Check 5.9
+
+**If no trigger:**
+→ Proceed to Check 5.9
+
+### Check 5.9: Impl-Plan Compaction Threshold
+
+> **Why this check exists:** `docs/state/impl-plan.md` ที่โต > 50,000 tokens forces every agent to offset/grep + lose semantic context. Read tool max = 25k tokens. Real-project signal: PhoenicisNex impl-plan grew to 106k tokens with comment `boilerplate intentionally retained inline for audit traceability` = methodology fighting its own State SoT discipline. Sentinel surfaces compaction recommendation before the file becomes practically unreadable. ดู `GLOSSARY.md § Impl-Plan Compaction Threshold`
+
+```
+Read: docs/state/impl-plan.md size
+  - Compute: token_estimate = wc -c <file> / 4  (rough chars-to-tokens approximation;
+             or use real tokenizer if available)
+  - Threshold: 50,000 tokens
+
+Trigger:
+  - token_estimate > 50,000
+```
+
+**If trigger fires:**
+```
+⚠️ Impl-Plan Compaction Threshold
+
+docs/state/impl-plan.md is approximately <X> tokens (threshold: 50,000).
+Read tool max = 25k/call → every agent that loads the plan must offset/grep or lose semantic context.
+
+Compaction procedure (operator runs at convenient checkpoint):
+  (1) KEEP in primary:
+        - TL;DR top-3 entries (most-material decision-pending state)
+        - Phase Gate rows (all phases)
+        - Plan Staleness Sentinel state
+        - Open Risks
+        - Current-phase task table
+        - Mid-Phase Audit Log
+        - SD Hint Alignment audit trail
+  (2) MOVE to docs/state/impl-plan-archive-YYYY-MM.md (one file per calendar month):
+        - Closure history > 7 days old (closed [x] task entries)
+        - Closed IMPL-FIX-* chains (parent + any siblings/iter trail)
+        - Resolved Mid-Phase Audit entries
+        - Deferred-AC registry rows moved to Resolved
+  (3) PRIMARY retains 1-line pointer per archived block:
+        "→ See impl-plan-archive-2026-05.md for closed IMPL-001 through IMPL-040"
+
+Status: 🟡 Plan readable แต่ token cost ต่อ session สูง
+Next Action:
+  Option (a) Run compaction now (manual edit — no automation in this rollout)
+  Option (b) Defer to next sprint boundary — note ใน handoff
+  Option (c) Plan growth ดูสมเหตุสมผล? ขยาย threshold via methodology-redesign
+
+Reference: GLOSSARY.md § Impl-Plan Compaction Threshold
 ```
 → **Report to user (advisory, not blocking — operator decides)** then proceed to Phase 3 Parallel Region
 
@@ -815,6 +882,7 @@ Walk this list top-to-bottom. The **first** condition that fires becomes the pri
 | 9 | State Reconciliation drift (Check 5.5) | Reconcile drift before continuing | High |
 | 10 | Operator Action Backlog non-empty (Check 5.7) | Clear backlog or pivot to non-blocking task | Medium-High (depends on backlog age) |
 | 11 | Plan Staleness Sentinel fires (Check 5.8) | Recommend `/impl-plan-review all` (advisory; user may accept staleness) | Medium |
+| 11b | Impl-Plan Compaction Threshold fires (Check 5.9, >50k tokens) | Recommend manual compaction per GLOSSARY.md § Impl-Plan Compaction Threshold (advisory) | Low |
 | 12 | Tier 1 (Task Closure) incomplete (Check 6) | `/impl-task <next-ready-id>` or `/impl-task parallel` | High |
 | 13 | Tier 1 done, Tier 1.5 Walk missing/stale (Check 6) | Run Tier 1.5 Exploratory Walk (per andm-impl-engineer SKILL § Tier 1.5 protocol) | High |
 | 14 | Tier 1+1.5 done, Tier 2 Phase Gate open (Check 6) | `/impl-task IMPL-P<N>-GATE` (or edit `impl-plan.md` directly to add gate task first if missing — `/amend` does not target impl-plan) | High |
@@ -868,6 +936,7 @@ Apply these rules when picking confidence label:
 | Single phase check fires (e.g., only Check 6 Tier 1) with no drift | High |
 | State Reconciliation drift detected (Check 5.5) | Medium — drift muddies all downstream signals |
 | Plan Staleness fires (Check 5.8) | Medium — advisory, not blocking |
+| Impl-Plan Compaction Threshold fires (Check 5.9, >50k tokens) | Low — advisory, not blocking |
 | Operator Action Backlog has rows >7 days old | Medium — workflow probably abandoned, need user decision |
 | Multiple competing checks fire (e.g., Tier 1 incomplete + Code Review pending mid-sprint) | Medium — recommendation correct but priority order is opinionated |
 | Pre-check 0 user signal but state files silent (cannot reproduce) | Low — recommend triage but flag uncertainty |

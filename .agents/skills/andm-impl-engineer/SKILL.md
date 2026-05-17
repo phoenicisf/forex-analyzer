@@ -435,11 +435,55 @@ Save at `docs/state/_session-handoff/<YYYYMMDD>-phase<N>-exploratory-walk.md`:
 #### Linkage to Phase Gate row
 
 - Phase Gate "Tier 1.5 Exploratory Walk" row stays `[ ]` until:
-  - Artifact exists at expected path
+  - **Full-walk** artifact exists at expected path (sample-walk does NOT count for Phase Gate row — see Sample-Walk Variant below)
   - Artifact dated within last 14 days
   - All CRITICAL findings resolved (closed IMPL-FIX-* tickets)
   - HIGH findings resolved or registered in `deferred-ac-registry.md` with valid expiry
 - After resolution, tick `[x]` with inline note: `[x] artifact: <path> · <N> CRITICAL resolved · <M> HIGH resolved/registered`
+
+#### Sample-Walk Variant (slow-runtime stacks)
+
+> **When applicable:** stacks where full-walk feedback loop is prohibitively expensive — e2e suite >5 min, behavioral backtest runs (financial / simulation), training pipelines, hardware-loop tests. Default 30-min target unreachable because single iteration alone exceeds it.
+
+**Purpose:** lightweight intra-phase walk that fits inside developer iteration loop (≤10 min target). Catches defects earlier than the eventual full-walk without forcing 30-60 min wall-clock per check. **Does NOT replace full-walk before Phase Gate** — sample-walks accumulate, full-walk still required.
+
+**Procedure:**
+1. **Bootstrap deployable from cold state** as in full-walk (same cold-bootstrap requirement)
+2. **Pick a narrowed scope** — choose ONE axis:
+   - **Time slice:** 1-month window instead of full history (e.g., 5-yr backtest → run last 30 sim days only)
+   - **Surface subset:** 1-2 representative collections / 1 locale / 1 role — not the full matrix
+   - **Single feature path:** end-to-end on one user-flow, not all flows
+3. **Walk + note defects** — same Findings format as full-walk
+4. **Cap at 10 min** — if defect density > 3 in first 5 min, stop + fix-batch first
+5. **Artifact path:** `docs/state/_session-handoff/<YYYYMMDD>-phase<N>-sample-walk.md` (note: `-sample-walk`, not `-exploratory-walk` — distinguishable for grep/archive)
+
+**When to run sample-walk:**
+- After closing any IMPL-FIX-* batch (verify no regression) without waiting for full-walk
+- Mid-phase, every 5 closed tasks if Mid-Phase Audit detects drift (alternative to full-walk for slow stacks)
+- Before opening a new IMPL-FIX-NNN ticket — confirm defect class still reproduces
+
+**Artifact format** (delta from full-walk):
+```markdown
+# Phase <N> Sample Walk — <YYYY-MM-DD>
+
+| Field | Value |
+|---|---|
+| Variant | sample-walk (narrowed scope per slow-runtime variant) |
+| Scope axis | time-slice / surface-subset / single-flow |
+| Scope value | <e.g., "2026-04-01 → 2026-04-30 backtest" or "Slot_G + Slot_T only"> |
+| Why narrowed | <slow-runtime reason — e.g., "full 5-yr run = 60 min, sample = 8 min"> |
+| Replaces full-walk? | NO — full-walk still required before Phase Gate |
+| Duration | <actual minutes> |
+| Bootstrap | cold from zero |
+| Stack snapshot | git SHA + service versions |
+
+## Findings + Summary
+[same format as full-walk]
+```
+
+**Linkage to Phase Gate:** Sample-walks do NOT tick the "Tier 1.5 Exploratory Walk" Phase Gate row — that row needs a **full-walk** artifact. Sample-walks reduce risk between Mid-Phase Audits and accelerate IMPL-FIX-NNN verification, but the full-walk's broader coverage remains mandatory at Phase Gate.
+
+> **Defect class motivating:** PhoenicisNex 2026-05 retro — Tier 1.5 walk on 5-yr Strategy Tester backtest = 30-60 min/walk + requires operator GUI session lock. Team avoided walks more than they should have because of cost. Sample-walk gives intra-phase signal at 1-month-slice cost (~8 min) without forcing the full 60-min commitment. Reference: `GLOSSARY.md § Exploratory Walk (Tier 1.5)`.
 
 ### Commit Format
 
