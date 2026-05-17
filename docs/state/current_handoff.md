@@ -4,9 +4,17 @@
 
 ## Last completed action
 
-**🟢 IMPL-FIX-012 iter-1 ✅ CLOSED 2026-05-14 — ADR-013 DEAL_REASON_EXPERT filter applied at `core/Orchestrator.mqh::OnTradeTransaction` (3 LOC + ADR-013 NEW ~210 LOC); G1 PASS + G2 bootstrap_smoke 3-day PASS; Step 3 Run #4 deferred to next operator session per cap-3 iteration budget.**
+**🟢 fix-round-26 ✅ CLOSED 2026-05-17 — 6/6 findings Accept (2 HIGH / 2 MEDIUM / 2 LOW) processed in 3 commits: `3ba3f3d` (Findings 26.2 Case F SelfTest + 26.3 Slot_B/K re-anchor source-tree) + `95bb3ac` (Finding 26.1 Gate #9 clause (h) extended exemption regex with class (ε) frozen legacy-file cites + R25 §Termination Test strikethrough with forward-pointer) + this commit (Findings 26.4 IMPL-FIX-013 P5 orphan-recommendation propagation + 26.5 cite separator brace-form correction across 8 surfaces + 26.6 Gate #1 count claim narrative correction). G1 PASS (exit=0; .ex5 359,994 bytes; mtime advanced 284s post-edit). State Reconciliation 3-file rule honored.**
 
-**Trigger:** Operator invoked `/impl-task IMPL-FIX-012` per impl-plan Next Best Action (post-IMPL-062 Run #3 closure pivot — start Step 0 diagnostic per cap-3 iteration budget).
+**Trigger:** Operator invoked `/impl-review-fix docs/code-review/review-round-26.md` after `/next` Navigation Decision Layer §1.9.1 priority #15 (Code Review pending HIGH) recommended this fix-round as primary action over the operator IMPL-FIX-012 Step 3 Run #4 path. Reasoning: review-round-26 surfaced 2 HIGH findings (R25 termination claim falsified + ADR-013 Case F SelfTest absent) on the very surface the operator would rely on for Run #4 — closing these before Run #4 keeps the IMPL-FIX-012 iter-1 patch + ADR-013 deliverable clean.
+
+**Next suggested task:** **`/impl-task IMPL-FIX-012` Step 3 Run #4** — 5-yr Bucket A retry (`regression_5yr_g4.ini`; ~30-60 min wall-clock per IMPL-FIX-009 perf restoration). Code-review surface now clean; ADR-013 patch fully realized (Case F SelfTest landed); IMPL-FIX-012 iter-1 deliverable complete. Step 3 Run #4 verifies ADR-013 effectively eliminates `circuit_breaker_pingpong` false-positive halt class at sim 2021-01-14 + drains IMPL-062 E-AC #1+#2 retry + cascades IMPL-068/IMPL-066/P2/P3/P4 Tier 2 Phase Gate close path. Per `deferred-ac-registry.md` IMPL-FIX-012 row, Step 3 Run #4 is the gating empirical event for NFR-1.1 acceptance signal + MVP delivery. Alternative paths: (a) `/impl-task IMPL-FIX-013` (engineer-side file-encoding cleanup ~1-2 hr — newly authored P5 ticket from fix-round-26 §Finding 26.4 propagation); (b) `/impl-review all R27` verify-only sweep predicting 0-1 findings post-fix-round-26 (matches R23 → R24 → R25 verify-only trajectory pattern).
+
+**Trigger for fix-round-26 itself:**
+
+Prior session-action (preserved for audit history) — **🟢 IMPL-FIX-012 iter-1 ✅ CLOSED 2026-05-14 — ADR-013 DEAL_REASON_EXPERT filter applied at `core/Orchestrator.mqh::OnTradeTransaction` (3 LOC + ADR-013 NEW ~210 LOC); G1 PASS + G2 bootstrap_smoke 3-day PASS; Step 3 Run #4 deferred to next operator session per cap-3 iteration budget.**
+
+**Original Trigger:** Operator invoked `/impl-task IMPL-FIX-012` per impl-plan Next Best Action (post-IMPL-062 Run #3 closure pivot — start Step 0 diagnostic per cap-3 iteration budget).
 
 **Phase 1.3 compliance scans (passed):** Phase Gate (P4 current open ✅); Operator Action Registry empty ✅; Deferred-AC Registry no expired (today 2026-05-14; earliest expiry 2026-05-17 = 3d slack); IMPL-FIX-012 row Active (NEW 2026-05-14 expiry 2026-05-28).
 

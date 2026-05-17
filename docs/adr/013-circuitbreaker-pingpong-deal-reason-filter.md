@@ -76,7 +76,7 @@ if(reason != DEAL_REASON_EXPERT) return;
 ## Decision Validation
 
 **Empirical evidence:**
-- IMPL-062 Run #2 (2026-05-12 G4-OFF) + Run #3 (2026-05-14 G4-ON) byte-identical halt class confirmed false-positive scope (`_session-handoff/IMPL-062-bucket-a-5yr-run3-20260514.{jsonl,tester.txt}`).
+- IMPL-062 Run #2 (2026-05-12 G4-OFF) + Run #3 (2026-05-14 G4-ON) byte-identical halt class confirmed false-positive scope (`_session-handoff/IMPL-062-bucket-a-5yr-run3-20260514{.jsonl,-tester.txt}`).
 - Slot_H::Evaluate (line 211) already enforces same-H4-bar cooldown — Slot_H entries are not clustered in journal evidence.
 - Identical SL across pyramid entries is a structural consequence of `bid ± InpHSlPips × pip_size` formula at the same H4 bar; this would replicate across other slots with similar SL formulas (Slot_K, Slot_M, Slot_T, etc.) and would surface as additional false-positives at 5-yr scale without ADR-013.
 
@@ -99,7 +99,7 @@ if(reason != DEAL_REASON_EXPERT) return;
 - TD-02 §5.8 — CircuitBreaker skeleton (`docs/technical-design/02-backend-design.md`)
 - fix-round-10 §10.3 / D-8 — Producer-side wiring for CircuitBreaker (`docs/code-review/fix-round-10.md`)
 - fix-round-11 §11.2-11.5 — Multi-layer guards in OnTradeTransaction (`docs/code-review/fix-round-11.md`)
-- IMPL-062 Run #3 evidence — `_session-handoff/IMPL-062-bucket-a-5yr-run3-20260514.{jsonl,tester.txt}`
+- IMPL-062 Run #3 evidence — `_session-handoff/IMPL-062-bucket-a-5yr-run3-20260514{.jsonl,-tester.txt}`
 - IMPL-062 Run #2 evidence — `_session-handoff/IMPL-FIX-003-bucket-a-5yr-partial-20260512.{txt,jsonl}`
 - regression-bucket-a.md § Run #3 root-cause analysis (2026-05-14)
 - IMPL-FIX-012 task block in `docs/state/impl-plan.md` (authored 2026-05-14)
