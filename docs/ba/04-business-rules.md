@@ -2,7 +2,7 @@
 
 > **Phase:** Phase 1A (BA Requirements Discovery) — Doc 4/5
 > **Author:** BA agent (`/ba` workflow, v1.2)
-> **Last updated:** 2026-05-12 (BT-001 cascade — Bucket A/B propagation: rule type tag legend `§ 1` + BR-7 intro `§ 8` + BR-7.1/7.2 validation hints + BR-9.5 invariant)
+> **Last updated:** 2026-05-17 (BT-002 BA cascade — BR-3.6 CircuitBreaker ping-pong detector REMOVED legacy-parity per operator Option 1 + BR-9.5 Invariant prose post-BT-002 update (Bucket B full-window measurement post-CircuitBreaker removal). Prior: 2026-05-12 BT-001 cascade — Bucket A/B propagation: rule type tag legend `§ 1` + BR-7 intro `§ 8` + BR-7.1/7.2 validation hints + BR-9.5 invariant)
 > **Reads:** `01-project-brief.md` (glossary), `02-functional-requirements.md` (FR-X.Y refs), `trading-baseline.md`
 > **Audience:** Architect (Phase 1B), Tech Lead (Phase 1D) — แปลงเป็น decision logic + state machine + invariants
 
@@ -189,14 +189,16 @@ C → D → J → H → K → G → G2 → I → M → L → LX → Q → R → 
 - **Source:** CodeWiki §2.5 Force-Pending state, §2.2
 - **Related FR:** FR-6.7
 
-### BR-3.6 — CircuitBreaker ping-pong 🔒
+### ~~BR-3.6~~ — ~~CircuitBreaker ping-pong~~ 🔒 — **REMOVED per BT-002 2026-05-17 (Option 1 legacy-parity)**
 
-**Condition:** Same position re-opens within **3000 ms** ของ previous close
-**Action:** EA halt + Alert (FR-7.7) + journal entry
-- **Why:** Detect infinite loop / runaway flip-flop ที่กิน balance
-- **Source:** CodeWiki §5.5 CircuitBreakerOrder `:15796`
-- **Related FR:** FR-6.6, FR-7.7
-- **Validation hint:** QA simulate ping-pong scenario → verify halt + alert
+> ⚠️ **BT-002 2026-05-17 — REMOVED legacy-parity (preserved as audit history):** Detector ถูกลบทั้งหมดจาก rewrite per operator Option 1 authorization (`backtrack-log.md § BT-002`). Cap-3 iter chain ADR-013 → ADR-014 falsified 3 false-positive halt classes: (1) Jan-14 broker-driven SL same-tick (Run #2/#3, addressed by ADR-013 DEAL_REASON filter); (2) Jan-27 SafePort mass-close same-event_type (Run #4, addressed by ADR-014 schema-extending dedup); (3) Jan-06 Slot_BI pyramid same-tick close-old + open-new (Run #5, structural inverse of canonical ping-pong concept — surfaced AFTER ADR-014 wired `RecordOpen` for the first time; different positions, different event_types, but same magic+dir+Δ=0s → fires). `PhoenicisN2.10_stable.mq5` legacy achieves $24.27 M / 5-yr baseline (NFR-1.1 reference) **without any ping-pong detector** = empirical proof safety capability ไม่ load-bearing for EA's known trading pattern set. Halt-trigger path ตอนนี้ reduces to FR-7.6 indicator-handle-invalid runtime only (via FR-7.7 amendment); Phase 2 trigger candidates per ADR-010 Revisit-when (equity-floor enforcement OQ-6 promotion / journal-sustained-failure escalation). Audit history preserved below + ใน ADR-013 + ADR-014 (Status: Superseded by BT-002).
+
+~~**Condition:**~~ ~~Same position re-opens within **3000 ms** ของ previous close~~
+~~**Action:**~~ ~~EA halt + Alert (FR-7.7) + journal entry~~
+- ~~**Why:** Detect infinite loop / runaway flip-flop ที่กิน balance~~ → **Why (post-BT-002):** Pattern-set empirical evidence (Run #2/3/4/5) falsified load-bearing assumption — 3 false-positive classes occur on legitimate concurrent trade patterns; legacy baseline runs end-to-end without detector; **accepted residual risk per BT-002**
+- **Source:** ~~CodeWiki §5.5 CircuitBreakerOrder `:15796`~~ + `backtrack-log.md § BT-002` + `docs/state/_session-handoff/IMPL-FIX-012-iter3-run5-20260517.md`
+- **Related FR:** ~~FR-6.6~~ (DEMOTED Won't per BT-002), FR-7.7 (amended — handle-invalid runtime trigger only post-BT-002)
+- ~~**Validation hint:** QA simulate ping-pong scenario → verify halt + alert~~ → **Validation hint (post-BT-002):** Red Team synthetic pathological scenario per `05-security.md § 9 Red Team Hand-off "BT-002 accepted residual risk — infinite re-entry loop"` row — verify per-slot SL/TP + cross-slot SafePort + RiskManager.ClampLot + force-pending timeouts cap individual exposure; calibrate equity-floor threshold if Phase 2 promotion required
 
 ### BR-3.7 — Spread guard at OnTick start 🔒
 
@@ -527,8 +529,8 @@ EA เดิมมี cleanup mechanism ที่ทำงานข้าม slo
 
 ### BR-9.5 — Behavioral parity invariant 🔒
 
-**Invariant:** Backtest 2021-2025 EURUSD H4 ของ rewrite default build (G4 fixes ON) อยู่ใน regression budget (NFR-1.1 ถึง NFR-1.7) — **single-pass measurement บน rewrite-G4-ON build เท่านั้น** (BT-001 re-baseline 2026-05-12; `DISABLE_G4_FIXES` build halts pre-window per IMPL-062 Run #2 → ห้ามใช้เป็น verification vehicle ต่อ NFR-1.1). Bucket B (NFR-1.8) = **informational delta** ที่ record sign + magnitude ถ้า `DISABLE_G4_FIXES` build รัน partial pre-CircuitBreaker window ได้ — ไม่ใช่ acceptance gate.
-- **Source:** `trading-baseline.md`, NFR-1.x, BT-001 (2026-05-12) re-baseline — ดู `03 § NFR-1 Empirical Citation`
+**Invariant:** Backtest 2021-2025 EURUSD H4 ของ rewrite default build (G4 fixes ON) อยู่ใน regression budget (NFR-1.1 ถึง NFR-1.7) — **single-pass measurement บน rewrite-G4-ON build เท่านั้น** (BT-001 re-baseline 2026-05-12). Bucket B (NFR-1.8) = **informational delta** ที่ record sign + magnitude บน full-window `DISABLE_G4_FIXES` build measurement (post-BT-002 2026-05-17 — CircuitBreaker BR-3.6 detector removed legacy-parity; `DISABLE_G4_FIXES` build ตอนนี้ run-to-end-of-window ได้โดยไม่มี early-halt artifact — ดู `03 § NFR-1 Empirical Citation` BT-002 footnote). Pre-BT-002 BT-001 era ระบุ `DISABLE_G4_FIXES` halts pre-window per IMPL-062 Run #2 (CircuitBreaker BR-3.6 fired at sim 2021-01-14) — observation correct at BT-001 time, obsoleted by BT-002 detector removal. ไม่ใช่ acceptance gate.
+- **Source:** `trading-baseline.md`, NFR-1.x, BT-001 (2026-05-12) re-baseline, **BT-002 (2026-05-17) CircuitBreaker removal** — ดู `03 § NFR-1 Empirical Citation`
 
 ---
 

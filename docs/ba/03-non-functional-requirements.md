@@ -2,7 +2,7 @@
 
 > **Phase:** Phase 1A (BA Requirements Discovery) — Doc 3/5
 > **Author:** BA agent (`/ba` workflow, v1.2)
-> **Last updated:** 2026-05-12 (BT-001 — NFR-1.1 + NFR-1.8 Bucket A/B re-baseline)
+> **Last updated:** 2026-05-17 (BT-002 BA cascade — NFR-1.1 Why post-BT-002 update + NFR-1.8 Failure trigger + Verification post-BT-002 full-window measurement + NFR-1 Empirical Citation BT-002 footnote (cap-3 iter chain ADR-013 → ADR-014 → BT-002 escalation + structural conclusion preservation) + NFR-5.1 Why + Verification update (CircuitBreaker trigger removed; FR-7.6 handle-invalid only). Prior: 2026-05-12 BT-001 — NFR-1.1 + NFR-1.8 Bucket A/B re-baseline)
 > **Reads:** `01-project-brief.md` (goals), `02-functional-requirements.md` (FR cross-ref), `trading-baseline.md` (regression numbers)
 > **Audience:** Architect (Phase 1B), Tech Lead (Phase 1D), QA (Phase 3T)
 
@@ -28,7 +28,7 @@
 | **Bucket** | A — pattern parity drift ของ rewrite default build (G4 fixes ON, intentional G4 fixes included — **redefined BT-001 2026-05-12**) |
 | **Priority** | Must |
 | **Goal trace** | G3 |
-| **Why** | Primary acceptance contract; > 25% deviation = strategy logic เสีย. **Bucket A วัดที่ rewrite-G4-ON เท่านั้น** (redefined BT-001) — การวัด rewrite-G4-OFF vs legacy baseline เป็น apples-to-oranges: rewrite's intrinsic 16-active-slot concurrency (architectural Phase 1B SD, ไม่สามารถปิดด้วย compile flag) ต่างจาก legacy slot-concurrency profile, และ `DISABLE_G4_FIXES` + $1k FBS Standard deposit + 1:500 leverage triggers CircuitBreaker BR-3.6 `ping_pong` detector → HALTED state machine ADR-010 fire ตามที่ออกแบบ (Run #2 empirical, IMPL-062 2026-05-12 — see § NFR-1 Empirical Citation below) |
+| **Why** | Primary acceptance contract; > 25% deviation = strategy logic เสีย. **Bucket A วัดที่ rewrite-G4-ON เท่านั้น** (redefined BT-001) — การวัด rewrite-G4-OFF vs legacy baseline เป็น apples-to-oranges: rewrite's intrinsic 16-active-slot concurrency (architectural Phase 1B SD, ไม่สามารถปิดด้วย compile flag) ต่างจาก legacy slot-concurrency profile. Pre-BT-002 era (BT-001 2026-05-12): `DISABLE_G4_FIXES` + $1k FBS Standard deposit + 1:500 leverage triggered CircuitBreaker BR-3.6 `ping_pong` detector → HALTED state machine ADR-010 fire ตามที่ออกแบบ (Run #2 empirical, IMPL-062 2026-05-12 — see § NFR-1 Empirical Citation BT-001 narrative below). **Post-BT-002 2026-05-17:** CircuitBreaker BR-3.6 detector ถูกลบ legacy-parity (Option 1 operator authorization per `backtrack-log.md § BT-002`) — `DISABLE_G4_FIXES` build ตอนนี้ run-to-end-of-window ได้โดยไม่มี halt artifact; Bucket A apples-to-oranges argument ยังคงใช้ได้ (architectural 16-slot concurrency ไม่เปลี่ยน) แต่ CircuitBreaker-cited halt evidence ตอนนี้เป็น historical record ของ BT-001 era. ดู BT-002 footnote ใน § NFR-1 Empirical Citation |
 | **Verification** | QA Phase: รัน Strategy Tester period + tick model เดียวกันบน **rewrite default build (G4 fixes ON)** → คำนวณ deviation จาก headline result table; ห้ามใช้ `#define DISABLE_G4_FIXES` build (Bucket A semantic ไม่รองรับ pre-G4 measurement หลัง BT-001) |
 | **Source** | `trading-baseline.md § Validation Strategy`, ideation-brief D4, **BT-001 (2026-05-12) re-baseline** |
 
@@ -129,10 +129,10 @@
 | **Sources counted in Bucket B** | (1) BI SL fix (FR-3.3); (2) ExtraTakeProfit_J magic fix (FR-3.4) |
 | **Metric (BT-001 redefined)** | Informational delta: `Net Profit (rewrite-G4-ON) − Net Profit (rewrite-G4-OFF)` — sign + magnitude only; **no pass/fail threshold** |
 | **Pass criteria** | **N/A — informational only** (BT-001). PF + Max DD% gating ย้ายไปอยู่ภายใต้ NFR-1.2 + NFR-1.5 บน rewrite-G4-ON build เท่านั้น |
-| **Failure trigger** | **Removed BT-001 2026-05-12** — IMPL-062 Run #2 (2026-05-12) แสดงว่า `DISABLE_G4_FIXES` build ไม่สามารถรัน end-to-end concurrently กับ rewrite's 16-active-slot architecture ได้โดยไม่ trigger CircuitBreaker BR-3.6 → HALTED ก่อน complete window (halt ที่ sim 2021-01-14 / HALTED_STABLE ที่ sim 2021-05-25). Bucket B จึงไม่ลึกพอเพื่อใช้เป็น decision gate ของ "bug fix ตัดได้กำไรหรือไม่". ถ้า G4 fix ทำให้ profile เปลี่ยน → review ผ่าน Bucket A (NFR-1.1) บน rewrite-G4-ON build เท่านั้น |
+| **Failure trigger** | **Removed BT-001 2026-05-12** — pre-BT-002 evidence: IMPL-062 Run #2 (2026-05-12) แสดงว่า `DISABLE_G4_FIXES` build ไม่สามารถรัน end-to-end concurrently กับ rewrite's 16-active-slot architecture ได้โดยไม่ trigger CircuitBreaker BR-3.6 → HALTED ก่อน complete window (halt ที่ sim 2021-01-14 / HALTED_STABLE ที่ sim 2021-05-25). **Post-BT-002 2026-05-17:** CircuitBreaker BR-3.6 detector ถูกลบ legacy-parity → `DISABLE_G4_FIXES` build ตอนนี้ run-to-end-of-window ได้; partial-pre-halt-window concept obsoleted. Bucket B ตอนนี้สามารถ measure full window ของ G4-ON − G4-OFF delta บน rewrite-G4-OFF build (post-BT-002) แต่ classification ยังคง informational (Should) — Bucket A (NFR-1.1) บน rewrite-G4-ON build ยังเป็น sole acceptance gate per BT-001 re-baseline. ถ้า G4 fix ทำให้ profile เปลี่ยน → review ผ่าน Bucket A |
 | **Priority** | **Should** (informational record; downgraded จาก Must per BT-001 2026-05-12) |
 | **Goal trace** | G4 |
-| **Verification** | QA Phase: ถ้า `DISABLE_G4_FIXES` build ยัง compilable + run-able pre-halt → รัน partial window (จนถึง CircuitBreaker trigger) บันทึก delta sign + magnitude บนช่วง pre-halt; ถ้าไม่ → skip + cite BT-001 evidence + Run #2 partial-period delta ใน QA report |
+| **Verification** | QA Phase (post-BT-002 2026-05-17): `DISABLE_G4_FIXES` build runs end-to-end ของ 5-yr window ได้โดยไม่มี CircuitBreaker halt artifact (BR-3.6 detector removed legacy-parity) — measure full-window G4-ON − G4-OFF delta sign + magnitude; informational only (no acceptance gate). Pre-BT-002 era (BT-001 2026-05-12): partial-pre-halt-window concept obsoleted by BT-002 detector removal |
 | **Source** | `trading-baseline.md § Deviation Budget`, ideation-brief OQ-1, **BT-001 (2026-05-12) re-classification** |
 
 ---
@@ -160,6 +160,32 @@
 > - `docs/state/backtrack-log.md § BT-001` (approved by operator Kritsana 2026-05-12)
 > - Commit `e75dc2c` — Bucket A 5-yr Run #2 closure
 > - Q1 paired canary precedent (Phase 1B works on G4-ON build): `docs/state/_session-handoff/IMPL-FIX-003-phase-1B-q1-canary-20260512.{txt,jsonl}` + commit `ad72c11`
+
+> ⚠️ **BT-002 (2026-05-17) — CircuitBreaker BR-3.6 detector REMOVED (Option 1 legacy-parity) — historical footnote on BT-001 narrative above**
+>
+> The BT-001 narrative above describes the empirical observation that `DISABLE_G4_FIXES` build triggered CircuitBreaker BR-3.6 → HALTED at sim 2021-01-14 — **correct at BT-001 time, obsoleted by BT-002**.
+>
+> **BT-002 trajectory:** Engineer attempted to remediate CircuitBreaker false-positive halt via cap-3 iter chain at SD/Impl layer:
+> - **iter-1 (ADR-013, 2026-05-14):** DEAL_REASON_EXPERT filter — closed Jan-14 broker-driven SL same-tick false-positive class; iter-1 Run #3 cleared Jan-14 storm point
+> - **iter-2 (ADR-014, 2026-05-17):** position_id + event_type schema-extending dedup — closed Jan-27 SafePort mass-close same-event_type false-positive class; iter-2 Run #4 cleared Jan-27 storm point
+> - **iter-3 (Run #5 2026-05-17):** ADR-014 falsified by Slot_BI pyramid same-tick close-old + open-new at sim 2021-01-06 02:50:48 (8 sim days EARLIER than iter-1 Jan-14 baseline) — different positions, different event_types, same magic+dir+Δ=0s → fires; rule (c) `pos_i==pos_j → skip` is structural inverse of canonical ping-pong concept; cap-3 budget exhausted → escalation gate fired
+> - **Operator decision (2026-05-17):** Selected Option 1 = remove detector entirely (legacy-parity). `PhoenicisN2.10_stable.mq5` legacy achieves $24.27 M / 5-yr baseline **without any ping-pong detector** — empirical proof safety capability ไม่ load-bearing for EA's known trading pattern set. Three false-positive classes (Jan-14 + Jan-27 + Jan-06) ที่ engineer-side cap-3 ปิดไม่ได้ใน budget = strong signal ว่า detector design over-fits legitimate concurrent trade patterns
+>
+> **Empirical revision of BT-001 narrative:**
+> - "Bucket A Run #2 catastrophic ≈ −99.998% drift" = **observation preserved as historical** (Run #2 ran with CircuitBreaker active; halt at sim 2021-01-14 ทำให้ partial-window measurement only)
+> - "CircuitBreaker BR-3.6 + HALTED state machine = working as designed" = **historically correct, semantically obsolete** (BT-001 era: detector working-as-designed per spec; BT-002 era: detector specification itself falsified, detector removed)
+> - "Combination ของ 16-slot concurrency + DISABLE_G4_FIXES + ... triggers CircuitBreaker" = **historical observation; post-BT-002 the trigger no longer exists** (`DISABLE_G4_FIXES` build runs end-to-end of 5-yr window)
+>
+> **Structural conclusion (BT-002 era):** BT-001 Bucket A re-baseline ("rewrite-G4-ON vs baseline") **invariant remains valid** post-BT-002 — apples-to-oranges architectural argument (16-slot concurrency) ไม่กระทบ from CircuitBreaker removal. The only change: pre-halt-window observation language → full-window-no-halt observation language. NFR-1.1 + NFR-1.8 contracts unchanged at semantic level.
+>
+> **BT-002 evidence sources:**
+> - `docs/state/_session-handoff/IMPL-FIX-012-iter3-run5-20260517.md § 5` (escalation gate; engineer recommends Path B `/backtrack sd`)
+> - `docs/state/_session-handoff/IMPL-FIX-012-iter3-run5-20260517.jsonl` (Run #5 journal; 19 records — halt at sim 2021-01-06 02:50:48 magic=214 dir=0 pos_i=12 pos_j=14)
+> - `docs/state/_session-handoff/IMPL-FIX-012-iter3-run5-20260517-tester-abridged.txt` (Tester log — 8 sim days EARLIER than Jan-14 baseline class)
+> - `docs/adr/013-circuitbreaker-pingpong-deal-reason-filter.md` (Status: Superseded by BT-002 — preserved as iter-1 audit history)
+> - `docs/adr/014-circuitbreaker-pingpong-position-event-dedup.md` (Status: Superseded by BT-002 — preserved as iter-2 audit history + § Falsification triggers fired by iter-3 Run #5)
+> - `docs/state/backtrack-log.md § BT-002` (approved by operator Kritsana 2026-05-17 — Option 1 legacy-parity)
+> - Commits: `aebec01` (BT-002 open), `0be2a51` (SD cascade Option 1 apply), `111f092` (SD rebuttal-round-05 cascade-completion 7 accept), `32c56c0` (SD rebuttal-round-06 Round 08 closure 2 accept), `e385ad0` (SD Round 09 final verify 0 findings — SD-side cascade CLOSED)
 
 ---
 
@@ -324,8 +350,8 @@ G1 ของ project — ทุก target นี้คือ enabler ให้ u
 | **Target** | **0** silent shutdowns — ทุก halt path ต้องเรียก `Alert()` (MT5 native popup + sound) + ใส่ journal entry |
 | **Priority** | Must |
 | **Goal trace** | G2, G4 |
-| **Why** | ปัจจุบัน CircuitBreaker เรียก `ExpertRemove()` เงียบ (CodeWiki §6.2 P2.3) — user ไม่รู้ EA หาย; under MVP signal — ใช้ MT5 native Alert (ไม่มี Telegram). Upgrade Should → Must เพราะ trigger paths (FR-6.6 CircuitBreaker, FR-7.6 indicator handle invalid) priority = Must — notification เป็นส่วนเดียวกันของ G4 safety contract |
-| **Verification** | QA: trigger CircuitBreaker scenario → verify Alert popup + journal entry |
+| **Why** | ปัจจุบัน legacy CircuitBreaker เรียก `ExpertRemove()` เงียบ (CodeWiki §6.2 P2.3) — user ไม่รู้ EA หาย; under MVP signal — ใช้ MT5 native Alert (ไม่มี Telegram). Upgrade Should → Must เพราะ trigger paths priority = Must — notification เป็นส่วนเดียวกันของ G4 safety contract. **Post-BT-002 2026-05-17:** ~~FR-6.6 CircuitBreaker~~ trigger path ถูกลบ legacy-parity (per `backtrack-log.md § BT-002` Option 1); halt-trigger path ตอนนี้ reduces to FR-7.6 indicator-handle-invalid runtime only (Phase 1). Phase 2 trigger candidates per ADR-010 Revisit-when |
+| **Verification** | QA: trigger ~~CircuitBreaker scenario~~ (REMOVED per BT-002 2026-05-17) → indicator-handle-invalid scenario (e.g., release handle mid-tick via test harness) → verify Alert popup + journal entry `event_type=halt` `halt_reason=handle_invalid_runtime` |
 | **Source** | CodeWiki §6.2 P2.3, FR-7.7 |
 
 ### NFR-5.2 — Equity-floor monitor (no enforce in MVP — ✅ OQ-6 resolved)

@@ -2,7 +2,7 @@
 
 > **Phase:** Phase 1A (BA Requirements Discovery) — Doc 1/5
 > **Author:** BA agent (`/ba` workflow, v1.2)
-> **Last updated:** 2026-05-12 (BT-001 cascade — Bucket A/B propagation: glossary `§ 8` + Goal G4 KPI `§ 3` + reference table `§ 9`)
+> **Last updated:** 2026-05-17 (BT-002 BA cascade — Core EA Capabilities § 5.1 cross-slot housekeeping CircuitBreakerOrder strikethrough + Glossary § 8 Bucket B drift prose update (full-window post-BT-002) + Reference Table § 9 legacy components CircuitBreakerOrder strikethrough + BT-002 cascade citation. Prior: 2026-05-12 BT-001 cascade — Bucket A/B propagation: glossary `§ 8` + Goal G4 KPI `§ 3` + reference table `§ 9`)
 > **Audience:** Architect (Phase 1B), Tech Lead (Phase 1D), Sponsor / Trader (sign-off) — ทุกบทบาทในโปรเจคนี้คือ user คนเดียว (solo)
 
 ## TL;DR
@@ -92,7 +92,7 @@ EA ปัจจุบันมีผล backtest ดีมาก (5-yr 2021-2025
 - **21 slots ของ EA ปัจจุบัน** — preserve scaffold 1:1 ตาม CodeWiki §1.5: `C`, `D`, `F`, `J`, `H`, `K`, `G`, `G2`, `GO`, `M`, `L`, `LX`, `Q`, `R`, `I`, `P`, `T`, `S`, `B`, `BR`, `BI` — **Slot `U` ถูกลบทิ้ง** (deleted per OQ-8 user decision 2026-05-01; ของเดิม disabled อยู่แล้ว = ลบไม่กระทบ baseline)
 - **Slot orchestrator** — exit pass ก่อน entry pass ทุก tick (ตาม CodeWiki §2.2)
 - **Cross-slot dependencies** — `G→GO`, `B→BR`, `B→BI`, `J→C/D`, `S→L/K`, `LX→L pyramid` (CodeWiki §3, §7.2) — explicit ใน slot abstraction (FR-2.5; concrete representation = TD decide)
-- **Cross-slot housekeeping** — `OrderGroupStartWorkflow` (Safe port), `OrderGroupStartWorkflow2`, `ForceCutloss`, `COverload`, `EOverload`, `GOverload`, `CircuitBreakerOrder`
+- **Cross-slot housekeeping** — `OrderGroupStartWorkflow` (Safe port), `OrderGroupStartWorkflow2`, `ForceCutloss`, `COverload`, `EOverload`, `GOverload`, ~~`CircuitBreakerOrder`~~ — **REMOVED per BT-002 2026-05-17 (legacy-parity)**; rewrite ไม่ implement ping-pong detector (cap-3 iter chain ADR-013 → ADR-014 falsified 3 false-positive halt classes per `backtrack-log.md § BT-002`)
 
 ### 5.2 Configuration & Tuning
 
@@ -206,7 +206,7 @@ EA ปัจจุบันมีผล backtest ดีมาก (5-yr 2021-2025
 | **Behavioral parity** | Rewrite ต้องเทรดด้วย pattern คล้ายเดิม + Total Net Profit deviation ≤ 25% (ไม่ต้อง tick-by-tick เหมือน) |
 | **Bug-for-bug compatibility** | Preserve bugs ของเดิมไว้ใน rewrite เพื่อไม่ให้ behavioral parity เสียไป — **ตรงข้าม** กับการ fix bugs (decision G4 = FIX, ไม่ preserve) |
 | **Bucket A drift** | Behavioral deviation ของ rewrite default build (G4 fixes ON) เทียบ legacy baseline — ต้อง ≤ 25% Net Profit per NFR-1.1 (regression contract). **Includes** intentional G4 fix contribution (BT-001 re-baseline 2026-05-12 — ดู `03 § NFR-1 Empirical Citation`) |
-| **Bucket B drift** | Informational delta `rewrite-G4-ON − rewrite-G4-OFF` ที่บันทึก sign + magnitude ของ intentional G4 fix contribution — **no acceptance gate** per NFR-1.8 (Should priority, BT-001 re-classification 2026-05-12). `DISABLE_G4_FIXES` build อาจ measurable เฉพาะ partial pre-CircuitBreaker window |
+| **Bucket B drift** | Informational delta `rewrite-G4-ON − rewrite-G4-OFF` ที่บันทึก sign + magnitude ของ intentional G4 fix contribution — **no acceptance gate** per NFR-1.8 (Should priority, BT-001 re-classification 2026-05-12). Post-BT-002 2026-05-17: `DISABLE_G4_FIXES` build runs end-to-end ของ 5-yr window ได้โดยไม่มี CircuitBreaker halt artifact (BR-3.6 detector removed legacy-parity per `backtrack-log.md § BT-002`); pre-BT-002 partial-pre-halt-window concept obsoleted — full-window measurement ตอนนี้ available |
 | **Slot orchestrator** | ตัวเรียก `BusinessLogic_X` + `ExtraTakeProfit_X` ตามลำดับ exit-before-entry ทุก tick (CodeWiki §2.2) |
 | **MarketContext snapshot** | Indicator-value bundle ที่ build ครั้งเดียวต่อ tick + ทุก slot อ่านจาก bundle เดียวกัน (เป้าหมายของ rewrite ตาม CodeWiki §7.2) — concrete struct/class shape ลงรายละเอียดใน TD |
 | **PortfolioState** | Per-slot state lookup (buyCount/sellCount/totalLots/totalProfit/lastOpenDate/pendingState) ที่ slot อ่านได้ผ่าน magic identifier ใน O(1) แทน global variable swarm `BuyOrders__X / SellOrders__X / *Lots / *Profit / *Date` ของ EA เดิม (CodeWiki §7.2) — concrete data structure (associative container, struct array, ฯลฯ) = TD decide |
@@ -261,7 +261,7 @@ EA เดิมใช้ naming convention ของ helper function ที่ F
 | `OpenOrder<X>` | `OpenOrderCD`, `OpenOrderH`, `OpenOrderG` | Helper ที่ apply lot trim + submit order ผ่าน MT5 `CTrade` |
 | `Calculate<X>` | `CalculateLotSize` | Helper ที่คำนวณ base lot ตาม risk% × balance |
 | `<Slot><Action>Date` (state) | `BanCStartDate`, `BanLStartDate`, `KLastOrderDate` | Per-slot ban/cooldown state — ดู BR-3.4 |
-| Cross-slot helpers | `OrderGroupStartWorkflow`, `OrderGroupStartWorkflow2`, `ForceCutloss`, `EOverload`, `COverload`, `GOverload`, `CircuitBreakerOrder`, `WatchProfits`, `ReadTradeData`, `LoadGlobal`, `SaveFileDatabase`, `RegisterB`, `LotInitial2`, `FindCP`, `TickLoadBuffer`, `RunCheckWPRWaveWithIchimoku2`, `CheckADXWithForcePeakValid2`, `ExtraCheckFunction2` | ดู FR-7.x + BR-8.x + flow F1/F6 — แต่ละตัว preserve 1:1 trigger + action ตาม CodeWiki §5.5 / §2.2 |
+| Cross-slot helpers | `OrderGroupStartWorkflow`, `OrderGroupStartWorkflow2`, `ForceCutloss`, `EOverload`, `COverload`, `GOverload`, ~~`CircuitBreakerOrder`~~ (REMOVED in rewrite per BT-002 2026-05-17 legacy-parity — legacy MQ5 ยังมี function นี้, rewrite ไม่ port), `WatchProfits`, `ReadTradeData`, `LoadGlobal`, `SaveFileDatabase`, `RegisterB`, `LotInitial2`, `FindCP`, `TickLoadBuffer`, `RunCheckWPRWaveWithIchimoku2`, `CheckADXWithForcePeakValid2`, `ExtraCheckFunction2` | ดู FR-7.x + BR-8.x + flow F1/F6 — แต่ละตัว preserve 1:1 trigger + action ตาม CodeWiki §5.5 / §2.2; ยกเว้น CircuitBreakerOrder ที่ BT-002 ลบทิ้ง (per `backtrack-log.md § BT-002`) |
 
 > **Why these matter:** Trade journal `triggering_function` field (FR-4.1, F7.5 schema) เก็บชื่อ function ที่เปิด/ปิด order — ใช้ตอน retrospective ว่า trade ถูก fire จาก path ไหน. CodeWiki section ที่ relevant = §3 (per-slot logic), §4 (lot/SL/TP), §5 (cross-slot helpers), §2 (orchestration). TD จะ refactor pair `BusinessLogic_<X>` + `ExtraTakeProfit_<X>` ให้อยู่ใน slot abstraction (FR-2.5) — naming อาจเปลี่ยนหลัง refactor
 

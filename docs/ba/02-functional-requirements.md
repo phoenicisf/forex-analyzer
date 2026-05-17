@@ -2,7 +2,7 @@
 
 > **Phase:** Phase 1A (BA Requirements Discovery) — Doc 2/5
 > **Author:** BA agent (`/ba` workflow, v1.2)
-> **Last updated:** 2026-05-12 (BT-001 cascade — Bucket A/B propagation: FR-3.3 Why + AC-3.3.3 + AC-3.4.3 re-framed to NFR-1.1/1.6/1.8)
+> **Last updated:** 2026-05-17 (BT-002 BA cascade — FR-6.6 CircuitBreakerOrder ping-pong protection DEMOTED Must → Won't legacy-parity per operator Option 1 + AC-6.6.1 superseded + FR-7.7 amend (handle-invalid runtime trigger only) + AC-3.3.3 update + Traceability table FR-6.6/FR-7.7 rows + MoSCoW counts 37→36 Must + 0→1 Won't + G4 Safety remediation list strikethrough. Prior: 2026-05-12 BT-001 cascade — Bucket A/B propagation: FR-3.3 Why + AC-3.3.3 + AC-3.4.3 re-framed to NFR-1.1/1.6/1.8)
 > **Reads:** `01-project-brief.md` (goals, scope, glossary)
 > **Audience:** Architect (Phase 1B) — แปลง requirements เหล่านี้เป็น component design
 
@@ -297,7 +297,7 @@ EA เดิมมี risk module ที่ smeared across ~20 helper + 18 globa
     Then ค่า > 0 และอ้างถึง B parent's SL reference (record parent ticket ID ใน journal)
   - **AC-3.3.3:** Given QA regression run บน rewrite default build (G4 fixes ON)
     When เปรียบเทียบ Net Profit + PF + DD กับ baseline
-    Then NFR-1.1 Bucket A gate ใช้ได้ (|ΔNet Profit| ≤ 25% บน rewrite-G4-ON build, G4 fix contribution included); NFR-1.2 PF ลดลง ≤ 0.2 จุด; NFR-1.5 Max Equity DD% ไม่เพิ่ม > +10pp; NFR-1.8 informational delta (G4-ON − G4-OFF) บันทึก sign + magnitude ถ้า partial G4-OFF window measurable ก่อน CircuitBreaker BR-3.6 trigger (BT-001 2026-05-12 — ดู `03 § NFR-1 Empirical Citation`)
+    Then NFR-1.1 Bucket A gate ใช้ได้ (|ΔNet Profit| ≤ 25% บน rewrite-G4-ON build, G4 fix contribution included); NFR-1.2 PF ลดลง ≤ 0.2 จุด; NFR-1.5 Max Equity DD% ไม่เพิ่ม > +10pp; NFR-1.8 informational delta (G4-ON − G4-OFF) บันทึก sign + magnitude บน full-window `DISABLE_G4_FIXES` build measurement (post-BT-002 2026-05-17 — CircuitBreaker BR-3.6 detector removed legacy-parity; ไม่มี early-halt artifact constrain delta sample. BT-001 2026-05-12 ระบุ partial-window concept ที่ obsoleted by BT-002 — ดู `03 § NFR-1 Empirical Citation` BT-002 footnote)
 
 > ✅ **OQ-3.3 resolved 2026-05-01 (rule domain — locked ใน `04 § BR-7.1`):** BI inheritance semantic = **(a) same SL distance** — BI ใช้ pip distance เดียวกับ B parent's SL วัดจาก BI entry price (symmetric per-position risk)
 
@@ -576,18 +576,21 @@ EA เดิมมี time-based filter หลายตัวที่ต้อ�
     When QA filter `timestamp` field รอบ wallclock-DST-shift moment
     Then ทุก entry มี `timestamp` (broker server time) ที่สะท้อน DST shift ถูกต้อง — เช่น Sunday Mar 26 2023 04:00 server-time = wallclock 03:00 Europe/Athens (post-shift); ห้าม timestamp มี gap ที่บ่งชี้ EA misread server time
 
-### FR-6.6 — CircuitBreakerOrder ping-pong protection
+### ~~FR-6.6~~ — ~~CircuitBreakerOrder ping-pong protection~~ — **DEMOTED per BT-002 2026-05-17 (Won't, legacy-parity)**
 
-**As a** Trader, **I want** EA detect ping-pong (same position re-opens within 3000ms) + halt EA, **so that** ไม่เจอ infinite loop ที่กิน balance ตอน live
+> ⚠️ **BT-002 2026-05-17 — DEMOTED Must → Won't (legacy-parity, preserved as audit history):** CircuitBreaker BR-3.6 ping-pong detector ถูกลบทั้งหมดจาก rewrite ตาม Option 1 operator authorization (`backtrack-log.md § BT-002`). Empirical proof ของ 3 false-positive halt classes (Jan-14 broker-driven SL same-tick + Jan-27 SafePort mass-close same-event_type + Jan-06 Slot_BI pyramid same-tick close+open) ผ่าน cap-3 iter chain ADR-013 → ADR-014 → BT-002 escalation; `PhoenicisN2.10_stable.mq5` legacy achieves $24.27 M / 5-yr baseline (NFR-1.1 reference) **without any ping-pong detector** = empirical proof safety capability ไม่ load-bearing for EA's known trading pattern set. Halt-trigger path ตอนนี้ reduces to FR-7.6 indicator-handle-invalid runtime only (per FR-7.7 amendment); Phase 2 trigger candidates per ADR-010 Revisit-when (equity-floor enforcement OQ-6 promotion / journal-sustained-failure escalation). **Audit history preserved below.**
 
-- **Priority:** Must
-- **Why:** CodeWiki §5.5 CircuitBreakerOrder — preserve safety mechanism
-- **Source:** CodeWiki §5.5 `:15796`
-- **Goal trace:** G4
-- **Acceptance Criteria:**
-  - **AC-6.6.1:** Given EA detect 2 trades ของ slot เดียวกัน + opposite direction + Δt < 3000ms
-    When CircuitBreaker check ทำงาน
-    Then EA halt + log + alert (FR-7.7)
+~~**As a** Trader, **I want** EA detect ping-pong (same position re-opens within 3000ms) + halt EA, **so that** ไม่เจอ infinite loop ที่กิน balance ตอน live~~
+
+- ~~**Priority:** Must~~ → **Priority:** Won't (BT-002 2026-05-17)
+- ~~**Why:** CodeWiki §5.5 CircuitBreakerOrder — preserve safety mechanism~~ → **Why (post-BT-002):** Pattern-set empirical evidence (Run #2 + Run #3 + Run #4 + Run #5) falsified the load-bearing assumption — 3 false-positive classes occur on legitimate concurrent trade patterns; legacy baseline runs end-to-end without detector; accepted residual risk per operator authorization
+- **Source:** ~~CodeWiki §5.5 `:15796`~~ + `backtrack-log.md § BT-002 Proposed change § Option 1` + `docs/state/_session-handoff/IMPL-FIX-012-iter3-run5-20260517.md`
+- **Goal trace:** ~~G4~~ → G4 partial (handle-invalid runtime trigger via FR-7.7 + FR-7.6 retained for naked-exposure prevention; ping-pong loop = accepted residual risk Phase 1)
+- ~~**Acceptance Criteria:**~~
+  - ~~**AC-6.6.1:** Given EA detect 2 trades ของ slot เดียวกัน + opposite direction + Δt < 3000ms~~
+    ~~When CircuitBreaker check ทำงาน~~
+    ~~Then EA halt + log + alert (FR-7.7)~~
+  - **AC-6.6.1 superseded by BT-002:** No CircuitBreaker check ใน rewrite Phase 1. Accepted residual risk per `05-security.md § 2.5 DoS row "Infinite re-entry loop"` + `§ 9 Red Team Hand-off cap-3 iter audit row` (SD layer)
 
 ### FR-6.7 — Force-pending 9-bar timeout
 
@@ -687,18 +690,18 @@ EA เดิมมี time-based filter หลายตัวที่ต้อ�
     When EA log
     Then "Indicator handles: 30/30 valid" + EA เริ่ม OnTick
 
-### FR-7.7 — CircuitBreaker controlled halt + alert
+### FR-7.7 — Controlled halt + alert (handle-invalid runtime trigger; CB ping-pong removed per BT-002)
 
-**As a** Trader, **I want** ถ้า CircuitBreaker (FR-6.6) หรือ indicator-handle failure (FR-7.6) trigger → EA เข้า halted state แบบ controlled (manage exits ต่อ, ไม่เปิด entry) + แสดง alert ผ่าน MT5 native `Alert()` (ไม่ใช่ silent ExpertRemove), **so that** open positions ไม่กลายเป็น orphan + ผมรู้ทันทีว่าเกิดอะไรตอน live
+**As a** Trader, **I want** ถ้า indicator-handle failure (FR-7.6) trigger → EA เข้า halted state แบบ controlled (manage exits ต่อ, ไม่เปิด entry) + แสดง alert ผ่าน MT5 native `Alert()` (ไม่ใช่ silent ExpertRemove), **so that** open positions ไม่กลายเป็น orphan + ผมรู้ทันทีว่าเกิดอะไรตอน live
 
 - **Priority:** Must
-- **Why:** ปัจจุบัน CircuitBreaker เรียก `ExpertRemove()` เงียบ → user ไม่รู้ว่า EA หาย (CodeWiki §6.2 P2.3); upgrade Should → Must เพราะ trigger sources (FR-6.6, FR-7.6) priority = Must — notification เป็นส่วนเดียวกันของ safety contract; under MVP signal — ใช้ MT5 native Alert (popup + sound) แทน Telegram. Halted-state semantic ต้องชัดว่า exit pass ทำงานต่อ ไม่งั้น open positions กลายเป็น naked exposure (G4 violation)
-- **Source:** CodeWiki §6.2 P2.3; improvement-targets P2.3; MVP signal
+- **Why:** ปัจจุบัน CircuitBreaker เรียก `ExpertRemove()` เงียบ (CodeWiki §6.2 P2.3) — user ไม่รู้ EA หาย; post-BT-002 2026-05-17 CircuitBreaker BR-3.6 ถูกลบ legacy-parity (`backtrack-log.md § BT-002` Option 1) → halt-trigger path ลดเหลือ FR-7.6 indicator-handle-invalid runtime check เพียงตัวเดียว Phase 1. upgrade Should → Must เพราะ trigger source FR-7.6 priority = Must — notification เป็นส่วนเดียวกันของ safety contract; under MVP signal — ใช้ MT5 native Alert (popup + sound) แทน Telegram. Halted-state semantic ต้องชัดว่า exit pass ทำงานต่อ ไม่งั้น open positions กลายเป็น naked exposure (G4 violation). Phase 2 trigger candidates per ADR-010 Revisit-when (equity-floor enforcement OQ-6 promotion / journal-sustained-failure escalation)
+- **Source:** CodeWiki §6.2 P2.3; improvement-targets P2.3; MVP signal; **BT-002 2026-05-17** (CircuitBreaker trigger source removed)
 - **Goal trace:** G2 (observability), G4
 - **Acceptance Criteria:**
-  - **AC-7.7.1:** Given CircuitBreaker trigger
+  - **AC-7.7.1:** Given indicator-handle-invalid trigger (FR-7.6 runtime detection via `IndicatorService::AnyHandleInvalid()`) — **note BT-002 2026-05-17:** ~~CircuitBreaker trigger~~ removed; only handle-invalid path active Phase 1
     When EA halt logic ทำงาน
-    Then EA stop เปิด new orders + log full reason + เรียก `Alert("PhoenicisNex CircuitBreaker triggered: <reason>")` ใน MT5 platform
+    Then EA stop เปิด new orders + log full reason + เรียก `Alert("PhoenicisNex halted: <reason>")` ใน MT5 platform
   - **AC-7.7.2:** Given EA in halted state
     When user inspect
     Then EA ยัง attached กับ chart (ไม่ ExpertRemove) + ไม่ trade ต่อ (ดู AC-7.7.3) + journal entry "halted" written
@@ -793,7 +796,7 @@ EA เดิมมี time-based filter หลายตัวที่ต้อ�
 | FR-6.3 | New Year holiday block | Must | G3 | §4.3 |
 | FR-6.4 | Per-slot ban dates | Must | G3 | §4.3 |
 | FR-6.5 | DST handling EET | Must | G3, G4 | C-10 |
-| FR-6.6 | CircuitBreaker ping-pong | Must | G4 | §5.5 |
+| ~~FR-6.6~~ | ~~CircuitBreaker ping-pong~~ — **DEMOTED Must → Won't per BT-002 2026-05-17** (legacy-parity; preserved as audit history) | Won't | ~~G4~~ partial | ~~§5.5~~ + `backtrack-log.md § BT-002` |
 | FR-6.7 | Force-pending 9-bar timeout | Must | G3 | §2.5 |
 | FR-7.1 | Safe port (OrderGroup#1) | Must | G3 | §5.5 |
 | FR-7.2 | Ichimoku bounce (OrderGroup#2) | Must | G3 | §5.5 |
@@ -801,12 +804,12 @@ EA เดิมมี time-based filter หลายตัวที่ต้อ�
 | FR-7.4 | ExtraCheckFunction2 | Must | G3 | §2.2 |
 | FR-7.5 | EOverload/COverload/GOverload | Must | G3 | §5.5 |
 | FR-7.6 | Indicator handle validation | Must | G4 | P1.8 |
-| FR-7.7 | CircuitBreaker controlled halt | Must | G2, G4 | P2.3 |
+| FR-7.7 | Controlled halt + alert (handle-invalid runtime; CB ping-pong removed per BT-002 2026-05-17) | Must | G2, G4 | P2.3 + `backtrack-log.md § BT-002` |
 | FR-8.1 | 300-bar scan cache | Should | G1, G3 | P2.1 |
 | FR-8.2 | DD loop optimization | Could | G1 | P2.8 |
 | FR-8.3 | Safe-port opt-out flag | Could | G1 | P2.6 (MVP demote) |
 
-**Counts:** Must **37** / Should **2** / Could **2** / Won't **0** (Won't อยู่ใน `01 § 6`)
+**Counts:** Must **36** / Should **2** / Could **2** / Won't **1** (post-BT-002 2026-05-17 — was Must 37 / Won't 0; FR-6.6 CircuitBreaker ping-pong demoted Must → Won't legacy-parity per `backtrack-log.md § BT-002`; additional Won't items อยู่ใน `01 § 6`)
 
 ---
 
@@ -817,7 +820,7 @@ EA เดิมมี time-based filter หลายตัวที่ต้อ�
 | **G1 Maintainability** | FR-1.1, FR-1.3, FR-1.4, FR-2.4, FR-2.5, FR-2.6, FR-2.7, FR-8.1, FR-8.2, FR-8.3 |
 | **G2 Observability** | FR-4.1, FR-4.2, FR-4.3, FR-4.4, FR-7.7 |
 | **G3 Behavioral preservation** | FR-2.1, FR-2.2, FR-2.3, FR-2.4, FR-2.6, FR-2.7, FR-3.1, FR-3.2, FR-3.5, FR-3.6, FR-4.4, FR-5.1, FR-5.3, FR-6.1, FR-6.2, FR-6.3, FR-6.4, FR-6.5, FR-6.7, FR-7.1, FR-7.2, FR-7.3, FR-7.4, FR-7.5, FR-8.1 |
-| **G4 Safety remediation** | FR-1.2, FR-1.4, FR-3.3, FR-3.4, FR-3.6, FR-5.2, FR-6.2, FR-6.5, FR-6.6, FR-7.6, FR-7.7 |
+| **G4 Safety remediation** | FR-1.2, FR-1.4, FR-3.3, FR-3.4, FR-3.6, FR-5.2, FR-6.2, FR-6.5, ~~FR-6.6~~ (DEMOTED Won't per BT-002 2026-05-17 — legacy-parity), FR-7.6, FR-7.7 (handle-invalid runtime trigger only post-BT-002) |
 
 ---
 

@@ -2,13 +2,13 @@
 
 > **Phase:** Phase 1A (BA Requirements Discovery) — Doc 5/5
 > **Author:** BA agent (`/ba` workflow, v1.2)
-> **Last updated:** 2026-05-01
+> **Last updated:** 2026-05-17 (BT-002 BA cascade — TL;DR F6 description update (CircuitBreaker removed legacy-parity); F1 mermaid CircuitBreakerOrder node + ping-pong alt branch replaced with AnyHandleInvalid runtime check (sole halt trigger Phase 1) + F1.4 narrative update + F1.6 error path table CircuitBreaker row strikethrough + handle-invalid runtime row added + F1.7 FR/BR trace updates; F6 § heading rename + F6.1 trigger BR-3.6 strikethrough + F6.3 mermaid CB check decision + HALT outcome + JNL1 + WAIT nodes removed + post-BT-002 footnote + dangling HALT style cleanup + F6.6 error row CircuitBreaker false-positive strikethrough + F6.7 FR/BR/NFR traces updates. Initial publish: 2026-05-01)
 > **Reads:** `01-project-brief.md` (actors), `02-functional-requirements.md` (FR-X.Y), `04-business-rules.md` (BR-X.Y)
 > **Audience:** Architect (Phase 1B), Tech Lead (Phase 1D), QA (Phase 3T)
 
 ## TL;DR
 
-เอกสารนี้แสดง **end-to-end journey** ของ EA ผ่าน **7 flows หลัก**: (F1) OnTick pipeline ต่อ tick, (F2) Slot entry lifecycle, (F3) Slot exit lifecycle, (F4) Pending state machine, (F5) Boot/OnInit, (F6) Cross-slot safety + CircuitBreaker, (F7) Trade journal write-on-event. แต่ละ flow มี **happy path + alternative + error** + Mermaid diagram + Thai narrative ที่ trace กลับไป FR/BR. Architect ใช้ flow เหล่านี้ตัดสินใจ component boundaries; QA ใช้ตรวจ trade journal pattern หลัง regression run. **All BA-domain open questions ✅ resolved 2026-05-01** — flow ทั้ง 7 lock พร้อมเข้า Phase 1B SD.
+เอกสารนี้แสดง **end-to-end journey** ของ EA ผ่าน **7 flows หลัก**: (F1) OnTick pipeline ต่อ tick, (F2) Slot entry lifecycle, (F3) Slot exit lifecycle, (F4) Pending state machine, (F5) Boot/OnInit, (F6) Cross-slot safety (~~+ CircuitBreaker~~ — **CircuitBreaker BR-3.6 detector REMOVED per BT-002 2026-05-17 legacy-parity** — F6 retains BR-8.x cross-slot helpers only), (F7) Trade journal write-on-event. แต่ละ flow มี **happy path + alternative + error** + Mermaid diagram + Thai narrative ที่ trace กลับไป FR/BR. Architect ใช้ flow เหล่านี้ตัดสินใจ component boundaries; QA ใช้ตรวจ trade journal pattern หลัง regression run. **All BA-domain open questions ✅ resolved 2026-05-01** — flow ทั้ง 7 lock พร้อมเข้า Phase 1B SD.
 
 ---
 
@@ -49,9 +49,9 @@ Trader (passive — ไม่ trigger ตอน live), MT5 Platform (event sourc
 flowchart TD
     A[OnTick event from MT5] --> B[TickLoadBuffer<br/>refresh ~30 indicator buffers]
     B --> C[Build MarketContext snapshot<br/>FR-2.6]
-    C --> D[CircuitBreakerOrder check<br/>BR-3.6]
-    D -->|ping-pong detected| HALT[EA halt + Alert<br/>FR-7.7]
-    D -->|ok| E[Per-bar block<br/>SubDem zones + DrawProfitTags<br/>visual only]
+    C --> CHK[AnyHandleInvalid runtime check<br/>FR-7.6 — handle-invalid halt trigger<br/>post-BT-002: sole halt trigger Phase 1]
+    CHK -->|handle invalid runtime| HALT[EA halt + Alert<br/>FR-7.7]
+    CHK -->|ok| E[Per-bar block<br/>SubDem zones + DrawProfitTags<br/>visual only]
     E --> F[Force-pending timeout check<br/>9 H4 bars / BR-3.5]
     F --> G{Spread guard<br/>BR-3.7}
     G -->|spread > 10pip + Monday morning| RET1[return early — exit pass only]
@@ -88,7 +88,7 @@ flowchart TD
 
 ### F1.4 — Happy path
 
-ทุก tick เริ่มที่ MT5 ส่ง event → EA refresh indicator buffers + build `MarketContext` → ตรวจ CircuitBreaker (ถ้า ping-pong = halt) → spread guard + IsMorningWakeup time gate → `ReadTradeData` refresh `PortfolioState` → **exit pass** (manageExits ของทุก slot ตามลำดับ) → cross-slot cleanup (`ForceCutloss`, `OrderGroupStartWorkflow*`) → IsNewYearSeason2 gate → **entry pass** (evaluate ของทุก slot ตามลำดับ BR-2.2) → housekeeping (`WatchProfits`, `SaveFileDatabase`) → return.
+ทุก tick เริ่มที่ MT5 ส่ง event → EA refresh indicator buffers + build `MarketContext` → ตรวจ `AnyHandleInvalid()` runtime (post-BT-002 2026-05-17: sole halt trigger Phase 1; ถ้า invalid = halt; CircuitBreaker BR-3.6 ping-pong check ถูกลบ legacy-parity) → spread guard + IsMorningWakeup time gate → `ReadTradeData` refresh `PortfolioState` → **exit pass** (manageExits ของทุก slot ตามลำดับ) → cross-slot cleanup (`ForceCutloss`, `OrderGroupStartWorkflow*`) → IsNewYearSeason2 gate → **entry pass** (evaluate ของทุก slot ตามลำดับ BR-2.2) → housekeeping (`WatchProfits`, `SaveFileDatabase`) → return.
 
 **Critical invariant:** exit pass ก่อน entry pass เสมอ (FR-2.3, BR-2.2).
 
@@ -104,14 +104,14 @@ flowchart TD
 
 | Error | Detection | Handling |
 |-------|-----------|----------|
-| CircuitBreaker ping-pong | Same position re-opens within 3000ms | EA halt + Alert (FR-7.7); journal entry "halted" |
-| Indicator buffer fail | `CopyBuffer` returns 0 entries (handle invalid) | OnTick log error; **fail-fast ใน OnInit (FR-7.6)** ทำให้ flow ไม่ควรเข้ามาถึง state นี้ |
+| ~~CircuitBreaker ping-pong~~ | ~~Same position re-opens within 3000ms~~ → **REMOVED per BT-002 2026-05-17 legacy-parity** (per `backtrack-log.md § BT-002`; cap-3 iter chain ADR-013 → ADR-014 falsified 3 false-positive classes) | ~~EA halt + Alert~~ → **N/A** — accepted residual risk per `docs/design-docs/05-security.md § 2.5 DoS row` + § 9 Red Team Hand-off audit row |
+| Indicator handle invalid (runtime) | `AnyHandleInvalid()` returns true during OnTick (FR-7.6 runtime guard) | EA halt + Alert (FR-7.7); journal entry `event_type=halt halt_reason=handle_invalid_runtime`. Note: OnInit fail-fast (FR-7.6) catches startup case; runtime path handles mid-session indicator drop. Post-BT-002 2026-05-17: sole halt trigger Phase 1 |
 | State write fail | `SaveFileDatabase` cannot write (disk full / permission) | Log error; tagged warning ผ่าน FR-4.2; ยัง continue ใน RAM |
 
 ### F1.7 — FR/BR trace
 
-- **FRs:** FR-2.3 (exit-before-entry), FR-2.6 (MarketContext), FR-2.7 (PortfolioState), FR-4.4 (WatchProfits), FR-5.2 (atomic write), FR-6.1 (IsMorningWakeup), FR-6.2 (Monday spread), FR-6.3 (holiday), FR-6.6 (CircuitBreaker), FR-6.7 (Force-pending timeout), FR-7.1 (Safe port), FR-7.2 (OrderGroup#2), FR-7.3 (ForceCutloss), FR-7.4 (ExtraCheckFunction2), FR-7.5 (Overload helpers), FR-7.7 (Halt + Alert)
-- **BRs:** BR-2.2 (slot order invariant), BR-3.1/2/3/5/6/7 (time/spread gates), BR-8.1/2/3/4/5 (cross-slot)
+- **FRs:** FR-2.3 (exit-before-entry), FR-2.6 (MarketContext), FR-2.7 (PortfolioState), FR-4.4 (WatchProfits), FR-5.2 (atomic write), FR-6.1 (IsMorningWakeup), FR-6.2 (Monday spread), FR-6.3 (holiday), ~~FR-6.6 (CircuitBreaker)~~ — DEMOTED Won't per BT-002 2026-05-17, FR-6.7 (Force-pending timeout), FR-7.1 (Safe port), FR-7.2 (OrderGroup#2), FR-7.3 (ForceCutloss), FR-7.4 (ExtraCheckFunction2), FR-7.5 (Overload helpers), FR-7.6 (handle-invalid runtime — post-BT-002 sole halt trigger Phase 1), FR-7.7 (Halt + Alert — handle-invalid trigger only post-BT-002)
+- **BRs:** BR-2.2 (slot order invariant), BR-3.1/2/3/5/~~6~~/7 (time/spread gates; ~~BR-3.6~~ REMOVED per BT-002 2026-05-17), BR-8.1/2/3/4/5 (cross-slot)
 
 ---
 
@@ -418,12 +418,12 @@ Trader attach EA → MT5 fire OnInit → EA validate inputs (FR-1.4) → EA veri
 
 ---
 
-## 7. F6 — Cross-slot Safety + CircuitBreaker
+## 7. F6 — Cross-slot Safety (post-BT-002 2026-05-17: CircuitBreaker removed)
 
-Flow นี้รวบ safety mechanisms ที่ run ขนานกับ slot logic — ทำงานใน F1 pipeline แต่มี side effect ที่อาจ override slot decisions.
+Flow นี้รวบ safety mechanisms ที่ run ขนานกับ slot logic — ทำงานใน F1 pipeline แต่มี side effect ที่อาจ override slot decisions. **Post-BT-002 2026-05-17:** CircuitBreaker BR-3.6 ping-pong detector ถูกลบ legacy-parity — F6 retains BR-8.x cross-slot helpers (SafePort / OrderGroup#2 / ForceCutloss / Overload helpers / ExtraCheckFunction2) เท่านั้น.
 
 ### F6.1 — Trigger
-ไม่มี trigger เดียว — ทุก rule ใน BR-3.6, BR-8.x ตรวจทุก tick ใน F1
+ไม่มี trigger เดียว — ทุก rule ใน ~~BR-3.6~~ (REMOVED per BT-002 2026-05-17), BR-8.x ตรวจทุก tick ใน F1
 
 ### F6.2 — Actors
 EA system, Slot orchestrator, 21 active slots (Slot U deleted per OQ-8), MT5 CTrade, TradeJournal, MT5 Alert (popup + sound)
@@ -432,11 +432,7 @@ EA system, Slot orchestrator, 21 active slots (Slot U deleted per OQ-8), MT5 CTr
 
 ```mermaid
 flowchart TD
-    START[OnTick start] --> CB{CircuitBreaker check<br/>BR-3.6 / FR-6.6}
-    CB -->|same position re-open<br/>within 3000ms| HALT[EA halt + Alert<br/>FR-7.7 / NFR-5.1]
-    CB -->|ok| CONT[continue F1 pipeline]
-    HALT --> JNL1[journal: 'halted' + reason]
-    JNL1 --> WAIT[EA stops trading<br/>still attached to chart]
+    START[OnTick start] --> CONT[continue F1 pipeline<br/>BR-3.6 CircuitBreaker REMOVED per BT-002 2026-05-17<br/>halt trigger ตอนนี้ลดเหลือ FR-7.6 handle-invalid runtime check<br/>see F1 diagram CHK node]
 
     CONT --> SAFE{Safe port conditions<br/>BR-8.1}
     SAFE -->|weakOrderCount>1<br/>+ avg badPIP>55<br/>+ currentProfit>0| BULK[Bulk close 10 slots<br/>CD/J/H/K/L/M/Q/GO/T/S]
@@ -462,11 +458,12 @@ flowchart TD
     JNL2 --> END
     JNL3 --> END
 
-    style HALT fill:#ffe6e6
     style BULK fill:#fff4e6
     style BULK2 fill:#fff4e6
     style FCLOSE fill:#fff4e6
 ```
+
+> **Note (post-BT-002 2026-05-17):** Former `CircuitBreaker check (BR-3.6 / FR-6.6)` decision node + `HALT` outcome + `journal halted` + `WAIT` post-halt nodes ถูกลบจาก F6 diagram per BT-002 Option 1 (legacy-parity). Halt-trigger flow ตอนนี้แยกไป F1 (handle-invalid runtime check at `MarketContext build` boundary — ดู F1 § F1.3 CHK node). ดู `backtrack-log.md § BT-002` + `03 § NFR-1 Empirical Citation BT-002 footnote` สำหรับ cap-3 iter chain audit trail.
 
 ### F6.4 — Happy path (ทั้งหมด rule = ไม่ trigger)
 
@@ -488,13 +485,13 @@ flowchart TD
 
 | Error | Detection | Handling |
 |-------|-----------|----------|
-| CircuitBreaker false-positive | Two trades same direction within 3000ms but legitimate (rare) | EA halt — operator (Trader) ต้อง investigate + manual restart EA |
+| ~~CircuitBreaker false-positive~~ | ~~Two trades same direction within 3000ms but legitimate (rare)~~ → **REMOVED per BT-002 2026-05-17** — cap-3 iter chain ADR-013 → ADR-014 falsified 3 false-positive halt classes (Jan-14 broker-driven SL + Jan-27 SafePort mass-close + Jan-06 Slot_BI pyramid); operator selected Option 1 legacy-parity (`backtrack-log.md § BT-002`) | ~~EA halt — operator (Trader) ต้อง investigate + manual restart EA~~ → **N/A** — accepted residual risk per `docs/design-docs/05-security.md § 2.5 DoS row` + § 9 Red Team Hand-off audit row |
 | Bulk close partial fail | Some positions ปิดสำเร็จ + บางตัว reject | Log + journal each result; continue (PortfolioState refresh next tick) |
 
 ### F6.7 — FR/BR trace
-- **FRs:** FR-6.6, FR-7.1, FR-7.2, FR-7.3, FR-7.4, FR-7.5, FR-7.7
-- **BRs:** BR-3.6 (CircuitBreaker), BR-8.1, BR-8.2, BR-8.3, BR-8.4, BR-8.5
-- **NFRs:** NFR-5.1 (EA halt with notification)
+- **FRs:** ~~FR-6.6~~ (DEMOTED Won't per BT-002 2026-05-17), FR-7.1, FR-7.2, FR-7.3, FR-7.4, FR-7.5, FR-7.6 (handle-invalid runtime — post-BT-002 sole halt trigger Phase 1), FR-7.7 (handle-invalid trigger only post-BT-002)
+- **BRs:** ~~BR-3.6 (CircuitBreaker)~~ — **REMOVED per BT-002 2026-05-17 legacy-parity**, BR-8.1, BR-8.2, BR-8.3, BR-8.4, BR-8.5
+- **NFRs:** NFR-5.1 (EA halt with notification — handle-invalid trigger only post-BT-002)
 
 ---
 
