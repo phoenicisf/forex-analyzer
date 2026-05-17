@@ -66,8 +66,8 @@
   - **Code Review** — 51 `docs/code-review/*.md` files are historical audit artifacts (no rewrite); next review round (Round 27) will validate the BT-002 cleanup
   - **Red Team** — n/a (not started)
   - **UX** — n/a (skipped)
-- **Status:** 🔄 Open
+- **Status:** ✅ Closed (2026-05-18)
 - **Approved by:** Operator (Kritsana) 2026-05-17 (selected Option 1 — remove detector, legacy-parity)
-- **Resolution:** _(pending — see `current_handoff.md § BT-002 cascade chain status` once cascade chain populated)_
+- **Resolution:** SD-side cascade CLOSED 2026-05-17 via 3-round chain — Round 07 (7 findings) → rebuttal-round-05 (7 accept commit `111f092`) → Round 08 (2 findings) → rebuttal-round-06 (2 accept commit `32c56c0`) → Round 09 final verify-only **0 findings** ✅ (commit `e385ad0`); SD package = 18 BT-002 propagation surfaces + 9 cascade-completion surfaces single-voice across 6 SD docs + 4 ADRs + 1 API spec. BA-side cascade CLOSED 2026-05-18 via 1-cycle chain — BA cascade applied (commit `863493e`) consuming concrete SD proposal → Round 06 BA review (1 LOW cosmetic cite-annotation gap) → rebuttal-round-05 (1 accept) → ready-for-handoff. BA package = 18 BT-002 propagation surfaces + Anti-Duplication clean vs prior Round 04/05. Pending downstream cascade: TD review (`02-backend-design.md § 5.8` CCircuitBreaker skeleton DELETE + 10 cross-refs per Impacted phases TD) — out of BT-002 BA-closure scope; tracked separately. Impl-plan IMPL-051 closure + IMPL-FIX-012 task closure pivot — out of BT-002 BA-closure scope; tracked via `/impl-plan-review` next cycle. Commit chain: `aebec01` (BT-002 open) → `0be2a51` (SD apply) → `111f092` (SD rebuttal-05) → `32c56c0` (SD rebuttal-06) → `e385ad0` (SD Round 09 final verify) → `863493e` (BA apply) → BA rebuttal-round-05 + BT-002 closure commit (this commit).
 
 ---

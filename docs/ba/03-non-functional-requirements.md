@@ -2,7 +2,7 @@
 
 > **Phase:** Phase 1A (BA Requirements Discovery) — Doc 3/5
 > **Author:** BA agent (`/ba` workflow, v1.2)
-> **Last updated:** 2026-05-17 (BT-002 BA cascade — NFR-1.1 Why post-BT-002 update + NFR-1.8 Failure trigger + Verification post-BT-002 full-window measurement + NFR-1 Empirical Citation BT-002 footnote (cap-3 iter chain ADR-013 → ADR-014 → BT-002 escalation + structural conclusion preservation) + NFR-5.1 Why + Verification update (CircuitBreaker trigger removed; FR-7.6 handle-invalid only). Prior: 2026-05-12 BT-001 — NFR-1.1 + NFR-1.8 Bucket A/B re-baseline)
+> **Last updated:** 2026-05-18 (BT-002 BA cascade + Round 06 cite-annotation fix — Reader note prepended to BT-001 narrative block at L142 per Round 06 Claim 06.1 LOW (partial-quote miscite prevention; mirror SD's `02 § 4.2` removal-footer pattern at block level). Prior: 2026-05-17 BT-002 BA cascade — NFR-1.1 Why post-BT-002 update + NFR-1.8 Failure trigger + Verification post-BT-002 full-window measurement + NFR-1 Empirical Citation BT-002 footnote (cap-3 iter chain ADR-013 → ADR-014 → BT-002 escalation + structural conclusion preservation) + NFR-5.1 Why + Verification update (CircuitBreaker trigger removed; FR-7.6 handle-invalid only). Prior: 2026-05-12 BT-001 — NFR-1.1 + NFR-1.8 Bucket A/B re-baseline)
 > **Reads:** `01-project-brief.md` (goals), `02-functional-requirements.md` (FR cross-ref), `trading-baseline.md` (regression numbers)
 > **Audience:** Architect (Phase 1B), Tech Lead (Phase 1D), QA (Phase 3T)
 
@@ -140,6 +140,8 @@
 ### NFR-1 Empirical Citation (BT-001 re-baseline 2026-05-12)
 
 > ⚠️ **BT-001 (2026-05-12) — Bucket A/B re-baseline empirical record**
+>
+> 🕰️ **Reader note (post-BT-002 2026-05-17/18):** All bullets in this BT-001 block reflect BT-001 era observations. Post-BT-002 CircuitBreaker BR-3.6 detector removed legacy-parity per Option 1 operator authorization (`backtrack-log.md § BT-002`) — see BT-002 footnote at end of this section for empirical revision + supersede context. Claims referencing CircuitBreaker / `ping_pong` detector / HALTED transition triggered by CB = **historical record from BT-001 era**, not current-state. ห้าม cite individual bullets in isolation without BT-002 footnote context.
 >
 > NFR-1.1 + NFR-1.8 ถูก redefine 2026-05-12 หลัง IMPL-062 Bucket A 5-yr Run #2 ใช้ `#define DISABLE_G4_FIXES` build รัน regression test แล้วผลลัพธ์ catastrophic (final balance $470.83 / drift ≈ −99.998%) — ห่างไกล ≤ 25% target ของ original NFR-1.1 มาก. การ redefine **ไม่ใช่** การลดมาตรฐาน acceptance contract; เป็นการ correct ตัวเลือก measurement vehicle ที่ structurally unmeetable เพื่อให้ rewrite acceptance gate ยังคงตรวจจับ pattern-parity drift ได้จริง.
 >
