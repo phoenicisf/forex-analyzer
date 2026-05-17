@@ -1,0 +1,193 @@
+=== Tester run header (first 50 lines including Tester startup + EA OnInit) ===
+CS	0	21:40:06.358	Startup	MetaTester 5 build 5833, 25 Apr 2026
+CS	0	21:40:06.358	Startup	Windows 11 build 22631, 16 x AMD Ryzen 7 7840HS w/ Radeon 780M, AVX2, 2 / 31 Gb memory, 185 / 930 Gb disk, UAC, GMT+7
+CS	0	21:40:06.360	Server	MetaTester 5 started on 127.0.0.1:3000
+CS	0	21:40:06.360	Startup	cloud network mode is off
+CS	0	21:40:06.360	Startup	initialization finished
+CS	0	21:40:06.480	127.0.0.1	login (build 5833)
+CS	0	21:40:06.497	Network	16516 bytes of account info loaded
+CS	0	21:40:06.497	Network	1478 bytes of tester parameters loaded
+CS	0	21:40:06.497	Network	126660 bytes of input parameters loaded
+CS	0	21:40:06.497	Network	2680 bytes of symbols list loaded (581 symbols)
+CS	0	21:40:06.497	Tester	expert file added: Experts\PhoenicisNex\PhoenicisNex.ex5. 362759 bytes loaded
+CS	0	21:40:06.497	Tester	program file added: Indicators\Examples\ZigZag.ex5. 13896 bytes loaded
+CS	0	21:40:06.501	Tester	2281 Mb available, 28 blocks set for ticks generating
+CS	0	21:40:06.501	Tester	initial deposit 1000.00 USD, leverage 1:500
+CS	0	21:40:06.501	Tester	successfully initialized
+CS	0	21:40:06.501	Network	374 Kb of total initialization data received
+CS	0	21:40:06.501	Tester	AMD Ryzen 7 7840HS w/ Radeon 780M, 31938 MB
+CS	0	21:40:06.508	Symbols	EURUSD: symbol to be synchronized
+CS	0	21:40:06.509	Symbols	EURUSD: symbol synchronized, 3720 bytes of symbol info received
+CS	0	21:40:06.518	History	EURUSD: load 27 bytes of history data to synchronize in 0:00:00.001
+CS	0	21:40:06.518	History	EURUSD: history synchronized from 2019.01.02 to 2026.05.08
+CS	0	21:40:06.521	Ticks	EURUSD: ticks synchronization started
+CS	0	21:40:06.521	Ticks	EURUSD: load 34 bytes of tick data to synchronize in 0:00:00.000
+CS	0	21:40:06.521	Ticks	EURUSD: history ticks synchronized from 2021.01.04 to 2026.05.08
+CS	0	21:40:06.538	History	EURUSD,H4: history cache allocated for 9382 bars and contains 1560 bars from 2020.01.02 00:00 to 2020.12.31 20:00
+CS	0	21:40:06.538	History	EURUSD,H4: history begins from 2020.01.02 00:00
+CS	0	21:40:06.539	Tester	EURUSD,H4 (FBS-Real): generating based on real ticks
+CS	0	21:40:06.539	Tester	EURUSD,H4: testing of Experts\PhoenicisNex\PhoenicisNex.ex5 from 2021.01.01 00:00 to 2025.12.31 00:00 started with inputs:
+CS	0	21:40:06.539	Tester	  General=
+CS	0	21:40:06.539	Tester	  InpInteruptRatioDecrease=8.0
+CS	0	21:40:06.539	Tester	  InpMainOverloadRatioDecrease=4.0
+CS	0	21:40:06.539	Tester	  InpUseCOverload=true
+CS	0	21:40:06.539	Tester	  InpUseOverloadAutoRange=true
+CS	0	21:40:06.539	Tester	  InpOverLoadUseLastLot=true
+CS	0	21:40:06.539	Tester	  InpFIDValue=21
+CS	0	21:40:06.539	Tester	  InpTradeOnHNN=false
+CS	0	21:40:06.539	Tester	  InpZigZagPeriod=5
+CS	0	21:40:06.539	Tester	  InpLADXMLevel=30.0
+CS	0	21:40:06.539	Tester	  InpLADXMLevelMin=22.0
+CS	0	21:40:06.539	Tester	  InpJPip1StBetweenC=-10
+CS	0	21:40:06.539	Tester	  InpJPip1StBetweenD=-13
+CS	0	21:40:06.539	Tester	  InpFRatioDecrease=1.0
+CS	0	21:40:06.539	Tester	  InpJRatioDecrease=2.3
+CS	0	21:40:06.539	Tester	  InpGRatioDecrease=10.0
+CS	0	21:40:06.539	Tester	  InpGORatioDecrease=10.0
+CS	0	21:40:06.539	Tester	  InpHRatioDecrease=10.0
+CS	0	21:40:06.539	Tester	  InpGRisk=15
+CS	0	21:40:06.539	Tester	  InpMainRiskRatio=1.0
+CS	0	21:40:06.539	Tester	  InpLimitMaxLotSizeRatio=2.9
+CS	0	21:40:06.539	Tester	  InpNormalTakeProfitPIP=48
+
+=== EA Print events (filtered: ev= / halt / ERROR / WARN / new_worst_dd subsample) ===
+CS	0	21:40:06.552	PhoenicisNex (EURUSD,H4)	2021.01.01 00:00:00   [Phoenicis][2021-01-01 00:00:00.000][INFO][slot=system][ev=logger_init_ok][magic=0] Logger initialised; min_level=INFO alert_on_error=true escalation_n=10
+CS	0	21:40:06.552	PhoenicisNex (EURUSD,H4)	2021.01.01 00:00:00   [Phoenicis][slot=system][ev=pip_math_init][digit_multiplier=10]
+CS	0	21:40:06.552	PhoenicisNex (EURUSD,H4)	2021.01.01 00:00:00   [Phoenicis][2021-01-01 00:00:00.000][INFO][slot=RiskManager][ev=init_ok][magic=0] main_risk=1.0000 max_lot_ratio=2.9000 port=wired
+CS	0	21:40:06.552	PhoenicisNex (EURUSD,H4)	2021.01.01 00:00:00   [Phoenicis][2021-01-01 00:00:00.000][INFO][slot=CircuitBreaker][ev=cb_init_ok][magic=0] CircuitBreaker initialised; buffer_size=16 ping_threshold=3s near_miss_threshold=5s schema=ADR-014
+CS	0	21:40:06.552	PhoenicisNex (EURUSD,H4)	2021.01.01 00:00:00   [Phoenicis][2021-01-01 00:00:00.000][INFO][slot=TimeGate][ev=init_ok][magic=0] window=5 spread_thr=10 holiday=12/21..1/3
+CS	0	21:40:06.552	PhoenicisNex (EURUSD,H4)	2021.01.01 00:00:00   [Phoenicis][2021-01-01 00:00:00.000][INFO][slot=PortfolioMonitor][ev=init_ok][magic=0] eq_high=0.00 worst_dd=0.0000 cur_dd=0.0000
+CS	0	21:40:06.637	PhoenicisNex (EURUSD,H4)	2021.01.01 00:00:00   [Phoenicis][2021-01-01 00:00:00.085][INFO][slot=indicators][ev=handles_created][magic=0] All 25 indicator handles valid (ADR-003 inventory)
+CS	0	21:40:06.637	PhoenicisNex (EURUSD,H4)	2021.01.01 00:00:00   [Phoenicis][2021-01-01 00:00:00.085][WARN][slot=system][ev=state_corrupt_starting_fresh][magic=0] GV-recovery attempted for watch_profits subset (per 02 § 6.1.1)
+CS	0	21:40:06.637	PhoenicisNex (EURUSD,H4)	2021.01.01 00:00:00   [Phoenicis][2021-01-01 00:00:00.085][INFO][slot=portfolio][ev=portfolio_registered][magic=0] magics registered: 17
+CS	0	21:40:06.638	PhoenicisNex (EURUSD,H4)	2021.01.01 00:00:00   [Phoenicis][2021-01-01 00:00:00.086][INFO][slot=system][ev=init_ok][magic=0] handles=25 slots=21 magics=17 state=EA_STATE_RUNNING
+CS	0	21:40:23.092	PhoenicisNex (EURUSD,H4)	2021.01.04 00:15:06   [Phoenicis][2021-01-04 00:15:06.540][INFO][slot=pending][ev=enter_pending][magic=0] machine=C bar=1561
+CS	0	21:40:23.092	PhoenicisNex (EURUSD,H4)	2021.01.04 00:15:06   [Phoenicis][2021-01-04 00:15:06.540][INFO][slot=SlotC][ev=pending_entered][magic=200] dir=BUY bar_index=1561 payload={"dir":"BUY","sl_pips":50.0}
+CS	0	21:40:23.093	PhoenicisNex (EURUSD,H4)	2021.01.04 00:15:06   [Phoenicis][2021-01-04 00:15:06.540][INFO][slot=pending][ev=enter_pending][magic=0] machine=M bar=1561
+CS	0	21:40:23.093	PhoenicisNex (EURUSD,H4)	2021.01.04 00:15:06   [Phoenicis][2021-01-04 00:15:06.540][INFO][slot=SlotM][ev=pending_entered][magic=210] dir=BUY bar_index=1561 payload={"dir":"BUY","sl_pips":50.0}
+CS	0	21:40:23.096	PhoenicisNex (EURUSD,H4)	2021.01.04 00:29:22   [Phoenicis][2021-01-04 00:29:22.544][INFO][slot=RiskManager][ev=filling_mode_detected][magic=0] symbol=EURUSD fm=0x3 selected=ORDER_FILLING_IOC
+CS	0	21:40:23.099	PhoenicisNex (EURUSD,H4)	2021.01.04 00:29:22   [Phoenicis][2021-01-04 00:29:22.546][INFO][slot=C][ev=order_sent][magic=200] ticket=2 dir=ORDER_TYPE_BUY lot=0.30 price=1.22401 sl=1.21901 comment=C,MA,N,1,SL
+CS	0	21:40:23.099	PhoenicisNex (EURUSD,H4)	2021.01.04 00:29:22   [Phoenicis][2021-01-04 00:29:22.547][INFO][slot=pending][ev=transition_executed][magic=0] machine=C
+CS	0	21:40:23.099	PhoenicisNex (EURUSD,H4)	2021.01.04 00:29:22   [Phoenicis][2021-01-04 00:29:22.547][INFO][slot=M][ev=order_sent][magic=210] ticket=3 dir=ORDER_TYPE_BUY lot=0.40 price=1.22401 sl=1.21901 comment=M,MA,N,1,SL
+CS	0	21:40:23.099	PhoenicisNex (EURUSD,H4)	2021.01.04 00:29:22   [Phoenicis][2021-01-04 00:29:22.547][INFO][slot=pending][ev=transition_executed][magic=0] machine=M
+CS	0	21:40:23.099	PhoenicisNex (EURUSD,H4)	2021.01.04 00:29:22   [Phoenicis][2021-01-04 00:29:22.547][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=0.6300 at=2021.01.04 00:29
+CS	0	21:40:23.100	PhoenicisNex (EURUSD,H4)	2021.01.04 00:29:23   [Phoenicis][2021-01-04 00:29:23.547][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.100	PhoenicisNex (EURUSD,H4)	2021.01.04 00:29:23   [Phoenicis][2021-01-04 00:29:23.547][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=0.8400 at=2021.01.04 00:29
+CS	0	21:40:23.100	PhoenicisNex (EURUSD,H4)	2021.01.04 00:29:30   [Phoenicis][2021-01-04 00:29:30.547][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.100	PhoenicisNex (EURUSD,H4)	2021.01.04 00:29:41   [Phoenicis][2021-01-04 00:29:41.547][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.100	PhoenicisNex (EURUSD,H4)	2021.01.04 00:29:41   [Phoenicis][2021-01-04 00:29:41.547][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.100	PhoenicisNex (EURUSD,H4)	2021.01.04 00:29:41   [Phoenicis][2021-01-04 00:29:41.547][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=1.4000 at=2021.01.04 00:29
+CS	0	21:40:23.100	PhoenicisNex (EURUSD,H4)	2021.01.04 00:29:41   [Phoenicis][2021-01-04 00:29:41.548][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.100	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:01   [Phoenicis][2021-01-04 00:30:01.548][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.100	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:02   [Phoenicis][2021-01-04 00:30:02.548][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.100	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:03   [Phoenicis][2021-01-04 00:30:03.548][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.100	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:03   [Phoenicis][2021-01-04 00:30:03.548][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.100	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:04   [Phoenicis][2021-01-04 00:30:04.548][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.100	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:04   [Phoenicis][2021-01-04 00:30:04.548][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=1.8900 at=2021.01.04 00:30
+CS	0	21:40:23.100	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:05   [Phoenicis][2021-01-04 00:30:05.548][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.100	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:05   [Phoenicis][2021-01-04 00:30:05.548][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.100	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:12   [Phoenicis][2021-01-04 00:30:12.548][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.100	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:13   [Phoenicis][2021-01-04 00:30:13.548][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.100	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:13   [Phoenicis][2021-01-04 00:30:13.548][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.100	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:15   [Phoenicis][2021-01-04 00:30:15.548][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.100	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:20   [Phoenicis][2021-01-04 00:30:20.548][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.100	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:20   [Phoenicis][2021-01-04 00:30:20.548][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.100	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:21   [Phoenicis][2021-01-04 00:30:21.548][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.100	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:21   [Phoenicis][2021-01-04 00:30:21.548][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.100	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:21   [Phoenicis][2021-01-04 00:30:21.548][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.100	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:23   [Phoenicis][2021-01-04 00:30:23.548][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:28   [Phoenicis][2021-01-04 00:30:28.548][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:28   [Phoenicis][2021-01-04 00:30:28.548][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:28   [Phoenicis][2021-01-04 00:30:28.548][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:30   [Phoenicis][2021-01-04 00:30:30.548][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:30   [Phoenicis][2021-01-04 00:30:30.549][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:31   [Phoenicis][2021-01-04 00:30:31.549][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:31   [Phoenicis][2021-01-04 00:30:31.549][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:33   [Phoenicis][2021-01-04 00:30:33.549][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:35   [Phoenicis][2021-01-04 00:30:35.549][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:35   [Phoenicis][2021-01-04 00:30:35.549][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:35   [Phoenicis][2021-01-04 00:30:35.549][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:36   [Phoenicis][2021-01-04 00:30:36.549][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:36   [Phoenicis][2021-01-04 00:30:36.549][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:36   [Phoenicis][2021-01-04 00:30:36.549][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:36   [Phoenicis][2021-01-04 00:30:36.549][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=1.9450 at=2021.01.04 00:30
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:38   [Phoenicis][2021-01-04 00:30:38.549][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:38   [Phoenicis][2021-01-04 00:30:38.549][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:38   [Phoenicis][2021-01-04 00:30:38.549][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:40   [Phoenicis][2021-01-04 00:30:40.549][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:41   [Phoenicis][2021-01-04 00:30:41.549][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:43   [Phoenicis][2021-01-04 00:30:43.549][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:43   [Phoenicis][2021-01-04 00:30:43.549][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:45   [Phoenicis][2021-01-04 00:30:45.549][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:45   [Phoenicis][2021-01-04 00:30:45.549][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=2.1534 at=2021.01.04 00:30
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:45   [Phoenicis][2021-01-04 00:30:45.549][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:45   [Phoenicis][2021-01-04 00:30:45.549][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:46   [Phoenicis][2021-01-04 00:30:46.549][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:46   [Phoenicis][2021-01-04 00:30:46.549][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:46   [Phoenicis][2021-01-04 00:30:46.549][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.101	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:46   [Phoenicis][2021-01-04 00:30:46.549][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=3.1954 at=2021.01.04 00:30
+CS	0	21:40:23.102	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:46   [Phoenicis][2021-01-04 00:30:46.549][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.102	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:46   [Phoenicis][2021-01-04 00:30:46.549][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=3.4733 at=2021.01.04 00:30
+CS	0	21:40:23.102	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:46   [Phoenicis][2021-01-04 00:30:46.549][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.102	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:47   [Phoenicis][2021-01-04 00:30:47.549][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.102	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:48   [Phoenicis][2021-01-04 00:30:48.550][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.102	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:49   [Phoenicis][2021-01-04 00:30:49.550][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.102	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:49   [Phoenicis][2021-01-04 00:30:49.550][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.102	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:49   [Phoenicis][2021-01-04 00:30:49.550][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.102	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:50   [Phoenicis][2021-01-04 00:30:50.550][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.102	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:50   [Phoenicis][2021-01-04 00:30:50.550][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=3.5427 at=2021.01.04 00:30
+CS	0	21:40:23.103	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:51   [Phoenicis][2021-01-04 00:30:51.550][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.103	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:51   [Phoenicis][2021-01-04 00:30:51.550][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=3.6817 at=2021.01.04 00:30
+CS	0	21:40:23.103	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:52   [Phoenicis][2021-01-04 00:30:52.550][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.103	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:53   [Phoenicis][2021-01-04 00:30:53.550][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.103	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:53   [Phoenicis][2021-01-04 00:30:53.550][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=3.8206 at=2021.01.04 00:30
+CS	0	21:40:23.103	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:53   [Phoenicis][2021-01-04 00:30:53.550][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.103	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:58   [Phoenicis][2021-01-04 00:30:58.550][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.103	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:58   [Phoenicis][2021-01-04 00:30:58.550][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=4.3763 at=2021.01.04 00:30
+CS	0	21:40:23.103	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:58   [Phoenicis][2021-01-04 00:30:58.550][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.103	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:58   [Phoenicis][2021-01-04 00:30:58.550][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=4.4458 at=2021.01.04 00:30
+CS	0	21:40:23.103	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:58   [Phoenicis][2021-01-04 00:30:58.550][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.103	PhoenicisNex (EURUSD,H4)	2021.01.04 00:30:58   [Phoenicis][2021-01-04 00:30:58.550][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.103	PhoenicisNex (EURUSD,H4)	2021.01.04 00:31:01   [Phoenicis][2021-01-04 00:31:01.550][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+CS	0	21:40:23.103	PhoenicisNex (EURUSD,H4)	2021.01.04 00:31:01   [Phoenicis][2021-01-04 00:31:01.550][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=4.8626 at=2021.01.04 00:31
+CS	0	21:40:23.103	PhoenicisNex (EURUSD,H4)	2021.01.04 00:31:01   [Phoenicis][2021-01-04 00:31:01.550][INFO][slot=xslot][ev=cd_demote_triggered][magic=200] cd_count=1 buy=1 sell=0 halted=false
+
+=== Halt + halt_stable events full lines ===
+CS	0	21:40:30.605	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:48   [Phoenicis][2021-01-06 02:50:48.052][ERROR][slot=CircuitBreaker][ev=ping_pong][magic=214] ping_pong detected: magic=214 dir=0 delta=0s (threshold=3s); pos_i=12 pos_j=14 evt_i=1 evt_j=0; returning true -> Orchestrator MUST call EAState::SetHalted (IMPL-052 wires this)
+CS	0	21:40:30.605	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:48   Alert: [Phoenicis][2021-01-06 02:50:48.052][ERROR][slot=CircuitBreaker][ev=ping_pong][magic=214] ping_pong detected: magic=214 dir=0 delta=0s (threshold=3s); pos_i=12 pos_j=14 evt_i=1 evt_j=0; returning true -> Orchestrator MUST call EAState::SetHalted (IMPL-052 wires this)
+CS	0	21:40:30.605	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:48   [Phoenicis][2021-01-06 02:50:48.052][ERROR][slot=system][ev=halt][magic=0] circuit_breaker_pingpong
+CS	0	21:40:30.605	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:48   Alert: [Phoenicis][2021-01-06 02:50:48.052][ERROR][slot=system][ev=halt][magic=0] circuit_breaker_pingpong
+
+=== AutoTesting progress + final Tester verdict ===
+
+=== Last 30 lines of decoded tester log ===
+CS	0	21:40:30.604	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:48   [FIX011a-iter6][2021.01.06 02:50][BUY/HullVsSupport][FAIL] hull=1.22423 h4_demand=1.21004 h4_has=1 (D1 fallback dropped iter-11)
+CS	0	21:40:30.604	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:48   [FIX011a-iter6][2021.01.06 02:50][SELL/HullVsResist][pass] hull=1.22423 h4=1
+CS	0	21:40:30.604	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:48   [FIX011a-iter6][2021.01.06 02:50][SELL/ResistZone][FAIL] has_demand=1 bb_pct=86.48 thresh=95.00
+CS	0	21:40:30.604	Trade	2021.01.06 02:50:48   market buy 0.01 EURUSD, close #12 (1.23167 / 1.23202)
+CS	0	21:40:30.604	Trades	2021.01.06 02:50:48   deal #13 buy 0.01 EURUSD at 1.23202 done (based on order #13)
+CS	0	21:40:30.604	Trade	2021.01.06 02:50:48   deal performed [#13 buy 0.01 EURUSD at 1.23202]
+CS	0	21:40:30.604	Trade	2021.01.06 02:50:48   order performed buy 0.01 at 1.23202 [#13 buy 0.01 EURUSD at 1.23202]
+CS	0	21:40:30.605	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:48   [Phoenicis][2021-01-06 02:50:48.052][INFO][slot=BI][ev=order_closed][magic=214] ticket=12 dir=POSITION_TYPE_SELL lot=0.01 price=1.23202
+CS	0	21:40:30.605	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:48   [FIX011a-iter6][2021.01.06 02:50][BUY/HullVsSupport][FAIL] hull=1.22424 h4_demand=1.21004 h4_has=1 (D1 fallback dropped iter-11)
+CS	0	21:40:30.605	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:48   [FIX011a-iter6][2021.01.06 02:50][SELL/HullVsResist][pass] hull=1.22424 h4=1
+CS	0	21:40:30.605	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:48   [FIX011a-iter6][2021.01.06 02:50][SELL/ResistZone][FAIL] has_demand=1 bb_pct=89.83 thresh=95.00
+CS	0	21:40:30.605	Trade	2021.01.06 02:50:48   market sell 0.01 EURUSD sl: 1.23967 (1.23167 / 1.23202)
+CS	0	21:40:30.605	Trades	2021.01.06 02:50:48   deal #14 sell 0.01 EURUSD at 1.23167 done (based on order #14)
+CS	0	21:40:30.605	Trade	2021.01.06 02:50:48   deal performed [#14 sell 0.01 EURUSD at 1.23167]
+CS	0	21:40:30.605	Trade	2021.01.06 02:50:48   order performed sell 0.01 at 1.23167 [#14 sell 0.01 EURUSD at 1.23167]
+CS	0	21:40:30.605	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:48   [Phoenicis][2021-01-06 02:50:48.052][INFO][slot=BI][ev=order_sent][magic=214] ticket=14 dir=ORDER_TYPE_SELL lot=0.01 price=1.23167 sl=1.23967 comment=BI,pyr,1
+CS	0	21:40:30.605	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:48   [Phoenicis][2021-01-06 02:50:48.052][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=20.2182 at=2021.01.06 02:50
+CS	0	21:40:30.605	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:48   [Phoenicis][2021-01-06 02:50:48.052][ERROR][slot=CircuitBreaker][ev=ping_pong][magic=214] ping_pong detected: magic=214 dir=0 delta=0s (threshold=3s); pos_i=12 pos_j=14 evt_i=1 evt_j=0; returning true -> Orchestrator MUST call EAState::SetHalted (IMPL-052 wires this)
+CS	0	21:40:30.605	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:48   Alert: [Phoenicis][2021-01-06 02:50:48.052][ERROR][slot=CircuitBreaker][ev=ping_pong][magic=214] ping_pong detected: magic=214 dir=0 delta=0s (threshold=3s); pos_i=12 pos_j=14 evt_i=1 evt_j=0; returning true -> Orchestrator MUST call EAState::SetHalted (IMPL-052 wires this)
+CS	0	21:40:30.605	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:48   [Phoenicis][2021-01-06 02:50:48.052][ERROR][slot=system][ev=halt][magic=0] circuit_breaker_pingpong
+CS	0	21:40:30.605	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:48   Alert: [Phoenicis][2021-01-06 02:50:48.052][ERROR][slot=system][ev=halt][magic=0] circuit_breaker_pingpong
+CS	0	21:40:30.606	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:49   [Phoenicis][2021-01-06 02:50:49.054][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=20.2665 at=2021.01.06 02:50
+CS	0	21:40:30.606	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:52   [Phoenicis][2021-01-06 02:50:52.054][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=20.3519 at=2021.01.06 02:50
+CS	0	21:40:30.606	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:52   [Phoenicis][2021-01-06 02:50:52.054][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=20.9219 at=2021.01.06 02:50
+CS	0	21:40:30.606	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:52   [Phoenicis][2021-01-06 02:50:52.054][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=21.3696 at=2021.01.06 02:50
+CS	0	21:40:30.606	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:53   [Phoenicis][2021-01-06 02:50:53.054][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=21.5822 at=2021.01.06 02:50
+CS	0	21:40:30.607	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:55   [Phoenicis][2021-01-06 02:50:55.055][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=21.5935 at=2021.01.06 02:50
+CS	0	21:40:30.607	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:55   [Phoenicis][2021-01-06 02:50:55.055][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=21.5951 at=2021.01.06 02:50
+CS	0	21:40:30.608	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:56   [Phoenicis][2021-01-06 02:50:56.055][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=21.9333 at=2021.01.06 02:50
+CS	0	21:40:30.608	PhoenicisNex (EURUSD,H4)	2021.01.06 02:50:57   [Phoenicis][2021-01-06 02:50:57.056][INFO][slot=PortfolioMonitor][ev=new_worst_dd][magic=0] dd=22.3745 at=2021.01.06 02:50

@@ -4,11 +4,101 @@
 
 ## Last completed action
 
+**🔴 IMPL-FIX-012 iter-3 Run #5 ❌ EXECUTED 2026-05-17 — ADR-014 INSUFFICIENT; introduces 3rd false-positive class (BI pyramiding close-tk12+open-tk14 same tick) that fires 8 sim days EARLIER than Jan-14 baseline halt class. Cap-3 budget exhausted (iter-1 ✅ + iter-2 ❌ + iter-3 ❌) — escalation gate fires per IMPL-FIX-012 task block cap-3 sequencing. Engineer recommends `/backtrack sd` (BR-3.6 detector design fundamentally incompatible with legitimate trading patterns; producer-side patching has exhausted reasonable scope; ADR-014's rule (c) `pos_i==pos_j` is INVERSE of actual ping-pong concept). State Reconciliation 3-file rule honored.**
+
+**Trigger:** Operator invoked `/impl-task IMPL-FIX-012` per fix-round-26 § Next suggested task pivot — pivot acknowledged that code-review surface was clean post-fix-round-26 + ADR-013 patch fully realized (Case F SelfTest landed) + IMPL-FIX-012 iter-1 deliverable complete + iter-3 patch ADR-014 already landed in commit `15ff985`, so only the operator empirical verification step (Run #5) remained. Phase 1.3 compliance scans PASS (P4 current open ✅; OPS Pending empty ✅; Deferred-AC no expired — earliest 2026-05-17 = today not `< today`).
+
+**Phase 1.3 compliance scans (passed):** Phase Gate (P4 current open ✅); Operator Action Registry empty ✅; Deferred-AC Registry no expired (today 2026-05-17; earliest expiry 2026-05-17 = today, not `< today`); IMPL-FIX-012 row Active (NEW 2026-05-14 expiry 2026-05-28; renewal #1 of 2 already consumed); MT5 5\ install PID 6916 running but on separate data-dir (`C:\Program Files\FBS MetaTrader 5\` per origin.txt's 5ph entry — no data-dir lock conflict per OPS-001 reverted note).
+
+**Step 3 G3 5-yr Run #5 execution (this session — wall-clock ~10 min total):**
+
+| Attempt | Wall-clock | Result |
+|---------|-----------|--------|
+| 1 (PowerShell `Start-Process`) | 21:35:09 launch | EXITED at +8s; 0 tester log growth; terminal log shows `Tester: last test passed with result "some error after pass finished" in 0:00:00.000` — Model=4 tick-cache transient hiccup |
+| 2 (Bash `terminal64 /config:INI_WIN`) | 21:38:54 launch | EXITED at +8s; identical pattern (Model=4 verification fail on first launch) |
+| 3 (Bash retry, same args) | 21:40:01 launch | ✅ **Tester started cleanly**; PID 3536 alive; tester log grew + journal `run-20210101-000000-085.jsonl` opened |
+
+The 2-retry transient pattern matches iter-2's pre-OPS-002 attempts (19:58/20:13/20:17 also failed before operator GUI refresh). Unlike iter-2 this cleared on retry **without** requiring operator GUI intervention this time — confirming the OPS-002 root cause (`.tkc` cache staleness after session idle) is intermittent rather than reliably reproducible after ~1 hr.
+
+**Empirical Run #5 outcome:**
+
+| Field | Value |
+|-------|-------|
+| Launch (wall) | 2026-05-17 21:40:01 |
+| Tester started (wall) | 2026-05-17 21:40:04.942 |
+| **Halt (wall / sim)** | wall=21:40:30.605 / **sim=2021-01-06 02:50:48.052** |
+| Halt event | `[ERROR][slot=CircuitBreaker][ev=ping_pong][magic=214] ping_pong detected: magic=214 dir=0 delta=0s (threshold=3s); pos_i=12 pos_j=14 evt_i=1 evt_j=0` |
+| Halt_stable (sim) | **2021-01-06 09:42:53.074** (~7 hr after halt; vs iter-2 May-25 = much shorter silent-grind) |
+| Kill (wall) | 2026-05-17 21:45:35 (~5.5 min wall-clock total; AutoTesting at 10% = Jan-May 2021 window) |
+| Process exit | 2026-05-17 21:46:21 |
+| `.ex5` build | mtime 2026-05-17 21:08:09 (= iter-3 commit `15ff985` G1 PASS; 362,718 bytes; ADR-014 schema landed) |
+| **Final balance** | **$928.35** (from $1000 deposit = −$71.65 = −7.2% drawdown) |
+| **Drift vs $24.27M baseline** | **−100.0003%** (NFR-1.1 CATASTROPHIC FAIL) |
+| Journal records | 19 (9 entry + 8 exit + 1 halt + 1 halt_stable) — schema-valid |
+| Per-slot pre-halt entries | BI=4 (all pyramid), C=1, M=1, B=1, Q=1, K=1 |
+| Slot counts at halt | K=1, M=1, Q=1, B=2, BI=2 (5 distinct slots had open positions) |
+| **G4 BI SL fix verified** | 4/4 BI entries with `sl != 0` (range 1.23699..1.23967 parent-pip-anchored per ADR-009) ✅ |
+
+**Root cause analysis — ADR-014 INSUFFICIENT + REGRESSED:**
+
+The halt event is a **3rd distinct false-positive class** that ADR-014's dedup rules (b) skip same-event_type + (c) skip same-position both MISS:
+
+| Axis | iter-1 (Jan-14) | iter-2 (Jan-27) | **iter-3 Run #5 (Jan-06)** |
+|------|------------------|------------------|----------------------------|
+| Sim timestamp | 2021-01-14 14:59:21 | 2021-01-27 15:45:07 | **2021-01-06 02:50:48** (8 days EARLIER than baseline) |
+| Magic / Slot | 205 (H) dir=1 | 205 (H) dir=0 | **214 (BI) dir=0** |
+| Close trigger | broker SL on identical-SL positions | EA-driven SafePort mass-close | **EA-driven BI pyramiding: close-tk12 + open-tk14 same tick** |
+| ADR-013 rule fires? | ✗ skips | ✓ passes filter → halt | ✓ passes filter → halt |
+| ADR-014 rule (b) `evt_i==evt_j`? | n/a | ✓ would skip (close+close) | ✗ does NOT skip (close=1 vs open=0) |
+| ADR-014 rule (c) `pos_i==pos_j`? | n/a | ✗ does NOT skip (different positions) | ✗ does NOT skip (tk=12 vs tk=14) |
+| Result | halt | halt | **halt EARLIER than baseline** |
+
+**By wiring `RecordOpen` at OnTradeTransaction the ring buffer now contains both close + open events**, which surfaces a new pattern: any slot doing same-tick close+open (BI pyramid prominently) trips `(magic, dir, Δ≤3s)` matching. ADR-014's rule (c) `pos_i==pos_j` is **the inverse** of what ping-pong actually means — true ping-pong = same position closed-then-re-opened (which rule (c) skips so doesn't fire), while mass-close + pyramid-scale + close+open = different positions at same tick (which rule (c) DOESN'T skip → DOES fire). The rule was added with the wrong sign for the actual ping-pong concept.
+
+**Cap-3 budget consumed:** iter-1 ✅ Step 0 falsification + ADR-013 surgical (closes the broker-SL class but leaves EA-driven classes), iter-2 ❌ Run #4 reaches Jan-27 then halts on SafePort batch-close, iter-3 ❌ Run #5 regresses earlier to Jan-06 on BI pyramid close+open. Per IMPL-FIX-012 task block cap-3 sequencing (impl-plan.md ~line 1978): **iter-3 fail → escalation gate → `/impl-plan-review all` OR `/backtrack sd`**.
+
+**Engineer recommends `/backtrack sd`** because:
+1. iter-1→2→3 chain accumulated 3 distinct false-positive classes; each "fix" surfaced the next earlier class — not converging.
+2. ADR-014's rule (c) is structurally inverse of intended ping-pong concept.
+3. Legacy `PhoenicisN2.10_stable.mq5` achieves $24.27M Net Profit 5-yr DESPITE same patterns — because legacy lacks the ping-pong detector entirely. The detector was a rewrite addition (BR-3.6) that doesn't match how trades actually flow.
+4. Underlying `(magic, dir, Δ≤3s)` matching key is fundamentally incompatible with legitimate patterns; remaining axes (matching-key redefinition, detector removal, BR-3.6 contract weakening) cross SD boundary.
+
+**Alternative `/impl-plan-review all`** could re-decompose IMPL-FIX-012's E-AC (substitute softer acceptance signal, e.g., advisory-only halt + drift assertion on truncated window) but doesn't fix the underlying detector design.
+
+**State edits applied (this session):**
+
+- `docs/state/_session-handoff/IMPL-FIX-012-iter3-run5-20260517.md` (NEW; ~12 KB §1-§8 narrative: chain diagnostic + outcome table + root cause matrix + iter-3 AC results + escalation gate recommendation + cascade impact + UIR registry note)
+- `docs/state/_session-handoff/IMPL-FIX-012-iter3-run5-20260517.jsonl` (NEW; 19 records / 12,462 bytes — schema-valid; halt + halt_stable records carry full `portfolio_summary` with slot_counts + total_lots + equity at moment of halt)
+- `docs/state/_session-handoff/IMPL-FIX-012-iter3-run5-20260517-tester-abridged.txt` (NEW; 193 lines — Tester startup + EA Print events filtered to `ev=` markers + halt/halt_stable + AutoTesting progress + last 30 lines; raw 5 MB this-run delta NOT committed per UTF-16LE binary noise rule)
+- `impl-plan.md` — TL;DR top entry (iter-3 Run #5 closure narrative + escalation gate recommendation) + IMPL-FIX-012 task block new `Status (iter-3 — Run #5 EXECUTED 2026-05-17, ADR-014 INSUFFICIENT — REGRESSED EARLIER; cap-3 budget exhausted → escalation gate fires)` block (full §1-§8 mirror of evidence sidecar)
+- `overview.md` — row 19 (Impl Plan) + row 20 (Impl Tasks) prepended with iter-3 Run #5 failure narrative
+- `current_handoff.md` — THIS section (new Last completed action)
+
+**Plan Staleness Sentinel:** unchanged at **1 IMPL-NNN main task closure since R09** (impl-plan-review chain; FIX-ticket sub-iter closures ไม่ increment counter per `workflow.md` Gate #4 + fix-round-10 precedent). IMPL-FIX-012 iter-3 closure = engineer-side empirical verification + escalation gate fire, not main task closure.
+
+**Phase 5 mechanical gates:** #1 (forbidden-pattern grep on impl-plan.md = `[x]` AC with `deferred` text — pre-existing accepted false-positives per fix-round-10 precedent; no NEW forbidden patterns introduced) + #6 (single `## End of Plan` marker + clean trailer) + #11 (working-tree clean post-commit) verified inline post-commit.
+
+**State Reconciliation 3-file rule:** ✅ Layer 1 primary `impl-plan.md` (TL;DR + IMPL-FIX-012 task block Status iter-3 close); ✅ Layer 2 `overview.md` (rows 19+20); ✅ Layer 3 `current_handoff.md` (THIS section) + 3 NEW evidence artifacts at `_session-handoff/IMPL-FIX-012-iter3-run5-20260517.{md,jsonl,-tester-abridged.txt}`.
+
+**Cap-3 sequencing:** iter-1 ✅ + iter-2 ❌ + iter-3 ❌ → cap-3 budget consumed → next session = operator decides `/backtrack sd` (recommended) vs `/impl-plan-review all`.
+
+**Recommended next session:**
+
+1. **`/backtrack sd`** (engineer recommendation) — Phase 1B: re-validate SD `04 § BR-3.6` ping-pong contract definition; consider removing BR-3.6 ping-pong detector entirely (legacy achieves $24.27M 5-yr without one) OR redefine BR-3.6 matching key from `(magic, dir, Δ≤3s)` to `(position_id, Δ≤3s)` (= the original ping-pong concept: same position closed-then-re-opened); cascade through TD-02 §5.8 + ADR-013 + ADR-014 + IMPL-052 wiring + IMPL-FIX-012 E-AC list.
+2. **`/impl-plan-review all`** (alternative) — re-decompose IMPL-FIX-012's E-AC list; possibly substitute softer NFR-1.1 acceptance signal (advisory-only halt + drift assertion on truncated window).
+3. **`/impl-task IMPL-FIX-013`** (parallel-track, independent) — engineer-side file-encoding cleanup ~1-2 hr; newly authored P5 ticket from fix-round-26 §Finding 26.4; does NOT depend on IMPL-FIX-012 outcome.
+
+**Blocks unblocked by this closure:** None (escalation gate fires; no IMPL-FIX-012 iter-3 close). **Blocks identified:** IMPL-062 E-AC #1+#2 stay `[ ]` deferred — registry expiry 2026-05-28 (renewal #1 of 2 already consumed at 2026-05-14); renewal #2 attempt would force `/impl-plan-review all` per Phase 1.3.2 if escalation not resolved by 2026-05-28. P2/P3/P4 Tier 2 Phase Gate close blocked. MVP NFR-1.1 acceptance signal blocked.
+
+---
+
+## Prior action (2026-05-17 — fix-round-26 closure)
+
 **🟢 fix-round-26 ✅ CLOSED 2026-05-17 — 6/6 findings Accept (2 HIGH / 2 MEDIUM / 2 LOW) processed in 3 commits: `3ba3f3d` (Findings 26.2 Case F SelfTest + 26.3 Slot_B/K re-anchor source-tree) + `95bb3ac` (Finding 26.1 Gate #9 clause (h) extended exemption regex with class (ε) frozen legacy-file cites + R25 §Termination Test strikethrough with forward-pointer) + this commit (Findings 26.4 IMPL-FIX-013 P5 orphan-recommendation propagation + 26.5 cite separator brace-form correction across 8 surfaces + 26.6 Gate #1 count claim narrative correction). G1 PASS (exit=0; .ex5 359,994 bytes; mtime advanced 284s post-edit). State Reconciliation 3-file rule honored.**
 
 **Trigger:** Operator invoked `/impl-review-fix docs/code-review/review-round-26.md` after `/next` Navigation Decision Layer §1.9.1 priority #15 (Code Review pending HIGH) recommended this fix-round as primary action over the operator IMPL-FIX-012 Step 3 Run #4 path. Reasoning: review-round-26 surfaced 2 HIGH findings (R25 termination claim falsified + ADR-013 Case F SelfTest absent) on the very surface the operator would rely on for Run #4 — closing these before Run #4 keeps the IMPL-FIX-012 iter-1 patch + ADR-013 deliverable clean.
 
-**Next suggested task:** **`/impl-task IMPL-FIX-012` Step 3 Run #4** — 5-yr Bucket A retry (`regression_5yr_g4.ini`; ~30-60 min wall-clock per IMPL-FIX-009 perf restoration). Code-review surface now clean; ADR-013 patch fully realized (Case F SelfTest landed); IMPL-FIX-012 iter-1 deliverable complete. Step 3 Run #4 verifies ADR-013 effectively eliminates `circuit_breaker_pingpong` false-positive halt class at sim 2021-01-14 + drains IMPL-062 E-AC #1+#2 retry + cascades IMPL-068/IMPL-066/P2/P3/P4 Tier 2 Phase Gate close path. Per `deferred-ac-registry.md` IMPL-FIX-012 row, Step 3 Run #4 is the gating empirical event for NFR-1.1 acceptance signal + MVP delivery. Alternative paths: (a) `/impl-task IMPL-FIX-013` (engineer-side file-encoding cleanup ~1-2 hr — newly authored P5 ticket from fix-round-26 §Finding 26.4 propagation); (b) `/impl-review all R27` verify-only sweep predicting 0-1 findings post-fix-round-26 (matches R23 → R24 → R25 verify-only trajectory pattern).
+**Next suggested task (PRE-Run #5):** ~~`/impl-task IMPL-FIX-012` Step 3 Run #4~~ — **superseded 2026-05-17 by iter-2 Run #4 ❌ + iter-3 Run #5 ❌; see top section "Last completed action" for current decision-pending state.**
 
 **Trigger for fix-round-26 itself:**
 
