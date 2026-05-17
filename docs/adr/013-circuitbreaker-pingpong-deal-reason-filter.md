@@ -2,10 +2,10 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Accepted |
-| **Date** | 2026-05-14 |
-| **Deciders** | Engineer (IMPL-FIX-012 Step 1) |
-| **Goal trace** | G2, BR-3.6, NFR-5.1 (controlled halt), Open Risks R-3 (NFR-1.1 acceptance signal blocker) |
+| **Status** | **Superseded by BT-002 2026-05-17** (preserved as audit history of cap-3 iter chain ADR-013 → ADR-014 → BT-002 escalation; the DEAL_REASON_EXPERT filter was the iter-1 surgical patch — closed the broker-driven SL false-positive class but left two more false-positive classes that ADR-014 attempted to address) |
+| **Date** | 2026-05-14 (superseded 2026-05-17 per BT-002) |
+| **Deciders** | Engineer (IMPL-FIX-012 Step 1) ; superseded by Operator (Kritsana) via BT-002 |
+| **Goal trace** | G2, ~~BR-3.6~~ (BR-3.6 demoted/removed per chained `/backtrack ba`), NFR-5.1 (controlled halt — HALTED state machine retained for handle-invalid + Phase 2 triggers per ADR-010 amendment), Open Risks R-3 (NFR-1.1 acceptance signal blocker — root cause addressed at BT-002, not at this iter-1 surgical layer) |
 
 ## Context
 

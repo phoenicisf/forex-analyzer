@@ -56,7 +56,7 @@ Format: `[2026-03-15 14:23:45.123][WARN][slot=BI][ev=lot_clamped][magic=214] lot
 | **Sink (Phase 1)** | MT5 `Print()` only (= MT5 Experts log tab); optional second sink to file = Phase 2 |
 | **Severity behavior** | DEBUG: skipped if `InpLogLevel < DEBUG` (default = INFO); INFO/WARN: Print only; ERROR: Print + `Alert()` (with throttle) |
 | **Throttle** | ERROR + same `(slot, event)` tuple ภายใน 100 ticks → suppress Alert (still Print); reset ทุก 100 ticks. **Distinct `(slot, event)` tuples throttle independently** — เช่น `(system, journal_write_fail)` กับ `(system, handle_invalid_runtime)` มี throttle counters แยก → ไม่ block Alert ของ event ใหม่ |
-| **Halt-trigger bypass** | Errors ที่ trigger `EAState.Halt()` (CircuitBreaker, IndicatorService runtime invalid, journal sustained-failure, force-clear escalation) → **never throttle Alert**. ทุก halt event = guaranteed Alert popup (NFR-5.1 + ADR-010 contract) |
+| **Halt-trigger bypass** | Errors ที่ trigger `EAState.Halt()` (Phase 1 sole trigger source post-BT-002 2026-05-17: IndicatorService runtime invalid; Phase 2 candidates per ADR-010 Revisit-when: journal sustained-failure, force-clear escalation, equity-floor) → **never throttle Alert**. ทุก halt event = guaranteed Alert popup (NFR-5.1 + ADR-010 amended-BT-002 contract). CircuitBreaker trigger removed per BT-002 (legacy-parity). |
 | **Escalation policy** | Same `(slot, event)` ERROR ≥ N consecutive ticks (default N=10, configurable `InpErrorEscalationN`) → upgrade severity: emit secondary Alert พร้อม message *"Sustained error: <slot>/<event> × N — investigate"* + persist `(slot,event)` ใน `logger_metrics.last_throttle_event` (ดู `state-persistence-schema.yaml`) |
 | **Throttled counter** | `logger_metrics.throttled_alert_count` increment ทุก suppressed Alert; **cumulative survives restart** via state.json (atomic per ADR-007); reset only via manual delete state.json. Surface ใน HALTED_STABLE Alert message (e.g., *"halted_stable + 47 throttled alerts cumulative — check Experts log"*) → user transparent ว่ามี Alert ถูก suppress รวม cross-restart pattern (NFR-3.4 visibility) |
 | **Globals** | none — instance per orchestrator (constructor-injected) |
@@ -71,8 +71,8 @@ input bool InpAlertOnError = true;
 - `TradeJournal::WriteEvent()` ภายในเรียก `Logger::Info(slot, event, magic, summary)` — log + journal เกิดพร้อมกัน
 - ตอน journal write fail → `Logger::Error(...)` (NFR-3.4 no silent failure) — anti-spam throttle จับ
 
-**Integration with halt (FR-7.7 + ADR-010):**
-- `CircuitBreaker::Halt(reason)` เรียก `Logger::Error("system", "halt", 0, reason)` → triggers Alert + journal halt
+**Integration with halt (FR-7.7 + ADR-010 amended BT-002 2026-05-17):**
+- `core/Orchestrator` (on `IndicatorService::AnyHandleInvalid()` → `EAState.Halt("handle_invalid_runtime")`) เรียก `Logger::Error("system", "halt", 0, reason)` → triggers Alert + journal halt. (Former `CircuitBreaker::Halt(reason)` call site removed per BT-002 — see ADR-010 § Revision history.)
 - HALTED_STABLE transition → `Logger::Info("system", "halt_stable", 0, "all positions closed")` + Alert (separate from Error throttle)
 
 **Performance budget:**

@@ -4,6 +4,52 @@
 
 ## Last completed action
 
+**🟢 BT-002 SD rework APPLIED 2026-05-17 — Option 1 legacy-parity (remove BR-3.6 CircuitBreaker ping-pong detector) cascade across SD package, ADRs, and API spec. Status: ready for `/sd-review all` re-validation. Triggered by `/next` Navigation Decision Layer §1.9.1 priority #2 (Open backtrack BT-002) recommendation + operator "proceed recommended" approval.**
+
+**Scope applied (3-file state reconciliation honored):**
+
+| Surface | Edits |
+|---------|-------|
+| `docs/design-docs/02-high-level-architecture.md` | § 1.1 FR-6.6 row strikethrough with BT-002 audit cite; § 1.1 FR-7.7 trace target rewrite (drop `services/CircuitBreaker::Halt()`; new = `core/EAState` + `IndicatorService::AnyHandleInvalid()`); HLA mermaid CB node removed + edge re-pointed to IS `on handle-invalid runtime`; § 4.2 Component Catalog row #14 CircuitBreaker removed + renumbered 15..26 → 14..25 + BT-002 footnote; § 5.1 Communication Matrix CB row replaced with Orchestrator-direct halt path; § 11 Glossary Bucket B drift prose re-author |
+| `docs/design-docs/03-deep-dive.md` | § 1.3 Implementation outline + § 1.5 Validation Bucket A/B paragraphs re-author (BR-3.6 detector removed → DISABLE_G4_FIXES runs to natural-end of window); § 2.3 Table A drop `CircuitBreaker::CheckPingPong` row + recompute totals 1,685→1,680 / 4,685→4,680 / 31,685→31,680 µs; § 2.3 Table B drop CB row + recompute Sum of added overhead 1,005→1,002 µs + implication paragraph rewrite |
+| `docs/design-docs/04-data-flow.md` | § 1.1 mermaid: remove `CB as CircuitBreaker` participant + `CheckPingPong` call + `alt ping-pong detected` block (replaced with audit Note); § 9.1 RUNNING/HALTED enable matrix: CircuitBreaker check row strikethrough with BT-002 audit cite |
+| `docs/design-docs/05-security.md` | TL;DR Key points #1 rewrite (CB controlled halt → handle-invalid via EAState); § 2.5 DoS "Infinite re-entry loop" row re-author as accepted residual risk (legacy-parity + Phase 2 candidates); § 3.2 Mitigation Map CircuitBreaker row strikethrough + audit cite; § 3.2 Halted-state semantic row trigger source clarification; § Journal `event_type=halt` row updated to handle-invalid-only Phase 1 |
+| `docs/design-docs/08-product-breakdown.md` | § 1.7 IMPL-051 row CANCELLED-BT-002; § 1.10 IMPL-062/063 narrative re-author (post-BT-002 DISABLE_G4_FIXES runs to natural-end of window); § 3 Suggested P3 line dropped CircuitBreaker mention; § 3 Suggested P4 IMPL-061..068 narrative; § 4 Per-Task Metadata IMPL-051 CANCELLED + IMPL-052 trigger-source clarification |
+| `docs/adr/010-halted-state-exit-only.md` | Status flipped to "Accepted (amended 2026-05-17 per BT-002 — BR-3.6 ping-pong removed from trigger sources)"; § Context Trigger sources strikethrough BR-3.6 + IndicatorService becomes Phase 1 sole automated trigger; § Decision State machine + OnTick guard pseudo-code updated; § Revision history new BT-002 entry; § Revisit-when adds reversal clause |
+| `docs/adr/013-circuitbreaker-pingpong-deal-reason-filter.md` | Status: Accepted → "Superseded by BT-002 2026-05-17" (preserved as audit history); Goal trace BR-3.6 demoted |
+| `docs/adr/014-circuitbreaker-pingpong-position-event-dedup.md` | Status: Accepted → "Superseded by BT-002 2026-05-17" (preserved as audit history); Goal trace BR-3.6 demoted |
+| `docs/adr/001-modular-monolith-in-mt5-process.md` | Option A `services/` list: CircuitBreaker removed with BT-002 audit cite |
+| `docs/adr/009-bi-sl-inheritance-pip-arithmetic.md` | NFR-1.8 verification paragraph re-author (no pre-CircuitBreaker-window constraint post-BT-002) |
+| `docs/adr/011-tagged-structured-logger.md` | § Halt-trigger bypass row + § Integration with halt paragraph: CircuitBreaker call site removed; halt now triggered by `core/Orchestrator` on `IndicatorService::AnyHandleInvalid()` |
+| `docs/adr/012-file-layout-module-split-discipline.md` | Module tree: CircuitBreaker.mqh line replaced with REMOVED-BT-002 audit comment |
+| `docs/api-specs/trade-journal-schema.yaml` | `halt_reason` enum drops `circuit_breaker_pingpong` (breaking change OK Phase 1, no external consumers per ADR-006); `signal_context` example + `triggering_function` example updated; `halt_reason` description rewrite documenting Phase 1 sole trigger + Phase 2 candidates |
+| `docs/state/overview.md` | Row 11 (SD): status → "🔄 BACKTRACK — SD rework APPLIED 2026-05-17 ... ready for `/sd-review all` re-validation"; Row 13 (TD): note SD rework done, TD cascade waits for `/sd-review all` ✅ |
+
+**State Reconciliation 3-file rule:** ✅ Layer 1 primary = SD/ADR/API surfaces (the contract changes themselves); ✅ Layer 2 = `overview.md` rows 11+13; ✅ Layer 3 = `current_handoff.md` (THIS section). `impl-plan.md` deliberately not touched in this commit — IMPL-FIX-012 iter-3 closure narrative + IMPL-051 cancellation will land via Plan QA cycle after `/sd-review all` ✅ (per BT-002 § Impacted phases — Impl Plan: "re-run `/impl-plan-review all` after SD lock").
+
+**Backtrack-workflow Step compliance:**
+- Step 1-2 Identify + Impact Analysis: ✅ done in `/backtrack sd` session that opened BT-002 (commit `aebec01`)
+- Step 3 HALT user approval: ✅ Operator approved Option 1 2026-05-17 (BT-002 § Approved by)
+- Step 4 Record backtrack: ✅ `backtrack-log.md § BT-002` populated
+- Step 5 Mark invalidated phases: ✅ `overview.md` rows 10/11/13 markers in place (BT-001 cascade precedent)
+- **Step 6 Rework: ✅ THIS COMMIT** (`[BACKTRACK BT-002]` prefix; scope per BT-002 § Proposed change SD + inferred CB consistency cleanup across ADR-001/009/011/012)
+- Step 7 Re-validate downstream: ⏳ pending operator `/sd-review all` → then `/td-review all` post SD lock → then `/project-init --regen` (mandatory per backtrack-workflow.md § Project Bootstrap Invalidation row "TD = Always invalidated") → then chained `/backtrack ba` for BR-3.6 + FR-6.6 demotion → then `/ba-review all` → then `/impl-plan-review all` → then impl-code cleanup (delete `services/CircuitBreaker.mqh` + strip ADR-013 filter + ADR-014 dedup + `RecordOpen` dispatch from `core/Orchestrator.mqh::OnTradeTransaction` + delete `spike/Spike_CircuitBreaker.mq5`)
+- Step 8 Close backtrack: ⏳ pending all downstream phases pass re-validation
+
+**Recommended next session:**
+1. **`/sd-review all`** (mandatory; mirror BT-001 cascade Round 06 verify-only 0-findings precedent — confirm SD-side single-voice cleanup is clean; if HIGH/CRITICAL surface, run `/sd-rebuttal docs/design-docs/claim-review-and-rebuttal/claim-review-XX.md`)
+2. After ✅ → `/td-review all` (TD-02 § 5.8 CCircuitBreaker class skeleton + 10 cross-refs cascade-delete; operator decides whether to amend TD docs directly or `/td-rebuttal` after review surfaces findings)
+3. After ✅ → `/project-init --regen` (mandatory per backtrack-workflow.md § Project Bootstrap Invalidation row "TD = Always invalidated")
+4. After ✅ → `/backtrack ba` (chained per BT-002 § Chained `/backtrack ba` rationale: BR-3.6 + FR-6.6 demotion to Won't at BA layer with concrete SD proposal to align against)
+5. After ✅ → `/ba-review all` then `/impl-plan-review all`
+6. After ✅ → impl-code cleanup (one or more IMPL-FIX-* tickets to delete `services/CircuitBreaker.mqh` + dependents)
+
+**Blocks unblocked by this closure:** SD-side rework — `/sd-review all` can now run. **Blocks remaining:** TD/Bootstrap/BA cascade + impl-code cleanup all gated downstream of `/sd-review all` ✅; IMPL-062/063 Bucket A 5-yr re-run gated on the full BT-002 cascade closure + impl-code delete; P2/P3/P4 Tier 2 Phase Gate close blocked.
+
+---
+
+## Prior action (2026-05-17 — IMPL-FIX-012 iter-3 Run #5 escalation)
+
 **🔴 IMPL-FIX-012 iter-3 Run #5 ❌ EXECUTED 2026-05-17 — ADR-014 INSUFFICIENT; introduces 3rd false-positive class (BI pyramiding close-tk12+open-tk14 same tick) that fires 8 sim days EARLIER than Jan-14 baseline halt class. Cap-3 budget exhausted (iter-1 ✅ + iter-2 ❌ + iter-3 ❌) — escalation gate fires per IMPL-FIX-012 task block cap-3 sequencing. Engineer recommends `/backtrack sd` (BR-3.6 detector design fundamentally incompatible with legitimate trading patterns; producer-side patching has exhausted reasonable scope; ADR-014's rule (c) `pos_i==pos_j` is INVERSE of actual ping-pong concept). State Reconciliation 3-file rule honored.**
 
 **Trigger:** Operator invoked `/impl-task IMPL-FIX-012` per fix-round-26 § Next suggested task pivot — pivot acknowledged that code-review surface was clean post-fix-round-26 + ADR-013 patch fully realized (Case F SelfTest landed) + IMPL-FIX-012 iter-1 deliverable complete + iter-3 patch ADR-014 already landed in commit `15ff985`, so only the operator empirical verification step (Run #5) remained. Phase 1.3 compliance scans PASS (P4 current open ✅; OPS Pending empty ✅; Deferred-AC no expired — earliest 2026-05-17 = today not `< today`).

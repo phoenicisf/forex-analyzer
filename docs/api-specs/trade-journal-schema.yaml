@@ -128,7 +128,7 @@ properties:
       Examples:
         "WPRWaveSignal=Yes;CheckIchiBarForC=true;ForcePeak3=ascending"
         "sl_inherit=B_parent_<ticket>;sl_distance_pip=120" (BI per ADR-009)
-        "halt_reason=circuit_breaker_pingpong" (halt event)
+        "halt_reason=handle_invalid_runtime" (halt event; circuit_breaker_pingpong removed per BT-002 2026-05-17)
         "pending_age_bars=151;machine=M-Pending" (pending_force_clear event per ADR-008)
 
   indicator_snapshot:
@@ -178,7 +178,8 @@ properties:
         "BusinessLogic_C", "ExtraTakeProfit_J" (note: per BR-7.2 G4 fix, MUST iterate MagicJ),
         "OrderGroupStartWorkflow", "OrderGroupStartWorkflow2", "ForceCutloss",
         "EOverload", "COverload", "GOverload",
-        "CircuitBreakerOrder", "PendingMachine_M_ForceClear" (ADR-008)
+        "PendingMachine_M_ForceClear" (ADR-008)
+      # "CircuitBreakerOrder" removed per BT-002 2026-05-17 (detector + service deleted)
 
   parent_ticket_id:
     type: [integer, "null"]
@@ -186,8 +187,13 @@ properties:
 
   halt_reason:
     type: [string, "null"]
-    enum: [circuit_breaker_pingpong, handle_invalid_runtime, equity_floor_phase2, journal_write_fail_sustained, null]
-    description: "Populated only on event_type=halt; ADR-010 trigger sources. journal_write_fail_sustained = ADR-006 RPO contract escalation (consecutive_write_failures ≥ 10)"
+    enum: [handle_invalid_runtime, equity_floor_phase2, journal_write_fail_sustained, null]
+    description: |
+      Populated only on event_type=halt; ADR-010 (amended BT-002 2026-05-17) trigger sources.
+      Phase 1 sole automated trigger: handle_invalid_runtime.
+      Phase 2 candidates: equity_floor_phase2 (OQ-6 promotion), journal_write_fail_sustained (ADR-006 RPO contract escalation, consecutive_write_failures ≥ 10).
+      `circuit_breaker_pingpong` REMOVED per BT-002 2026-05-17 (legacy-parity; cap-3 iter chain ADR-013 → ADR-014 falsified — see ADR-010 § Revision history).
+      Breaking change OK in Phase 1 (no external consumers per ADR-006).
 
   pending_age_bars:
     type: [integer, "null"]

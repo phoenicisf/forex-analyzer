@@ -40,7 +40,7 @@ Specifically dangerous transitions:
 | `wpr_wave_signal` + `adx_force_peak_valid` precomputed in MarketContextBuilder (avoid timing drift) | ADR-004 | Implementation phase |
 | Comment parser unit-style spike (Strategy Tester scenario) | TD Phase 1D | spike before lock |
 | Per-slot regression tolerance table | QA Phase 3T | extract from baseline |
-| Bucket A measurement (rewrite-G4-ON build, single-pass per BT-001 2026-05-12) absorbs G4 fix contribution; NFR-1.8 informational delta optional (record เฉพาะ partial G4-OFF window measurable ก่อน CircuitBreaker BR-3.6 trigger per IMPL-062 Run #2) | QA Phase 3T | per-fix observability (informational) |
+| Bucket A measurement (rewrite-G4-ON build, single-pass per BT-001 2026-05-12) absorbs G4 fix contribution; NFR-1.8 informational delta optional. Post-BT-002 (2026-05-17, BR-3.6 detector removed) `DISABLE_G4_FIXES` build runs to natural-end of measurement window — no early halt artifact constrains the delta sample. | QA Phase 3T | per-fix observability (informational) |
 
 ### 1.4 Failure modes
 
@@ -56,7 +56,7 @@ Specifically dangerous transitions:
 
 - **Bucket A target:** ≤ 25% Net Profit drift (NFR-1.1) บน rewrite default build (G4 fixes ON, single-pass per BT-001 2026-05-12, G4 fix contribution included) — primary acceptance
 - **Per-slot:** ≤ ±15% trade count drift, > 30% = investigate (NFR-1.6)
-- **Bucket B:** Informational delta (NFR-1.8) `rewrite-G4-ON − rewrite-G4-OFF` — sign + magnitude ของ G4 fix contribution ถ้า partial G4-OFF window measurable ก่อน CircuitBreaker trigger; **no acceptance gate** (Should priority post-BT-001 2026-05-12). Portfolio-level PF (NFR-1.2 ≤ 0.2 drop) + Max DD (NFR-1.5 ≤ +10pp) gate via Bucket A measurement
+- **Bucket B:** Informational delta (NFR-1.8) `rewrite-G4-ON − rewrite-G4-OFF` — sign + magnitude ของ G4 fix contribution; **no acceptance gate** (Should priority post-BT-001 2026-05-12). Post-BT-002 (2026-05-17, BR-3.6 detector removed) the `DISABLE_G4_FIXES` build runs to natural-end of measurement window — full-window G4 contribution measurable if forensic toggle retained at `slots/Slot_J.mqh:180` + `slots/Slot_BI.mqh:212`. Portfolio-level PF (NFR-1.2 ≤ 0.2 drop) + Max DD (NFR-1.5 ≤ +10pp) gate via Bucket A measurement
 - **Test environment:** FBS-Real Build ≥ 5833, $1k init, 1:500 leverage, 1-min OHLC tick model 0% real (per `trading-baseline.md`); 5-yr period 2021.01.03 → 2025.12.30
 
 ---
@@ -95,13 +95,12 @@ Architecture overhead sources ที่ rewrite **เพิ่มขึ้น** 
 | Cross-slot exit-side cleanup (ForceCutloss, Safe-port check, ExtraCheckFunction2) | 50 µs | preserve EA เดิม cost |
 | Entry pass — 21 slots × Evaluate (fast-path early return) | 100 µs | preserve baseline (most slot Evaluate ~5 µs no-signal early return; 21 × 5 = 105 µs) |
 | `WatchProfits::Update()` (PortfolioMonitor) | 30 µs | preserve baseline + FR-8.2 incremental savings |
-| `CircuitBreaker::CheckPingPong()` | 5 µs | new in rewrite — hash-set lookup of recent close events |
 | `MarketContextBuilder::Build()` (~50 field struct populate + 2 precompute) | 50 µs | **new in rewrite** — pure assignment + `wpr_wave_signal` + `adx_force_peak_valid` precompute |
 | `StatePersistence::Save()` (serialize ~5 KB JSON + atomic temp+rename) | 800 µs | **new explicit cost** — estimated ~500-1000 µs Windows local SSD |
 | Logger overhead (15 messages/tick avg) | 150 µs | **new in rewrite** — tagged structured logger (ADR-011) |
-| **Rewrite total (steady state, 0 events)** | **~1,685 µs** | sum ของทุก row |
-| **Rewrite total (1 entry event tick)** | **~4,685 µs** | + 1 × ~3 ms journal write + Logger.Info |
-| **Rewrite total (10-event bulk close tick)** | **~31,685 µs** | over budget — degrade-warn-but-continue (NFR-2.2) |
+| **Rewrite total (steady state, 0 events)** | **~1,680 µs** | sum ของทุก row (post-BT-002: −5 µs from former `CircuitBreaker::CheckPingPong()` removal) |
+| **Rewrite total (1 entry event tick)** | **~4,680 µs** | + 1 × ~3 ms journal write + Logger.Info |
+| **Rewrite total (10-event bulk close tick)** | **~31,680 µs** | over budget — degrade-warn-but-continue (NFR-2.2) |
 
 #### Table B — Overhead delta vs baseline (NFR-2.1 ≤ 10% gate)
 
@@ -110,13 +109,12 @@ Architecture overhead sources ที่ rewrite **เพิ่มขึ้น** 
 | Stage (added by rewrite) | Added cost | Notes |
 |--------------------------|------------|-------|
 | `MarketContextBuilder::Build()` | 50 µs | new struct copy + precompute |
-| `CircuitBreaker::CheckPingPong()` | 5 µs | new safety helper |
 | `StatePersistence::Save()` (per-tick) | 800 µs | new atomic write (EA เดิม flat write ~100-200 µs → delta ~600-700 µs) |
 | Logger overhead (15 msgs/tick) | 150 µs | new tagged logger |
 | Slot virtual call overhead (21 × 50 ns × 2 passes/tick) | ~2 µs | ADR-002; trivial |
-| **Sum of added overhead (steady state)** | **~1,005 µs** | ⚠️ **เกือบหมด NFR-2.1 budget headroom ของ 7 ms baseline (~700 µs ceiling)** — ต้อง measure ใน IMPL-065 ก่อนยืนยัน |
+| **Sum of added overhead (steady state)** | **~1,002 µs** | ⚠️ **เกือบหมด NFR-2.1 budget headroom ของ 7 ms baseline (~700 µs ceiling)** — ต้อง measure ใน IMPL-065 ก่อนยืนยัน (post-BT-002: −5 µs from former CB safety helper removal) |
 
-> **Implication ของ Table B math:** ถ้า measured baseline = 7 ms → ceiling 700 µs → **fail** (1,005 µs > 700 µs); ถ้า baseline = 10 ms → ceiling 1,000 µs → **borderline pass**. Mitigation paths ที่จะ activate ถ้า fail:
+> **Implication ของ Table B math:** ถ้า measured baseline = 7 ms → ceiling 700 µs → **fail** (1,002 µs > 700 µs); ถ้า baseline = 10 ms → ceiling 1,000 µs → **borderline pass**. Mitigation paths ที่จะ activate ถ้า fail:
 >
 > 1. **Dirty-bit throttle** ของ `StatePersistence::Save()` — write เฉพาะตอน state เปลี่ยน (estimated savings ~500-700 µs ในตอน steady state)
 > 2. **Log-level tuning** — default `InpLogLevel = INFO`; ถ้า over budget → INFO sampling หรือ DEBUG suppress

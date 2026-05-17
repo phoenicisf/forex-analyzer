@@ -20,7 +20,7 @@ EA ทั้งหมดอยู่ใน 1 MT5 process; โครงเป็�
 
 - `core/` orchestrator + bootstrap
 - `slots/Slot_<X>.mqh` (1 file per slot, 21 ไฟล์)
-- `services/` MarketContext / IndicatorService / PortfolioState / RiskManager / TradeJournal / StatePersistence / Logger / CircuitBreaker / TimeGate
+- `services/` MarketContext / IndicatorService / PortfolioState / RiskManager / TradeJournal / StatePersistence / Logger / TimeGate (CircuitBreaker removed per BT-002 2026-05-17 — legacy-parity, see ADR-010 § Revision history)
 - `domain/` shared structs + enums + interfaces
 
 ### Option B — Multiple `.ex5` EAs on separate charts

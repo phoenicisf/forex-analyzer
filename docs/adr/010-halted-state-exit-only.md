@@ -2,9 +2,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Accepted |
-| **Date** | 2026-05-02 |
-| **Deciders** | Architect (Phase 1B) |
+| **Status** | Accepted (amended 2026-05-17 per BT-002 — BR-3.6 ping-pong removed from trigger sources) |
+| **Date** | 2026-05-02 (amendment: 2026-05-17 per BT-002) |
+| **Deciders** | Architect (Phase 1B) ; amendment authorized by Operator (Kritsana, BT-002) |
 | **Goal trace** | G2, G4, FR-7.7 (AC-7.7.3, AC-7.7.4), NFR-5.1 |
 
 ## Context
@@ -15,10 +15,10 @@ EA เดิม CircuitBreaker เรียก `ExpertRemove()` เงียบ 
 - Emit `Alert()` MT5 native (ไม่ใช่ silent ExpertRemove)
 - Stay attached กับ chart (ไม่ unload)
 
-Trigger sources (Must per FR-6.6 + FR-7.6):
-1. CircuitBreaker ping-pong (BR-3.6 — same position re-opens within 3000ms)
-2. Indicator handle invalid runtime (rare; OnInit fail-fast usually catches)
-3. (Phase 2 trigger candidates) — equity-floor enforcement ถ้า user promote OQ-6 → enforce
+Trigger sources (Phase 1, post-BT-002 2026-05-17 amendment — Must per FR-7.6 only):
+1. ~~CircuitBreaker ping-pong (BR-3.6 — same position re-opens within 3000ms)~~ — **REMOVED per BT-002 2026-05-17** (legacy-parity: `PhoenicisN2.10_stable` achieves $24.27 M / 5-yr baseline without one; cap-3 iter chain ADR-013 → ADR-014 falsified 3 distinct false-positive classes — broker-driven SL same-tick at sim 2021-01-14, EA-driven SafePort mass-close at sim 2021-01-27, BI pyramiding close+open same-tick at sim 2021-01-06; matching key `(magic, dir, Δ≤3s)` structurally incompatible with EA's 16-active-slot concurrency profile)
+2. Indicator handle invalid runtime (rare; OnInit fail-fast usually catches) — **Phase 1 sole automated trigger post-BT-002**
+3. (Phase 2 trigger candidates) — equity-floor enforcement ถ้า user promote OQ-6 → enforce ; journal-write sustained-failure escalation per ADR-006 RPO contract (`consecutive_write_failures ≥ 10`)
 
 ต้องตัดสินใจ: state semantic + transition rules + observability
 
@@ -30,9 +30,9 @@ Trigger sources (Must per FR-6.6 + FR-7.6):
 
 ### Option B — Exit-pass-only halted state (chosen)
 
-State machine:
+State machine (post-BT-002 2026-05-17 amendment — CircuitBreaker trigger removed; remaining Phase 1 trigger = handle invalid runtime):
 ```
-RUNNING ──(CircuitBreaker triggered or handle fail)──→ HALTED
+RUNNING ──(handle fail; Phase 2: + equity-floor / journal-sustained-fail)──→ HALTED
 HALTED ──(portfolio[*].count == 0)──→ HALTED_STABLE
 RUNNING / HALTED / HALTED_STABLE ──(EA reattach by user)──→ RUNNING
 ```
@@ -61,16 +61,13 @@ RUNNING / HALTED / HALTED_STABLE ──(EA reattach by user)──→ RUNNING
 | **Reset trigger** | EA OnInit เริ่มใหม่ → state = RUNNING (preserve user MT5 native restart workflow); option ของ "remember halt across restart" = OFF Phase 1 (TD decide config) |
 | **Transition observability** | journal `event_type=halt` + `halt_reason` field; journal `event_type=halt_stable` ตอนเข้า HALTED_STABLE |
 
-**OnTick guard (pseudo):**
+**OnTick guard (pseudo, post-BT-002 2026-05-17 — CircuitBreaker.CheckPingPong removed):**
 ```mql5
 void OnTick() {
    IndicatorService.Refresh();
    MarketContext ctx = MarketContextBuilder.Build(IndicatorService);
 
-   if (CircuitBreaker.CheckPingPong(...)) {
-      Halt("circuit_breaker_pingpong");
-      // fall through to exit pass below
-   }
+   // CircuitBreaker.CheckPingPong removed per BT-002 2026-05-17 (legacy-parity)
    if (IndicatorService.AnyHandleInvalid()) {
       Halt("handle_invalid_runtime");
       // fall through to exit pass below
@@ -109,6 +106,7 @@ void OnTick() {
 
 **Revision history:**
 - 2026-05-02 (round-01 rebuttal) — Updated Safe-port HALTED behavior to **ENABLED** + enumerated full cross-slot enable matrix (BR-8.1/8.2/8.3/8.5 enabled; BR-8.4 EOverload/GOverload disabled; COverload enabled). Aligns กับ `04 § 9.1` table; resolves ADR-010 ↔ `04 § 9` contradiction (Claim 01.1).
+- 2026-05-17 (BT-002 amendment) — **CircuitBreaker BR-3.6 ping-pong removed from Trigger sources** (Option 1 legacy-parity, operator-authorized 2026-05-17). Rationale: cap-3 iter chain ADR-013 → ADR-014 falsified 3 distinct false-positive classes (broker-driven SL same-tick Jan-14, EA-driven SafePort mass-close Jan-27, BI pyramiding close+open same-tick Jan-06); matching key `(magic, dir, Δ≤3s)` structurally incompatible with EA's 16-active-slot concurrency profile; legacy `PhoenicisN2.10_stable.mq5` achieves $24.27 M / 5-yr baseline without a detector. Phase 1 trigger sources reduce to `IndicatorService::AnyHandleInvalid()` runtime check only. ADR-013 + ADR-014 status flipped Accepted → Superseded by BT-002 (preserved as audit history). API spec `trade-journal-schema.yaml` drops `circuit_breaker_pingpong` from `halt_reason` enum. IMPL-051 cancelled in `08 § 1.7`. Cross-slot enable matrix table row removed in `04 § 9.1`.
 
 **HALTED_STABLE → user action:**
 - User detach EA + reattach = OnInit reset state to RUNNING (current decision)
@@ -130,6 +128,7 @@ void OnTick() {
 
 ## Revisit-when
 
-- ถ้า Phase 2 promote OQ-6 (equity-floor enforcement) → integrate equity-floor trigger เป็น halt source #3
+- ถ้า Phase 2 promote OQ-6 (equity-floor enforcement) → integrate equity-floor trigger เป็น halt source #2 (post-BT-002 Phase 1 sole automated trigger = handle-invalid only)
 - ถ้า user feedback ว่า dual Alert annoying → consolidate to single Alert + status indicator (input panel)
 - ถ้าเพิ่ม Telegram/email notification (Phase 2) → escalation policy ใน HALTED state
+- ถ้า BT-002 legacy-parity decision is reversed → re-introduce a portfolio-level loop guard with a structurally-correct matching key (NOT `(magic, dir, Δ)` — use `(position_id, Δ)` or stateful "same logical position closed-then-re-opened" detector per BT-002 § Reason analysis)

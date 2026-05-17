@@ -78,7 +78,7 @@ MQL5/Experts/PhoenicisNex/
 │   ├── TradeJournal.mqh            # ADR-006 — JSON-Lines append-only
 │   ├── StatePersistence.mqh        # ADR-007 — atomic temp + rename
 │   ├── Logger.mqh                  # ADR-011 — tagged structured logger
-│   ├── CircuitBreaker.mqh          # FR-6.6 — ping-pong detection
+│   # CircuitBreaker.mqh REMOVED per BT-002 2026-05-17 (legacy-parity; see ADR-010 § Revision history)
 │   ├── TimeGate.mqh                # FR-6.1/6.2/6.3/6.5 — IsMorningWakeup, Monday spread, holiday, DST
 │   ├── PendingMachineRegistry.mqh  # 7 pending state machines + ADR-008 force-clear
 │   ├── CrossSlotCoordinator.mqh    # FR-7.1 ถึง FR-7.5 — Safe port, OrderGroup#2, ForceCutloss, ExtraCheckFunction2, Overload helpers

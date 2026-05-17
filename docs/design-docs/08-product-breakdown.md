@@ -100,8 +100,8 @@
 | Task | Size | Unlocks | Arch rationale | ADR |
 |------|------|---------|---------------|-----|
 | IMPL-050 — Implement `services/TimeGate` (IsMorningWakeup + IsMondaySpreadHigh + IsNewYearSeason2 + IsBanned per BR-3.x) | M | OnTick pipeline | preserve baseline; BR-3.1 ถึง BR-3.5 | — |
-| IMPL-051 — Implement `services/CircuitBreaker::CheckPingPong()` (BR-3.6 3000ms threshold) | S | EAState halt trigger | FR-6.6 + ADR-010 | ADR-010 |
-| IMPL-052 — Implement `core/EAState` machine (RUNNING / HALTED / HALTED_STABLE) per ADR-010 | S | OnTick pipeline branching | FR-7.7, NFR-5.1 | ADR-010 |
+| ~~IMPL-051~~ — **CANCELLED-BT-002 2026-05-17** (~~Implement `services/CircuitBreaker::CheckPingPong()`~~) — legacy-parity: detector removed; cap-3 iter chain ADR-013 → ADR-014 falsified 3 false-positive classes; `PhoenicisN2.10_stable` achieves $24.27 M / 5-yr baseline without one. Chained `/backtrack ba` will demote/remove BR-3.6 + FR-6.6 at BA layer. | — | n/a | n/a |
+| IMPL-052 — Implement `core/EAState` machine (RUNNING / HALTED / HALTED_STABLE) per ADR-010 — Phase 1 trigger sources reduce to `IndicatorService::AnyHandleInvalid()` runtime check only (BT-002 amends ADR-010 § Trigger sources) | S | OnTick pipeline branching | FR-7.7, NFR-5.1 | ADR-010 (amended BT-002) |
 
 ### 1.8 Epic E7 — Cross-slot Coordination & Cleanup (BA E7)
 
@@ -126,8 +126,8 @@
 | Task | Size | Unlocks | Arch rationale | ADR |
 |------|------|---------|---------------|-----|
 | IMPL-061 — Build per-slot baseline parser (extract `(slot, count, net_pnl, win_rate)` from `ReportTester-25045474.html`) | M | NFR-1.6 per-slot regression check | NFR-1.6 ✅ OQ-7 + AC-2.1.2 | — |
-| IMPL-062 — Run regression: rewrite **default build (G4 fixes ON, single-pass)** vs baseline → Bucket A drift gate (NFR-1.1 ≤ 25%, G4 fix contribution included per BT-001 re-baseline 2026-05-12). ห้ามใช้ `#define DISABLE_G4_FIXES` build (Bucket A semantic ไม่รองรับ pre-G4 measurement post-BT-001; IMPL-062 Run #2 empirical แสดง CircuitBreaker halt at sim 2021-01-14 → drift ≈ 99.998% unmeetable) | M | acceptance signal | NFR-1.1 ถึง NFR-1.7 primary acceptance + BA `03 § NFR-1 Empirical Citation` | — |
-| IMPL-063 — Measure Bucket B **informational delta** `rewrite-G4-ON − rewrite-G4-OFF` (sign + magnitude ของ G4 fix contribution — ADR-009 BI SL + BR-7.2 J magic). Record เฉพาะ partial pre-CircuitBreaker window ของ `#define DISABLE_G4_FIXES` build ที่ measurable (per BT-001 + IMPL-062 Run #2 empirical แสดง full-window unmeetable). **No acceptance gate** — informational only per NFR-1.8 (Should priority, BT-001 re-classification 2026-05-12) | M | G4 fix observability | NFR-1.8 informational delta | ADR-009 |
+| IMPL-062 — Run regression: rewrite **default build (G4 fixes ON, single-pass)** vs baseline → Bucket A drift gate (NFR-1.1 ≤ 25%, G4 fix contribution included per BT-001 re-baseline 2026-05-12). ห้ามใช้ `#define DISABLE_G4_FIXES` build for Bucket A primary acceptance (semantic ไม่รองรับ pre-G4 measurement post-BT-001). Post-BT-002 (2026-05-17, BR-3.6 detector removed) the rewrite-G4-ON run no longer halts at the false-positive sim 2021-01-14 CircuitBreaker class — drift signal is now legacy-parity comparison without the pre-BT-002 halt artifact (IMPL-FIX-012 iter-3 Run #5 = empirical confirmation BR-3.6 was the iter-3 blocker; cap-3 chain ADR-013 → ADR-014 superseded by BT-002). | M | acceptance signal | NFR-1.1 ถึง NFR-1.7 primary acceptance + BA `03 § NFR-1 Empirical Citation` | — |
+| IMPL-063 — Measure Bucket B **informational delta** `rewrite-G4-ON − rewrite-G4-OFF` (sign + magnitude ของ G4 fix contribution — ADR-009 BI SL + BR-7.2 J magic). Post-BT-002 (2026-05-17, BR-3.6 detector removed) the `DISABLE_G4_FIXES` build runs to natural-end of measurement window — no early-halt artifact constrains the delta sample; full-window G4 contribution measurable if forensic toggle retained at `slots/Slot_J.mqh:180` + `slots/Slot_BI.mqh:212`. **No acceptance gate** — informational only per NFR-1.8 (Should priority, BT-001 re-classification 2026-05-12). | M | G4 fix observability | NFR-1.8 informational delta | ADR-009 |
 | IMPL-064 — Atomic write kill-100 stress test (NFR-3.1 verification) | S | reliability sign-off | NFR-3.1 + ADR-007 assumption A2 | ADR-007 |
 | IMPL-065 — Tick latency measurement protocol (NFR-2.1: ≥ 5,000 ticks; avg + p95 + p99) | M | perf sign-off | NFR-2.1 | — |
 | IMPL-066 — Journal write latency measurement (NFR-2.2: ≥ 200 events; avg + p95) | S | perf sign-off | NFR-2.2 + ADR-006 degrade-warn | ADR-006 |
@@ -223,7 +223,7 @@ graph LR
 - **IMPL-045** (PortfolioMonitor / WatchProfits) — reason: end-of-tick housekeeping
 - **IMPL-047, IMPL-048** (StatePersistence + state.json schema) — **reflects Evolution E1a/E1b** — blocks slots needing pending state; design lock conditional บน E1 spike outcome
 - **IMPL-049** (PendingMachineRegistry + 7 machines + ADR-008 force-clear) — **reflects Evolution E1c** — blocks slots with pending state (M, T, Q, R, P, C); persisted state schema ผูกกับ E1a
-- **IMPL-050, IMPL-051, IMPL-052** (TimeGate + CircuitBreaker + EAState) — reason: OnTick pipeline guards
+- **IMPL-050, IMPL-052** (TimeGate + EAState; ~~IMPL-051 CircuitBreaker cancelled per BT-002 2026-05-17~~) — reason: OnTick pipeline guards
 
 ### Suggested P3 — 21 Slots (largest body of work)
 
@@ -242,7 +242,7 @@ graph LR
 - **IMPL-059, IMPL-060** (Orchestrator + entry point .mq5) — reason: integration root
 - **IMPL-013** (per-slot inputs files × 21) — reason: can be drafted in parallel with slot impl P3 — Impl Planner decides whether to bundle with slot or do batch
 - **IMPL-017** (Strategy Tester optimization compatibility verify) — reason: post-input lock
-- **IMPL-061..068** (QA validation suite) — reason: regression after E2-E8 complete; **single-pass measurement บน rewrite default build (G4 fixes ON)** per NFR-1.1 Bucket A (BT-001 re-baseline 2026-05-12); IMPL-063 informational delta `rewrite-G4-ON − rewrite-G4-OFF` (NFR-1.8 no-gate) ถ้า partial G4-OFF window measurable ก่อน CircuitBreaker BR-3.6 trigger
+- **IMPL-061..068** (QA validation suite) — reason: regression after E2-E8 complete; **single-pass measurement บน rewrite default build (G4 fixes ON)** per NFR-1.1 Bucket A (BT-001 re-baseline 2026-05-12); IMPL-063 informational delta `rewrite-G4-ON − rewrite-G4-OFF` (NFR-1.8 no-gate). Post-BT-002 (2026-05-17, BR-3.6 detector removed) the `DISABLE_G4_FIXES` build runs to natural-end of 5-yr window — no early-halt artifact constrains the delta sample.
 
 ---
 
@@ -283,8 +283,8 @@ graph LR
 | IMPL-048 | low | IMPL-047 | state schema lock | versioning + future migration | ADR-007 |
 | IMPL-049 | medium | IMPL-029,032,033,034,035 | pending state machines + force-clear | BR-6.x preserve + OQ-A1/A2/A3 resolve | ADR-008 |
 | IMPL-050 | low | IMPL-019..039 (ban check), IMPL-059 | time gates + ban cooldown | BR-3.x preserve | — |
-| IMPL-051 | medium | IMPL-052 | ping-pong detection trigger | FR-6.6 G4 safety | ADR-010 |
-| IMPL-052 | medium | IMPL-058,059 | RUNNING/HALTED/HALTED_STABLE machine | FR-7.7; ADR-010 semantic | ADR-010 |
+| ~~IMPL-051~~ | n/a | n/a | **CANCELLED-BT-002 2026-05-17** (former `services/CircuitBreaker::CheckPingPong()` — legacy-parity, detector removed; cap-3 iter chain ADR-013 → ADR-014 falsified) | n/a | n/a |
+| IMPL-052 | medium | IMPL-058,059 | RUNNING/HALTED/HALTED_STABLE machine — Phase 1 trigger reduces to `IndicatorService::AnyHandleInvalid()` runtime (BT-002 2026-05-17 amends ADR-010 § Trigger sources) | FR-7.7; ADR-010 (amended BT-002) semantic | ADR-010 (amended BT-002) |
 | IMPL-053..057 | medium | IMPL-058,059 | cross-slot bulk close + overload | FR-7.1 ถึง FR-7.5 preserve | — |
 | IMPL-058 | low | IMPL-059 | HALTED-aware enable matrix | ADR-010 alignment | ADR-010 |
 | IMPL-059 | medium | IMPL-060 | F1 pipeline integration | composition root | ADR-012 |

@@ -2,12 +2,12 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Accepted |
-| **Date** | 2026-05-17 |
-| **Deciders** | Engineer (IMPL-FIX-012 iter-3) |
-| **Supersedes** | n/a — extends ADR-013 (ADR-013 stays in force; this ADR adds two more defense layers at the detector) |
-| **Related** | ADR-010 (HALTED matrix), ADR-011 (ErrorBypassThrottle), ADR-013 (DEAL_REASON_EXPERT filter), BR-3.6 (ping-pong spec) |
-| **Goal trace** | G2, BR-3.6, NFR-5.1, Open Risks R-3 (NFR-1.1 acceptance signal blocker) |
+| **Status** | **Superseded by BT-002 2026-05-17** (preserved as audit history; iter-3 G3 Run #5 empirically falsified ADR-014 — its rule (c) `pos_i == pos_j → skip` is the structural inverse of the canonical ping-pong concept and fired earlier than the iter-1 baseline halt class at sim 2021-01-06 02:50:48 on a legitimate Slot_BI pyramid close-tk12 + open-tk14 same-tick pattern; cap-3 budget exhausted → escalation gate fired → operator authorized Option 1 detector removal at BT-002) |
+| **Date** | 2026-05-17 (superseded same day) |
+| **Deciders** | Engineer (IMPL-FIX-012 iter-3) ; superseded by Operator (Kritsana) via BT-002 |
+| **Supersedes** | n/a — extended ADR-013 ; itself superseded by BT-002 |
+| **Related** | ADR-010 (HALTED matrix — amended BT-002), ADR-011 (ErrorBypassThrottle), ADR-013 (DEAL_REASON_EXPERT filter — also superseded by BT-002), ~~BR-3.6~~ (demoted/removed per chained `/backtrack ba`) |
+| **Goal trace** | G2, ~~BR-3.6~~ (BR-3.6 demoted/removed per BT-002), NFR-5.1 (HALTED state machine retained for handle-invalid + Phase 2 triggers), Open Risks R-3 (NFR-1.1 acceptance signal blocker — root cause addressed at BT-002) |
 
 ## Context
 

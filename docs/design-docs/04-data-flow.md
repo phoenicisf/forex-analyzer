@@ -23,7 +23,6 @@ sequenceDiagram
     autonumber
     participant MT5 as MT5 Platform
     participant Orc as Orchestrator
-    participant CB as CircuitBreaker
     participant IS as IndicatorService
     participant MCB as MarketContextBuilder
     participant PS as PortfolioState
@@ -44,12 +43,7 @@ sequenceDiagram
     Orc->>MCB: Build(IS) -> MarketContext (immutable struct)
     Note right of MCB: ~50 us<br/>incl. wpr_wave_signal + adx_force_peak_valid precompute
 
-    Orc->>CB: CheckPingPong()
-    alt ping-pong detected
-        CB-->>Orc: triggered
-        Orc->>Orc: EAState = HALTED (per ADR-010)
-        Orc->>TJ: WriteEvent({event_type: "halt", reason: "circuit_breaker_pingpong"})
-    end
+    Note over Orc: CircuitBreaker.CheckPingPong removed per BT-002 2026-05-17 (legacy-parity)
 
     Orc->>IS: AnyHandleInvalid()
     alt handle invalid runtime (rare)
@@ -548,7 +542,7 @@ sequenceDiagram
 
 | Helper (BR ref) | RUNNING | HALTED | Reason |
 |-----------------|---------|--------|--------|
-| CircuitBreaker check | ✅ | ✅ | always evaluate halt trigger |
+| ~~CircuitBreaker check~~ | n/a | n/a | **Removed per BT-002 2026-05-17** — BR-3.6 ping-pong detector deleted (legacy-parity; cap-3 iter chain ADR-013 → ADR-014 falsified 3 false-positive classes; `PhoenicisN2.10_stable` achieves $24.27 M / 5-yr baseline without a detector). Halt trigger now reduces to `IndicatorService::AnyHandleInvalid()` runtime guard (always evaluated, both RUNNING + HALTED) + Phase 2 candidates per ADR-010 Revisit-when. |
 | ForceCutloss CD (BR-8.3) | ✅ | ✅ | exit-side action; ตรง halted semantic |
 | ExtraCheckFunction2 (BR-8.5) | ✅ | ✅ | demote signal — no order |
 | Safe-port (BR-8.1) bulk close 10 slots | ✅ | ✅ | bulk close = exit-side action; per-slot ManageExits ไม่ replace portfolio-wide cleanup; align AC-7.7.3 + G4 |

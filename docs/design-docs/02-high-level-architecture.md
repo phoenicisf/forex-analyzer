@@ -51,7 +51,7 @@ PhoenicisNex ออกแบบเป็น **modular monolith intra-process** �
 | FR-6.3 | New Year holiday block | `services/TimeGate::IsNewYearSeason2()` | — |
 | FR-6.4 | Per-slot ban dates | `domain/SlotState::ban_date` + `services/TimeGate::IsBanned()` | ADR-005 |
 | FR-6.5 | DST handling EET | `services/TimeGate::ServerTime()` uses `TimeCurrent()` (broker server time) — DST shifts inherit from MT5 | — |
-| FR-6.6 | CircuitBreaker ping-pong | `services/CircuitBreaker::CheckPingPong()` | ADR-010 |
+| ~~FR-6.6~~ | ~~CircuitBreaker ping-pong~~ — **removed per BT-002 2026-05-17** (legacy-parity: `PhoenicisN2.10_stable` achieves $24.27 M / 5-yr baseline without a ping-pong detector; cap-3 iteration chain ADR-013 → ADR-014 falsified 3 distinct false-positive classes). Chained `/backtrack ba` will demote/remove BR-3.6 + FR-6.6 at BA layer. | n/a | n/a |
 | FR-6.7 | Force-pending 9-bar timeout | `services/PendingMachineRegistry::TickForcePending()` | ADR-008 |
 | FR-7.1 | Safe port (OrderGroup#1) | `services/CrossSlotCoordinator::RunSafePort()` | — |
 | FR-7.2 | Ichimoku bounce (OrderGroup#2) | `services/CrossSlotCoordinator::RunOrderGroup2()` | — |
@@ -59,7 +59,7 @@ PhoenicisNex ออกแบบเป็น **modular monolith intra-process** �
 | FR-7.4 | ExtraCheckFunction2 | `services/CrossSlotCoordinator::ExtraCheckFunction2()` | — |
 | FR-7.5 | EOverload/COverload/GOverload | `services/CrossSlotCoordinator` overload methods | — |
 | FR-7.6 | Indicator handle validation | `services/IndicatorService::CreateHandles()` (returns false on any INVALID_HANDLE → orchestrator → INIT_FAILED) | ADR-003 |
-| FR-7.7 | CircuitBreaker controlled halt | `services/CircuitBreaker::Halt()` + `core/EAState` machine | ADR-010 |
+| FR-7.7 | Controlled halt (handle-invalid runtime; CB ping-pong removed per BT-002 2026-05-17) | `core/EAState` machine + `services/IndicatorService::AnyHandleInvalid()` ; Phase 2 trigger candidates per ADR-010 Revisit-when (equity-floor, journal-sustained-failure) | ADR-010 (amended BT-002) |
 | FR-8.1 | 300-bar scan cache | `services/IndicatorService::CachedScan()` | ADR-003 |
 | FR-8.2 | DD loop optimization | `services/PortfolioMonitor::IncrementalDD()` | — |
 | FR-8.3 | Safe-port opt-out flag | `services/CrossSlotCoordinator` reads `InpSafePortOptOut_<slot>` | — |
@@ -200,7 +200,6 @@ graph TB
         TJ[TradeJournal<br/>JSON-Lines]
         SP[StatePersistence<br/>atomic temp+rename]
         LOG[Logger<br/>tagged]
-        CB[CircuitBreaker]
         TG[TimeGate]
         PMR[PendingMachineRegistry]
         CSC[CrossSlotCoordinator]
@@ -247,7 +246,7 @@ graph TB
     TJ -- writes --> FS
     LOG -- writes --> MT5L
     LOG -- writes --> MT5L
-    CB -- on trigger --> EAS
+    IS -- on handle-invalid runtime --> EAS
 
     classDef entry fill:#e6f3ff,stroke:#3060a0
     classDef coreCls fill:#fff4e6,stroke:#a05030
@@ -259,7 +258,7 @@ graph TB
     class EP entry
     class ORC,BV,SR,EAS coreCls
     class S_C,S_D,S_F,S_J,S_DOTS,S_BI slotsCls
-    class IS,MCB,PS,RM,TJ,SP,LOG,CB,TG,PMR,CSC,PM servicesCls
+    class IS,MCB,PS,RM,TJ,SP,LOG,TG,PMR,CSC,PM servicesCls
     class MC,SS,ENUM,CSB,CP,PMath,JW,AF domainCls
     class FS,MT5L,BROKER,IND sinksCls
 ```
@@ -287,19 +286,20 @@ graph TB
 | 11 | `TradeJournal` | services | JSON-Lines append-only; live + tester namespace; monthly rotation | ADR-006 |
 | 12 | `StatePersistence` | services | Atomic temp+rename of `state.json`; load on OnInit | ADR-007 |
 | 13 | `Logger` | services | Tagged structured logger; severity routing; Alert throttle | ADR-011 |
-| 14 | `CircuitBreaker` | services | Ping-pong detection (BR-3.6); halt trigger | ADR-010 |
-| 15 | `TimeGate` | services | IsMorningWakeup + IsMondaySpreadHigh + IsNewYearSeason2 + per-slot ban (BR-3.x) | — |
-| 16 | `PendingMachineRegistry` | services | 7 pending state machines + force-clear policy (BR-6.x) | ADR-008 |
-| 17 | `CrossSlotCoordinator` | services | Safe-port + OrderGroup#2 + ForceCutloss + ExtraCheckFunction2 + Overload helpers (BR-8.x) | — |
-| 18 | `PortfolioMonitor` | services | WatchProfits replacement; worst DD bookkeeping (FR-4.4) | — |
-| 19 | `MarketContext` | domain | struct schema; immutable | ADR-004 |
-| 20 | `SlotState` | domain | struct: count/lots/profit/last_open_date/pending/tickets[] | ADR-005 |
-| 21 | `EnumTypes` | domain | EEAState, EPendingState, ESlotId, ESeverity | — |
-| 22 | `CSlotBase` | domain | Abstract slot interface (Magic, SlotId, Evaluate, ManageExits, DependsOn, PendingState) | ADR-002 |
-| 23 | `CommentParser` | helpers | Shared-magic comment prefix parser (BR-1.2) | — |
-| 24 | `PipMath` | helpers | DigitMultipier-aware pip arithmetic (BR-9.3, ADR-009) | — |
-| 25 | `JsonWriter` | helpers | JSON-Lines serialization (no DLL) | ADR-006 |
-| 26 | `AtomicFile` | helpers | FileMove-based atomic write wrapper | ADR-007 |
+| 14 | `TimeGate` | services | IsMorningWakeup + IsMondaySpreadHigh + IsNewYearSeason2 + per-slot ban (BR-3.x) | — |
+| 15 | `PendingMachineRegistry` | services | 7 pending state machines + force-clear policy (BR-6.x) | ADR-008 |
+| 16 | `CrossSlotCoordinator` | services | Safe-port + OrderGroup#2 + ForceCutloss + ExtraCheckFunction2 + Overload helpers (BR-8.x) | — |
+| 17 | `PortfolioMonitor` | services | WatchProfits replacement; worst DD bookkeeping (FR-4.4) | — |
+| 18 | `MarketContext` | domain | struct schema; immutable | ADR-004 |
+| 19 | `SlotState` | domain | struct: count/lots/profit/last_open_date/pending/tickets[] | ADR-005 |
+| 20 | `EnumTypes` | domain | EEAState, EPendingState, ESlotId, ESeverity | — |
+| 21 | `CSlotBase` | domain | Abstract slot interface (Magic, SlotId, Evaluate, ManageExits, DependsOn, PendingState) | ADR-002 |
+| 22 | `CommentParser` | helpers | Shared-magic comment prefix parser (BR-1.2) | — |
+| 23 | `PipMath` | helpers | DigitMultipier-aware pip arithmetic (BR-9.3, ADR-009) | — |
+| 24 | `JsonWriter` | helpers | JSON-Lines serialization (no DLL) | ADR-006 |
+| 25 | `AtomicFile` | helpers | FileMove-based atomic write wrapper | ADR-007 |
+
+> **Removed per BT-002 2026-05-17:** `CircuitBreaker` service (former row #14) — ping-pong detection deleted (legacy-parity; cap-3 iter ADR-013 → ADR-014 falsified). ADR-010 amended; HALTED state machine remains for handle-invalid runtime (+ Phase 2 candidates).
 
 ---
 
@@ -322,7 +322,7 @@ graph TB
 | `StatePersistence → AtomicFile → FileMove` | helper + platform call | only place that touches state.json |
 | `TradeJournal → JsonWriter → FileWrite` | helper + platform call | only place that touches journal/*.jsonl |
 | `Logger → Print + Alert` | platform call | only place that emits MT5 native UI/log |
-| `CircuitBreaker → EAState.Halt(reason)` | service-to-service | one-way; EAState doesn't know CircuitBreaker |
+| `Orchestrator → EAState.Halt(reason="handle_invalid_runtime")` | direct on `AnyHandleInvalid()` check | replaces former `CircuitBreaker → EAState.Halt` path (BT-002 2026-05-17: ping-pong detector removed; only `IndicatorService::AnyHandleInvalid()` returns true at the orchestrator guard escalates to halt) |
 | `Orchestrator → SlotRegistry.AllSlots()` | service interface | iteration order = topo-sort lock (BR-2.2) |
 
 ### 5.2 Communication pattern decisions
@@ -439,7 +439,7 @@ User เป็น solo operator — observability surface:
 | **Schema version** | Field `schema_version` ใน persisted file — bump เมื่อ breaking change ของ schema. Backward-compat policy: old loader ignore unknown field |
 | **Force-clear** | Safety policy ของ pending state machine M/T/Q — clear pending หลัง N H4 bars elapsed (ADR-008 — resolves OQ-A1/A2/A3) |
 | **Bucket A drift** | Behavioral deviation ของ rewrite default build (G4 fixes ON) เทียบ legacy baseline — ต้อง ≤ 25% Net Profit per NFR-1.1 (regression contract). **Includes** intentional G4 fix contribution (BT-001 re-baseline 2026-05-12 — ดู `ba/03 § NFR-1 Empirical Citation`) |
-| **Bucket B drift** | Informational delta `rewrite-G4-ON − rewrite-G4-OFF` ที่บันทึก sign + magnitude ของ intentional G4 fix contribution — **no acceptance gate** per NFR-1.8 (Should priority, BT-001 re-classification 2026-05-12). `DISABLE_G4_FIXES` build อาจ measurable เฉพาะ partial pre-CircuitBreaker window |
+| **Bucket B drift** | Informational delta `rewrite-G4-ON − rewrite-G4-OFF` ที่บันทึก sign + magnitude ของ intentional G4 fix contribution — **no acceptance gate** per NFR-1.8 (Should priority, BT-001 re-classification 2026-05-12). Post-BT-002 (2026-05-17), `DISABLE_G4_FIXES` build runs to natural-end of measurement window (CircuitBreaker BR-3.6 detector removed — no early halt artifact); informational delta now reflects full-window G4 contribution if `DISABLE_G4_FIXES` retained as forensic toggle. |
 | **OQ-A1/A2/A3** | Architecture-domain Open Questions raised by BA at `01 § 10.1` — M/T/Q-Pending force-clear safety policies; resolved by ADR-008 |
 | **DigitMultipier** | Integer 10 ถ้า broker 5-digit pricing (FBS Standard); 1 ถ้า 4-digit. Auto-detect ใน OnInit (BR-9.3); ทุก pip arithmetic คูณด้วยค่านี้ |
 | **NTFS atomic rename** | Windows file system guarantee: `MoveFileEx` ของ same volume = single transaction; file system observable state อยู่ใน old หรือ new เท่านั้น (no partial rename) |

@@ -93,7 +93,7 @@ else (SELL):
 - QA Phase: รัน regression บน rewrite default build (G4 fixes ON, single-pass per BT-001) → inspect BI trade journal entries
 - ตรวจ `sl > 0` ทุกราย (AC-3.3.2)
 - ตรวจ `(BI_entry − BI_sl)` pip distance = `(B_entry − B_sl)` pip distance ของ parent ticket เดียวกัน
-- Bucket A measurement (rewrite-G4-ON build, NFR-1.1 ≤ 25%) absorbs BI SL fix drift; portfolio-level PF (NFR-1.2 ≤ 0.2 drop) + Max DD (NFR-1.5 ≤ +10pp) gate at portfolio level. NFR-1.8 informational delta (`rewrite-G4-ON − rewrite-G4-OFF`) record sign + magnitude เฉพาะ partial pre-CircuitBreaker window measurable (ดู BA `03 § NFR-1 Empirical Citation`)
+- Bucket A measurement (rewrite-G4-ON build, NFR-1.1 ≤ 25%) absorbs BI SL fix drift; portfolio-level PF (NFR-1.2 ≤ 0.2 drop) + Max DD (NFR-1.5 ≤ +10pp) gate at portfolio level. NFR-1.8 informational delta (`rewrite-G4-ON − rewrite-G4-OFF`) records sign + magnitude. Post-BT-002 (2026-05-17, BR-3.6 detector removed) the `DISABLE_G4_FIXES` build runs to natural-end of measurement window — no early-halt artifact constrains the delta sample (ดู BA `03 § NFR-1 Empirical Citation` + ADR-010 § Revision history)
 
 ## Consequences
 

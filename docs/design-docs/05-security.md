@@ -8,7 +8,7 @@
 
 ## TL;DR
 
-PhoenicisNex security posture แตกต่างจาก typical web/cloud system **อย่างสำคัญ** — เป็น **local-only EA ใน MT5 sandbox** (no network listener, no external API call, no PII transit, no multi-user, no DLLs ตาม NFR-7.2). BA `03 § 5 Note` ระบุ formally ว่า Security NFR category = out-of-scope Phase 1 พร้อมเหตุผล 5 ข้อ + Phase 2 trigger ชัดเจน. เอกสารนี้ทำ **STRIDE analysis** ครบทั้ง 6 categories ในบริบท local EA + ระบุ **operational risks** + **observability strategy** ที่แทนที่ traditional AppSec defenses. **Key points:** (1) Symbol whitelist (FR-1.2) + indicator handle fail-fast (FR-7.6) + CircuitBreaker controlled halt (FR-7.7 + ADR-010) เป็น primary safety controls; (2) Trade journal (G2 + ADR-006) provides repudiation defense; (3) Atomic state persistence (ADR-007) defends against tampering via crash-induced corruption.
+PhoenicisNex security posture แตกต่างจาก typical web/cloud system **อย่างสำคัญ** — เป็น **local-only EA ใน MT5 sandbox** (no network listener, no external API call, no PII transit, no multi-user, no DLLs ตาม NFR-7.2). BA `03 § 5 Note` ระบุ formally ว่า Security NFR category = out-of-scope Phase 1 พร้อมเหตุผล 5 ข้อ + Phase 2 trigger ชัดเจน. เอกสารนี้ทำ **STRIDE analysis** ครบทั้ง 6 categories ในบริบท local EA + ระบุ **operational risks** + **observability strategy** ที่แทนที่ traditional AppSec defenses. **Key points:** (1) Symbol whitelist (FR-1.2) + indicator handle fail-fast (FR-7.6) + controlled halt via `core/EAState` on `IndicatorService::AnyHandleInvalid()` (FR-7.7 + ADR-010 amended BT-002 2026-05-17 — BR-3.6 ping-pong detector removed legacy-parity) เป็น primary safety controls; (2) Trade journal (G2 + ADR-006) provides repudiation defense; (3) Atomic state persistence (ADR-007) defends against tampering via crash-induced corruption.
 
 ---
 
@@ -117,7 +117,7 @@ flowchart LR
 | **Tick latency overflow → EA misses ticks** | Med — bulk-close burst (ADR-006), slow disk | Med — missed entries / late exits | NFR-2.1/2.2 budgets + degrade-warn-but-continue; `03 § 2 + 4` deep dives |
 | Disk full → state/journal write fails | Low | Med — EA enters degraded mode | Logger.Error + Alert; Trade flow continues (in-memory state only); user must free disk |
 | Indicator handle exhaustion (MT5 limit ~512) | Low — we use ~25 (TD-locked Phase 1D) | None | Within MT5 native limit |
-| Infinite re-entry loop (CircuitBreaker should catch) | Low | High — could blow account | **FR-6.6 CircuitBreaker ping-pong** (3000ms threshold) + ADR-010 halt |
+| Infinite re-entry loop | Low — `PhoenicisN2.10_stable` legacy run-to-end of 5-yr backtest without one was the empirical proof per BT-002 2026-05-17; per-slot SL/TP + cross-slot SafePort + RiskManager.ClampLot + force-pending timeouts cap individual exposure even without a portfolio-level loop guard | High — could blow account in the worst case (no automated detector) | **Accepted residual risk per BT-002 2026-05-17** (legacy-parity). Operator monitoring + manual EA detach are the Phase 1 mitigations. Phase 2 candidates per ADR-010 Revisit-when: equity-floor enforcement (OQ-6 promotion) or journal-write sustained-failure escalation. Former FR-6.6 CircuitBreaker ping-pong removed (cap-3 iter chain ADR-013 → ADR-014 falsified 3 false-positive classes). |
 | Pending state file growth → memory exhaustion | Low — bounded by force-clear (ADR-008) | Low | ADR-008 force-clear caps unbounded growth |
 | Antivirus locks `state.json` during write | Med | Low-Med — write fails, retry next tick | Logger.Error + retry pattern; user adds MT5 folder to AV exclusion |
 
@@ -148,7 +148,7 @@ flowchart LR
 
 | Control | FR/NFR | Implementation |
 |---------|--------|----------------|
-| CircuitBreaker ping-pong | FR-6.6 | `CircuitBreaker::CheckPingPong()` + `EAState.Halt()` + Alert |
+| ~~CircuitBreaker ping-pong~~ | ~~FR-6.6~~ | **Removed per BT-002 2026-05-17** — legacy-parity (no automated portfolio-level loop guard Phase 1). HALTED state machine retained via ADR-010 for `IndicatorService::AnyHandleInvalid()` runtime trigger + Phase 2 candidates (equity-floor, journal-sustained-failure). Infinite re-entry loop now accepted residual risk (see § 2.5 DoS row). |
 | Time gate spread guard | FR-6.2, BR-3.2, BR-3.7 | `TimeGate::IsMondaySpreadHigh()` blocks entry on Monday morning if `SYMBOL_SPREAD > 10 × DigitMultipier` |
 | Morning wakeup gate | FR-6.1, BR-3.1 | `TimeGate::IsMorningWakeup()` blocks entry 00:00–00:05 broker server time (ทุกวัน) |
 | Holiday block | FR-6.3 | `TimeGate::IsNewYearSeason2()` blocks entry Dec 21–Jan 3 (no CD active) |
@@ -156,7 +156,7 @@ flowchart LR
 | Lot cap (LimitMaxLotSizeRatio) | FR-3.6, BR-4.2 | `RiskManager::ClampLot()` caps at `default 2.9 × SYMBOL_VOLUME_MAX`; logs warn |
 | Lot floor (SYMBOL_VOLUME_MIN) | BR-4.3 | `RiskManager::ClampLot()` floors at min volume |
 | Pending state force-clear | ADR-008 | bounded state growth; `Logger.Warn` on each clear |
-| Halted-state semantic | FR-7.7, ADR-010 | exit-pass-only after halt; positions managed to closure; no new orders |
+| Halted-state semantic | FR-7.7, ADR-010 (amended BT-002) | exit-pass-only after halt; positions managed to closure; no new orders. Phase 1 trigger source = `IndicatorService::AnyHandleInvalid()` runtime check only (BR-3.6 ping-pong detector removed per BT-002 2026-05-17). |
 
 ### 3.3 Failure-mode defenses
 
@@ -230,7 +230,7 @@ EA = single-process, single-user, no network listener — no AuthN/AuthZ surface
 |--------|-----------|---------------|-------------|
 | Logger ERROR rate | > 10/min sustained | EA in distress (broker reject, disk error) | Inspect log + Alert popups |
 | Journal `event_type=reject` count | > 5/day | Broker rejecting orders (margin, spread, market closed) | Check FBS account margin + market schedule |
-| Journal `event_type=halt` | any | CircuitBreaker tripped or handle invalid | Inspect halt_reason field; restart EA after diagnosis |
+| Journal `event_type=halt` | any | Indicator handle invalid runtime (Phase 1 sole trigger source post-BT-002 2026-05-17; CB ping-pong removed). Phase 2 trigger candidates per ADR-010 Revisit-when: equity-floor, journal-sustained-failure | Inspect halt_reason field; restart EA after diagnosis |
 | Journal `event_type=pending_force_clear` | any | Pending machine timed out (ADR-008) | Inspect signal_context; if pattern → tune `InpForceClearX_Bars` |
 | `WatchProfits.worst_dd` GlobalVariable | > -50% (C-8 risk profile) | Account at user's max DD | Manual halt (detach EA) per OQ-6 monitor-only decision |
 | Pending machine `force_clear_count` per slot (cumulative — survives restart per ADR-007) | + 3 new force-clears since last review window | Pending threshold may be too tight | Inspect journal `pending_force_clear` events since last incident; tune `InpForceClearX_Bars` if pattern persists |
