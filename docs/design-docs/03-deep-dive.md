@@ -2,7 +2,7 @@
 
 > **Phase:** Phase 1B (System Design) — Doc 2/6
 > **Author:** Architect agent (`/sd` workflow)
-> **Last updated:** 2026-05-17 (BT-002 cascade — BR-3.6 CircuitBreaker ping-pong detector removed legacy-parity; § 1.3 outline + § 1.5 Validation re-frame post-BT-002, § 2.3 Table A/B −5 µs annotation. Prior: 2026-05-12 BT-001 cascade — Challenge 1 § 1.3 Impl outline row + § 1.5 Bucket A/B validation re-framed to rewrite-G4-ON single-pass per BT-001 re-baseline 2026-05-12)
+> **Last updated:** 2026-05-17 (BT-002 cascade + Round 08 cite sync — BR-3.6 CircuitBreaker ping-pong detector removed legacy-parity; § 1.3 outline + § 1.5 Validation re-frame post-BT-002, § 2.3 Table A/B −5 µs annotation, § 6 Decision Justification row L334 label sync to canonical "HALTED state machine (HALTED / HALTED_STABLE)" per Round 08 Claim 08.2 (mirror `02 § 8` Glossary post-rebuttal-05 merge). Prior: 2026-05-12 BT-001 cascade — Challenge 1 § 1.3 Impl outline row + § 1.5 Bucket A/B validation re-framed to rewrite-G4-ON single-pass per BT-001 re-baseline 2026-05-12)
 > **Reads:** `02-high-level-architecture.md`, `docs/adr/*`, `docs/ba/03-non-functional-requirements.md`
 > **Audience:** Tech Lead (Phase 1D TD), Implementation Engineer (Phase 3I), QA (Phase 3T)
 
@@ -331,7 +331,7 @@ Per-slot persisted fields (added to SlotState struct):
 | Indicator handle ownership | Centralized service (ADR-003) | Per-slot ownership | Duplication + no fail-fast point + ขัด FR-2.6 snapshot consistency |
 | MarketContext mutability | Immutable per-tick (ADR-004) | Mutable shared object | Cross-slot interference; ขัด AC-2.6.2 |
 | PortfolioState lookup | CHashMap<int, SlotState*> (ADR-005) | Sparse array indexed by magic-200 | Tightly coupled to magic range; Phase 2 expansion painful |
-| Halted state semantic | Exit-pass-only + HALTED_STABLE (ADR-010) | Stop everything immediately | Open positions become orphan = G4 violation |
+| HALTED state machine (HALTED / HALTED_STABLE) | Exit-pass-only + HALTED_STABLE (ADR-010 amended BT-002) | Stop everything immediately (legacy approach) | Open positions become orphan = G4 violation; ADR-010 entry-pass-skip + exit-pass-continue invariant preserves G4 |
 | File layout | Layered tree (ADR-012) | Flat single-file | NFR-4.1 (5,000 LOC) + NFR-4.2 (1 file/slot) hard fail |
 | Config delivery | MT5 native `input` only (NFR-8.2) | External JSON/YAML config + DLL parser | NFR-7.2; user MVP signal "no install" |
 
