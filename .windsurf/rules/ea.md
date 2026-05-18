@@ -13,7 +13,7 @@ MQL5/Experts/PhoenicisNex/
 │   └── Inputs_Pending.mqh
 ├── core/                    # Orchestrator, BootstrapValidator, SlotRegistry, EAState
 ├── slots/Slot_<X>.mqh       # × 21 (1 file per slot per NFR-4.2)
-├── services/                # 13 services (IndicatorService, MarketContextBuilder, PortfolioState, ...)
+├── services/                # 12 services (IndicatorService, MarketContextBuilder, PortfolioState, ...) — post-BT-002: CircuitBreaker.mqh deletion pending impl-code cleanup; ADR-013/014 reverted
 ├── domain/                  # Pure types (MarketContext, SlotState, EnumTypes, CSlotBase) — no service deps
 ├── helpers/                 # CommentParser, PipMath, JsonWriter, AtomicFile, Timestamp — pure utility
 └── libs/                    # Legacy lib re-use (TD assess per file)
@@ -50,14 +50,17 @@ LOC budget per file (NFR-4.1 ≤ 5,000): slots 800-2,000 (max 5,000 → split `S
 - **Result pattern:** services return `bool` + populate `ESeverity` log; orchestrator logs + escalates (no exception in MQL5)
 - **Fail-fast on OnInit:** any service Init() returning false → `CleanupPartialInit` → `INIT_FAILED` (no recovery in OnInit Phase B/C)
 - **Degrade-but-continue on OnTick:** journal write fail → log warn + continue trade (NFR-2.2 overshoot policy); state save fail → log error + retry next tick (do not block trade)
-- **Halt path:** CircuitBreaker / sustained journal failure → `EAState::SetHalted(reason)` BEFORE next exit pass (per ADR-010 + Claim 01.3)
+- **Halt path:** ⚠️ **post-BT-002 (2026-05-17)** CircuitBreaker mechanism reverted (3 false-positive classes); replacement detector TBD. Until then, halt triggers reduce to: (1) sustained journal failure / (2) state.json corruption / (3) symbol whitelist breach in OnInit → `EAState::SetHalted(reason)` BEFORE next exit pass (per ADR-010 + Claim 01.3). Once `services/CircuitBreaker.mqh` is deleted in impl-code cleanup, `core/Orchestrator.mqh::OnTradeTransaction` ping-pong dispatch + `OnTick CheckPingPong` call site MUST also be stripped (BT-002 cascade).
 
 ## Testing
 > Full 4-gate Definition of Done in `.claude/rules/testing.md`. Per-task workflow:
-- **G1 Compile:** `MetaEditor64.exe /compile:MQL5/Experts/PhoenicisNex/PhoenicisNex.mq5 /log` → check `.compile.log` for `Result: 0 errors, 0 warnings`
-- **G2 Smoke:** attach EA to EURUSD H4 → check `[system][ev=init_ok]` in Experts log first 5 ticks
-- **G3 Headless backtest:** `terminal64.exe /config:simulation/headless-tests/<task>.ini` (commit `.ini` per TD-02 §13.6)
-- **G4 Log review:** parse Tester log + journal via `mt5-log-reader` SKILL + jq filters
+
+🔴 **Recompile-after-edit rule (per user remark 2026-05-18 — CLAUDE.md §6):** ทุก `.mq5` / `.mqh` edit MUST trigger G1 immediately — ห้าม batch-then-compile-at-end (silent drift per fix-round-15 R16 §16.1). MT5 install path = `origin.txt` (UTF-16LE, decode required); MQL5 tasks MUST read SKILLs first.
+
+- **G1 Compile:** `"$METAEDITOR" /compile:MQL5/Experts/PhoenicisNex/PhoenicisNex.mq5 /log` (resolve `$METAEDITOR` from `origin.txt`) → check `.compile.log` for `Result: 0 errors, 0 warnings`. Use `mql-developer` SKILL for syntax patterns + `mt5-log-reader` SKILL for `.compile.log` UTF-16LE decode.
+- **G2 Smoke:** headless attach via test .ini (NOT GUI chart-drop) → grep `[system][ev=init_ok]` in Experts log first 5 ticks. `mt5-log-reader` SKILL.
+- **G3 Headless backtest:** `"$TERMINAL64" /config:simulation/headless-tests/<task>.ini` with `Visual=0` + `ShutdownTerminal=1` (commit `.ini` per TD-02 §13.6); follow `mt5-headless-backtest` SKILL 10-step flow.
+- **G4 Log review:** parse Tester log (iconv UTF-16LE → UTF-8 → grep) + journal records via jq filters against `trade-journal-schema.yaml`; reference `mt5-log-reader` SKILL.
 
 ### Test Execution Safety (MQL5-specific)
 - **No native unit-test framework** in MQL5 ecosystem (per BA `01 § 6.2 Won't Permanent`) — empirical verification = compile log + Strategy Tester log + journal artifact

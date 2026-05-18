@@ -1,7 +1,7 @@
 # PhoenicisNex — AI Development Rules
 
 > AI Agent ทุกตัวต้องอ่านไฟล์นี้ก่อนเริ่มทำงาน
-> อัปเดตล่าสุด: 2026-05-02
+> อัปเดตล่าสุด: 2026-05-18 (regen via `/project-init --regen` after BT-002 TD Round 08 re-certification)
 
 ---
 
@@ -9,7 +9,7 @@
 
 **ชื่อโปรเจค:** PhoenicisNex
 **ประเภท:** MetaTrader 5 Expert Advisor (EA) — single-instrument retail Forex EA (EURUSD H4)
-**สถานะ:** MVP — greenfield rewrite of `PhoenicisN2.10_stable.mq5` (22k LOC); Design QA certified 2026-05-02
+**สถานะ:** MVP — greenfield rewrite of `PhoenicisN2.10_stable.mq5` (22k LOC); Design QA certified 2026-05-02; TD re-certified 2026-05-17 post-BT-002 (CircuitBreaker / ADR-013 / ADR-014 reverted — impl-code cleanup pending)
 **เอกสารหลัก:** `docs/design-docs/` (ดู Section 8)
 
 <!-- AUTO-MANAGED:phase-status — generated/refreshed by /project-init from docs/state/impl-plan.md Phase Gate sections. Do NOT hand-edit unless project is in lean mode without impl-plan. -->
@@ -30,14 +30,14 @@
 >
 > **For PhoenicisNex specifically (no GUI):** Tier 1.5 walk = run `simulation/headless-tests/<task>.ini` against fresh state via `mt5-headless-backtest` flow → inspect Tester log + `journal/*.jsonl` per `mt5-log-reader` SKILL → verify journal records vs `trade-journal-schema.yaml` + state.json invariants vs `state-persistence-schema.yaml`. Empirical = headless backtest + log + journal artifacts (no GUI to "click through").
 >
-> **Status snapshot** (sync จาก `docs/state/impl-plan.md` — first cut by Impl Planner):
+> **Status snapshot** (sync จาก `docs/state/impl-plan.md § Phase Status Snapshot` line ~111, snapshot timestamp 2026-05-18):
 >
 > | Phase | Tier 1 (Tasks) | Tier 1.5 (Walk) | Tier 2 (Phase Gate) |
 > |-------|----------------|------------------|---------------------|
-> | P1 Foundation | [✅/⚠️ N/M tasks] | [✅ artifact YYYY-MM-DD / ⚠️ stale / ❌ missing] | [✅ via IMPL-P1-GATE / ⚠️ open] |
-> | P2 Core | [...] | [...] | [...] |
-> | P3 Polish | [...] | [...] | [...] |
-> | P4 Stretch | [...] | [...] | [...] |
+> | P1 Foundation + High-Risk Spike | ✅ 17/17 [x] | ✅ via IMPL-P1-GATE | ✅ closed 2026-05-02 (commit `065812f`) |
+> | P2 Core Services + EAState + Pending | ✅ 11/11 [x] | ✅ batch-1 + batch-2 (2026-05-04/05) | 🟡 NOMINATED + OVERRIDE 2026-05-03 (Path A); 5 P2 rows still gated on IMPL-062/063 paired-bundle drain |
+> | P3 21 Slots + CSlotBase + Inputs | ✅ 23/23 [x] | ✅ batch-1 + batch-2 (2026-05-04/05) | 🟡 NOMINATE-ABLE; 24 deferred-AC rows gated on IMPL-062 5-yr regression |
+> | P4 Cross-slot + Orchestrator + Verification | ✅ 17/17 [x] + IMPL-FIX-003/005/006/007/008/009/010 ✅ closed; **🔴 IMPL-FIX-012 iter-3 ❌ Run #5 (2026-05-17) — ADR-014 INSUFFICIENT, BI pyramiding 3rd false-positive class; cap-3 budget exhausted → BT-002 cascade fired** | ✅ batch-1/2/3 PASSED (2026-05-04/05/09) | ⏸ open — gated on R-3 drift escalation (operator paired-bundle re-execution on post-BT-002 impl-code cleanup build) |
 
 ## 2. Tech Stack
 
@@ -57,7 +57,7 @@
 
 <!-- AUTO-MANAGED:deployment-line — removed (containerization.engine == "none") -->
 
-- **Architecture Style:** Modular Monolith intra-MT5 process (per ADR-001) — 21 slots + 13 services + 4 helpers + 4 domain types + 3 core classes
+- **Architecture Style:** Modular Monolith intra-MT5 process (per ADR-001) — 21 slots + **12 services** + 4 helpers + 4 domain types + 3 core classes (services count dropped 13→12 per BT-002 cascade — CircuitBreaker.mqh deletion pending impl-code cleanup; ADR-013/ADR-014 reverted)
 - **5-layer file structure:** `core/` → `slots/` → `services/` → `domain/` → `helpers/` (per ADR-012)
 - **Service Communication:** Synchronous in-process method calls; intra-process contracts via JSON Schema in `docs/api-specs/*.yaml`
 - **Data Ownership:** PortfolioState owns all per-magic state (CHashMap per ADR-005); StatePersistence owns atomic state.json (ADR-007); TradeJournal owns JSON-Lines append (ADR-006)
@@ -98,12 +98,15 @@
 - เริ่มงาน: อ่าน CLAUDE.md → อ่าน handoff (single: current_handoff.md / monorepo: overview.md → {module}/handoff.md) → ทำงาน
 - จบงาน: อัปเดต handoff เมื่อจบ feature / เปลี่ยน session / ข้ามวัน (ไม่ต้องทุก step ย่อย)
 - Task size: XS-S ทำจบใน prompt เดียว / M แบ่ง 2-3 steps / L-XL ใช้ full decomposition
-- ADR: ทุกการตัดสินใจ architecture → สร้าง `docs/adr/NNN-title.md` (currently 12 ADRs locked — ADR-013+ for new decisions)
+- ADR: ทุกการตัดสินใจ architecture → สร้าง `docs/adr/NNN-title.md` (12 ADRs locked: ADR-001..012; ADR-013 + ADR-014 authored 2026-05-14/17 then **reverted via BT-002 cascade 2026-05-17** — CircuitBreaker ping-pong mechanism overall demoted, replacement TBD; new decisions use ADR-015+)
 - **Phase Gate ≠ Task Closure (three-tier)** — ดู §1 Three-Tier Closure Convention. Status reports + `/next` ต้อง reconcile ทั้ง 3 tiers (Tier 1 task / Tier 1.5 walk / Tier 2 Phase Gate); ห้ามใช้ Tier 1 อย่างเดียวสรุป "Phase complete". Engineer agents ห้ามปิด AC ด้วย `[x] + "deferred to operator-runtime"` — ใช้ `docs/state/deferred-ac-registry.md` แทน (ดู Glossary § Deferred-AC Registry + Exploratory Walk)
 - **State Reconciliation (3-file propagation)** — ทุกครั้งที่ปิด task / fix-round / impl-plan rebuttal ต้อง update **ทั้ง 3 ชั้น**: (1) `impl-plan.md` (primary SoT — `[x]` AC, Phase Gate, audit log), (2) `overview.md` (derived count + phase status), (3) `{module}/handoff.md` + `_session-handoff/<task-id>-evidence-*` (transient pointer + artifact). ห้าม update เพียงไฟล์เดียว — drift ระหว่างไฟล์ทำให้ `/next` รายงานผิด, `/impl-task` หยิบ task ผิด, status agents hallucinate phase complete (ดู Glossary § State Single Source of Truth + State Reconciliation Discipline)
 - **Plan QA cycle** — `/impl-plan` runs once → MUST follow with `/impl-plan-review all` → ถ้ามี CRITICAL/HIGH → `/impl-plan-rebuttal claim-review-XX.md` → loop until verdict ✅ Ready for Implementation Execution. ห้าม start `/impl-task` ก่อน plan ผ่าน review (mirror BA/SD/UX/TD review pattern)
 - **UIR before close** — engineer พบว่าต้องการ operator action (set env var, fetch API key, accept ToS, run privileged step) ก่อนปิด task = ใช้ **UIR template** ใน Confusion Management Protocol → register Pending row ใน `docs/state/operator-action-registry.md` → ห้าม close `[x]` AC ที่ depend on action จนกว่า registry row Done + verified via `[config-audit]` evidence (ดู Glossary § User Input Required + Operator Action Registry)
 - **Config-audit gate** — task ที่ consume env var / secret / API key / connection string / feature flag = ต้องมี ≥1 `[config-audit]` E-AC (Mandatory E-AC Trigger #8). Engineer enumerate config items + runtime introspect each resolved from real env (ไม่ใช่ hardcoded test value) + verify `.env.example` ↔ code refs sync. Code Review Dim #13 enforces. *(PhoenicisNex Phase 1 = local-only sandbox, no env var/secret consumer; gate triggers ต่อเมื่อ Phase 2 cloud journal/Telegram added.)*
+- **🔴 Recompile-after-edit (per user remark 2026-05-18)** — ทุกครั้งที่ touch `.mq5` หรือ `.mqh` ไฟล์ใดก็ตาม **ต้อง G1 recompile ทันที** ก่อนเดินงานต่อ (ห้าม batch แล้วค่อย compile ปลาย session — silent drift class จาก fix-round-15 R16 § 16.1 `git stash`-clean Gate #10). Use `mql-developer` SKILL สำหรับ syntax patterns + `mt5-log-reader` SKILL สำหรับ `.compile.log` parsing (UTF-16LE). Failure = ห้าม mark task complete จนกว่า `Result: 0 errors, 0 warnings` ปรากฏใน `.compile.log`.
+- **🔴 Headless MT5 testing focus (per user remark 2026-05-18)** — ทุก runtime verification (G2 smoke / G3 backtest / G4 log review) ต้องผ่าน **headless flow** ของ `mt5-headless-backtest` SKILL — *ห้ามขึ้น GUI* นอกจาก operator-side Tier 1.5 walk session ที่ designated เป็นแบบ live-GUI. `Visual=0` + `ShutdownTerminal=1` mandatory ใน `simulation/headless-tests/<task>.ini`.
+- **🔴 MQL5 SKILL invocation + canonical MT5 path (per user remark 2026-05-18)** — task ใดที่ touch MQL5 source / MT5 toolchain (compile / backtest / log parse / state inspection / journal validation) **ต้องเปิดอ่าน SKILL ที่เกี่ยวข้องก่อนเริ่ม**: `.agents/skills/mql-developer/SKILL.md` (MQL5 syntax + OOP + order management) → `.agents/skills/mt5-headless-backtest/SKILL.md` (10-step headless flow) → `.agents/skills/mt5-log-reader/SKILL.md` (UTF-16LE log decode + parse + Wine exit-code caveat). MT5 install path = **`origin.txt`** ที่ repo root — UTF-16LE encoded (decode via `iconv -f UTF-16LE -t UTF-8 origin.txt | tr -d '\r\n\0'`); ห้าม hardcode `C:\Program Files\FBS MetaTrader 5ph` ใน script / rule / commit — ดึงจาก `origin.txt` ทุกครั้งเพื่อ portability.
 
 ### 🔴 EA Definition of Done — 4-gate (per user remark 2026-05-02 + TD-02 §13.1)
 
@@ -177,7 +180,7 @@
 | **Pending state machine** | Per-slot internal state (PENDING / IDLE / EXECUTED) ใน `state.json` — **ไม่ใช่** broker-side pending order; force-clear policy per ADR-008 |
 | **Slot orchestrator** | ตัวเรียก `BusinessLogic_X` + `ExtraTakeProfit_X` ตามลำดับ exit-before-entry ทุก tick |
 | **HALTED state** | EA state machine จาก ADR-010 — `RUNNING` → `HALTED` → `HALTED_STABLE`; HALTED_STABLE = exit-only |
-| **CircuitBreaker** | Ping-pong detector ที่ trigger HALTED state (per BR-3.6 + TD-02 §5.8) |
+| **CircuitBreaker** | ⚠️ **POST-BT-002: demoted 2026-05-17.** Ping-pong detector ที่ trigger HALTED state (was per BR-3.6 + TD-02 §5.8) — empirically produced 3 false-positive classes (broker SL fills / DEAL_ENTRY edge cases / BI legitimate pyramiding) across IMPL-FIX-012 iter-1/2/3. BT-002 closure reverted ADR-013 (DEAL_REASON filter) + ADR-014 (DEAL_ENTRY dedup) + BR-3.6 demoted in BA package; replacement detector TBD. **Pending impl-code cleanup** (delete `services/CircuitBreaker.mqh` + strip `CheckPingPong` from `core/Orchestrator.mqh` + remove `HALT_PINGPONG` from `domain/EnumTypes.mqh` + delete `spike/Spike_CircuitBreaker.mq5`) |
 | **Safe port** | `OrderGroupStartWorkflow` cleanup — ปิด weak orders 10 slots พร้อมกันเมื่อ avg badPIP > 55 + currentProfit > 0 (per CodeWiki §5.5 + BR-8.1) |
 | **Bucket A drift** | Behavioral deviation จาก unintended rewrite — ต้อง ≤ 25% Net Profit (NFR-1.1 regression contract) |
 | **Bucket B drift** | Behavioral deviation จาก intentional bug fix (G4 BI SL + Magic-J) — separate budget (NFR-1.8) |
@@ -210,11 +213,13 @@ docs/
   ba/01-05                        <- BA deliverables (project brief / FR / NFR / BR / user flows)
   design-docs/02-08               <- SD deliverables (HLA / deep-dive / data flow / security / future evolution / product breakdown)
   technical-design/02-04          <- TD deliverables (backend / frontend N/A / database file-based)
-  adr/001-012                     <- 12 ADRs
+  adr/001-014                     <- 12 ADRs locked (001-012) + ADR-013/ADR-014 reverted via BT-002 (audit-history retained)
   api-specs/                      <- 4 JSON Schema YAML (intra-process contracts)
   state/overview.md               <- phase status + module status
-  state/impl-plan.md              <- (created by /impl-plan)
-simulation/headless-tests/        <- committed .ini files for reproducible headless backtest runs
-MQL5/Experts/PhoenicisNex/        <- EA source code (created during Phase 3I IMPL-001+)
-origin.txt                        <- MT5 install path (e.g. "C:\Program Files\FBS MetaTrader 5ph")
+  state/impl-plan.md              <- primary State SoT (task list + Phase Gate + audit log)
+  state/deferred-ac-registry.md   <- primary State SoT for deferred E-AC
+  state/backtrack-log.md          <- BT-001 (Resolved 2026-05-13) + BT-002 (Resolved 2026-05-17) cascade ledger
+simulation/headless-tests/        <- committed .ini files for reproducible headless backtest runs (Visual=0 + ShutdownTerminal=1)
+MQL5/Experts/PhoenicisNex/        <- EA source code
+origin.txt                        <- 🔴 **canonical MT5 install path** (UTF-16LE encoded; decode via `iconv -f UTF-16LE -t UTF-8 origin.txt | tr -d '\r\n\0'`). Current value: `C:\Program Files\FBS MetaTrader 5ph`
 ```

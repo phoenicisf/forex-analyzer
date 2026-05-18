@@ -1,6 +1,18 @@
 # PhoenicisNex Workflow Rules
 
 > Stack-agnostic methodology baseline (git/PR/handoff/ADR/Phase Gate) + PhoenicisNex cold-bootstrap recipe.
+> Last regen: 2026-05-18 (per `/project-init --regen` + user remark "focus headless MT5 testing + every .mq5 edit recompile + use SKILL + read origin.txt").
+
+## 🔴 MQL5 / MT5 task discipline (per user remark 2026-05-18)
+
+Before any MQL5 source edit or MT5 runtime invocation:
+
+1. Open the relevant SKILL(s) — `.agents/skills/{mql-developer,mt5-headless-backtest,mt5-log-reader}/SKILL.md`. SKILLs are the authoritative source for syntax patterns, headless flow, log decoding.
+2. Resolve `$METAEDITOR` + `$TERMINAL64` from `origin.txt` at repo root (UTF-16LE, decode required — see Cold-Bootstrap Recipe below). ห้าม hardcode install path.
+3. After EVERY `.mq5` / `.mqh` edit → G1 recompile immediately (silent compile-at-end drift caught by Gate #10 stash-clean G1).
+4. ALL runtime verification → headless (`Visual=0` + `ShutdownTerminal=1`). GUI session = operator-driven Tier 1.5 walk only.
+
+Failure to follow any of (1)–(4) = task closure invalid; revert + redo per TD-02 §13.5 audit contract.
 
 ## Git + PR Workflow
 - Branch convention: `feat/<task-id>-<slug>` / `fix/<task-id>-<slug>` / `refactor/<scope>` / `chore/<scope>`
@@ -36,8 +48,8 @@
 ### Bootstrap from cold (assumes MT5 installed per `origin.txt`)
 
 ```bash
-# 1. Resolve install + data dirs
-ORIGIN=$(cat origin.txt | tr -d '\r')                     # e.g. "C:\Program Files\FBS MetaTrader 5ph"
+# 1. Resolve install + data dirs (origin.txt is UTF-16LE — decode required)
+ORIGIN=$(iconv -f UTF-16LE -t UTF-8 origin.txt 2>/dev/null | tr -d '\r\n\0')   # e.g. "C:\Program Files\FBS MetaTrader 5ph"
 TERMINAL_ID=$(basename "$(pwd)")                          # 32-char hex
 DATA_DIR="/c/Users/$USER/AppData/Roaming/MetaQuotes/Terminal/$TERMINAL_ID"
 TESTER_LOG_DIR="/c/Users/$USER/AppData/Roaming/MetaQuotes/Tester/$TERMINAL_ID/Agent-127.0.0.1-3000/logs"

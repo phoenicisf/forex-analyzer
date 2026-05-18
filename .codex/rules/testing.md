@@ -2,6 +2,20 @@
 
 > Methodology source: `.agents/skills/andm-impl-engineer/SKILL.md § Empirical Closure Discipline`
 > Stack source: TD-02 §13 (4-gate Definition of Done) + 3 MT5 SKILLs (`mt5-headless-backtest`, `mql-developer`, `mt5-log-reader`)
+> Last regen: 2026-05-18 (per `/project-init --regen` + user remark "focus headless MT5 testing")
+
+## 🔴 Mandatory pre-task setup (per user remark 2026-05-18)
+
+1. **Read the relevant SKILL(s) before starting** — MQL5 / MT5 tasks MUST open `.agents/skills/mql-developer/SKILL.md` (syntax + OOP + order management) → `.agents/skills/mt5-headless-backtest/SKILL.md` (10-step headless flow) → `.agents/skills/mt5-log-reader/SKILL.md` (UTF-16LE decode + Wine exit-code caveat) FIRST. Do not invent commands — derive from SKILLs.
+2. **Resolve MT5 install path from `origin.txt`** at repo root — UTF-16LE encoded:
+   ```bash
+   ORIGIN=$(iconv -f UTF-16LE -t UTF-8 origin.txt 2>/dev/null | tr -d '\r\n\0')
+   METAEDITOR=$(echo "$ORIGIN" | sed 's|^\([A-Z]\):|/\L\1|; s|\\|/|g')/MetaEditor64.exe
+   TERMINAL64=$(echo "$ORIGIN" | sed 's|^\([A-Z]\):|/\L\1|; s|\\|/|g')/terminal64.exe
+   ```
+   ห้าม hardcode `C:\Program Files\FBS MetaTrader 5ph` ใน script / commit (portability + dev-machine drift).
+3. **Recompile after every edit** — touch `.mq5` หรือ `.mqh` ใดๆ → G1 ทันที (ห้าม batched-compile-at-end). Stash-clean G1 rerun = workflow.md Gate #10.
+4. **Headless-only verification** — `Visual=0` + `ShutdownTerminal=1` mandatory ใน `.ini`. GUI runs จำกัดเฉพาะ designated Tier 1.5 walk session (operator-driven).
 
 ## 4-Gate Definition of Done (every IMPL-NNN task)
 
@@ -19,7 +33,8 @@
 ### G1 — Compile (every task)
 
 ```bash
-ORIGIN=$(cat origin.txt | tr -d '\r')
+# origin.txt is UTF-16LE — decode + strip BOM/newlines before path manipulation
+ORIGIN=$(iconv -f UTF-16LE -t UTF-8 origin.txt 2>/dev/null | tr -d '\r\n\0')
 METAEDITOR=$(echo "$ORIGIN" | sed 's|^\([A-Z]\):|/\L\1|; s|\\|/|g')/MetaEditor64.exe
 "$METAEDITOR" /compile:"MQL5/Experts/PhoenicisNex/PhoenicisNex.mq5" /log
 sleep 1

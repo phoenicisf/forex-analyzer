@@ -1,10 +1,22 @@
 {
   "schema_version": "1",
-  "generated_at": "2026-05-02",
-  "generated_by": "/project-init",
-  "mode": "fresh",
+  "generated_at": "2026-05-18",
+  "generated_by": "/project-init --regen",
+  "mode": "regen",
+  "regen_history": [
+    {
+      "date": "2026-05-02",
+      "mode": "fresh",
+      "trigger": "first generation post-TD-approval (claim-review-04 ✅ certified)"
+    },
+    {
+      "date": "2026-05-18",
+      "mode": "regen",
+      "trigger": "BT-002 cascade closure (TD Round 08 re-certified 2026-05-17); user remark 'focus headless MT5 testing + every .mq5 edit recompile + use SKILL + read MT5 path from origin.txt'"
+    }
+  ],
   "td_source": {
-    "commit": "6ebf30379ae5dc6998e0cb3aefb390e6652ab3b2",
+    "commit": "47381a94c8e870b763091740215212a55acb5863",
     "files": [
       "docs/technical-design/02-backend-design.md",
       "docs/technical-design/03-frontend-design.md",
@@ -22,14 +34,17 @@
       "ADR-009",
       "ADR-010",
       "ADR-011",
-      "ADR-012"
+      "ADR-012",
+      "ADR-013 (reverted 2026-05-17 per BT-002 — DEAL_REASON_EXPERT filter)",
+      "ADR-014 (reverted 2026-05-17 per BT-002 — DEAL_ENTRY position-event dedup)"
     ],
     "api_specs": [
       "docs/api-specs/marketcontext-snapshot-schema.yaml",
       "docs/api-specs/slot-abstraction-contract.yaml",
       "docs/api-specs/state-persistence-schema.yaml",
       "docs/api-specs/trade-journal-schema.yaml"
-    ]
+    ],
+    "backtrack_log": "docs/state/backtrack-log.md (BT-001 Resolved 2026-05-13; BT-002 Resolved 2026-05-17)"
   },
   "project": {
     "name": "PhoenicisNex",
@@ -42,7 +57,15 @@
       "name": "ea",
       "language": "MQL5",
       "framework": "MetaTrader 5 platform (intra-MT5 modular monolith per ADR-001)",
-      "test_framework": "MT5 Strategy Tester headless (terminal64.exe /config:tester.ini per mt5-headless-backtest skill); compile via MetaEditor64.exe /compile per mql-developer skill; log review via mt5-log-reader skill",
+      "test_framework": "MT5 Strategy Tester headless (terminal64.exe /config:tester.ini per mt5-headless-backtest SKILL); compile via MetaEditor64.exe /compile per mql-developer SKILL; log review via mt5-log-reader SKILL (UTF-16LE decode)",
+      "module_counts": {
+        "slots": 21,
+        "services": 12,
+        "helpers": 4,
+        "domain_types": 4,
+        "core_classes": 3,
+        "services_count_note": "13 → 12 per BT-002 cascade — CircuitBreaker.mqh deletion pending impl-code cleanup"
+      },
       "patterns": [
         "Modular Monolith intra-MT5 (ADR-001)",
         "Slot abstraction via OO inheritance (ADR-002)",
@@ -55,8 +78,9 @@
       ],
       "naming_conventions": "m_<member>, g_<global>, Inp<SlotId><Param>; group=\"Slot <X>\" annotation; 5-layer (core/slots/services/domain/helpers per ADR-012); E<Name> enum prefix",
       "response_envelope": "N/A (intra-process contracts via JSON Schema in docs/api-specs/*.yaml — slot-abstraction-contract.yaml, marketcontext-snapshot-schema.yaml, state-persistence-schema.yaml, trade-journal-schema.yaml)",
-      "entry_command": "MetaEditor compile → drop .ex5 + .mq5 + libs into MT5 Experts/PhoenicisNex/ → attach to EURUSD H4 chart",
-      "test_command": "G1: \"$METAEDITOR\" /compile:\"MQL5/Experts/PhoenicisNex/PhoenicisNex.mq5\" /log; G3: bash .agents/skills/mt5-headless-backtest/scripts/run_headless_backtest.sh simulation/headless-tests/<task>.ini /tmp/run.txt"
+      "entry_command": "MetaEditor compile → drop .ex5 + .mq5 + libs into MT5 Experts/PhoenicisNex/ → attach to EURUSD H4 chart (or headless via tester .ini)",
+      "test_command": "G1: ORIGIN=$(iconv -f UTF-16LE -t UTF-8 origin.txt | tr -d '\\r\\n\\0'); METAEDITOR=$(...)/MetaEditor64.exe; \"$METAEDITOR\" /compile:\"MQL5/Experts/PhoenicisNex/PhoenicisNex.mq5\" /log. G3: bash .agents/skills/mt5-headless-backtest/scripts/run_headless_backtest.sh simulation/headless-tests/<task>.ini /tmp/run.txt",
+      "mt5_path_resolution": "READ origin.txt at repo root (UTF-16LE encoded; decode via iconv -f UTF-16LE -t UTF-8 origin.txt | tr -d '\\r\\n\\0'); never hardcode 'C:\\\\Program Files\\\\FBS MetaTrader 5ph'"
     }
   ],
   "database": {
@@ -75,6 +99,7 @@
     "cache": "none",
     "messaging": "none",
     "observability": "Tagged structured logger (ADR-011) — sinks: MT5 native Print() + Alert() only (Phase 1). Format: [slot=<X>][ev=<E>][magic=<N>] with ms-precision timestamps + LRU eviction + N-consecutive escalation per ADR-011",
+    "halt_mechanism": "ADR-010 EAState (RUNNING → HALTED → HALTED_STABLE); CircuitBreaker ping-pong detector REVERTED 2026-05-17 per BT-002 (replacement detector TBD); current halt triggers reduced to journal failure / state corruption / symbol whitelist breach",
     "containerization": {
       "engine": "none",
       "source": "inferred (heuristic: single intra-MT5-process EA with no managed/serverless host — matches \"Otherwise → none\" rule)",
@@ -128,23 +153,60 @@
     "antigravity": "AGENTS.md (root, slim pointer)"
   },
   "local_overrides_preserved": [],
-  "backups_created": [],
+  "backups_created": [
+    "CLAUDE.md.bak-2026-05-18T02-26-01Z",
+    "AGENTS.md.bak-2026-05-18T02-26-01Z",
+    ".claude/rules/ea.md.bak-2026-05-18T02-26-01Z",
+    ".claude/rules/security.md.bak-2026-05-18T02-26-01Z",
+    ".claude/rules/testing.md.bak-2026-05-18T02-26-01Z",
+    ".claude/rules/workflow.md.bak-2026-05-18T02-26-01Z",
+    ".claude/stack.json.bak-2026-05-18T02-26-01Z",
+    ".windsurf/rules/ea.md.bak-2026-05-18T02-26-01Z",
+    ".windsurf/rules/security.md.bak-2026-05-18T02-26-01Z",
+    ".windsurf/rules/testing.md.bak-2026-05-18T02-26-01Z",
+    ".windsurf/rules/workflow.md.bak-2026-05-18T02-26-01Z",
+    ".trae/rules/ea.md.bak-2026-05-18T02-26-01Z",
+    ".trae/rules/security.md.bak-2026-05-18T02-26-01Z",
+    ".trae/rules/testing.md.bak-2026-05-18T02-26-01Z",
+    ".trae/rules/workflow.md.bak-2026-05-18T02-26-01Z",
+    ".codex/rules/ea.md.bak-2026-05-18T02-26-01Z",
+    ".codex/rules/security.md.bak-2026-05-18T02-26-01Z",
+    ".codex/rules/testing.md.bak-2026-05-18T02-26-01Z",
+    ".codex/rules/workflow.md.bak-2026-05-18T02-26-01Z"
+  ],
   "user_remarks": [
     {
       "date": "2026-05-02",
       "remark": "Developer เวลาเขียน EA เมื่อทำเสร็จแล้วจะต้องมีการ test/compile ด้วย หากจะทำ Backtest ให้ใช้ headless mode และสามารถตรวจสอบ log ได้ ตาม Skill mt5-headless-backtest, mql-developer, mt5-log-reader",
       "applied_to": [
         "CLAUDE.md §6 — 4-gate Definition of Done (G1 Compile / G2 Smoke / G3 Headless Backtest / G4 Log Review) embedded as mandatory rule",
-        "AGENTS.md — Critical Workflow Note section",
+        "AGENTS.md — Critical Workflow Notes section (4-gate DoD)",
         ".claude/rules/testing.md — full 4-gate Definition of Done + concrete commands",
         ".claude/rules/ea.md § Testing — per-task workflow summary",
         ".claude/rules/workflow.md § Cold-Bootstrap Recipe — 7-step bootstrap from cold + teardown"
+      ]
+    },
+    {
+      "date": "2026-05-18",
+      "remark": "/project-init --regen — focus: headless MT5 testing; every .mq5/.mqh edit MUST trigger G1 recompile immediately (no batched-compile-at-end); MQL5/MT5 tasks MUST open .agents/skills/{mql-developer,mt5-headless-backtest,mt5-log-reader}/SKILL.md before starting; MT5 install path is canonical at repo-root origin.txt (UTF-16LE; decode via iconv -f UTF-16LE -t UTF-8 origin.txt | tr -d '\\r\\n\\0'); never hardcode 'C:\\\\Program Files\\\\FBS MetaTrader 5ph' in script or commit.",
+      "applied_to": [
+        "CLAUDE.md §1 — \"อัปเดตล่าสุด: 2026-05-18\" + status updated to TD-recertified post-BT-002",
+        "CLAUDE.md §1 Status Snapshot — populated from impl-plan.md § Phase Status Snapshot (P1 ✅ / P2 🟡 NOMINATED+OVERRIDE / P3 🟡 NOMINATE-ABLE / P4 🔴 IMPL-FIX-012 iter-3 cap-3 exhausted)",
+        "CLAUDE.md §3 — services count 13 → 12 (BT-002 cascade — CircuitBreaker.mqh deletion pending)",
+        "CLAUDE.md §6 — 3 new bullets: Recompile-after-edit + Headless MT5 testing focus + MQL5 SKILL invocation + canonical origin.txt path",
+        "CLAUDE.md §7b — CircuitBreaker glossary row demoted (post-BT-002 marker + impl-code cleanup checklist inlined)",
+        "CLAUDE.md §8 — adr/001-014 (013/014 reverted) + backtrack-log.md ref + origin.txt UTF-16LE callout",
+        "AGENTS.md — \"Critical Workflow Notes\" section restructured: 2026-05-02 4-gate + 2026-05-18 recompile/headless/SKILL/origin + Project Status (post-BT-002) summary",
+        ".claude/rules/ea.md — services 13→12 + CircuitBreaker halt-path phrasing post-BT-002 + Testing section preamble (recompile-after-edit + SKILL invocation)",
+        ".claude/rules/testing.md — top-of-file \"Mandatory pre-task setup\" 4-rule block (read SKILL / resolve MT5 path from origin.txt / recompile-after-edit / headless-only) + iconv UTF-16LE decode in G1 command",
+        ".claude/rules/workflow.md — \"MQL5 / MT5 task discipline\" section + cold-bootstrap iconv UTF-16LE decode fix (was naive `cat | tr`)",
+        ".windsurf/rules/*, .trae/rules/*, .codex/rules/* — mirrored from .claude/rules/*"
       ]
     }
   ],
   "skipped": {
     "docker_md": "containerization.engine == none (single intra-MT5 process; NFR-7.2 = 0 external DLLs)",
     "figma_conventions_md": "UX phase officially skipped (TD-03 N/A)",
-    "empirical_verification_scaffold_generic": "no HTTP/UI/worker/container surface; project's equivalent (headless backtest + Tester log + journal) baked into .claude/rules/workflow.md cold-bootstrap section per user remark"
+    "empirical_verification_scaffold_generic": "no HTTP/UI/worker/container surface; project's equivalent (headless backtest + Tester log + journal) baked into .claude/rules/workflow.md cold-bootstrap section per user remark 2026-05-02 + reinforced 2026-05-18"
   }
 }
