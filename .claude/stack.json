@@ -13,6 +13,11 @@
       "date": "2026-05-18",
       "mode": "regen",
       "trigger": "BT-002 cascade closure (TD Round 08 re-certified 2026-05-17); user remark 'focus headless MT5 testing + every .mq5 edit recompile + use SKILL + read MT5 path from origin.txt'"
+    },
+    {
+      "date": "2026-05-18",
+      "mode": "regen (targeted, count-discipline only)",
+      "trigger": "TD Round 09 cascade-completion follow-up (claim-review-10.md verify-only ✅ 0 findings 2026-05-18) — propagate services 12→11 + helpers 4→5 count corrections from TD-02 + SD-02 L128 + ADR-012 L100 into project-bootstrap surfaces (CLAUDE.md § 3 + .claude/rules/ea.md + .windsurf/rules/ea.md + .trae/rules/ea.md + .codex/rules/ea.md + stack.json.module_counts). Full template re-derive skipped — narrow drift only; no rules content / tech-stack / architecture / pattern changes."
     }
   ],
   "td_source": {
@@ -60,11 +65,12 @@
       "test_framework": "MT5 Strategy Tester headless (terminal64.exe /config:tester.ini per mt5-headless-backtest SKILL); compile via MetaEditor64.exe /compile per mql-developer SKILL; log review via mt5-log-reader SKILL (UTF-16LE decode)",
       "module_counts": {
         "slots": 21,
-        "services": 12,
-        "helpers": 4,
+        "services": 11,
+        "helpers": 5,
         "domain_types": 4,
         "core_classes": 3,
-        "services_count_note": "13 → 12 per BT-002 cascade — CircuitBreaker.mqh deletion pending impl-code cleanup"
+        "services_count_note": "12 → 11 per TD Round 09 Finding 09.1 cascade-completion 2026-05-18 (corrects pre-BT-002 off-by-one: pre-cascade narrative said 13 but file tree enumerated 12; post-cascade narrative said 12 but file tree + § 5 active subsections enumerate 11). CircuitBreaker.mqh deletion still pending impl-code cleanup.",
+        "helpers_count_note": "4 → 5 per TD Round 09 Finding 09.2 cascade-completion 2026-05-18 — adds helpers/Timestamp.mqh (ADR-006/011 ms-precision wiring per IMPL-FIX-009). Footer scope qualifier: 3 stateful via DI (CCommentParser, CJsonWriter, CAtomicFile) + 2 pure utility (CPipMath, CTimestamp)."
       },
       "patterns": [
         "Modular Monolith intra-MT5 (ADR-001)",

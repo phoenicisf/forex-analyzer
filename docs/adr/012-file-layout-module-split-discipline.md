@@ -97,7 +97,7 @@ MQL5/Experts/PhoenicisNex/
     └── (preserve EA เดิม libs that ยัง use ผ่าน MT5 #include path)
 ```
 
-**Total file count estimate:** 21 slot + 5 inputs + 4 core + 13 services + 4 domain + 4 helpers + entry = **~52 files**
+**Total file count estimate:** 21 slot + 5 inputs + 4 core + 11 services + 4 domain + 5 helpers + entry = **~50 files** <!-- TD Round 09 Finding 09.1/09.2 cascade-completion 2026-05-18: services 13→11 (pre-BT-002 narrative was off-by-one vs file tree; post-BT-002 empirical = 11 per TD-02 § 2 L58-69 + § 5.1-5.12 minus struck 5.8) + helpers 4→5 (Timestamp.mqh ADR-006/011 ms-precision wiring per IMPL-FIX-009 not previously counted in ADR enumeration); total ~52→~50 -->
 
 **LOC budget per file (NFR-4.1 ≤ 5,000 LOC):**
 - `Slot_<X>.mqh`: avg 800-2,000 LOC; max 5,000 (some complex slots like P, B, M); split sub-helpers ออกถ้า > 5,000

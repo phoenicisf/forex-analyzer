@@ -57,7 +57,7 @@
 
 <!-- AUTO-MANAGED:deployment-line — removed (containerization.engine == "none") -->
 
-- **Architecture Style:** Modular Monolith intra-MT5 process (per ADR-001) — 21 slots + **12 services** + 4 helpers + 4 domain types + 3 core classes (services count dropped 13→12 per BT-002 cascade — CircuitBreaker.mqh deletion pending impl-code cleanup; ADR-013/ADR-014 reverted)
+- **Architecture Style:** Modular Monolith intra-MT5 process (per ADR-001) — 21 slots + **11 services** + 5 helpers (3 stateful via DI per TD-02 § 7.4 — CCommentParser, CJsonWriter, CAtomicFile + 2 pure utility — CPipMath, CTimestamp) + 4 domain types + 3 core classes (services count dropped 12→11 per TD Round 09 Finding 09.1 cascade-completion 2026-05-18 — corrects pre-BT-002 off-by-one against TD-02 § 2 file tree + § 5 active subsections; helpers count corrected 4→5 per Round 09 Finding 09.2 to include `helpers/Timestamp.mqh` ADR-006/011 ms-precision wiring; CircuitBreaker.mqh deletion still pending impl-code cleanup; ADR-013/ADR-014 reverted)
 - **5-layer file structure:** `core/` → `slots/` → `services/` → `domain/` → `helpers/` (per ADR-012)
 - **Service Communication:** Synchronous in-process method calls; intra-process contracts via JSON Schema in `docs/api-specs/*.yaml`
 - **Data Ownership:** PortfolioState owns all per-magic state (CHashMap per ADR-005); StatePersistence owns atomic state.json (ADR-007); TradeJournal owns JSON-Lines append (ADR-006)

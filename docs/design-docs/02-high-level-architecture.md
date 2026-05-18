@@ -125,7 +125,7 @@ PhoenicisNex ออกแบบเป็น **modular monolith intra-process** �
 **Summary stats:**
 - 41 BA FRs → 41 SD mappings (100%)
 - 30 BA NFRs → all addressed via architecture decisions or QA-runtime targets
-- 9 BR categories → mapped to 13 services + 21 slots
+- 9 BR categories → mapped to 11 services + 21 slots <!-- TD Round 09 Finding 09.1 cascade-completion 2026-05-18: corrected from "13 services" (pre-BT-002 narrative was off-by-one vs file tree even pre-cascade; post-BT-002 authoritative empirical count = 11 per TD-02 § 2 file tree L58-69 + § 5.1-5.12 minus struck 5.8) -->
 - 8 OQs → all closed (5 by BA, 3 by SD via ADR-008)
 
 ---

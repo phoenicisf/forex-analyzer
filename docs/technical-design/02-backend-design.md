@@ -2,7 +2,7 @@
 
 > **Phase:** Phase 1D (Technical Design) — Doc 1/3 (SD-as-Master consolidation; numbering 01/05/06/07/08 dropped intentionally)
 > **Author:** Tech Lead agent (`/td` workflow)
-> **Last updated:** 2026-05-18 (BT-002 cascade — BR-3.6 CircuitBreaker ping-pong detector removed legacy-parity; cap-3 iter ADR-013 → ADR-014 superseded; § 2 file tree `CircuitBreaker.mqh` removed, § 5.8 class skeleton DELETED, § 5.7 + § 7.0.3 + § 7.1 + § 7.3 + § 7.4 + § 7.4.1 + § 8.1 + § 9.4 wire-up/cleanup/diagram cascade cleaned, § 10.1 trace matrix annotated with ADR-013/014 Superseded audit row, service count statements decremented 13→12 / 16→15 across § 1 / § 5 / § 7.3 / § 7.4 / end-of-doc footer. Prior: 2026-05-02 Round 06 handoff certification)
+> **Last updated:** 2026-05-18 (Round 09 rebuttal — Finding 09.1/09.2 count corrections: services 12→11 + helpers 4→5; service count statements corrected at § 1 ToC L24 / § 5 header L464 / end-of-doc footer L2490 + helpers count corrected at end-of-doc footer L2490 with scope qualifier "3 stateful via DI per § 7.4 + 2 pure utility — CPipMath, CTimestamp"; correction acknowledges pre-BT-002 narrative "13 services" was already off-by-one against pre-BT-002 § 2 file tree + § 5 subsections (both 12); post-BT-002 authoritative empirical count = 11 services + 5 helpers. Cascade-completion applied to SD `02-high-level-architecture.md` L128 + ADR-012 L100. Prior 2026-05-18 entry — BT-002 cascade: BR-3.6 CircuitBreaker ping-pong detector removed legacy-parity; cap-3 iter ADR-013 → ADR-014 superseded; § 2 file tree `CircuitBreaker.mqh` removed, § 5.8 class skeleton DELETED, § 5.7 + § 7.0.3 + § 7.1 + § 7.3 + § 7.4 + § 7.4.1 + § 8.1 + § 9.4 wire-up/cleanup/diagram cascade cleaned, § 10.1 trace matrix annotated with ADR-013/014 Superseded audit row. Prior: 2026-05-02 Round 06 handoff certification)
 > **Reads:** `docs/design-docs/02-08`, `docs/adr/001-012`, `docs/api-specs/*.yaml`, `docs/ba/02-05`
 > **Audience:** Implementation Engineer (Phase 3I), Code Reviewer, QA (Phase 3T)
 
@@ -21,7 +21,7 @@
 | § 2 | Project file layout — confirm ADR-012 tree + per-file LOC budget |
 | § 3 | Domain types — `MarketContext`, `SlotState`, `EnumTypes`, `CSlotBase` skeletons |
 | § 4 | Helpers — `CommentParser`, `PipMath`, `JsonWriter`, `AtomicFile` skeletons |
-| § 5 | Services × 12 (post-BT-002 2026-05-17 — former CCircuitBreaker removed) — interface + key methods + DI dependencies |
+| § 5 | Services × 11 (post-BT-002 2026-05-17 — former CCircuitBreaker removed; count corrected per Round 09 Finding 09.1) — interface + key methods + DI dependencies |
 | § 6 | Slots × 21 — base contract + per-slot summary table |
 | § 7 | Orchestrator + Composition root + DI map |
 | § 8 | Mermaid class diagrams — services + slots layer |
@@ -461,7 +461,7 @@ public:
 
 ---
 
-## 5. Services Layer (12 services post-BT-002 2026-05-17; former § 5.8 CCircuitBreaker removed legacy-parity)
+## 5. Services Layer (11 services post-BT-002 2026-05-17; former § 5.8 CCircuitBreaker removed legacy-parity; count corrected from "12" per Round 09 Finding 09.1 — pre-BT-002 narrative "13" was already off-by-one vs § 2 file tree + § 5.1-5.12 enumeration, post-BT-002 authoritative empirical count = 11)
 
 ทุก service มี single responsibility + constructor-injected dependencies + interface-style public method set; orchestrator (composition root) wire ทุกตัวใน OnInit.
 
@@ -2487,4 +2487,4 @@ Get-Content MQL5/Files/PhoenicisNex/journal/tester/run-*.jsonl |
 
 ---
 
-> **End of 02 — Backend Design** — 5 layers (core/slots/services/domain/helpers), 12 services + 21 slots + 4 helpers + 4 domain types (post-BT-002 2026-05-17 — former CCircuitBreaker removed legacy-parity), full DI map, Mermaid classDiagram × 2, 6 pattern code skeletons (composition root / repository / atomic write / tagged logger / JSON-Lines / post-exit hook), Flow Appendix (BI SL / Save+GV / pending force-clear), Developer Workflow with 4-gate Definition of Done (compile → smoke → headless backtest → log review per 3 SKILLs)
+> **End of 02 — Backend Design** — 5 layers (core/slots/services/domain/helpers), 11 services + 21 slots + 5 helpers (3 stateful via DI per § 7.4 — CCommentParser, CJsonWriter, CAtomicFile + 2 pure utility — CPipMath, CTimestamp) + 4 domain types (post-BT-002 2026-05-17 — former CCircuitBreaker removed legacy-parity; services count corrected from "12" + helpers count corrected from "4" per Round 09 Findings 09.1/09.2), full DI map, Mermaid classDiagram × 2, 6 pattern code skeletons (composition root / repository / atomic write / tagged logger / JSON-Lines / post-exit hook), Flow Appendix (BI SL / Save+GV / pending force-clear), Developer Workflow with 4-gate Definition of Done (compile → smoke → headless backtest → log review per 3 SKILLs)

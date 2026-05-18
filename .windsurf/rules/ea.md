@@ -13,7 +13,7 @@ MQL5/Experts/PhoenicisNex/
 │   └── Inputs_Pending.mqh
 ├── core/                    # Orchestrator, BootstrapValidator, SlotRegistry, EAState
 ├── slots/Slot_<X>.mqh       # × 21 (1 file per slot per NFR-4.2)
-├── services/                # 12 services (IndicatorService, MarketContextBuilder, PortfolioState, ...) — post-BT-002: CircuitBreaker.mqh deletion pending impl-code cleanup; ADR-013/014 reverted
+├── services/                # 11 services (IndicatorService, MarketContextBuilder, PortfolioState, ...) — post-BT-002 + TD Round 09 Finding 09.1 count correction 2026-05-18 (12→11; pre-BT-002 narrative was off-by-one): CircuitBreaker.mqh deletion pending impl-code cleanup; ADR-013/014 reverted
 ├── domain/                  # Pure types (MarketContext, SlotState, EnumTypes, CSlotBase) — no service deps
 ├── helpers/                 # CommentParser, PipMath, JsonWriter, AtomicFile, Timestamp — pure utility
 └── libs/                    # Legacy lib re-use (TD assess per file)
