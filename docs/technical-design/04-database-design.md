@@ -3,7 +3,7 @@
 > **Phase:** Phase 1D (Technical Design) — Doc 3/3
 > **Status:** ⚠️ **No RDBMS** — file-based persistence per ADR-001 (NFR-7.2 + C-12 forbid DLL = no SQLite/Postgres in Phase 1)
 > **Author:** Tech Lead agent (`/td` workflow)
-> **Last updated:** 2026-05-02
+> **Last updated:** 2026-05-18 (BT-002 cascade — § 4.3 `halt_reason` enum synced to authoritative `trade-journal-schema.yaml`: `circuit_breaker_pingpong` value removed legacy-parity per cap-3 iter chain ADR-013 → ADR-014 falsified; § 9 Access Pattern Matrix `CircuitBreaker` row struck — halt event writes now routed via `Orchestrator → CEAState.Halt()` direct path per ADR-010 amendment. Prior: 2026-05-02 Round 06 handoff certification)
 > **Reads:** `docs/api-specs/state-persistence-schema.yaml` (authoritative state.json schema), `docs/api-specs/trade-journal-schema.yaml` (authoritative journal record schema), `docs/adr/006/007/008`, `docs/design-docs/02 § 6 Data Layer Design`, `docs/design-docs/04 § 6 Consistency Boundaries`
 > **Audience:** Implementation Engineer (Phase 3I IMPL-046..049 + IMPL-007 + IMPL-043), QA (Phase 3T IMPL-064 atomic write test), Reviewer
 
@@ -223,7 +223,7 @@ PhoenicisNex ไม่มี SQL/NoSQL database — persistence layer ทั้�
 | `tp` | number \| null | non-system | may be 0 (slot uses implicit exit per BR-5.1) |
 | `comment` | string \| null | non-system | max 32 chars; with slot prefix per BR-1.2 |
 | `parent_ticket_id` | integer \| null | pyramid slots (BI, I, LX, J) | parent ticket ID; ADR-009 BI populates B parent |
-| `halt_reason` | enum (string) \| null | `event_type=halt` | `[circuit_breaker_pingpong, handle_invalid_runtime, equity_floor_phase2, journal_write_fail_sustained, null]` |
+| `halt_reason` | enum (string) \| null | `event_type=halt` | `[handle_invalid_runtime, equity_floor_phase2, journal_write_fail_sustained, null]` *(see `trade-journal-schema.yaml § halt_reason` authoritative; `circuit_breaker_pingpong` removed per BT-002 2026-05-17 — legacy-parity; cap-3 iter chain ADR-013 → ADR-014 falsified)* |
 | `pending_age_bars` | integer \| null | `event_type=pending_force_clear` | H4 bars elapsed since `pending_started_bar` per ADR-008 |
 
 ### 4.4 `event_type` taxonomy (per `trade-journal-schema.yaml § event_type enum`)
@@ -497,7 +497,7 @@ void CTradeJournal::RotateIfNeeded() {
 | `PendingMachineRegistry` | (read on Init via SP) | (writes pending_machines ผ่าน SP) | (writes pending_force_clear events via TJ) | — | — | — |
 | `TimeGate` | (read ban_dates via SP) | (writes ban_dates via SP::SetBanDate) | — | — | — | — |
 | `PortfolioMonitor` | (read watch_profits via SP) | (writes watch_profits via SP) | — | — | — | — |
-| `CircuitBreaker` | — | — | (writes halt event via TJ) | — | — | — |
+| ~~`CircuitBreaker`~~ | *(removed per BT-002 2026-05-17 — service deleted legacy-parity; halt event writes now routed via `Orchestrator → CEAState.Halt()` direct path on `IndicatorService::AnyHandleInvalid()` per ADR-010 amendment + SD `02 § 5.1` Communication Matrix)* | | | | | |
 | `IndicatorService` | — | — | — | — | — | — (handle creation logged via Logger) |
 | `RiskManager` | — | — | — | — | — | — |
 | `CrossSlotCoordinator` | — | — | (writes bulk close events via TJ) | — | — | — |

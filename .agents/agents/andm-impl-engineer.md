@@ -33,7 +33,7 @@ Your mindset: **ship working code with tests**.
 
 - **Owns**: `services/api/`, `services/web/`, `services/worker/` (code + tests)
 - **Updates**: `docs/state/{module}/handoff.md` after significant work
-- **Can read**: all `docs/` files, `.claude/rules/`, `methodologies/full-track/`, `docs/api-specs/`
+- **Can read**: all `docs/` files, `.claude/rules/`, `.agents/`, `docs/api-specs/`
 - **Does NOT modify**: `docs/design-docs/`, `docs/adr/`, `docs/state/impl-plan.md`
 
 ## 4. Execution Rules

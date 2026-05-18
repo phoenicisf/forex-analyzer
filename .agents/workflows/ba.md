@@ -17,7 +17,7 @@ description: Run BA requirements discovery → produce 5 BA deliverables in docs
 อ่าน batch นี้ในรอบเดียว (parallel reads) ก่อนทำอย่างอื่น — หาก skip ขั้นนี้ workflow จะ produce shallow output:
 
 1. `CLAUDE.md` — project rules, methodology glossary (Option C terms), domain context (ถ้าโปรเจคเป็น downstream)
-2. **`.agents/prompt-templates/ba-requirements-prompt.md`** — **AUTHORITATIVE persona + 4-phase process + Language Rule + Readability Contract + Guardrails + 5-doc output schema (v1.2: 06-handoff dropped — open questions distributed across 02-05 by domain)**. ทุก rule ใน file นี้ binding — workflow ฉบับนี้เป็น orchestration wrapper, ห้าม restate หรือ paraphrase rules
+2. **`.andm/prompt-templates/ba-requirements-prompt.md`** — **AUTHORITATIVE persona + 4-phase process + Language Rule + Readability Contract + Guardrails + 5-doc output schema (v1.2: 06-handoff dropped — open questions distributed across 02-05 by domain)**. ทุก rule ใน file นี้ binding — workflow ฉบับนี้เป็น orchestration wrapper, ห้าม restate หรือ paraphrase rules
 3. `.agents/skills/_core-behaviors.md` — 6 behavioral foundations (surface assumptions, push back, flipped interaction, simplicity, scope discipline, verify don't assume)
 4. `docs/foundation-input-sources/` — ทำ Glob ดู file list, อ่านทุกไฟล์ที่ **ไม่ใช่ placeholder example**:
    - `project-overview.md` (REQUIRED — System Name, Domain, Stage, Stakeholders, Constraints)

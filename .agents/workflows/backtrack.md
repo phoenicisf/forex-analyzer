@@ -16,7 +16,7 @@ description: Analyze impact and execute a phase backtrack when downstream discov
 Read the following files immediately before doing anything else:
 
 1. `CLAUDE.md` — project rules
-2. `.agents/development-guide/backtrack-workflow.md` — **full backtrack guide, invalidation matrix, process**
+2. `.andm/development-guide/backtrack-workflow.md` — **full backtrack guide, invalidation matrix, process**
 3. `docs/state/overview.md` — current phase status
 4. `docs/state/backtrack-log.md` — previous backtrack history (if exists)
 
@@ -78,7 +78,7 @@ If user has already provided this context, proceed.
 
 ### 3.1 Determine Invalidated Phases
 
-Use the Invalidation Matrix from `.agents/development-guide/backtrack-workflow.md`:
+Use the Invalidation Matrix from `.andm/development-guide/backtrack-workflow.md`:
 
 ```
 If CHANGED →     BA        SD        UX        TD        Impl Plan   Impl Code   Code Review   Red Team

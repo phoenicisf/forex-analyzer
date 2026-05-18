@@ -16,7 +16,7 @@ Read the following files immediately before doing anything else:
 
 1. `CLAUDE.md` — project rules, tech stack, architecture constraints
 2. `.agents/skills/andm-td-defender/SKILL.md` — **your persona definition** (activate the full persona rules and execution protocol defined there)
-3. `.agents/prompt-templates/technical-design-master-prompt.md` — Technical Design quality benchmark (what the Technical Architect was supposed to deliver)
+3. `.andm/prompt-templates/technical-design-master-prompt.md` — Technical Design quality benchmark (what the Technical Architect was supposed to deliver)
 4. `docs/state/overview.md` — current status of all modules
 5. Check `docs/technical-design/` — existing technical design documents (your work being reviewed)
 6. Check `docs/design-docs/` — System Design documents (architecture constraints you must respect)

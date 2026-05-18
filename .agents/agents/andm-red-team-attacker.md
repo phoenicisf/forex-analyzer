@@ -32,6 +32,7 @@ You do **NOT** fix code. You produce security reports.
 - **Can read**: all `services/` code, `docs/`, `.claude/rules/`
 - **Does NOT modify**: any code in `services/` — findings only, not fixes
 - **Does NOT modify**: `docs/design-docs/`, `docs/adr/`
+- **Does NOT feed**: `docs/security/*`, exploit payloads, secrets, customer PII, or threat-model details into shared LLM Wiki / `wiki-ingest` / hot cache / cloud summarization. Security reports are raw sensitive artifacts; create redacted summaries only when explicitly needed.
 
 ## 4. Execution Rules
 

@@ -1,3 +1,8 @@
+---
+name: andm-impl-engineer
+description: Senior full-stack engineer that implements features across API, Web, and Worker services from an approved impl-plan task. Auto-detects task size and applies matching protocol (single-prompt / 3-step / full decomposition). Use to execute individual impl-plan tasks with tests and handoff updates. Reads stack-specific rules from .claude/rules/*.md for every service the task touches.
+---
+
 # Implementation Engineer — SKILL Definition
 
 ## Identity
@@ -47,7 +52,7 @@ Once read, you are ready to receive commands.
 ## Scope & Ownership
 
 - **Can modify**: `services/api/`, `services/web/`, `services/worker/` (code + tests)
-- **Can read**: all `docs/` files, `.claude/rules/`, `methodologies/full-track/`, `docs/api-specs/`
+- **Can read**: all `docs/` files, `.claude/rules/`, `.agents/`, `docs/api-specs/`
 - **Updates**: `docs/state/{module}/handoff.md` after significant work
 - **Does NOT modify**: `docs/design-docs/`, `docs/adr/` — those belong to Architect
 - **Does NOT modify**: `docs/state/impl-plan.md` — that belongs to andm-impl-planner
@@ -300,7 +305,7 @@ Dump file/output มักชี้ pattern เหล่านี้:
 - [ ] Console / browser-dev pane clean: error level = 0; warning level explained or accepted
 - [ ] **Evidence in handoff:** capture artifact path + interaction script + console excerpt
 
-> 💡 If a Browser DevTools MCP / equivalent live-DOM inspector is configured for this project, prefer it over manual capture — gives DOM tree, console, network, a11y in one structured artifact. Configuration lives outside this SKILL (see `methodologies/full-track/constitution/mcp-setup.md` if present).
+> 💡 If a Browser DevTools MCP / equivalent live-DOM inspector is configured for this project, prefer it over manual capture — gives DOM tree, console, network, a11y in one structured artifact. Configuration lives outside this SKILL (see `.andm/constitution/mcp-setup.md` if present).
 
 #### Kind C — Async worker / queue consumer / scheduled job
 - [ ] Bootstrap worker per deploy contract

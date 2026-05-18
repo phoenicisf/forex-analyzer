@@ -16,7 +16,7 @@ Read the following files immediately before doing anything else:
 
 1. `CLAUDE.md` — project rules, tech stack, architecture constraints
 2. `.agents/skills/andm-td-reviewer/SKILL.md` — **your persona definition** (activate the full Phase 0-4 process defined there)
-3. `.agents/prompt-templates/technical-design-master-prompt.md` — Technical Design quality benchmark (what the Technical Architect was supposed to deliver)
+3. `.andm/prompt-templates/technical-design-master-prompt.md` — Technical Design quality benchmark (what the Technical Architect was supposed to deliver)
 4. `docs/state/overview.md` — current status of all modules
 5. Check `docs/technical-design/` — existing technical design documents to review
 6. Check `docs/design-docs/` — System Design documents (architecture constraints to verify against)
@@ -40,7 +40,7 @@ Use Glob to list all files in `docs/technical-design/claim-review-and-rebuttal/`
 
 Execute these reads simultaneously:
 
-1. **TD quality benchmark** — Read `.agents/prompt-templates/technical-design-master-prompt.md` to understand the expected quality bar and deliverable format.
+1. **TD quality benchmark** — Read `.andm/prompt-templates/technical-design-master-prompt.md` to understand the expected quality bar and deliverable format.
 2. **Target document(s)** — Read the file specified above thoroughly. If `{{input}}` is "all", read the 3 TD docs (`docs/technical-design/02-backend-design.md`, `03-frontend-design.md`, `04-database-design.md`). **SD-as-Master: TD-01/05/06/07/08 have been dropped** — API contracts → `docs/api-specs/*.yaml` (SD owns), design patterns → ADRs + TD-02 appendix, sequence diagrams → TD-02/03 inline, test strategy → `docs/qa/01-test-execution-plan.md` (QA owns), handoff → Impl Planner reads SD-07/08 directly.
 3. **Related TD docs** — Identify documents referenced by or dependent on the target:
    - If target is `02-backend-design.md` → also read `03-frontend-design.md` (consumer), `04-database-design.md` (DB calls), `docs/api-specs/*.yaml` (contracts), ADRs referenced

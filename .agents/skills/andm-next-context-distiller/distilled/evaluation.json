@@ -1,0 +1,119 @@
+{
+  "passed": true,
+  "source_path": "C:\\Users\\kritsana.ye\\Documents\\Projects\\LAB\\ai-native-development\\methodologies\\full-track\\.agents\\workflows\\next.md",
+  "rules_path": "C:\\Users\\kritsana.ye\\Documents\\Projects\\LAB\\ai-native-development\\methodologies\\full-track\\.agents\\skills\\andm-next-context-distiller\\references\\required-anchors.json",
+  "metrics": {
+    "source_line_count": 980,
+    "distilled_line_count": 586,
+    "runtime_heading_count": 32,
+    "heading_coverage_ratio": 1.0,
+    "command_coverage_ratio": 1.0,
+    "phrase_coverage_ratio": 1.0,
+    "compression_ratio": 0.5979591836734693
+  },
+  "checks": [
+    {
+      "name": "heading_coverage",
+      "passed": true,
+      "value": 1.0,
+      "expected": ">= 0.95",
+      "details": []
+    },
+    {
+      "name": "command_coverage",
+      "passed": true,
+      "value": 1.0,
+      "expected": ">= 0.95",
+      "details": []
+    },
+    {
+      "name": "phrase_coverage",
+      "passed": true,
+      "value": 1.0,
+      "expected": ">= 1.0",
+      "details": []
+    },
+    {
+      "name": "compression_ratio",
+      "passed": true,
+      "value": 0.5979591836734693,
+      "expected": "<= 0.6",
+      "details": []
+    },
+    {
+      "name": "banned_marker_hits",
+      "passed": true,
+      "value": 0,
+      "expected": "<= 0",
+      "details": []
+    }
+  ],
+  "coverage": {
+    "headings_present": [
+      "Phase 0: Onboarding",
+      "Pre-check 0: Unresolved Breakage Override",
+      "Check 0: Open Backtracks",
+      "Check 0.5: Open Amendment Obligations",
+      "Check 0.7: Backtrack/Overview Reconciliation",
+      "Check 1: BA Deliverables",
+      "Check 2: System Design Deliverables",
+      "Check 3: Design QA - BA Review",
+      "Check 4: Design QA - SD Review",
+      "Check 4.5: UX/UI Design Deliverables",
+      "Check 4.7: Technical Design Deliverables",
+      "Check 4.8: Design QA - TD Review",
+      "Check 4.9: Project Bootstrap",
+      "Check 5: Implementation Plan",
+      "Check 5.25: Implementation Plan QA",
+      "Check 5.5: State Reconciliation",
+      "Check 5.7: Operator Action Registry",
+      "Check 5.8: Plan Staleness Sentinel",
+      "Check 6: Implementation Tasks",
+      "Check 6Q: QA Plan Deliverables",
+      "Check 7: Code Review",
+      "Check 7Q: QA Review / Rebuttal",
+      "Check 8: Red Team Security Audit",
+      "Check 9: Delivery Handoff",
+      "Check 10: All Done",
+      "Phase 1.9: Navigation Decision Layer",
+      "Phase 2: Report to User"
+    ],
+    "headings_missing": [],
+    "commands_present": [
+      "/ba",
+      "/ba-review all",
+      "/ba-rebuttal",
+      "/sd",
+      "/sd-review all",
+      "/sd-rebuttal",
+      "/ux-design",
+      "/ux-review",
+      "/td",
+      "/td-review all",
+      "/td-rebuttal",
+      "/project-init",
+      "/project-init --regen",
+      "/impl-plan 1",
+      "/impl-plan-review all",
+      "/impl-plan-rebuttal",
+      "/impl-task",
+      "/impl-review all",
+      "/impl-review-fix",
+      "/qa-review all",
+      "/qa-rebuttal",
+      "/red-team all",
+      "/red-team-rebuttal",
+      "/deliver all"
+    ],
+    "commands_missing": [],
+    "phrases_present": [
+      "BREAKAGE OVERRIDE",
+      "STOP",
+      "Do first:",
+      "Do NOT do yet:",
+      "Confidence:",
+      "Files to open before starting:"
+    ],
+    "phrases_missing": []
+  }
+}

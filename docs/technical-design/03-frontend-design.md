@@ -3,7 +3,7 @@
 > **Phase:** Phase 1D (Technical Design) — Doc 2/3
 > **Status:** ⏭️ **N/A** — EA project; no custom frontend surface
 > **Author:** Tech Lead agent (`/td` workflow)
-> **Last updated:** 2026-05-02
+> **Last updated:** 2026-05-18 (BT-002 cascade — § 2 Operator Surface Inventory Alert popup trigger list updated: former "CircuitBreaker triggered" entry removed legacy-parity per ADR-010 amendment; `IndicatorService runtime invalid` now Phase 1 sole automated halt trigger; Phase 2 candidates: equity-floor, journal sustained-failure. Prior: 2026-05-02 Round 06 handoff certification)
 > **Reads:** `docs/state/overview.md` (UX phase officially skipped 2026-05-02), `docs/design-docs/02-high-level-architecture.md § 7.3 Monitoring`, `docs/design-docs/05-security.md § 7.1 Observability layers`, `docs/foundation-input-sources/project-overview.md § Stakeholders`
 > **Audience:** Implementation Engineer, QA, Reviewer
 
@@ -39,7 +39,7 @@ User ทำงานกับ EA ผ่าน 6 surface ของ MT5 — ทุ
 |---------|---------|------------------|------------------------------|
 | **MT5 input dialog** (Inputs tab ของ EA properties) | Tune ≥ 80 parameter, group="Slot X" annotation per NFR-6.3 | TD locks input declaration ใน `inputs/Inputs_*.mqh` (5 files per ADR-012) | All `input`/`sinput` declarations |
 | **MT5 Experts log tab** | DEBUG/INFO/WARN/ERROR tagged messages — searchable ผ่าน `[slot=<X>][ev=<E>]` (FR-4.2) | `services/Logger.mqh` ผ่าน `Print()` only (ADR-011 sink) | Every Logger.* call from services + slots + halt logic |
-| **MT5 Alert popup + sound** | Critical events surface — halt, init failure, force-clear (anti-spam ≤ 1 per slot per session per ADR-008) | `services/Logger::Error` + halt-trigger bypass + `Alert()` MT5 native (ADR-011 escalation) | CircuitBreaker triggered, IndicatorService runtime invalid, journal sustained-failure, force-clear, HALTED_STABLE transition |
+| **MT5 Alert popup + sound** | Critical events surface — halt, init failure, force-clear (anti-spam ≤ 1 per slot per session per ADR-008) | `services/Logger::Error` + halt-trigger bypass + `Alert()` MT5 native (ADR-011 escalation) | IndicatorService runtime invalid (Phase 1 sole automated halt trigger post-BT-002 2026-05-17 per ADR-010 amendment — former CircuitBreaker trigger removed legacy-parity), journal sustained-failure (Phase 2 candidate), equity-floor (Phase 2 candidate per OQ-6), force-clear, HALTED_STABLE transition |
 | **MT5 Strategy Tester report** | Aggregate regression result (Net Profit, PF, DD, Sharpe, per-trade list) — primary surface ของ NFR-1.x acceptance | (read-only — MT5 native) | Auto-populated หลัง backtest run (per `mt5-headless-backtest` skill workflow) |
 | **MT5 GlobalVariable inspector** (Tools → GlobalVariables) | View worst DD + equity high-water-mark (mirror ของ state.json subset per `02 § 6.1.1` sync rule) | `services/StatePersistence::SyncToGlobalVariable` push หลัง successful Save | Subset ของ `watch_profits` field ใน state schema |
 | **`MQL5/Files/PhoenicisNex/` file tree** (open ใน VS Code/Notepad++/jq) | Inspect state.json (debug live state) + journal/*.jsonl (audit per FR-4.1) | TradeJournal + StatePersistence write only — user read-only | Files at `state/state.json`, `journal/{live\|tester}/*.jsonl` |

@@ -40,7 +40,7 @@ You do **NOT** write implementation code. You produce **phase-grouped** plans wi
 ## 3. Scope & Ownership
 
 - **Owns**: `docs/state/impl-plan.md` (implementation plan output)
-- **Can read**: all `docs/` files, `.claude/rules/`, `methodologies/full-track/`
+- **Can read**: all `docs/` files, `.claude/rules/`, `.agents/`
 - **Does NOT modify**: `docs/design-docs/`, `docs/adr/`, `services/`
 
 ## 4. Execution Rules

@@ -30,14 +30,14 @@ Read the following files immediately before doing anything else:
 
 1. `CLAUDE.md` — project rules, tech stack, architecture constraints
 2. **Mode-specific prompt template** (based on `{{input}}`):
-   - `stitch` → `.agents/prompt-templates/ux-design-stitch-prompt.md`
-   - `figma` → `.agents/prompt-templates/ux-design-figma-prompt.md`
-   - `existing` → `.agents/prompt-templates/ux-design-existing-prompt.md`
-   - `reference` → `.agents/prompt-templates/ux-design-reference-prompt.md`
-   - `claude-design` → `.agents/prompt-templates/ux-design-claude-design-prompt.md`
+   - `stitch` → `.andm/prompt-templates/ux-design-stitch-prompt.md`
+   - `figma` → `.andm/prompt-templates/ux-design-figma-prompt.md`
+   - `existing` → `.andm/prompt-templates/ux-design-existing-prompt.md`
+   - `reference` → `.andm/prompt-templates/ux-design-reference-prompt.md`
+   - `claude-design` → `.andm/prompt-templates/ux-design-claude-design-prompt.md`
    - `auto` → read all 5, then decide after Phase 2
 3. `docs/state/overview.md` — current module status
-4. `.agents/development-guide/ux-design-workflow.md` — detailed UX design workflow guide
+4. `.andm/development-guide/ux-design-workflow.md` — detailed UX design workflow guide
 
 Once read, you are ready to proceed.
 
@@ -99,7 +99,7 @@ Detect the appropriate mode:
 | User has Claude Pro/Max/Team/Enterprise **and** wants interactive visual iteration (comments/sliders) | **claude-design** |
 | `services/web/` has existing UI components with pages already built | **existing** |
 | User mentions Figma URL or `.figma` references exist in docs | **figma** |
-| `design-reference/*-DESIGN.md` already exists, OR user mentions reference site (Vercel, Linear, etc.) and is willing to acquire DESIGN.md per `.agents/development-guide/ux-design-reference-acquisition.md` | **reference** |
+| `design-reference/*-DESIGN.md` already exists, OR user mentions reference site (Vercel, Linear, etc.) and is willing to acquire DESIGN.md per `.andm/development-guide/ux-design-reference-acquisition.md` | **reference** |
 | Greenfield project, no existing frontend code | **stitch** |
 | User wants to build production UI directly (landing page, dashboard, app shell) | **frontend** |
 
@@ -117,19 +117,29 @@ Use the specified mode directly.
 
 ### Mode A: `stitch` (AI-Generated)
 
+> 🔧 **Stitch MCP must be configured first.** If this is the first time using Stitch in this environment OR `mcp__stitch__list_projects` fails, follow [`.andm/development-guide/ux-design-stitch-mcp-setup.md`](../../.andm/development-guide/ux-design-stitch-mcp-setup.md) before proceeding (proxy + API key setup, broken-config recovery, fallback to Mode D when MCP unreachable).
+
 1. **(Optional) Load style reference from `design-reference/`:**
    - Check if `design-reference/` has files matching `*-DESIGN.md` (e.g., `vercel-DESIGN.md`)
    - If yes → copy chosen reference to project root as `DESIGN.md` (Stitch reads root automatically as visual guide); originals stay un-edited in `design-reference/`
-   - If no and user wants reference → HALT + point to `.agents/development-guide/ux-design-reference-acquisition.md` for acquisition options
+   - If no and user wants reference → HALT + point to `.andm/development-guide/ux-design-reference-acquisition.md` for acquisition options
    - If user explicitly skips reference → proceed without one
-   - See `.agents/development-guide/ux-design-workflow.md` Mode A step 2 for details
-2. **Generate wireframes** using Stitch or Brainstorming visual companion:
+   - See `.andm/development-guide/ux-design-workflow.md` Mode A step 2 for details
+2. **Generate desktop screens (primary)** using Stitch:
    - For each user flow → identify screens/pages needed
-   - Generate 2-3 layout options for key pages (Stitch uses DESIGN.md style if present)
-   - Present to user → get selection
-3. **Extract design tokens** from generated mockups
-4. **List components** needed to build the selected layouts
-5. **Proceed to Phase 4**
+   - Generate at desktop resolution first (`deviceType: DESKTOP`) — most ops dashboards / SaaS targets desktop primary
+   - For undecided atmosphere/composition → use `generate_variants` to produce 2-3 layout options of ONE pivotal screen, let user pick before batch-generating the rest
+   - Present each result to user with `outputComponents.text` + `outputComponents.suggestion` per [text-to-design.md Step 4](../skills/stitch-design/workflows/text-to-design.md#4-present-ai-feedback-outputcomponents)
+3. **Generate mobile variants** for **key user-flow screens only** (login, primary task, dashboard home) — NOT every screen:
+   - `deviceType: MOBILE` (375px target)
+   - Skip mobile entirely if project = single-user desktop ops dashboard (e.g., localhost-only tool)
+4. **Refine via `edit_screens`** for targeted polish — track latest screen ID per page slug (each edit returns NEW ID)
+5. **Apply design system** consistency check via `apply_design_system` if 5+ screens already generated (re-applies tokens; helpful if early screens drifted before design system was finalized)
+6. **Extract design tokens** from generated mockups + `.stitch/DESIGN.md`
+7. **List components** needed to build the selected layouts
+8. **Proceed to Phase 4**
+
+> 🔁 **Generating ≥10 screens?** Consider [`stitch-loop` skill](../skills/stitch-loop/SKILL.md) — autonomous baton-pattern multi-page builder driven by `.stitch/SITE.md` + `.stitch/next-prompt.md`. Designed for marketing sites / multi-page brochure work; not needed for typical 5-8 page ops dashboards.
 
 ### Mode B: `figma` (Figma-First)
 
@@ -141,8 +151,8 @@ Use the specified mode directly.
    - Check if `design-reference/` has files matching `*-DESIGN.md`
    - If Figma lacks complete design system (e.g., missing color roles, shadows, responsive) → use the reference as visual language guide
    - Merge Figma rules with DESIGN.md sections that Figma doesn't cover; cite both sources in `00-design-vision.md` Reference Provenance block
-   - If reference needed but `design-reference/` ว่าง → point user to `.agents/development-guide/ux-design-reference-acquisition.md`
-   - See `.agents/development-guide/ux-design-workflow.md` Mode B step 3 for details
+   - If reference needed but `design-reference/` ว่าง → point user to `.andm/development-guide/ux-design-reference-acquisition.md`
+   - See `.andm/development-guide/ux-design-workflow.md` Mode B step 3 for details
 3. **Map Figma frames** to user flows from BA
 4. **Identify gaps** — user flows without Figma frames
 5. **Proceed to Phase 4**
@@ -166,10 +176,10 @@ Use the specified mode directly.
 > ใช้เมื่อยังไม่มี Stitch/Figma — อ่าน DESIGN.md ที่ user/operator วางมาที่ `design-reference/<name>-DESIGN.md` เป็น source of truth หลัก แล้ว customize เข้ากับโปรเจค
 > ถ้าใช้ Stitch หรือ Figma อยู่แล้ว — เพิ่ม DESIGN.md เป็น optional style reference ได้ใน Mode A (step 1) หรือ Mode B (step 2)
 
-> **Methodology contract:** workflow นี้ **ไม่ fetch/download/install** อะไรทั้งสิ้น — อ่านจาก `design-reference/<name>-DESIGN.md` เท่านั้น วิธีได้ไฟล์มาเป็น operator-side action ตาม `.agents/development-guide/ux-design-reference-acquisition.md` (4 options: npx getdesign / browser save / copy from another project / hand-author)
+> **Methodology contract:** workflow นี้ **ไม่ fetch/download/install** อะไรทั้งสิ้น — อ่านจาก `design-reference/<name>-DESIGN.md` เท่านั้น วิธีได้ไฟล์มาเป็น operator-side action ตาม `.andm/development-guide/ux-design-reference-acquisition.md` (4 options: npx getdesign / browser save / copy from another project / hand-author)
 
 1. **Verify input** — list `design-reference/*.md`:
-   - ถ้าโฟลเดอร์ว่าง / ไม่มีไฟล์ที่ลงท้ายด้วย `-DESIGN.md` → **HALT** + แจ้ง user ให้ทำตาม `.agents/development-guide/ux-design-reference-acquisition.md` ก่อนรันใหม่
+   - ถ้าโฟลเดอร์ว่าง / ไม่มีไฟล์ที่ลงท้ายด้วย `-DESIGN.md` → **HALT** + แจ้ง user ให้ทำตาม `.andm/development-guide/ux-design-reference-acquisition.md` ก่อนรันใหม่
    - ถ้ามีหลายไฟล์ — list ให้ user เลือกว่าใช้ตัวไหนเป็น primary reference (อันอื่นเป็น secondary mix-and-match)
 2. **Validate schema** — เปิดไฟล์ที่เลือก ตรวจ:
    - 9 sections ครบ (Visual Theme / Colors / Typography / Components / Layout / Depth / Do's-Don'ts / Responsive / Agent Prompt Guide)
@@ -203,7 +213,7 @@ Use the specified mode directly.
 
 > ใช้เมื่อต้องการ **interactive visual iteration** กับ Claude ผ่าน Claude Design web app (claude.ai)
 > ขับเคลื่อนด้วย **Claude Opus 4.7** vision (research preview, released 2026-04-17)
-> อ่าน `.agents/prompt-templates/ux-design-claude-design-prompt.md` สำหรับรายละเอียดเต็ม
+> อ่าน `.andm/prompt-templates/ux-design-claude-design-prompt.md` สำหรับรายละเอียดเต็ม
 
 1. **Prerequisites check (CRITICAL — HALT if missing):**
    - ✅ Claude **Pro / Max / Team / Enterprise** subscription
@@ -238,7 +248,7 @@ Use the specified mode directly.
 
 ## Phase 4: Write Deliverables
 
-Create all 7 files in `docs/ux/`. Follow the format defined in `.agents/development-guide/ux-design-workflow.md`.
+Create all 7 files in `docs/ux/`. Follow the format defined in `.andm/development-guide/ux-design-workflow.md`.
 
 > **Design System Enhancement (Optional):** After writing `01-design-tokens.md`, consider running the design-system skill in `generate` mode (`.agents/skills/design-system/SKILL.md`) to produce a `DESIGN.md` + `design-tokens.json` + `design-preview.html` preview page. This gives engineers a live-preview reference alongside the markdown specs.
 

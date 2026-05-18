@@ -52,6 +52,6 @@ See [`SKILL.md`](./SKILL.md) for full persona definition, scope, HALT protocol, 
 ## Related
 
 - Workflow: `.agents/workflows/project-init.md`
-- Development guide: `.agents/development-guide/project-init-workflow.md`
+- Development guide: `.andm/development-guide/project-init-workflow.md`
 - Drift validator: `scripts/validate-rules-sync.sh`
 - Glossary reference: `CLAUDE.md § Glossary (Option C Canonical Terms)`

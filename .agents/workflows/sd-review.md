@@ -14,7 +14,7 @@ description: Audit system design documents and generate a structured Claim Revie
 
 1. `CLAUDE.md` — project rules, tech stack, architecture constraints
 2. `.agents/skills/andm-sd-reviewer/SKILL.md` — **persona definition** (activate full Phase 0-4 process)
-3. `.agents/prompt-templates/system-design-master-prompt.md` — SD quality benchmark
+3. `.andm/prompt-templates/system-design-master-prompt.md` — SD quality benchmark
 4. `docs/state/overview.md`
 5. `docs/design-docs/` — existing design documents (02-08; v1.2: gaps 01/06 — merged into 02)
 6. `docs/adr/` — existing ADRs
@@ -33,7 +33,7 @@ Glob `docs/design-docs/claim-review-and-rebuttal/` หา `claim-review-XX.md` �
 
 ทำพร้อมกัน:
 
-1. **SD benchmark** — `.agents/prompt-templates/system-design-master-prompt.md`
+1. **SD benchmark** — `.andm/prompt-templates/system-design-master-prompt.md`
 2. **Target doc(s)** — อ่านละเอียด; ถ้า `{{input}}` = "all" → อ่าน `02-*.md` ถึง `08-*.md` (v1.2: gaps ที่ 01, 06)
 3. **Related design docs** — identify dependencies:
    - target `03-deep-dive.md` → อ่าน `02-high-level-architecture.md` (incl. ADR Digest section), `05-security.md`

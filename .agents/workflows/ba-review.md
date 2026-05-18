@@ -14,7 +14,7 @@ description: Audit BA deliverables and generate a structured Claim Review file
 
 1. `CLAUDE.md` — project rules, architecture constraints
 2. `.agents/skills/andm-ba-reviewer/SKILL.md` — **persona definition** (activate full Phase 0-4 process)
-3. `.agents/prompt-templates/ba-requirements-prompt.md` — BA quality benchmark
+3. `.andm/prompt-templates/ba-requirements-prompt.md` — BA quality benchmark
 4. `docs/state/overview.md` — project phase status
 5. `docs/ba/` — existing BA deliverables ที่จะ review
 6. `docs/ba/claim-review-and-rebuttal/` — previous rounds (เพื่อ avoid duplicate)
@@ -31,7 +31,7 @@ Glob `docs/ba/claim-review-and-rebuttal/` หา `claim-review-XX.md` ที่ 
 
 ทำพร้อมกัน:
 
-1. **BA benchmark** — `.agents/prompt-templates/ba-requirements-prompt.md`
+1. **BA benchmark** — `.andm/prompt-templates/ba-requirements-prompt.md`
 2. **Target doc(s)** — อ่านละเอียด; ถ้า `{{input}}` = "all" → อ่าน `docs/ba/01-*.md` ถึง `06-*.md`
 3. **Related BA docs** — identify dependencies:
    - target `02-functional-requirements.md` → อ่าน `01-project-brief.md` (goals), `03-non-functional-requirements.md` (NFR cross-check), `05-user-flows.md` (flow coverage)

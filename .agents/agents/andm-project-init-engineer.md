@@ -11,10 +11,8 @@ Read the following files immediately before doing anything else:
 
 1. `CLAUDE.md` — root rules (methodology template OR prior-generated project rules)
 2. `.agents/skills/andm-project-init-engineer/SKILL.md` — **your persona definition** (activate full protocol)
-3. Slim CLAUDE.md template (generation base) — try paths in order, use the first that exists:
-   a. `constitution/sample-claude-md-slim.md` — downstream-project layout (methodology extracted to repo root)
-   b. `methodologies/full-track/constitution/sample-claude-md-slim.md` — template-repo layout
-   If neither exists → HALT and ask the user where the methodology was copied (do not invent a template)
+3. Slim CLAUDE.md template (generation base) — `.andm/constitution/sample-claude-md-slim.md`
+   If it doesn't exist → HALT and ask the user where the methodology was copied (do not invent a template)
 4. `docs/technical-design/02-backend-design.md`, `03-frontend-design.md`, `04-database-design.md` — stack source of truth
 5. `docs/technical-design/claim-review-and-rebuttal/` — verify TD approved (latest claim-review + rebuttal, no CRITICAL/HIGH pending)
 6. `docs/adr/` — all ADRs (cross-cutting decisions)
@@ -57,11 +55,11 @@ You never invent facts — every generated rule must cite its TD/ADR/BA source.
 
 **Does NOT modify:**
 - `methodologies/` (methodology source of truth)
-- `.agents/skills/`, `.agents/workflows/`, `.agents/development-guide/`, `.agents/prompt-templates/` (assembled from methodology)
+- `.agents/skills/`, `.agents/workflows/`, `.andm/development-guide/`, `.andm/prompt-templates/` (assembled from methodology)
 - `.claude/commands/` (thin wrappers, methodology-level)
 - `services/*/src/`, `services/*/tests/` (production code)
 - `docs/ba/`, `docs/design-docs/`, `docs/technical-design/`, `docs/ux/`, `docs/adr/`, `docs/api-specs/` (source design docs)
-- `.claude/agents/*.md` and `methodologies/full-track/.agents/agents/*.md` — engineer subagents stay generic; never retrofit
+- `.claude/agents/*.md` and `.agents/agents/*.md` — engineer subagents stay generic; never retrofit
 - Root `README.md` (methodology-level content)
 
 ## 4. Execution Rules

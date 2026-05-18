@@ -31,6 +31,7 @@ Your mindset: **fix vulnerabilities properly — defense in depth**.
 - **Can modify**: `.claude/rules/security.md` (add new rules when patterns emerge)
 - **Can modify**: `docs/design-docs/05-security.md` (update threat model with new mitigations)
 - **Does NOT modify**: `docs/security/red-team-round-XX.md` — attacker's output is read-only
+- **Does NOT feed**: `docs/security/*`, exploit payloads, secrets, customer PII, or threat-model details into shared LLM Wiki / `wiki-ingest` / hot cache / cloud summarization. Defense reports are raw sensitive artifacts; create redacted summaries only when explicitly needed.
 
 ## 4. Execution Rules
 

@@ -52,26 +52,26 @@ Based on target phase, read ALL deliverables:
 
 **If target = `ba`:**
 1. Read `docs/ba/01-05` — all 5 BA deliverables (v1.2: 06-handoff dropped, open questions live in 02-05 by domain)
-2. Read `.agents/prompt-templates/ba-requirements-prompt.md` — quality benchmark
+2. Read `.andm/prompt-templates/ba-requirements-prompt.md` — quality benchmark
 3. Check `docs/ba/claim-review-and-rebuttal/` — review status
 
 **If target = `sd`:**
 1. Read `docs/design-docs/02-08` — 6 SD deliverables (v1.2: gaps ที่ 01/06 — merged into 02 as Requirements Traceability + ADR Digest sections)
 2. Read `docs/adr/` — all ADRs
 3. Read `docs/api-specs/` — API contracts
-4. Read `.agents/prompt-templates/system-design-master-prompt.md` — quality benchmark
+4. Read `.andm/prompt-templates/system-design-master-prompt.md` — quality benchmark
 5. Check `docs/design-docs/claim-review-and-rebuttal/` — review status
 
 **If target = `ux`:**
 1. Read `docs/ux/01-05` — all 5 UX deliverables (UX-06 dropped in SD-as-Master consolidation; Impl Engineer reads 01-05 directly)
-2. Read `.agents/development-guide/ux-design-workflow.md` — quality benchmark
+2. Read `.andm/development-guide/ux-design-workflow.md` — quality benchmark
 
 **If target = `td`:**
 1. Read `docs/technical-design/02-backend-design.md`, `03-frontend-design.md`, `04-database-design.md` — 3 TD deliverables (SD-as-Master: TD-01/05/06/07/08 dropped)
 2. Read `docs/api-specs/*.yaml` — authoritative API contracts (SD owns; replaces TD-01)
 3. Read `docs/adr/` — design pattern rationale (replaces TD-05/06)
 4. Read `docs/qa/01-test-execution-plan.md` if exists — coverage targets (replaces TD-07; QA-01 authoritative)
-5. Read `.agents/prompt-templates/technical-design-master-prompt.md` — quality benchmark
+5. Read `.andm/prompt-templates/technical-design-master-prompt.md` — quality benchmark
 6. Check `docs/technical-design/claim-review-and-rebuttal/` — review status
 
 **Also read (for downstream impact):**
@@ -212,7 +212,7 @@ Present a concise summary in Thai following SKILL.md Step 5:
 
 1. **สร้างไฟล์ถ้ายังไม่มี** ด้วย header (ดู SKILL.md Step 5.5 schema)
 2. **Append AMEND-NNN entry** (numbering: ต่อจาก latest entry +1)
-3. **Required fields:** Date, Source phase, Tier, Tier reasoning, Request, Files modified, Downstream obligations checklist, Blocks list, Status: 🔄 Open
+3. **Required fields:** Date, Source phase, Tier, Tier reasoning, Request, Supersedes, Superseded by, Files modified, Downstream obligations checklist, Blocks list, Status: 🔄 Open
 4. **Confirm** to user: "AMEND-NNN logged at `docs/state/amendment-log.md`. /next จะ surface obligations เป็น priority #3"
 
 **Closing protocol** (when downstream obligations later resolved):

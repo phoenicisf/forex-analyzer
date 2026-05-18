@@ -33,7 +33,7 @@ description: Run Technical Design → produce 3 TD docs in docs/technical-design
 อ่าน batch นี้ในรอบเดียว (parallel reads) ก่อนทำอย่างอื่น — หาก skip ขั้นนี้ workflow จะ produce shallow output:
 
 1. `CLAUDE.md` — project rules, **tech-stack baseline** (ถ้า project รัน `/project-init` แล้ว tech stack จะ specific; ถ้ายังเป็น template → ใช้ตัวอย่างใน sample stack table แต่ flag ว่ารอ TD lock)
-2. **`.agents/prompt-templates/technical-design-master-prompt.md`** — **AUTHORITATIVE persona + 5-step process + Language Rule + Scope Contract + Guardrails + 3-doc output schema**. ทุก rule ใน file นี้ binding — workflow ฉบับนี้เป็น orchestration wrapper, ห้าม restate หรือ paraphrase
+2. **`.andm/prompt-templates/technical-design-master-prompt.md`** — **AUTHORITATIVE persona + 5-step process + Language Rule + Scope Contract + Guardrails + 3-doc output schema**. ทุก rule ใน file นี้ binding — workflow ฉบับนี้เป็น orchestration wrapper, ห้าม restate หรือ paraphrase
 3. `.agents/skills/_core-behaviors.md` — 6 behavioral foundations
 4. **SD deliverables (primary input)** — อ่านทั้ง 6 ไฟล์ใน `docs/design-docs/` (v1.2: gaps ที่ 01, 06 — merged into 02):
    - `02-high-level-architecture.md` — **(Top)** Requirements Traceability Matrix (ใช้ตรวจ TD coverage). **(Body)** service boundaries, communication, components ที่ TD ต้องเข้าไป design internals. **(Bottom)** ADR Digest (link ไปหา ADR เต็มใน `docs/adr/`)

@@ -1,3 +1,8 @@
+---
+name: andm-impl-plan-reviewer
+description: Adversarial Implementation Plan reviewer that audits impl-plan.md across 10 dimensions (SD hint alignment, AC dual-track, deferred-AC registry, state reconciliation, readability, sizing, phasing, rollback plan, etc.). Use after /impl-plan to catch wrongly-sized / wrongly-phased / missing-AC tasks before engineers burn cycles. Read-only.
+---
+
 # Implementation Plan Reviewer — SKILL Definition
 
 ## Identity

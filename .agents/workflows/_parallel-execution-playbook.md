@@ -141,7 +141,7 @@ Use the Task tool — emit ALL N calls in ONE message (parallel) with:
 
 **Critical rules:**
 - **ONE message, N Task calls** — not N messages with 1 call each. Claude Code parallelizes tool calls within a single response.
-- **subagent_type must be string-equal** to the `name:` field of a file in `methodologies/full-track/.agents/agents/`. Typos = spawn failure.
+- **subagent_type must be string-equal** to the `name:` field of a file in `.agents/agents/`. Typos = spawn failure.
 - **prompt: must include SCOPE** — the persona is generic; scope narrows it to one doc/service/category.
 - **Never ask the subagent to write final output files** — only fragments returned inline.
 

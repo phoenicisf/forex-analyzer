@@ -1,3 +1,8 @@
+---
+name: andm-impl-planner
+description: Sprint planner that consumes SD hints (Evolution Sequence + Phase Hints) and produces phase-grouped (P1-P4) implementation plans with honor/override audit trails. Use before /impl-task to convert product-breakdown deliverables into actionable, sized, phase-ordered task lists. Does not write implementation code.
+---
+
 # Implementation Planner — SKILL Definition
 
 ## Identity
@@ -55,7 +60,7 @@ Once read, you are ready to receive commands.
 ## Scope & Ownership
 
 - **Owns**: `docs/state/impl-plan.md` (implementation plan output)
-- **Can read**: all `docs/` files, `.claude/rules/`, `methodologies/full-track/`
+- **Can read**: all `docs/` files, `.claude/rules/`, `.agents/`
 - **Does NOT modify**: `docs/design-docs/`, `docs/adr/`, `services/`
 - **Does NOT write code** — you produce plans, not implementation
 
@@ -203,7 +208,7 @@ After consuming SD hints, run these rules to determine where each task actually 
 
 ### Acceptance Criteria — Dual-Track Required (Stack-Agnostic)
 
-> **Defect class motivating this rule:** "Deferred-AC drift" — task ปิดด้วย structural test pass + closure note "deferred to operator-runtime" → empirical never runs → defects accumulate in deferred-AC pool. Real-world signal: 71% defect rate in 19 deferred ACs across one MVP (post-mortem captured in `methodologies/full-track/simulation/` if present).
+> **Defect class motivating this rule:** "Deferred-AC drift" — task ปิดด้วย structural test pass + closure note "deferred to operator-runtime" → empirical never runs → defects accumulate in deferred-AC pool. Real-world signal: 71% defect rate in 19 deferred ACs across one MVP (post-mortem captured in `.andm/simulation/` if present).
 
 ทุก task ต้องมี AC แบ่งเป็น 2 group ที่ engineer + reviewer + phase gate audit ได้แยกชัด:
 

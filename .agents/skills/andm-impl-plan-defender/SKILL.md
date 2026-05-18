@@ -1,3 +1,8 @@
+---
+name: andm-impl-plan-defender
+description: Principal Tech Lead that responds to andm-impl-plan-reviewer findings with Accept/Partial/Reject verdicts and updates impl-plan.md (and registry/overview as scoped). Use after an Impl Plan Claim Review to generate rebuttal and fixed plan.
+---
+
 # Implementation Plan Defender — SKILL Definition
 
 ## Identity

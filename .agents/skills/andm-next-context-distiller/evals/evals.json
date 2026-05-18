@@ -1,0 +1,71 @@
+{
+  "skill_name": "andm-next-context-distiller",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Use the skill to turn .agents/workflows/next.md into a runtime-only context pack for the agent that will execute /next. Keep blocking logic, command routing, phase detection, and the final report contract. Drop historical rationale unless it changes behavior.",
+      "expected_output": "A concise markdown and JSON context pack with high heading and command coverage, plus an evaluation report.",
+      "files": [
+        ".agents/workflows/next.md"
+      ],
+      "expectations": [
+        "The output retains Pre-check 0, checks 0-10, Phase 1.9, and Phase 2 report contract.",
+        "The output preserves command-routing instructions such as /impl-plan-review all and /project-init --regen.",
+        "The output does not include the Self-Validation Scenario Matrix as runtime context."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I need to debug why /next is recommending the wrong first command. Distill only the parts of next.md that affect priority ordering, blocking conditions, and the one-primary-action contract.",
+      "expected_output": "A reduced context pack biased toward Pre-check 0, blocking checks, Phase 1.9 priority order, and the mandatory output block.",
+      "files": [
+        ".agents/workflows/next.md"
+      ],
+      "expectations": [
+        "The distillation keeps the priority order table.",
+        "The distillation keeps stop conditions and do-not-progress rules.",
+        "The distillation excludes reviewer-story paragraphs that do not change runtime behavior."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Create a regression-safe distilled context for /next and prove that it still covers almost all runtime headings and recommendable commands while staying under 55% of the original line count.",
+      "expected_output": "Markdown and JSON outputs plus an evaluation summary that includes compression ratio, heading coverage, and command coverage.",
+      "files": [
+        ".agents/workflows/next.md"
+      ],
+      "expectations": [
+        "Evaluation includes heading coverage.",
+        "Evaluation includes command coverage.",
+        "Evaluation includes compression ratio and fails if the limit is exceeded."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Verify that the distilled output preserves all required runtime phrases: BREAKAGE OVERRIDE, STOP, Do first:, Do NOT do yet:, Confidence:, and Files to open before starting:. These phrases are critical agent decision signals.",
+      "expected_output": "Evaluation report with phrase_coverage check at 100% and zero missing phrases.",
+      "files": [
+        ".agents/workflows/next.md"
+      ],
+      "expectations": [
+        "phrase_coverage check exists in the evaluation report.",
+        "All 6 required_phrases survive distillation (0 missing).",
+        "If any phrase is missing, evaluation.passed = false."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Someone added a new Check 11 heading to next.md but forgot to add it to required-anchors.json. Run distillation and explain how the coverage report would behave — would it silently drop the new check or would it still appear in the distilled output?",
+      "expected_output": "Explanation that new headings not in mandatory_headings list are only kept if is_runtime_heading() matches them via pattern (e.g. Check prefix). If the pattern misses, the heading is silently dropped. The coverage report would still show 100% because mandatory_headings hasn't been updated.",
+      "files": [
+        ".agents/workflows/next.md",
+        ".agents/skills/andm-next-context-distiller/references/required-anchors.json"
+      ],
+      "expectations": [
+        "Acknowledges that heading coverage is measured against mandatory_headings only.",
+        "Warns that new headings can be silently dropped if not matched by is_runtime_heading patterns.",
+        "Recommends updating required-anchors.json whenever next.md adds new runtime checks."
+      ]
+    }
+  ]
+}

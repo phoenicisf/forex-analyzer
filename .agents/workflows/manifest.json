@@ -22,7 +22,7 @@
     },
     "utility": {
       "description": "Meta/diagnostic skills — for template maintenance",
-      "skills": ["find-skills", "health-check", "skill-creator"]
+      "skills": ["find-skills", "health-check", "skill-creator", "andm-next-context-distiller"]
     },
     "frontend-tools": {
       "description": "Frontend/UX specialized skills — design, audit, and demo tools",

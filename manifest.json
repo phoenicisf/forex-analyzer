@@ -30,10 +30,10 @@
   },
   "skills": {
     "path": ".agents/skills/",
-    "count": 47
+    "count": 48
   },
   "prompt_templates": {
-    "path": ".agents/prompt-templates/",
+    "path": ".andm/prompt-templates/",
     "count": 11,
     "list": ["quick-start.md", "idea-refinement-prompt.md", "ba-requirements-prompt.md", "system-design-master-prompt.md", "technical-design-master-prompt.md", "ux-design-stitch-prompt.md", "ux-design-figma-prompt.md", "ux-design-existing-prompt.md", "ux-design-reference-prompt.md", "ux-design-claude-design-prompt.md", "qa-plan-direct-prompt.md"]
   },
@@ -49,15 +49,22 @@
       "agents": ".claude/agents/"
     },
     "windsurf": ".windsurf/workflows/",
+    "gemini_cli": ".gemini/commands/",
+    "codex_cli": {
+      "primer": "AGENTS.md",
+      "config": ".codex/config.toml",
+      "prompts": ".codex/prompts/",
+      "agents": ".codex/agents/"
+    },
     "other": "Point workflow runner at .agents/workflows/<name>.md"
   },
   "development_guide": {
-    "path": ".agents/development-guide/",
+    "path": ".andm/development-guide/",
     "count": 14
   },
   "entry_points": {
-    "constitution": "constitution/ai-native-development-runbook.md",
-    "journey": ".agents/development-guide/full-journey.md",
+    "constitution": ".andm/constitution/ai-native-development-runbook.md",
+    "journey": ".andm/development-guide/full-journey.md",
     "core_behaviors": ".agents/skills/_core-behaviors.md"
   }
 }

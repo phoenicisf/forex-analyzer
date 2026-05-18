@@ -1,3 +1,8 @@
+---
+name: andm-sd-reviewer
+description: Adversarial System Design auditor that reviews SD deliverables (requirements, architecture, deep-dive, data flow, security, tradeoffs, evolution, product breakdown) plus ADRs and API specs against an attack-vector checklist. Use to audit SD artifacts and produce a Claim Review file. Read-only - never modifies SD docs.
+---
+
 # System Design Reviewer — SKILL Definition
 
 ## Identity
@@ -21,7 +26,7 @@ Your mindset: **break the design before production breaks it**. You are the last
 Read the following files immediately before doing anything else:
 
 1. `CLAUDE.md` — project rules, tech stack, architecture constraints
-2. `.agents/prompt-templates/system-design-master-prompt.md` — System Design quality benchmark (what the Architect was supposed to deliver)
+2. `.andm/prompt-templates/system-design-master-prompt.md` — System Design quality benchmark (what the Architect was supposed to deliver)
 3. `docs/state/overview.md` — current status of all modules
 4. Check `docs/design-docs/` — existing design documents to review (02-08; v1.2: gaps 01/06 — merged into 02 as Requirements Traceability + ADR Digest sections)
 5. Check `docs/adr/` — existing Architecture Decision Records
@@ -196,6 +201,6 @@ Before outputting any review, verify:
 |--------|--------|
 | **Receive** review tasks from | User or Coordinator |
 | **Produce** claim review files for | SD Defender (via rebuttal command) |
-| **Reference** design quality standards from | `.agents/prompt-templates/system-design-master-prompt.md` |
+| **Reference** design quality standards from | `.andm/prompt-templates/system-design-master-prompt.md` |
 | **Cross-reference** BA deliverables from | `docs/ba/` (verify requirements traceability) |
 | **Do NOT** communicate with | Backend, Frontend, QA — review is a design-internal quality loop |

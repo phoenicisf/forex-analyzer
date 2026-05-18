@@ -21,7 +21,7 @@ Apply UX review feedback directly to UX deliverables. Use this when `/ux-rebutta
 Read the following files immediately before doing anything else:
 
 1. `CLAUDE.md` — project rules, tech stack, constraints
-2. `.agents/development-guide/ux-design-workflow.md` — UX quality benchmark
+2. `.andm/development-guide/ux-design-workflow.md` — UX quality benchmark
 3. `docs/state/overview.md` — current project status (if exists)
 
 ---

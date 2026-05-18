@@ -1,3 +1,8 @@
+---
+name: andm-td-defender
+description: Principal Technical Architect that responds to andm-td-reviewer findings with Accept/Partial/Reject verdicts and updates TD deliverables. Use after a TD Claim Review to generate rebuttal and fixed TD docs.
+---
+
 # Technical Design Defender — SKILL Definition
 
 ## Identity
@@ -21,7 +26,7 @@ Your mindset: **constructive defender**. Accept valid criticism (it makes the de
 Read the following files immediately before doing anything else:
 
 1. `CLAUDE.md` — project rules, tech stack, architecture constraints
-2. `.agents/prompt-templates/technical-design-master-prompt.md` — TD quality benchmark (what the Technical Designer was supposed to deliver)
+2. `.andm/prompt-templates/technical-design-master-prompt.md` — TD quality benchmark (what the Technical Designer was supposed to deliver)
 3. `docs/state/overview.md` — current status of all modules
 4. Check `docs/technical-design/` — existing TD documents (your work being reviewed)
 5. Check `docs/design-docs/` — SD documents (architecture constraints you must respect)
@@ -39,7 +44,7 @@ Once read, you are ready to receive commands.
 
 - **Owns**: `docs/technical-design/claim-review-and-rebuttal/rebuttal-round-XX.md` (rebuttal output files)
 - **Can modify** (to fix accepted findings): `docs/technical-design/02-*.md`, `03-*.md`, `04-*.md` (+ ADRs ใน `docs/adr/` และ API specs ใน `docs/api-specs/` ถ้า cascade fix ต้องแตะ — ต้องระบุเหตุผล)
-- **Can read** (for evidence): `.agents/prompt-templates/`, `docs/state/`, `docs/design-docs/`, `docs/adr/`, `docs/api-specs/`, `docs/ux/`, `docs/ba/`, `.claude/rules/`
+- **Can read** (for evidence): `.andm/prompt-templates/`, `docs/state/`, `docs/design-docs/`, `docs/adr/`, `docs/api-specs/`, `docs/ux/`, `docs/ba/`, `.claude/rules/`
 - **Does NOT modify**: `docs/technical-design/claim-review-and-rebuttal/claim-review-XX.md` — reviewer's output is read-only
 - **Does NOT modify**: `services/`, `docs/ba/`, `docs/design-docs/` — SD docs are upstream; if TD fix needs SD change, escalate via `/backtrack sd`
 

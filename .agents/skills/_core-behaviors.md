@@ -153,7 +153,47 @@ Recommended action:
 ห้าม return planned phase progression จนกว่า triage round ผ่าน
 ```
 
-> **Defect class motivating:** Shark CMS 2026-04 — user รายงาน "อยากเห็นเว็บรันได้จริงๆ ก่อน" + "เปลี่ยนภาษาไม่ได้ · logout ไม่ได้" แต่ orchestrator ยัง pull ไปทาง P3 DevOps gate เพราะ /next workflow recommend นั้น. Workflow rule + contemporary user signal conflict — user signal ต้องชนะ. ดู retrospective `real-problems/2026-04-29-tier1-blindspot.md § Failure mode 3 — Workflow nudge over common sense`.
+> **Defect class motivating:** Shark CMS 2026-04 — user รายงาน "อยากเห็นเว็บรันได้จริงๆ ก่อน" + "เปลี่ยนภาษาไม่ได้ · logout ไม่ได้" แต่ orchestrator ยัง pull ไปทาง P3 DevOps gate เพราะ /next workflow recommend นั้น. Workflow rule + contemporary user signal conflict — user signal ต้องชนะ. (See Shark CMS Tier-1 Blindspot retrospective § Failure mode 3 — Workflow nudge over common sense.)
+
+---
+
+## 8. Mark High-Stakes Claims with Provenance (ติดป้ายแหล่งที่มาของ claim สำคัญ)
+
+เมื่อเขียน BA/SD/TD/UX/QA/code-review deliverable — **mark high-stakes claims** ด้วย inline provenance marker ก่อนปิดเอกสาร:
+
+- `^[extracted: docs/path ¶N]` — verbatim/paraphrase จาก source (cite-able)
+- `^[inferred: reason]` — logical extension จาก source (assumption ที่อธิบายได้)
+- `^[ambiguous: source-A says X, source-B says Y]` — sources ขัดแย้ง ต้องการ resolution
+
+### High-stakes = อะไร
+
+Mark claims ที่อยู่ใน:
+- **NFR thresholds** — "50 concurrent users", "99.5% uptime", "<200ms p95"
+- **Decisions** ที่กลับยาก — tech stack, schema choice, architectural pattern
+- **Contradictions** — claim conflict กับ doc อื่น / source อื่น
+- **Scope boundaries** — "in scope" / "out of scope" ที่ stakeholder อาจต่างมุมมอง
+
+### ห้าม mark (เพราะจะกลายเป็น noise)
+
+- Common sense ("Login requires username + password")
+- Framework defaults ("Next.js renders pages server-side")
+- Well-known patterns ("Use HTTPS for production")
+- Every sentence ใน narrative — มี marker เกิน 50% = re-tune
+
+### ทำไม
+
+ลด "AI hallucinated claim" failure mode — E-DARTS retro 2026-05-05 บันทึกว่าเสีย 4 วันค้น root cause เพราะ claim ลอยอยู่ในเอกสารไม่มี source. Marker เป็น **defensive marker for future-self / reviewer** — มอง claim → รู้ทันทีว่าต้องตามไปดู source ที่ไหน
+
+### Mapping ไปยัง frontmatter
+
+นับเฉพาะ marker ที่มีจริงใน high-stakes claims แล้ว roll up เข้า `provenance` frontmatter เป็น count:
+- 7 extracted markers + 3 inferred + 1 ambiguous → frontmatter `provenance: { extracted: 7, inferred: 3, ambiguous: 1 }`
+
+ห้ามเดาเปอร์เซ็นต์จากความรู้สึก ถ้าไม่มี high-stakes marker ในไฟล์ ให้ใช้ `provenance: { extracted: 0, inferred: 0, ambiguous: 0 }` แล้วอาศัย `sources` เป็น citation ระดับเอกสาร
+
+ดู `CLAUDE.md § Glossary → Frontmatter Convention + Inline Provenance Markers` สำหรับ schema เต็ม
+
+> **Adopted:** 2026-05-09 (T1.3 Tier-1 item from LLM Wiki research)
 
 ---
 
@@ -174,9 +214,10 @@ Recommended action:
 | 11 | ปิด task ด้วย structural evidence อย่างเดียวทั้งที่ AC มี E-AC ที่บังคับ empirical | AC checkbox `[x]` แต่ไม่มี evidence artifact ใน `_session-handoff/` |
 | 12 | เขียน closure note ว่า "deferred to operator-runtime" แล้วปิด task | ใช้ Split-or-Register แทน — open followup task หรือบันทึกใน `deferred-ac-registry.md` (ดู `andm-impl-engineer/SKILL.md`) |
 | 13 | Workflow nudge over user signal — user รายงาน breakage แต่ agent ยังเดินตาม `/next` recommendation ไป Phase Gate ถัดไป | User report ของ functional breakage = ground truth; ดู Behavior #7 Override Template — triage ก่อน progression เสมอ |
-| 14 | IMPL-FIX sibling sprawl — spawn `NNNa/b/c` siblings after cap-3 falsified instead of fresh ticket | Ticket name pattern `IMPL-FIX-\d+[a-z]` หรือ `IMPL-FIX-\d+-[A-Z]+` ใน `impl-plan.md`. Sibling naming inherits new cap-3 per child → cap-3 bypass. หลัง 3 iter falsified → ต้องเลือก (a) BACKTRACK / (b) fresh `IMPL-FIX-MMM` / (c) Defer with operator sign-off ตาม `GLOSSARY.md § Cap-3 Decision Gate` |
-| 15 | Meta-loop clause patching — review-round N+2 adds clause (j) เพราะ clause (i) จาก round N ยังจับ defect class เดิมไม่ครบ | Same Gate / checklist clause ถูกแก้ใน ≥3 consecutive review rounds + defect class identical. ห้าม add clause ต่อ — spawn `METHODOLOGY-REDESIGN-NNN.md` ที่ `docs/code-review/methodology-redesign/` แทน (ดู `GLOSSARY.md § METHODOLOGY-REDESIGN Ticket`). 9-clause Gate = signal mechanism is wrong, not under-specified |
-| 16 | Handoff artifact sprawl — `_session-handoff/` ไม่มี archive boundary | Closed IMPL-NNN / IMPL-FIX-NNN ยังมี artifact files >14 days ใน `_session-handoff/` root. Per-ticket sprawl ทำให้ grep cost โต linear. ต้อง archive ลง `_session-handoff/archive/<ticket>.tar.gz` ตอน ticket close (ดู `GLOSSARY.md § Handoff Artifact Archive Policy`) |
+| 14 | High-stakes claim ลอยอยู่ในเอกสารโดยไม่มี provenance marker | NFR threshold / decision / contradiction / scope boundary ไม่มี `^[extracted/inferred/ambiguous]` marker → reviewer 6 เดือนถัดไปหา source ไม่เจอ; ดู Behavior #8 |
+| 15 | IMPL-FIX sibling sprawl — spawn `NNNa/b/c` siblings after cap-3 falsified instead of fresh ticket | Ticket name pattern `IMPL-FIX-\d+[a-z]` หรือ `IMPL-FIX-\d+-[A-Z]+` ใน `impl-plan.md`. Sibling naming inherits new cap-3 per child → cap-3 bypass. หลัง 3 iter falsified → ต้องเลือก (a) BACKTRACK / (b) fresh `IMPL-FIX-MMM` / (c) Defer with operator sign-off ตาม `GLOSSARY.md § Cap-3 Decision Gate` |
+| 16 | Meta-loop clause patching — review-round N+2 adds clause (j) เพราะ clause (i) จาก round N ยังจับ defect class เดิมไม่ครบ | Same Gate / checklist clause ถูกแก้ใน ≥3 consecutive review rounds + defect class identical. ห้าม add clause ต่อ — spawn `METHODOLOGY-REDESIGN-NNN.md` ที่ `docs/code-review/methodology-redesign/` แทน (ดู `GLOSSARY.md § METHODOLOGY-REDESIGN Ticket`). 9-clause Gate = signal mechanism is wrong, not under-specified |
+| 17 | Handoff artifact sprawl — `_session-handoff/` ไม่มี archive boundary | Closed IMPL-NNN / IMPL-FIX-NNN ยังมี artifact files >14 days ใน `_session-handoff/` root. Per-ticket sprawl ทำให้ grep cost โต linear. ต้อง archive ลง `_session-handoff/archive/<ticket>.tar.gz` ตอน ticket close (ดู `GLOSSARY.md § Handoff Artifact Archive Policy`) |
 
 ---
 

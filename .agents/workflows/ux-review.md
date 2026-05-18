@@ -16,7 +16,7 @@ Read the following files immediately before doing anything else:
 
 1. `CLAUDE.md` — project rules, tech stack
 2. `.agents/skills/andm-ux-reviewer/SKILL.md` — **your persona definition** (activate full adversarial review protocol)
-3. `.agents/development-guide/ux-design-workflow.md` — UX quality benchmark
+3. `.andm/development-guide/ux-design-workflow.md` — UX quality benchmark
 4. `docs/state/overview.md` — current module status
 5. Previous claim-review files in `docs/ux/claim-review-and-rebuttal/` (if any — to avoid duplicates)
 

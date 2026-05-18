@@ -15,7 +15,7 @@ description: Analyze, implement fixes, and write rebuttal for a BA Claim Review 
 
 1. `CLAUDE.md` — project rules
 2. `.agents/skills/andm-ba-defender/SKILL.md` — **persona + 7-step execution protocol**
-3. `.agents/prompt-templates/ba-requirements-prompt.md` — BA quality benchmark
+3. `.andm/prompt-templates/ba-requirements-prompt.md` — BA quality benchmark
 4. `docs/state/overview.md`
 5. `docs/ba/` — BA deliverables (งานที่ถูก review)
 6. `docs/ba/claim-review-and-rebuttal/` — previous rounds + rebuttals

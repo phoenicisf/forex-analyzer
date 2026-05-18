@@ -32,7 +32,7 @@ description: Run System Design → produce 6 design docs in docs/design-docs/02-
 อ่าน batch นี้ในรอบเดียว (parallel reads) ก่อนทำอย่างอื่น — หาก skip ขั้นนี้ workflow จะ produce shallow output:
 
 1. `CLAUDE.md` — project rules, tech-stack baseline (ถ้ามี), **Option C glossary** (Evolution Sequence / Phase Hint / Schedule Leakage)
-2. **`.agents/prompt-templates/system-design-master-prompt.md`** — **AUTHORITATIVE persona + 6-step process + Language Rule + Readability Contract + Phase Contract + Guardrails + 6-doc output schema (v1.2: gaps 01/06 — merged into 02)**. ทุก rule ใน file นี้ binding — workflow ฉบับนี้เป็น orchestration wrapper, ห้าม restate หรือ paraphrase
+2. **`.andm/prompt-templates/system-design-master-prompt.md`** — **AUTHORITATIVE persona + 6-step process + Language Rule + Readability Contract + Phase Contract + Guardrails + 6-doc output schema (v1.2: gaps 01/06 — merged into 02)**. ทุก rule ใน file นี้ binding — workflow ฉบับนี้เป็น orchestration wrapper, ห้าม restate หรือ paraphrase
 3. `.agents/skills/_core-behaviors.md` — 6 behavioral foundations
 4. **BA deliverables (primary input)** — อ่านทั้ง 5 ไฟล์ใน `docs/ba/` (v1.2: 06-handoff dropped):
    - `01-project-brief.md` — business context, goals, scope, glossary
@@ -168,7 +168,7 @@ Self-check ตาม `system-design-master-prompt.md` § READABILITY CONTRACT + 
 - [ ] Every number (pool_size, timeout, rate_limit, TTL) มี formula/derivation
 - [ ] No *"configure as needed"* — ระบุ concrete default
 - [ ] Mermaid diagram ≥ 1 per architecture doc (02, 03, 04 อย่างน้อย)
-- [ ] ADR format ครบ: Title → Status → Context → Options → Decision → Consequences → Revisit-when
+- [ ] ADR format ครบ: Title → Status → Supersedes / Superseded-by → Context → Options → Decision → Consequences → Revisit-when
 
 ### 3.4 Phase Contract Compliance (Option C — CRITICAL)
 

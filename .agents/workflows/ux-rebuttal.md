@@ -16,7 +16,7 @@ Read the following files immediately before doing anything else:
 
 1. `CLAUDE.md` — project rules, tech stack, constraints
 2. `.agents/skills/andm-ux-defender/SKILL.md` — **your persona definition** (activate the full 7-step claim processing protocol)
-3. `.agents/development-guide/ux-design-workflow.md` — UX quality benchmark
+3. `.andm/development-guide/ux-design-workflow.md` — UX quality benchmark
 4. `docs/state/overview.md` — current project status (if exists)
 
 Once read, proceed to Phase 1.

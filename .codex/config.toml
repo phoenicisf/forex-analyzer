@@ -1,0 +1,28 @@
+# ANDM Full Track — recommended Codex CLI project config
+#
+# Codex layers config (highest precedence first):
+#   1. CLI flags / --config overrides
+#   2. --profile <name> values
+#   3. Project: .codex/config.toml (this file, walked from cwd → repo root)
+#   4. User: ~/.codex/config.toml
+#   5. System: /etc/codex/config.toml
+#   6. Built-in defaults
+#
+# Full Track is QA-heavy and produces large structured docs (BA, SD, TD, UX, QA Plan,
+# impl-plan, claim-reviews). Keep reasoning effort high and require approval before
+# Codex runs anything outside the workspace sandbox.
+
+model = "gpt-5.5"
+model_reasoning_effort = "high"
+model_reasoning_summary = "auto"
+
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+# Cached web search keeps cite-able external context cheap during BA/SD research.
+web_search = "cached"
+
+# Per-role agent overrides (model / sandbox / mcp_servers / skills) belong under
+# `[agents.<role-name>]` blocks following Codex's AgentRoleToml schema — leave
+# unset to inherit the top-level defaults above. The 18 TOML subagents under
+# `.codex/agents/*.toml` are loaded separately and do not need entries here.

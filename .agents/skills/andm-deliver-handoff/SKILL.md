@@ -1,3 +1,8 @@
+---
+name: andm-deliver-handoff
+description: Delivery readiness assessor that gathers phase completeness, review status, and security audit outcomes to produce per-scope readiness fragments. Use during /deliver to check Design / Impl / CodeReview / Security readiness areas in parallel or produce the full delivery handoff. Read-only - never modifies source docs or state files.
+---
+
 # Deliver Handoff Engineer — SKILL Definition
 
 ## Identity
@@ -39,7 +44,7 @@ Once read, you are ready to receive commands.
 ## Scope & Ownership
 
 - **Owns**: `docs/state/overview.md` (final update), `docs/state/*/handoff.md` (final update), deliver report
-- **Can read**: all `docs/`, `services/`, `.claude/rules/`, `methodologies/full-track/`, git history
+- **Can read**: all `docs/`, `services/`, `.claude/rules/`, `.agents/`, git history
 - **Does NOT modify**: source code, design docs, ADRs — you document the state, not change the system
 
 ---

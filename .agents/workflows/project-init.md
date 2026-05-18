@@ -27,10 +27,8 @@ Read immediately, in parallel:
 
 1. `CLAUDE.md` — root rules (methodology template OR prior-generated project rules)
 2. `.agents/skills/andm-project-init-engineer/SKILL.md` — **your persona definition** (activate full protocol)
-3. Slim CLAUDE.md template (generation base) — try paths in order, use the first that exists:
-   a. `constitution/sample-claude-md-slim.md` — downstream-project layout (methodology extracted to repo root)
-   b. `methodologies/full-track/constitution/sample-claude-md-slim.md` — template-repo layout (running inside this template repo)
-   If neither exists → HALT and ask the user to confirm where the methodology was copied (do not invent a template)
+3. Slim CLAUDE.md template (generation base) — `.andm/constitution/sample-claude-md-slim.md`
+   If it doesn't exist → HALT and ask the user to confirm where the methodology was copied (do not invent a template)
 4. `docs/state/overview.md` — current module status (OPTIONAL — skip silently if not found)
 5. `.claude/stack.json` — prior fingerprint (OPTIONAL — only exists after first run)
 
@@ -184,7 +182,7 @@ When inference fires, set `containerization.source` to `inferred (heuristic: <wh
 
 ### 3.1 Build CLAUDE.md content
 
-Start from the slim template (resolved in Phase 0 step 3 — `constitution/sample-claude-md-slim.md` for downstream layout, or `methodologies/full-track/constitution/sample-claude-md-slim.md` for template-repo layout). Apply substitutions:
+Start from the slim template (resolved in Phase 0 step 3 — `.andm/constitution/sample-claude-md-slim.md`). Apply substitutions:
 
 1. **§1 Project Overview** — fill `[ชื่อ]`, `[ประเภท]`, `[สถานะ]` from `project.*` facts.
    **AUTO-MANAGED:phase-status block** — preserve the "🔴 READ FIRST — Three-Tier Closure Convention" callout verbatim (it's a methodology-owned anti-hallucination scaffold; never strip). Status snapshot table:
@@ -236,7 +234,7 @@ Generate root `AGENTS.md` as a slim pointer file (~25 lines):
 ## Quick Context
 - **Project:** <project.name>
 - **Type:** <project.type>
-- **Methodology:** Full Track (see `methodologies/full-track/constitution/`)
+- **Methodology:** Full Track (see `.andm/constitution/`)
 - **Tech Stack (summary):**
   - Backend: <language + framework>
   - Frontend: <language + framework>
@@ -308,8 +306,8 @@ Rule file naming:
   - Use SKILL.md Phase 6 `docker.md` skeleton as the base
   - Per-service Dockerfile sub-sections derived from `services[].language` (one sub-section per polyglot service; pick canonical multi-stage pattern per language from the skeleton's snippet table)
   - Compose Layout section enumerates every service from `services[]` plus DB / cache / messaging facts
-  - Cite `methodologies/full-track/.agents/workflows/impl-task.md:130` (orchestrator-only ownership of `docker-compose.yml`)
-  - Cite `methodologies/full-track/.agents/workflows/red-team.md:83` finding #20 (non-root user, no health-endpoint exposure)
+  - Cite `.agents/workflows/impl-task.md:130` (orchestrator-only ownership of `docker-compose.yml`)
+  - Cite `.agents/workflows/red-team.md:83` finding #20 (non-root user, no health-endpoint exposure)
   - If `containerization.source` starts with "inferred" → prepend top-of-file note "Derived by `/project-init` heuristic; revise via `/project-init --amend` if incorrect"
   - In regen mode: if prior generation produced this file but new facts have `engine == "none"` → mark `.claude/rules/docker.md` as DELETE in the HALT 2 diff (and back up to `.claude/rules/docker.md.bak-<ts>` before removal)
 
@@ -515,7 +513,7 @@ User runs `git commit` when satisfied.
 
 ## Safety Rules
 
-- ❌ Never modify `.agents/skills/`, `.agents/workflows/`, `.agents/development-guide/`, `.agents/prompt-templates/` (methodology source of truth)
+- ❌ Never modify `.agents/skills/`, `.agents/workflows/`, `.andm/development-guide/`, `.andm/prompt-templates/` (methodology source of truth)
 - ❌ Never modify `methodologies/` (canonical source)
 - ❌ Never modify root `README.md` (methodology-level content)
 - ❌ Never touch production code under `services/*/src/`

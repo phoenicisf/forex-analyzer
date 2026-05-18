@@ -14,7 +14,7 @@ description: Diverge → converge an initial idea/pain-point into a BA-Ready Bri
 ## Phase 0: Onboarding (อ่านไฟล์เหล่านี้ทันที)
 
 1. `CLAUDE.md` — project rules, domain glossary, stakeholder context
-2. `.agents/prompt-templates/idea-refinement-prompt.md` — **persona + 4-step process + output schema** (authoritative)
+2. `.andm/prompt-templates/idea-refinement-prompt.md` — **persona + 4-step process + output schema** (authoritative)
 3. `.agents/agents/andm-ideation-facilitator.md` — subagent wrapper (ถ้า IDE รองรับ subagent fan-out)
 4. `docs/foundation-input-sources/` — list ทุกไฟล์ + อ่าน `project-overview.md`, `stakeholder-input.md`, `competitive-analysis.md` (ข้าม placeholder)
 5. `docs/foundation-input-sources/ideation-brief.md` — ถ้ามี → check resume mode
@@ -51,7 +51,7 @@ description: Diverge → converge an initial idea/pain-point into a BA-Ready Bri
 
 ## Phase 2: 4-Step Idea Refinement
 
-Follow **4 steps จาก `.agents/prompt-templates/idea-refinement-prompt.md` Layer 2**:
+Follow **4 steps จาก `.andm/prompt-templates/idea-refinement-prompt.md` Layer 2**:
 
 1. **Frame** — Sharpen HMW question (ถามกลับถ้า input สั้นเกิน)
 2. **Diverge** — สร้าง ≥5 variations ผ่าน ≥3 lenses (Inversion / Constraint Removal / Audience Shift / Simplification / 10x Scale)
@@ -93,7 +93,7 @@ Set `Status: ready-for-ba` ใน frontmatter-like header
 - HMW question ที่เลือก
 - Chosen direction title
 - Count: variations considered / not-doing items / open questions
-- **Next command:** *"พร้อม Phase 1 BA แล้ว — ใช้ prompt `.agents/prompt-templates/ba-requirements-prompt.md` (BA จะอ่าน ideation-brief.md อัตโนมัติจาก foundation-input-sources)"*
+- **Next command:** *"พร้อม Phase 1 BA แล้ว — ใช้ prompt `.andm/prompt-templates/ba-requirements-prompt.md` (BA จะอ่าน ideation-brief.md อัตโนมัติจาก foundation-input-sources)"*
 
 ### 4.3 Optional Artifacts
 

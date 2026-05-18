@@ -15,7 +15,7 @@ description: Analyze, implement fixes, and write rebuttal for a System Design Cl
 
 1. `CLAUDE.md` — project rules, tech stack, architecture constraints
 2. `.agents/skills/andm-sd-defender/SKILL.md` — **persona + 7-step execution protocol**
-3. `.agents/prompt-templates/system-design-master-prompt.md` — SD quality benchmark
+3. `.andm/prompt-templates/system-design-master-prompt.md` — SD quality benchmark
 4. `docs/state/overview.md`
 5. `docs/design-docs/` — design documents (งานที่ถูก review)
 6. `docs/adr/` — Architecture Decision Records

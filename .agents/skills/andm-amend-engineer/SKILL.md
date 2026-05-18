@@ -1,3 +1,8 @@
+---
+name: andm-amend-engineer
+description: Senior Design Document Specialist that performs surgical, cross-document amendments (add / change / remove) to existing BA, SD, UX, or TD deliverables. Use via /amend when a single change cascades across multiple docs and you need minimum-diff updates with consistency checks.
+---
+
 # Amend Engineer — SKILL Definition
 
 ## Identity
@@ -34,17 +39,17 @@ Once read, you are ready to receive commands.
 
 | Target | Deliverables | Quality Benchmark | Claim Review Folder |
 |--------|-------------|-------------------|-------------------|
-| `ba` | `docs/ba/01-05` (v1.2: 06-handoff dropped) | `.agents/prompt-templates/ba-requirements-prompt.md` | `docs/ba/claim-review-and-rebuttal/` |
-| `sd` | `docs/design-docs/02-08` (v1.2: gaps ที่ 01/06 — merged into 02) + `docs/adr/` + `docs/api-specs/` | `.agents/prompt-templates/system-design-master-prompt.md` | `docs/design-docs/claim-review-and-rebuttal/` |
-| `ux` | `docs/ux/01-05` | `.agents/development-guide/ux-design-workflow.md` | — (ux uses stakeholder approve) |
-| `td` | `docs/technical-design/02, 03, 04` + `docs/api-specs/` + `docs/adr/` + `docs/qa/01-test-strategy.md` | `.agents/prompt-templates/technical-design-master-prompt.md` | `docs/technical-design/claim-review-and-rebuttal/` |
+| `ba` | `docs/ba/01-05` (v1.2: 06-handoff dropped) | `.andm/prompt-templates/ba-requirements-prompt.md` | `docs/ba/claim-review-and-rebuttal/` |
+| `sd` | `docs/design-docs/02-08` (v1.2: gaps ที่ 01/06 — merged into 02) + `docs/adr/` + `docs/api-specs/` | `.andm/prompt-templates/system-design-master-prompt.md` | `docs/design-docs/claim-review-and-rebuttal/` |
+| `ux` | `docs/ux/01-05` | `.andm/development-guide/ux-design-workflow.md` | — (ux uses stakeholder approve) |
+| `td` | `docs/technical-design/02, 03, 04` + `docs/api-specs/` + `docs/adr/` + `docs/qa/01-test-strategy.md` | `.andm/prompt-templates/technical-design-master-prompt.md` | `docs/technical-design/claim-review-and-rebuttal/` |
 
 ---
 
 ## Scope & Ownership
 
 - **Can modify**: deliverables of the target phase only (see Phase Scope above)
-- **Can read**: all `docs/` files, `.claude/rules/`, `.agents/prompt-templates/`
+- **Can read**: all `docs/` files, `.claude/rules/`, `.andm/prompt-templates/`
 - **Does NOT modify**: deliverables of other phases (ถ้า amendment กระทบ phase อื่น → flag แต่ไม่แก้)
 - **Does NOT modify**: `services/` (code), `docs/state/impl-plan.md` (plan)
 
@@ -267,6 +272,7 @@ Present a concise summary in Thai:
 บันทึก T3/T4 amendments + downstream obligations — append-only, ห้ามลบ entries เก่า
 
 > Schema: AMEND-NNN entry ต่อหนึ่ง amendment session. T1/T2 amendments ไม่บันทึกที่นี่ (โดยนิยามไม่กระทบ downstream).
+> Supersession fields distinguish intentional replacement from contradiction; use `null` when not applicable.
 > `/next` Check 0.5 scan entries with `Status: 🔄 Open` — ปิด progression จนกว่า obligations เคลียร์
 > Close criteria: ทุก downstream obligation row `[x]` + Status เปลี่ยนเป็น `✅ Closed` + `Closed:` field มี date
 
@@ -283,6 +289,8 @@ Present a concise summary in Thai:
 - **Tier:** T3 / T4
 - **Tier reasoning:** [why this tier — cite specific Tier Floor Rule if applicable]
 - **Request:** [verbatim amendment description from user]
+- **Supersedes:** [AMEND-NNN / ADR-NNN / DEC-NNN / null]
+- **Superseded by:** null
 - **Files modified:**
   - `<file 1>` — <one-line summary of change>
   - `<file 2>` — ...
@@ -330,7 +338,7 @@ Present a concise summary in Thai:
 | Action | Target |
 |--------|--------|
 | **Receive** amendment requests from | User (via `/amend` command) |
-| **Read** quality benchmarks from | `.agents/prompt-templates/` (per-phase prompt template) |
+| **Read** quality benchmarks from | `.andm/prompt-templates/` (per-phase prompt template) |
 | **Modify** deliverables in | Target phase docs only |
 | **Flag** downstream impact for | User to decide on cascading amendments |
 | **HALT** before execution for | User approval |

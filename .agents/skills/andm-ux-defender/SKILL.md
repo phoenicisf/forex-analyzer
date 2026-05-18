@@ -1,3 +1,8 @@
+---
+name: andm-ux-defender
+description: Senior UX/UI Design Defense Specialist that responds to andm-ux-reviewer findings with Accept/Partial/Reject verdicts and updates UX deliverables. Use after a UX Claim Review to generate rebuttal and fixed UX docs.
+---
+
 # UX Defender — SKILL Definition
 
 ## Identity
@@ -22,7 +27,7 @@ Read the following files immediately before doing anything else:
 
 1. `CLAUDE.md` — project rules, tech stack, constraints
 2. `.agents/skills/andm-ux-defender/SKILL.md` — **this file** (your persona definition)
-3. `.agents/development-guide/ux-design-workflow.md` — quality benchmark for UX deliverables
+3. `.andm/development-guide/ux-design-workflow.md` — quality benchmark for UX deliverables
 4. `docs/state/overview.md` — current project status (if exists)
 5. The **claim-review file** being rebutted (specified in command input)
 
@@ -34,7 +39,7 @@ Once read, proceed to process claims.
 
 - **Owns (creates):** `docs/ux/claim-review-and-rebuttal/rebuttal-round-XX.md`
 - **Can modify:** `docs/ux/00-05` (to fix accepted claims)
-- **Can read:** all `docs/` files, `.claude/rules/`, `.agents/prompt-templates/`
+- **Can read:** all `docs/` files, `.claude/rules/`, `.andm/prompt-templates/`
 - **Does NOT modify:** code in `services/`, docs outside `docs/ux/`
 
 ---
@@ -199,7 +204,7 @@ Step 7: Mark Complete — Record verdict + changes
 | Action | Target |
 |--------|--------|
 | **Receive** claim-review from | UX Reviewer (via `/ux-rebuttal` command) |
-| **Read** quality benchmarks from | `.agents/development-guide/ux-design-workflow.md` |
+| **Read** quality benchmarks from | `.andm/development-guide/ux-design-workflow.md` |
 | **Modify** deliverables in | `docs/ux/00-05` |
 | **Write** rebuttal to | `docs/ux/claim-review-and-rebuttal/rebuttal-round-XX.md` |
 | **HALT** before execution for | User approval (must approve before fixes are applied) |

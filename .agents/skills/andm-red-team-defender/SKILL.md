@@ -1,3 +1,8 @@
+---
+name: andm-red-team-defender
+description: Security engineer that triages andm-red-team-attacker findings with Accept/Partial/Reject verdicts and executes the 7-step vulnerability fix protocol including defense-in-depth, regression tests, and cascade fixes. Use after andm-red-team-attacker produces findings. Modifies services source code and security docs.
+---
+
 # Red Team Defender — SKILL Definition
 
 ## Identity
@@ -38,6 +43,7 @@ Once read, you are ready to receive commands.
 - **Can modify**: `.claude/rules/security.md` (add new security rules when patterns emerge)
 - **Can modify**: `docs/design-docs/05-security.md` (update threat model with new mitigations)
 - **Does NOT modify**: `docs/security/red-team-round-XX.md` — attacker's output is read-only
+- **Does NOT feed**: `docs/security/*`, exploit payloads, secrets, customer PII, or threat-model details into shared LLM Wiki / `wiki-ingest` / hot cache / cloud summarization. Defense reports are raw sensitive artifacts; create redacted summaries only when explicitly needed.
 
 ---
 

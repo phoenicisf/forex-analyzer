@@ -1,3 +1,8 @@
+---
+name: andm-project-init-engineer
+description: Senior platform engineer that generates project-specific CLAUDE.md + .claude/rules/ from approved Technical Design docs. Phase 2.5 bridge between Design QA and Implement. Never invents tech facts - cites TD/ADR sources for every generated rule. Modifies root CLAUDE.md/AGENTS.md + .claude/rules/ + IDE adapter mirrors only.
+---
+
 # Project-Init Engineer — SKILL Definition
 
 ## Identity
@@ -32,10 +37,8 @@ You never invent facts — every generated rule must cite its TD / ADR / BA sour
 Read immediately before doing anything else:
 
 1. `CLAUDE.md` — root rules (methodology template OR prior-generated project rules)
-2. Slim template (generation base) — try paths in order, use the first that exists:
-   a. `constitution/sample-claude-md-slim.md` — downstream-project layout (methodology extracted to repo root)
-   b. `methodologies/full-track/constitution/sample-claude-md-slim.md` — template-repo layout
-   If neither exists → HALT and ask the user where the methodology was copied (do not invent a template)
+2. Slim template (generation base) — `.andm/constitution/sample-claude-md-slim.md`
+   If it doesn't exist → HALT and ask the user where the methodology was copied (do not invent a template)
 3. `docs/technical-design/02-backend-design.md` + `03-frontend-design.md` + `04-database-design.md` — stack source of truth
 4. `docs/technical-design/claim-review-and-rebuttal/` — verify TD approved (check latest `claim-review-NN.md` + paired `rebuttal-round-NN.md`)
 5. `docs/adr/` — all ADRs (cross-cutting decisions source)
@@ -68,11 +71,11 @@ Once read, you are ready to receive commands.
 
 **Does NOT modify:**
 - `methodologies/` (methodology source of truth)
-- `.agents/skills/`, `.agents/workflows/`, `.agents/development-guide/`, `.agents/prompt-templates/` (assembled from methodology)
+- `.agents/skills/`, `.agents/workflows/`, `.andm/development-guide/`, `.andm/prompt-templates/` (assembled from methodology)
 - `.claude/commands/` (thin wrappers, methodology-level)
 - `services/*/src/`, `services/*/tests/` (production code)
 - `docs/ba/`, `docs/design-docs/`, `docs/technical-design/`, `docs/ux/`, `docs/adr/`, `docs/api-specs/` (source design docs — read-only)
-- `.claude/agents/*.md` and `methodologies/full-track/.agents/agents/*.md` — engineer subagents stay generic; never retrofit
+- `.claude/agents/*.md` and `.agents/agents/*.md` — engineer subagents stay generic; never retrofit
 - Root `README.md` (methodology-level content)
 
 ---
@@ -226,8 +229,8 @@ Before emitting at HALT 1 or HALT 2, verify each generated file:
 
 ### .claude/rules/docker.md quality gate (conditional)
 - [ ] File exists IFF `containerization.engine != "none"`
-- [ ] Cites `methodologies/full-track/.agents/workflows/impl-task.md:130` orchestrator-only rule for `docker-compose.yml` (engineer subagents must not edit compose files during normal task execution)
-- [ ] Cites `methodologies/full-track/.agents/workflows/red-team.md:83` non-root-user / health-endpoint hardening
+- [ ] Cites `.agents/workflows/impl-task.md:130` orchestrator-only rule for `docker-compose.yml` (engineer subagents must not edit compose files during normal task execution)
+- [ ] Cites `.agents/workflows/red-team.md:83` non-root-user / health-endpoint hardening
 - [ ] Per-service Dockerfile sub-sections present, keyed by `services[].language` (one sub-section per polyglot service)
 - [ ] Compose layout section names every service from `services[]` and matches DB / cache / messaging facts
 - [ ] If `containerization.source` starts with "inferred" → top-of-file note: "Derived by `/project-init` heuristic; revise via `/project-init --amend` if incorrect"
@@ -349,7 +352,7 @@ Keep it concise — aim for 40-80 lines per rule file. Longer than template's cu
 
 ## Purpose & Scope
 - Stack uses `<engine>` per `<source>` <!-- citation: ADR-NNN | TD-02 §X.Y | inferred (heuristic: <rule>) -->
-- `docker-compose.yml` ownership: **orchestrator only** (per `methodologies/full-track/.agents/workflows/impl-task.md:130`).
+- `docker-compose.yml` ownership: **orchestrator only** (per `.agents/workflows/impl-task.md:130`).
   Engineer subagents (andm-impl-engineer, andm-backend-engineer, etc.) MUST NOT modify compose files during regular `/impl-task` execution. Compose changes go through the orchestrator session.
 
 ## Compose Layout
@@ -364,7 +367,7 @@ Keep it concise — aim for 40-80 lines per rule file. Longer than template's cu
 
 ### `<service.name>` (`<language>`)
 - Multi-stage pattern: <language-canonical — see snippets below>
-- Non-root user (per `methodologies/full-track/.agents/workflows/red-team.md:83` finding #20)
+- Non-root user (per `.agents/workflows/red-team.md:83` finding #20)
 - Layer cache order: dependency manifest → install → source → build
 - Healthcheck endpoint: `<service-specific path>`
 
@@ -399,8 +402,8 @@ Keep it concise — aim for 40-80 lines per rule file. Longer than template's cu
 <!-- Required: list every TD section, ADR, OR `inferred (heuristic: <rule>)` that justifies this file's content -->
 - Engine choice: <source from containerization.source>
 - Per-service patterns: <TD-02 §X.Y for each language, OR "framework-canonical multi-stage default" if none>
-- Security baseline: `methodologies/full-track/.agents/workflows/red-team.md:83` finding #20
-- Ownership boundary: `methodologies/full-track/.agents/workflows/impl-task.md:130`
+- Security baseline: `.agents/workflows/red-team.md:83` finding #20
+- Ownership boundary: `.agents/workflows/impl-task.md:130`
 ```
 
 ---

@@ -105,7 +105,7 @@ Status: มี backtrack ค้าง — BT-[NNN]: [title]
   Impacted: [list of invalidated phases]
 Next Action: แก้ไข [target phase] deliverables ให้เสร็จ แล้ว re-validate downstream
   → ดู docs/state/backtrack-log.md สำหรับรายละเอียด
-  → ดู .agents/development-guide/backtrack-workflow.md สำหรับ process
+  → ดู .andm/development-guide/backtrack-workflow.md สำหรับ process
 ```
 → **STOP — Report to user (backtrack ต้องจัดการก่อนทำอย่างอื่น)**
 
@@ -205,7 +205,7 @@ Drift type:
 Status: 🟡 Drift muddies backtrack signal — recommend reconcile but does not block /next priority decision
 Recommended cleanup:
   Direction A → ลบ stale markers จาก overview.md (closed BT-NNN should not retain Invalidated markers)
-  Direction B → เพิ่ม markers ตาม Invalidation Matrix ของ open BT-NNN (ดู `.agents/development-guide/backtrack-workflow.md`)
+  Direction B → เพิ่ม markers ตาม Invalidation Matrix ของ open BT-NNN (ดู `.andm/development-guide/backtrack-workflow.md`)
 ```
 → **Report to user (advisory — does NOT block; continue to Check 1)**
 
@@ -224,7 +224,7 @@ Phase: Design (BA)
 Status: BA deliverables ไม่ครบ
 Next Action: /ba           — รัน BA requirements discovery (workflow auto-loads prompt + inputs)
   → หรือถ้าต้องการ focus เฉพาะส่วน: /ba "<focus hint>"
-  → underlying prompt: .agents/prompt-templates/ba-requirements-prompt.md (workflow ใช้ตัวนี้เป็น authoritative)
+  → underlying prompt: .andm/prompt-templates/ba-requirements-prompt.md (workflow ใช้ตัวนี้เป็น authoritative)
 ```
 → **STOP — Report to user**
 
@@ -241,7 +241,7 @@ Phase: Design (SD)
 Status: Design docs ไม่ครบ
 Next Action: /sd           — รัน System Design (workflow auto-loads prompt + BA deliverables)
   → หรือถ้าต้องการ focus: /sd "<focus hint>"
-  → underlying prompt: .agents/prompt-templates/system-design-master-prompt.md (workflow ใช้ตัวนี้เป็น authoritative)
+  → underlying prompt: .andm/prompt-templates/system-design-master-prompt.md (workflow ใช้ตัวนี้เป็น authoritative)
 ```
 → **STOP — Report to user**
 
@@ -300,7 +300,7 @@ Phase: Design (UX/UI)
 Status: UX/UI deliverables ไม่ครบ
 Next Action: ใช้ workflow สร้าง UX deliverables
   → /ux-design auto (หรือ stitch / figma / existing / reference / frontend / claude-design)
-  → ดู .agents/development-guide/ux-design-workflow.md
+  → ดู .andm/development-guide/ux-design-workflow.md
 ```
 → **STOP — Report to user**
 
@@ -324,8 +324,8 @@ Phase: Design (TD)
 Status: Technical Design deliverables ไม่ครบ
 Next Action: /td           — รัน Technical Design (workflow auto-loads prompt + SD/UX/ADR/api-specs)
   → หรือถ้าต้องการ focus: /td "<focus hint>" (เช่น "frontend only — no DB changes")
-  → underlying prompt: .agents/prompt-templates/technical-design-master-prompt.md (workflow ใช้ตัวนี้เป็น authoritative + enforces SD-as-Master scope contract)
-  → ดู .agents/development-guide/td-workflow.md
+  → underlying prompt: .andm/prompt-templates/technical-design-master-prompt.md (workflow ใช้ตัวนี้เป็น authoritative + enforces SD-as-Master scope contract)
+  → ดู .andm/development-guide/td-workflow.md
 ```
 → **STOP — Report to user**
 
@@ -367,7 +367,7 @@ Status: TD approved แต่ยังไม่ได้ bootstrap project rules
 Next Action: /project-init
   → Derive CLAUDE.md + .claude/rules/* จาก TD
   → 2-3 HALT protocol (HALT 0 conditional + HALTs 1-2 mandatory) — user approve per output group
-  → ดู .agents/development-guide/project-init-workflow.md
+  → ดู .andm/development-guide/project-init-workflow.md
 ```
 → **STOP — Report to user**
 
@@ -615,7 +615,7 @@ Reference: GLOSSARY.md § Impl-Plan Compaction Threshold
 
 > ⚠️ **Logic change from sequential to parallel**
 >
-> เมื่อ `docs/state/impl-plan.md` exists แล้ว → Phase 3 เข้าสู่ **2 parallel tracks** (ตาม `.agents/development-guide/qa-plan-workflow.md` § Parallel Timeline):
+> เมื่อ `docs/state/impl-plan.md` exists แล้ว → Phase 3 เข้าสู่ **2 parallel tracks** (ตาม `.agents/skills/andm-qa-reviewer/SKILL.md` + `.agents/workflows/qa-review.md` *— narrative qa-plan-workflow guide retired*):
 >
 > - **Track A (Implementation):** Check 6 (Impl Tasks) → Check 7 (Code Review)
 > - **Track B (QA Planning):** Check 6Q (QA Deliverables) → Check 7Q (QA Review/Rebuttal)
@@ -749,8 +749,8 @@ Track B Candidate:
 Phase: Implement (QA Planning — parallel กับ impl)
 Status: QA Plan deliverables ไม่ครบ
 Next Action: ใช้ prompt template สร้าง QA docs
-  → copy `.agents/prompt-templates/qa-plan-direct-prompt.md` → paste เข้า agent ใหม่
-  → ดู `.agents/development-guide/qa-plan-workflow.md`
+  → copy `.andm/prompt-templates/qa-plan-direct-prompt.md` → paste เข้า agent ใหม่
+  → ดู `.agents/workflows/qa-review.md` + `.agents/skills/andm-qa-reviewer/SKILL.md` *(narrative qa-plan-workflow guide retired)*
   → Input: docs/design-docs/02-08 (v1.2: gaps 01/06) + docs/api-specs/ + docs/adr/ + docs/ba/01-05 + docs/ux/ (optional)
          + docs/state/impl-plan.md (for task ID sync)
 ```

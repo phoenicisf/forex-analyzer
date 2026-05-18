@@ -2,7 +2,7 @@
 
 > **Phase:** Phase 1D (Technical Design) — Doc 1/3 (SD-as-Master consolidation; numbering 01/05/06/07/08 dropped intentionally)
 > **Author:** Tech Lead agent (`/td` workflow)
-> **Last updated:** 2026-05-02
+> **Last updated:** 2026-05-18 (BT-002 cascade — BR-3.6 CircuitBreaker ping-pong detector removed legacy-parity; cap-3 iter ADR-013 → ADR-014 superseded; § 2 file tree `CircuitBreaker.mqh` removed, § 5.8 class skeleton DELETED, § 5.7 + § 7.0.3 + § 7.1 + § 7.3 + § 7.4 + § 7.4.1 + § 8.1 + § 9.4 wire-up/cleanup/diagram cascade cleaned, § 10.1 trace matrix annotated with ADR-013/014 Superseded audit row, service count statements decremented 13→12 / 16→15 across § 1 / § 5 / § 7.3 / § 7.4 / end-of-doc footer. Prior: 2026-05-02 Round 06 handoff certification)
 > **Reads:** `docs/design-docs/02-08`, `docs/adr/001-012`, `docs/api-specs/*.yaml`, `docs/ba/02-05`
 > **Audience:** Implementation Engineer (Phase 3I), Code Reviewer, QA (Phase 3T)
 
@@ -21,7 +21,7 @@
 | § 2 | Project file layout — confirm ADR-012 tree + per-file LOC budget |
 | § 3 | Domain types — `MarketContext`, `SlotState`, `EnumTypes`, `CSlotBase` skeletons |
 | § 4 | Helpers — `CommentParser`, `PipMath`, `JsonWriter`, `AtomicFile` skeletons |
-| § 5 | Services × 13 — interface + key methods + DI dependencies |
+| § 5 | Services × 12 (post-BT-002 2026-05-17 — former CCircuitBreaker removed) — interface + key methods + DI dependencies |
 | § 6 | Slots × 21 — base contract + per-slot summary table |
 | § 7 | Orchestrator + Composition root + DI map |
 | § 8 | Mermaid class diagrams — services + slots layer |
@@ -63,7 +63,6 @@ MQL5/Experts/PhoenicisNex/
 │   ├── TradeJournal.mqh
 │   ├── StatePersistence.mqh
 │   ├── Logger.mqh
-│   ├── CircuitBreaker.mqh
 │   ├── TimeGate.mqh
 │   ├── PendingMachineRegistry.mqh
 │   ├── CrossSlotCoordinator.mqh
@@ -462,7 +461,7 @@ public:
 
 ---
 
-## 5. Services Layer (13 services)
+## 5. Services Layer (12 services post-BT-002 2026-05-17; former § 5.8 CCircuitBreaker removed legacy-parity)
 
 ทุก service มี single responsibility + constructor-injected dependencies + interface-style public method set; orchestrator (composition root) wire ทุกตัวใน OnInit.
 
@@ -851,7 +850,7 @@ public:
    void Warn (string slot, string event_name, int magic, string msg);
    void Error(string slot, string event_name, int magic, string msg);    // also Alert (throttled + escalate)
 
-   // Halt-trigger bypass (CircuitBreaker, IndicatorService runtime invalid, journal sustained-failure)
+   // Halt-trigger bypass (IndicatorService runtime invalid Phase 1; Phase 2 candidates: equity-floor, journal sustained-failure; CircuitBreaker removed per BT-002 2026-05-17 ADR-010 amendment)
    // — never throttle Alert. Caller responsibility: invoke Bypass variant for halt-causing errors;
    //   regular Error() ใช้ throttle path. Documented in ADR-011 § Halt-trigger bypass.
    void ErrorBypassThrottle(string slot, string event_name, int magic, string msg);
@@ -872,30 +871,7 @@ private:
 };
 ```
 
-### 5.8 `services/CircuitBreaker.mqh` — ping-pong detector (BR-3.6)
-
-**Responsibility:** detect same position re-open within 3000ms → trigger HALT (FR-6.6).
-
-```mql5
-class CCircuitBreaker {
-private:
-   // Ring buffer of recent (magic, direction, close_time) tuples
-   struct CloseEvent { int magic; int direction; datetime close_time_ms; };
-   CloseEvent m_buffer[16];
-   int        m_idx;
-   CLogger   *m_logger;
-
-public:
-   void Init(CLogger *logger);
-
-   // Called per tick; triggers halt if ping-pong detected
-   bool CheckPingPong(CPortfolioState &port, datetime now_ms);
-
-   // Called by slot post-OrderSend ack to record open events
-   void RecordOpen(int magic, int direction, datetime now_ms);
-   void RecordClose(int magic, int direction, datetime now_ms);
-};
-```
+### 5.8 *(removed per BT-002 2026-05-17 — former `services/CircuitBreaker.mqh` ping-pong detector deleted legacy-parity; cap-3 iter chain ADR-013 → ADR-014 falsified; BR-3.6 + FR-6.6 demoted at BA. See ADR-010 § Revision history + backtrack-log.md § BT-002)*
 
 ### 5.9 `services/TimeGate.mqh` — time-based filters
 
@@ -1415,8 +1391,11 @@ public:
    EEAState GetState() const { return m_state; }
    string   GetHaltReason() const { return m_halt_reason; }
 
-   // Entry point ของ all halt triggers: CircuitBreaker, IndicatorService runtime invalid,
-   //   journal sustained-failure (ADR-006), force-clear escalation (ADR-008 — future)
+   // Entry point ของ all halt triggers (post-BT-002 2026-05-17 — CircuitBreaker removed legacy-parity per ADR-010 amendment):
+   //   IndicatorService runtime invalid (Phase 1 sole automated trigger),
+   //   journal sustained-failure (Phase 2 candidate per ADR-006 RPO contract escalation),
+   //   equity-floor (Phase 2 candidate per ADR-010 § Revisit-when),
+   //   force-clear escalation (Phase 2 candidate per ADR-008 — future)
    //   Side effects (per ADR-010 + ADR-011 § Halt-trigger bypass):
    //     1. m_state = EA_STATE_HALTED + m_halt_reason = reason
    //     2. m_journal.WriteEvent(halt event with halt_reason field)
@@ -1453,7 +1432,7 @@ private:
    CRiskManager             *m_risk;
    CTradeJournal            *m_journal;
    CStatePersistence        *m_state;
-   CCircuitBreaker          *m_breaker;
+   // m_breaker removed per BT-002 2026-05-17 (CircuitBreaker service deleted legacy-parity; ADR-013/014 superseded; ADR-010 amended)
    CTimeGate                *m_time;
    CPendingMachineRegistry  *m_pending;
    CCrossSlotCoordinator    *m_xslot;
@@ -1503,11 +1482,9 @@ void COrchestrator::OnTick() {
    // 3. Logger tick boundary (throttle window)
    m_logger.OnTickBoundary();
 
-   // 4. CircuitBreaker check (~5 µs)
-   if (m_breaker.CheckPingPong(*m_portfolio, ctx.tick_time)) {
-      Halt("circuit_breaker_pingpong");
-      // fall through to exit pass
-   }
+   // 4. (removed per BT-002 2026-05-17 — former CircuitBreaker.CheckPingPong call deleted legacy-parity;
+   //    ADR-010 amended: handle_invalid_runtime = Phase 1 sole automated halt trigger;
+   //    Phase 2 candidates: equity-floor, journal-sustained-failure. See ADR-010 § Revision history.)
 
    // 5. Indicator runtime fail-fast
    if (m_indicators.AnyHandleInvalid()) {
@@ -1581,7 +1558,7 @@ housekeeping:
 - **Cycle 1: Logger ↔ StatePersistence** — Logger ต้อง persist throttle counter ลง state.json; SP ต้อง log save errors. Resolution: Logger.Init() ที่ step 1 รับเฉพาะ severity + escalation_n; `Logger.SetStatePersistence(SP)` หลัง SP.Init() (step 4a)
 - **Cycle 2: StatePersistence ↔ PortfolioState** — SP serialize slot_states จาก PortfolioState; PortfolioState read defaults จาก SP. Resolution: `SP.Init(atomic, logger)` ก่อน, แล้ว `SP.SetPortfolioState(port)` หลัง PortfolioState.Init() (step 5a)
 
-> **Numbering convention (Claims 03.4 + 04.3):** rows ใช้ step 1-17 ต่อเนื่อง = **16 services + 1 helpers row (consolidating 3 helper classes: CCommentParser, CJsonWriter, CAtomicFile per § 4)** (16 × `Init()` call ที่ Phase B; helpers ไม่มี Init); cycle-setter rows ใช้ letter suffix `4a` + `5a` (= 2 setter calls, ไม่นับเป็น service). Total table rows = 19 (16 services + 1 helpers row + 2 setters); class-level count = **16 services + 3 helper classes + 2 setter operations**; total Phase B `Init()` calls = 16. § 7.4 wording "× 16 services + 3 helpers" counts **classes** (mathematically consistent with this row): 1 helpers row × 3 helper classes = 3.
+> **Numbering convention (Claims 03.4 + 04.3; post-BT-002 2026-05-17 — CircuitBreaker row #10 struck, step numbers preserved):** rows ใช้ step 1-17 ต่อเนื่อง (with step 10 struck post-BT-002) = **15 services + 1 helpers row (consolidating 3 helper classes: CCommentParser, CJsonWriter, CAtomicFile per § 4)** (15 × `Init()` call ที่ Phase B; helpers ไม่มี Init); cycle-setter rows ใช้ letter suffix `4a` + `5a` (= 2 setter calls, ไม่นับเป็น service). Total table rows = 18 (15 services + 1 helpers row + 2 setters + 1 struck row preserved for audit); class-level count = **15 services + 3 helper classes + 2 setter operations**; total Phase B `Init()` calls = 15. § 7.4 wording "× 15 services + 3 helpers" counts **classes** (mathematically consistent with this row): 1 helpers row × 3 helper classes = 3. Pre-BT-002 values (16 services / 16 Init calls / 19 rows) preserved in this note for audit lineage.
 
 | # | Service / Setter | Init dependencies | Notes |
 |---|------------------|--------------------|-------|
@@ -1596,7 +1573,7 @@ housekeeping:
 | 7 | `CMarketContextBuilder` | (IndicatorService) | |
 | 8 | `CRiskManager` | (PortfolioState, Logger) | port required for J/BI/I per-slot formulas (BR-4.1) — see § 5.4 line 586 + § 5.4.1 dispatch table |
 | 9 | `CTradeJournal` | (MarketContextBuilder, PortfolioState, Logger, StatePersistence) | |
-| 10 | `CCircuitBreaker` | (Logger) | |
+| ~~10~~ | ~~`CCircuitBreaker`~~ | *(removed per BT-002 2026-05-17 — service deleted legacy-parity; row preserved as struck audit trail; subsequent step numbers unchanged to keep Round 03/04 Claim cites stable)* | |
 | 11 | `CTimeGate` | (TimeGate inputs, PipMath, StatePersistence, Logger) — full input list ใน § 5.9 | |
 | 12 | `CPendingMachineRegistry` | (force-clear thresholds + 5 legacy timeouts inputs, StatePersistence, TradeJournal, Logger, PortfolioState) — full input list ใน § 5.10 | |
 | 13 | `CCrossSlotCoordinator` | (PortfolioState, TradeJournal, Logger, RiskManager) | |
@@ -1633,7 +1610,7 @@ int COrchestrator::OnInit() {
    m_risk.Init(InpFIDValue / InpMainRiskRatio, InpLimitMaxLotSizeRatio,
                m_portfolio, m_logger);                                 // Claim 02.1 — port arg required for J/BI/I formulas
    m_journal.Init(m_ctx_builder, m_portfolio, m_logger, m_state);
-   m_breaker.Init(m_logger);
+   // m_breaker.Init removed per BT-002 2026-05-17 (CircuitBreaker service deleted legacy-parity)
    m_time.Init(InpMorningWindowMinutes, InpMondaySpreadThreshold,
                InpHolidayStartMonth, InpHolidayStartDay,
                InpHolidayEndMonth, InpHolidayEndDay,
@@ -1680,7 +1657,7 @@ int COrchestrator::OnInit() {
 }
 ```
 
-> **Reviewer checklist:** ทุก service ใน § 7.3 (× 16 services + 3 helpers (no Init)) ต้องมี exactly 1 `Init(...)` call ใน Phase B (= 16 Init calls); cycle setters (step 4a + 5a) ต้องอยู่ตรงตำแหน่ง — ห้ามย้าย ห้ามลบ. Helpers (CCommentParser, CJsonWriter, CAtomicFile) = stateless utilities — construct on heap ใน Phase A แล้ว skip Init.
+> **Reviewer checklist (post-BT-002 2026-05-17):** ทุก service ใน § 7.3 (× 15 services + 3 helpers (no Init)) ต้องมี exactly 1 `Init(...)` call ใน Phase B (= 15 Init calls); cycle setters (step 4a + 5a) ต้องอยู่ตรงตำแหน่ง — ห้ามย้าย ห้ามลบ. Helpers (CCommentParser, CJsonWriter, CAtomicFile) = stateless utilities — construct on heap ใน Phase A แล้ว skip Init.
 
 ### 7.4.1 Cleanup-on-INIT_FAILED (per Claim 02.10)
 
@@ -1702,7 +1679,8 @@ void COrchestrator::CleanupPartialInit(string failure_reason) {
    if (m_xslot != NULL)          { delete m_xslot;          m_xslot          = NULL; }  // step 13
    if (m_pending != NULL)        { delete m_pending;        m_pending        = NULL; }  // step 12
    if (m_time != NULL)           { delete m_time;           m_time           = NULL; }  // step 11
-   if (m_breaker != NULL)        { delete m_breaker;        m_breaker        = NULL; }  // step 10
+   // step 10 (delete m_breaker) removed per BT-002 2026-05-17 — CircuitBreaker service deleted legacy-parity;
+   //   step gap intentionally preserved to keep Round 03 Claim 03.2 monotonic-descent cite stable (17→16→...→11→9→...→1)
    if (m_journal != NULL)        { m_journal.Close();            delete m_journal;        m_journal        = NULL; }  // step 9
    if (m_risk != NULL)           { delete m_risk;           m_risk           = NULL; }  // step 8
    if (m_ctx_builder != NULL)    { delete m_ctx_builder;    m_ctx_builder    = NULL; }  // step 7
@@ -1760,7 +1738,6 @@ classDiagram
         -CMarketContextBuilder* m_ctx_builder
         -CRiskManager* m_risk
         -CTradeJournal* m_journal
-        -CCircuitBreaker* m_breaker
         -CTimeGate* m_time
         -CPendingMachineRegistry* m_pending
         -CCrossSlotCoordinator* m_xslot
@@ -1825,9 +1802,7 @@ classDiagram
         +Error(slot,ev,magic,msg) void
     }
 
-    class CCircuitBreaker {
-        +CheckPingPong(port,now) bool
-    }
+    %% class CCircuitBreaker removed per BT-002 2026-05-17 (service deleted legacy-parity; ADR-013/014 superseded)
 
     class CTimeGate {
         +IsMorningWakeup(now) bool
@@ -1895,7 +1870,7 @@ classDiagram
     COrchestrator --> CTradeJournal
     COrchestrator --> CStatePersistence
     COrchestrator --> CLogger
-    COrchestrator --> CCircuitBreaker
+    %% COrchestrator --> CCircuitBreaker removed per BT-002 2026-05-17
     COrchestrator --> CTimeGate
     COrchestrator --> CPendingMachineRegistry
     COrchestrator --> CCrossSlotCoordinator
@@ -2096,7 +2071,7 @@ void CLogger::ErrorBypassThrottle(string slot, string ev, int magic, string msg)
    string line = FormatLine(LOG_ERROR, slot, ev, magic, msg);
    Print(line);
    if (m_alert_on_error) Alert(line);
-   // Note: เฉพาะ halt-trigger errors (CircuitBreaker / handle_invalid / journal_sustained / force-clear)
+   // Note: เฉพาะ halt-trigger errors (handle_invalid Phase 1 sole / journal_sustained Phase 2 / equity_floor Phase 2 / force-clear Phase 2 future; CircuitBreaker removed per BT-002 2026-05-17)
    //   — caller ที่อยู่ใน CEAState.Halt() เท่านั้น (ADR-011 § Halt-trigger bypass)
 }
 ```
@@ -2190,6 +2165,9 @@ if (PositionClose(t)) {
 | `CEAState` enum + `Halt()` | ADR-010 | `state-persistence-schema.yaml#/properties/ea_state` | TD-04 § 3 § ea_state |
 | `CLogger` | ADR-011 | — (MT5 native log sink) | `state-persistence-schema.yaml#/properties/logger_metrics` (throttle counter) |
 | File layout | ADR-012 | — | — |
+| ~~`CCircuitBreaker`~~ (former) | **ADR-013 + ADR-014 — `Superseded by BT-002` 2026-05-17** (preserved as audit history of cap-3 iter chain: iter-1 DEAL_REASON filter ✅ surgical → iter-2 position+event dedup ❌ Jan-27 mass-close → iter-3 ❌ Jan-06 BI pyramiding → escalation gate → operator approved Option 1 detector removal legacy-parity) | ~~`trade-journal-schema.yaml § halt_reason`~~ — `circuit_breaker_pingpong` enum value REMOVED per BT-002 (breaking change OK Phase 1; no external consumers per ADR-006) | — (no CB state ever persisted per ADR-014 § Migration) |
+
+> **BT-002 cascade audit footer (2026-05-17):** CircuitBreaker service removal cascade traversed SD `02 § 4.2` Component Catalog row #14 (removed) + ADR-010 trigger sources amendment + ADR-013/014 status `Superseded by BT-002` + api-spec `trade-journal-schema.yaml § halt_reason` enum strip + BA `02 § FR-6.6` + `04 § BR-3.6` demoted to Won't permanent. Active ADR count = 12 + Superseded = 2 (total = 14). See `docs/state/backtrack-log.md § BT-002` for full cascade narrative.
 
 ### 10.2 API field ↔ DB column
 
@@ -2509,4 +2487,4 @@ Get-Content MQL5/Files/PhoenicisNex/journal/tester/run-*.jsonl |
 
 ---
 
-> **End of 02 — Backend Design** — 5 layers (core/slots/services/domain/helpers), 13 services + 21 slots + 4 helpers + 4 domain types, full DI map, Mermaid classDiagram × 2, 6 pattern code skeletons (composition root / repository / atomic write / tagged logger / JSON-Lines / post-exit hook), Flow Appendix (BI SL / Save+GV / pending force-clear), Developer Workflow with 4-gate Definition of Done (compile → smoke → headless backtest → log review per 3 SKILLs)
+> **End of 02 — Backend Design** — 5 layers (core/slots/services/domain/helpers), 12 services + 21 slots + 4 helpers + 4 domain types (post-BT-002 2026-05-17 — former CCircuitBreaker removed legacy-parity), full DI map, Mermaid classDiagram × 2, 6 pattern code skeletons (composition root / repository / atomic write / tagged logger / JSON-Lines / post-exit hook), Flow Appendix (BI SL / Save+GV / pending force-clear), Developer Workflow with 4-gate Definition of Done (compile → smoke → headless backtest → log review per 3 SKILLs)

@@ -47,6 +47,8 @@ Execute these reads simultaneously:
 
 > **Anti-Duplication Rule:** If a vulnerability was raised in a previous round AND has a fix in the defense report, do NOT raise it again unless the fix is demonstrably incomplete.
 
+> **LLM Wiki Hard Exclusion:** `docs/security/*` is sensitive raw material. Do not feed red-team reports, threat models, vulnerability details, secrets, customer PII, or incident notes into shared LLM Wiki / `wiki-ingest` / hot cache / cloud summarization. If another workflow needs visibility, create a redacted summary with pointers to the raw file; never copy exploit payloads or secrets into the shared wiki layer.
+
 ### 1.3 Engage Persona
 
 Follow the andm-red-team-attacker persona defined in `.agents/skills/andm-red-team-attacker/SKILL.md`. Activate the full Phase 0-4 process defined there.
