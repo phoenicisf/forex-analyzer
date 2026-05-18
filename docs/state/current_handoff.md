@@ -4,7 +4,20 @@
 
 ## Last completed action
 
-**🟢 BT-002 SD rework APPLIED 2026-05-17 — Option 1 legacy-parity (remove BR-3.6 CircuitBreaker ping-pong detector) cascade across SD package, ADRs, and API spec. Status: ready for `/sd-review all` re-validation. Triggered by `/next` Navigation Decision Layer §1.9.1 priority #2 (Open backtrack BT-002) recommendation + operator "proceed recommended" approval.**
+**🟢 BT-002 ✅ CLOSED 2026-05-18 — Option 1 legacy-parity (remove BR-3.6 CircuitBreaker ping-pong detector) cascade FULLY DRAINED across BA + SD + impl-plan packages.** Resolution per `backtrack-log.md § BT-002 § Status` L69 + `§ Resolution` L71: SD-side cascade CLOSED via 3-round chain — Round 07 (7 findings) → rebuttal-05 (7 accept commit `111f092`) → Round 08 (2 findings) → rebuttal-06 (2 accept commit `32c56c0`) → Round 09 verify-only 0 findings ✅ (commit `e385ad0`); BA-side cascade CLOSED via 1-cycle chain — BA cascade applied (commit `863493e`) → Round 06 (1 LOW cosmetic) → rebuttal-05 (1 accept). impl-plan-side cascade drain CLOSED via R15 12/12 Accept 2026-05-18 (commit pending — `/impl-plan-rebuttal claim-review-15.md`) — IMPL-FIX-012 → close-by-BT-002 supersession + IMPL-051 → cancel-by-BT-002 + 11+ surface BT-002 propagation drain. R16 verify-pass 6/6 Accept 2026-05-18 (this commit — `/impl-plan-rebuttal claim-review-16.md`) — cascade-residue cleanup at IMPL-051 sibling E-AC supersession + P4 Phase Gate Tier 1.5 Walk row refresh + this `current_handoff.md` tier-3 propagation + IMPL-FIX-012 Status chronological reorder + Mid-Phase Audit Log L2250 reposition + L2253 evidence-pointer symbolic-anchor re-anchor.
+
+**Chained methodology-infra refreshes (2026-05-18):** commit `7ff6f43` `/project-init --regen` (CLAUDE.md + 4× `.claude/rules/` + AGENTS.md + 4× IDE mirror rule files + .bak siblings regenerated per BT-002 TD/SD cascade + user remark 2026-05-18 on headless MT5 testing + recompile-after-edit + SKILL invocation discipline + canonical MT5 install path via `origin.txt`); commit `47381a9` path modernization `.agents/development-guide/` → `.andm/` + `.agents/prompt-templates/` → `.andm/prompt-templates/` across 6 agent personas + 1 guide deletion.
+
+**Pending downstream cascade (out of impl-plan-rebuttal scope — per `backtrack-log.md § BT-002 § Resolution` L71):**
+1. **TD review** `/td-review all` — TD-02 §5.8 CCircuitBreaker class skeleton DELETE + 10 cross-refs cleanup
+2. **Impl-code BT-002 cleanup** — single session ~1-2 hr per `backtrack-log.md § BT-002 § Impacted phases Impl Code` L65: DELETE `services/CircuitBreaker.mqh` + DELETE `spike/Spike_CircuitBreaker.mq5` + strip `Record{Open,Close}` dispatch + ADR-013 DEAL_REASON filter + ADR-014 DEAL_ENTRY branching from `core/Orchestrator.mqh::OnTradeTransaction` + remove `CheckPingPong` call from `OnTick` + verify `domain/EnumTypes.mqh` `HALT_PINGPONG` constant removal + mandatory G1+G2+G3 re-run
+3. **IMPL-062 re-execute** Bucket A 5-yr regression on rewrite-no-detector default build (NFR-1.1 acceptance signal); paired-bundle drain unblocks 24 P3 + 19 P4 deferred E-AC rows gated on this trial
+
+**Triggered by** `/next` Navigation Decision Layer §1.9.1 priority #2 (Open backtrack BT-002) recommendation + operator "proceed recommended" approval 2026-05-17; chained R15 impl-plan-review trigger 2026-05-18; chained R16 verify-pass impl-plan-review trigger 2026-05-18.
+
+**Prior completed action (preserved for audit per R10 §10.6 strikethrough-append discipline):**
+
+~~**🟢 BT-002 SD rework APPLIED 2026-05-17 — Option 1 legacy-parity (remove BR-3.6 CircuitBreaker ping-pong detector) cascade across SD package, ADRs, and API spec. Status: ready for `/sd-review all` re-validation. Triggered by `/next` Navigation Decision Layer §1.9.1 priority #2 (Open backtrack BT-002) recommendation + operator "proceed recommended" approval.**~~ ✅ closed via SD Round 09 + BA Round 06 + R15/R16 impl-plan-rebuttal cascade chain enumerated above; "ready for `/sd-review all` re-validation" superseded by SD Round 09 verify-only 0 findings closure (commit `e385ad0` 2026-05-17).
 
 **Scope applied (3-file state reconciliation honored):**
 

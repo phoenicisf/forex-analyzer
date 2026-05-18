@@ -87,3 +87,7 @@ docs/state/_parallel-context/
 bash.exe.stackdump
 .claude/scheduled_tasks.lock
 artifacts/
+
+# /project-init --regen pre-regen backups (methodology-infra ephemera; can be deleted post-verification)
+# Per R17 §17.7 Option B disposition — covers `.bak-2026-05-18T02-26-01Z` from commit `7ff6f43` regen + future regen cycles
+*.bak-[0-9][0-9][0-9][0-9]-*
