@@ -16,8 +16,9 @@
 //| What this spike DOES verify (G1 + structural):                    |
 //|   1. Orchestrator.mqh + SlotRegistry::RegisterAll body compile    |
 //|      (21 slot includes + service includes resolve cleanly).      |
-//|   2. WireServices() runs without segfault — all 19 heap allocs   |
-//|      land + pointer fields are non-NULL post-call.               |
+//|   2. WireServices() runs without segfault — all heap allocs      |
+//|      land + pointer fields are non-NULL post-call (count reduced |
+//|      by 1 post-BT-002 CircuitBreaker removal 2026-05-18).        |
 //|   3. CleanupPartialInit() is idempotent — calling it twice is    |
 //|      no-op safe (ReleaseAll path exercised through dtor too).    |
 //|   4. Test-mode OnInit short-circuits BEFORE Phase B (no chart)   |
@@ -39,16 +40,18 @@ int OnInit()
    Print("[Phoenicis] Spike_Orchestrator: G1 compile gate + structural check");
 
    //--- fix-round-13 § 13.6 — IsPhoenicisMagic SelfTest pinning the `||`
-   //    chain to MAGIC_* constants + the BR-3.6 foreign-EA gap (202/203/204).
-   //    Wired here because Orchestrator::OnTradeTransaction is the consumer
-   //    and EnumTypes.mqh is transitively included via slot includes.
+   //    chain to MAGIC_* constants + foreign-EA gap (202/203/204). Originally
+   //    wired as CircuitBreaker.OnTradeTransaction producer guard; CB retired
+   //    per BT-002 (2026-05-18) but the magic-membership gate is preserved
+   //    for general foreign-EA filtering at any future trade surface.
    if(!IsPhoenicisMagicSelfTest())
      {
       Print("[Phoenicis] Spike_Orchestrator: IsPhoenicisMagicSelfTest FAILED");
       return INIT_FAILED;
      }
 
-   // Phase A only — heap-construct the 19 services + 4 core peers.
+   // Phase A only — heap-construct the 11 services + 4 helpers + 4 core peers
+   // (CircuitBreaker step-10 removed per BT-002 2026-05-18).
    //   We do NOT call OnInit() because Phase C ValidateSymbol /
    //   CreateHandles depend on a live EURUSD H4 chart with indicator data.
    //   Instead we poke the class shape directly through the public probes.

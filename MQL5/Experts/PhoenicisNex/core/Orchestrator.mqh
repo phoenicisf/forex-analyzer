@@ -23,9 +23,6 @@
 //|                                                                   |
 //|  D-1 MarketContextBuilder.Init takes (ind, lg) — TD shows (ind)  |
 //|      only. Wired both deps (matches actual signature).            |
-//|  D-2 CircuitBreaker.CheckPingPong() takes zero args — TD shows   |
-//|      (port, tick_time). Implementation uses current state    |
-//|      internally; OnTick still routes Halt() on positive return.  |
 //|  D-3 CrossSlotCoordinator.Init takes (port, tj, lg, pip) — TD    |
 //|      shows m_risk as 4th arg. Service-actual wins; pip enables  |
 //|      pip-arithmetic for SafePort weak-metric thresholds.        |
@@ -47,30 +44,17 @@
 //|      failures; OnInit routes through CleanupPartialInit at a    |
 //|      9th INIT_FAILED site "wire_services_alloc_fail"            |
 //|      (fix-round-10 § 10.1 — closes NFR-5.1 silent-halt gap).    |
-//|  D-8 CircuitBreaker producer-side wiring via OnTradeTransaction |
-//|      WIRED (fix-round-10 § 10.3 + IMPL-060 entry .mq5 lines     |
-//|      80-85 forwarding). Consumer-side CheckPingPong() takes     |
-//|      zero args (D-2). Producer feed filters trade-transaction   |
-//|      stream and routes DEAL_ENTRY_OUT events to                  |
-//|      m_breaker.RecordClose. Filters added in fix-round-11 § 11.2|
-//|      / 11.3 / 11.4 / 11.5 — see D-9.                             |
-//|  D-9 OnTradeTransaction multi-layer guard (fix-round-11 §11.2-5)|
-//|      defends BR-3.6 ring buffer from foreign-EA / pre-Init /    |
-//|      post-halt / non-trade-deal-type pollution:                  |
-//|        (a) m_init_complete + m_breaker NULL gate (§ 11.3)        |
-//|        (b) m_state_enum == RUNNING gate    (§ 11.5)              |
-//|        (c) DEAL_SYMBOL == _Symbol filter   (§ 11.2 NFR-5.3)      |
-//|        (d) IsPhoenicisMagic() range filter (§ 11.2 ADR-005)      |
-//|        (e) DEAL_TYPE BUY/SELL only filter  (§ 11.4)              |
-//|      Helper IsPhoenicisMagic() lives in domain/EnumTypes.mqh    |
-//|      so other surfaces (CrossSlotCoordinator weak-metrics, etc) |
-//|      can share the same canonical magic-range gate (XS-11.3).   |
-//|  D-10 m_teardown_done + m_init_complete lifecycle flags         |
-//|      (fix-round-11 § 11.1). Dtor on value-typed global path     |
-//|      checks m_teardown_done to suppress duplicate Error emit     |
-//|      after OnDeinit ran. m_init_complete gates trade-transaction|
-//|      surface so pre-OnInit broker-recovery deals cannot reach   |
-//|      un-Init'd CircuitBreaker.                                   |
+//|  D-10 m_teardown_done lifecycle flag (fix-round-11 § 11.1). Dtor|
+//|      on value-typed global path checks m_teardown_done to       |
+//|      suppress duplicate Error emit after OnDeinit ran.           |
+//|                                                                   |
+//| BT-002 (2026-05-18) — BR-3.6 CircuitBreaker ping-pong detector   |
+//|   REMOVED per legacy-parity decision. D-2/D-8/D-9 banners        |
+//|   retired; OnTradeTransaction surface deleted; m_breaker member, |
+//|   step-10 wire, OnTick step-4 dispatch, ADR-013 DEAL_REASON      |
+//|   filter, ADR-014 DEAL_ENTRY dedup all stripped. Halt triggers   |
+//|   reduce to indicator handle-invalid + sustained journal failure |
+//|   per ADR-010 (amended 2026-05-17). See backtrack-log § BT-002. |
 //|                                                                   |
 //| Error pattern (per ADR-011 boot-time bypass):                     |
 //|   m_logger.ErrorBypassThrottle("system","init_failed_cleanup",0, |
@@ -101,7 +85,6 @@
 #include "../services/RiskManager.mqh"
 #include "../services/TradeJournal.mqh"
 #include "../services/StatePersistence.mqh"
-#include "../services/CircuitBreaker.mqh"
 #include "../services/TimeGate.mqh"
 #include "../services/PendingMachineRegistry.mqh"
 #include "../services/CrossSlotCoordinator.mqh"
@@ -126,7 +109,7 @@
 //+------------------------------------------------------------------+
 //| class COrchestrator — composition root                           |
 //|                                                                  |
-//| Owns 16 services + 4 helpers + 4 core + 21 derived slots         |
+//| Owns 11 services + 4 helpers + 4 core + 21 derived slots         |
 //| (slots owned by m_registry per § 7.0.2). All heap-allocated in   |
 //| WireServices / WireSlots; reverse-order release in CleanupPartial|
 //| Init (Phase C fail) or OnDeinit (normal shutdown).               |
@@ -140,7 +123,7 @@ private:
    CJsonWriter              *m_json_writer;     // step 3
    CAtomicFile              *m_atomic;          // step 3
 
-   //--- Services (16 total per § 7.3)
+   //--- Services (11 total per § 7.3 post-BT-002; step-10 CircuitBreaker REMOVED)
    CLogger                  *m_logger;       // step 1
    CStatePersistence        *m_state;        // step 4
    CPortfolioState          *m_portfolio;    // step 5
@@ -148,7 +131,6 @@ private:
    CMarketContextBuilder    *m_ctx_builder;  // step 7
    CRiskManager             *m_risk;         // step 8
    CTradeJournal            *m_journal;      // step 9
-   CCircuitBreaker          *m_breaker;      // step 10
    CTimeGate                *m_time;         // step 11
    CPendingMachineRegistry  *m_pending;      // step 12
    CCrossSlotCoordinator    *m_xslot;        // step 13
@@ -165,18 +147,15 @@ private:
    EEAState                  m_state_enum;
    string                    m_halt_reason;
 
-   //--- Lifecycle gates (fix-round-11 § 11.1 + § 11.3).
+   //--- Lifecycle gate (fix-round-11 § 11.1).
    //    m_teardown_done — set true at end of _TeardownAll. Dtor checks this
    //      to suppress dtor-fallback CleanupPartialInit on the value-typed
    //      global path (OnDeinit already ran → no leak to surface). Without
    //      this guard every normal EA unload re-emits Error-tag
    //      `init_failed_cleanup`, polluting QA Phase 3T `[log-assertion]`.
-   //    m_init_complete — set true on INIT_SUCCEEDED return. Trade-transaction
-   //      surface (OnTradeTransaction) gates on this so close events that
-   //      arrive in the pre-OnInit window during MT5 broker reconnect
-   //      cannot reach an un-Init'd CircuitBreaker.
+   //    (m_init_complete REMOVED per BT-002 — trade-transaction surface
+   //     deleted along with CircuitBreaker producer.)
    bool                      m_teardown_done;
-   bool                      m_init_complete;
 
    //--- IMPL-065: NFR-2.1 per-stage tick latency probe (zero-cost unless ENABLE_TICK_LATENCY defined)
 #ifdef ENABLE_TICK_LATENCY
@@ -187,11 +166,11 @@ public:
                      COrchestrator()
       : m_pip(NULL), m_comment_parser(NULL), m_json_writer(NULL), m_atomic(NULL),
         m_logger(NULL), m_state(NULL), m_portfolio(NULL), m_indicators(NULL),
-        m_ctx_builder(NULL), m_risk(NULL), m_journal(NULL), m_breaker(NULL),
+        m_ctx_builder(NULL), m_risk(NULL), m_journal(NULL),
         m_time(NULL), m_pending(NULL), m_xslot(NULL), m_monitor(NULL),
         m_validator(NULL), m_registry(NULL), m_ea_state(NULL),
         m_state_enum(EA_STATE_RUNNING), m_halt_reason(""),
-        m_teardown_done(false), m_init_complete(false)
+        m_teardown_done(false)
      {}
 
                     ~COrchestrator()
@@ -213,13 +192,8 @@ public:
    void              OnDeinit(const int reason);
    double            OnTester();
 
-   //--- MT5 trade-transaction lifecycle (fix-round-10 § 10.3 / D-8).
-   //    Entry .mq5 (IMPL-060) forwards MT5 OnTradeTransaction here.
-   //    Routes DEAL_ENTRY_OUT events to CircuitBreaker.RecordClose so
-   //    BR-3.6 ping-pong detector receives non-empty input.
-   void              OnTradeTransaction(const MqlTradeTransaction &trans,
-                                        const MqlTradeRequest &request,
-                                        const MqlTradeResult &result);
+   //--- (OnTradeTransaction REMOVED 2026-05-18 per BT-002 — was producer side
+   //     of CircuitBreaker BR-3.6; detector retired along with consumer.)
 
    //--- Test harness accessor — Spike_Orchestrator.mq5 inspects state
    //    after OnInit / Phase C fail to assert cleanup ordering.
@@ -247,7 +221,8 @@ private:
    void              _TeardownAll();
 
    //--- Halt() helper — delegates to CEAState.Halt + updates cached mirrors.
-   //    Called from OnTick steps 4 (CB), 5 (handle invalid), 13b (journal halt).
+   //    Called from OnTick step 5 (handle invalid) + step 13b (journal halt).
+   //    Step 4 (CircuitBreaker) removed per BT-002 (2026-05-18).
    void              Halt(string reason);
 
    //--- OnTick sub-passes (TD-02 §7.2 lines 1533-1548)
@@ -299,7 +274,7 @@ int COrchestrator::OnInit()
    m_risk.Init(InpMainRiskRatio, InpLimitMaxLotSizeRatio, m_portfolio, m_logger);  // step 8
    m_journal.Init(m_ctx_builder, m_portfolio, m_logger, m_state);                  // step 9
    m_risk.SetJournal(GetPointer(m_journal));                                       // step 9a — IMPL-FIX-003 entry-record write hook
-   m_breaker.Init(m_logger);                                                        // step 10
+   // step 10 — CircuitBreaker REMOVED per BT-002 (2026-05-18; legacy-parity)
    m_time.Init(InpMorningWindowMinutes, InpMondaySpreadThreshold,
                InpHolidayStartMonth, InpHolidayStartDay,
                InpHolidayEndMonth, InpHolidayEndDay,
@@ -391,11 +366,6 @@ int COrchestrator::OnInit()
                  "ENABLE_TICK_LATENCY active — stage timing ON (emit every 1000 ticks + final_deinit)");
 #endif
 
-   // fix-round-11 § 11.3 — open trade-transaction surface only after Phase B/C
-   // succeed, so close events arriving in the pre-OnInit window (MT5 broker
-   // reconnect dispatching queued deals before WireServices completes) cannot
-   // reach an un-Init'd CircuitBreaker.
-   m_init_complete = true;
    return INIT_SUCCEEDED;
   }
 
@@ -432,7 +402,7 @@ bool COrchestrator::WireServices()
    PHOENICISNEX_WIRE(m_ctx_builder,     CMarketContextBuilder)// step 7
    PHOENICISNEX_WIRE(m_risk,            CRiskManager)         // step 8
    PHOENICISNEX_WIRE(m_journal,         CTradeJournal)        // step 9
-   PHOENICISNEX_WIRE(m_breaker,         CCircuitBreaker)      // step 10
+   // step 10 — CircuitBreaker REMOVED per BT-002 (2026-05-18; legacy-parity)
    PHOENICISNEX_WIRE(m_time,            CTimeGate)            // step 11
    PHOENICISNEX_WIRE(m_pending,         CPendingMachineRegistry) // step 12
    PHOENICISNEX_WIRE(m_xslot,           CCrossSlotCoordinator)   // step 13
@@ -507,8 +477,7 @@ void COrchestrator::_TeardownAll()
      { delete m_pending;        m_pending        = NULL; }   // step 12
    if(m_time != NULL)
      { delete m_time;           m_time           = NULL; }   // step 11
-   if(m_breaker != NULL)
-     { delete m_breaker;        m_breaker        = NULL; }   // step 10
+   // step 10 — CircuitBreaker REMOVED per BT-002 (2026-05-18; legacy-parity)
 
    if(m_journal != NULL)
      {
@@ -555,9 +524,7 @@ void COrchestrator::_TeardownAll()
      { delete m_logger;         m_logger         = NULL; }   // step 1
 
    // fix-round-11 § 11.1 — flag teardown complete so dtor on value-typed
-   // global path skips its fallback CleanupPartialInit emit. Also reset
-   // m_init_complete so trade-transaction surface stops feeding CB.
-   m_init_complete = false;
+   // global path skips its fallback CleanupPartialInit emit.
    m_teardown_done = true;
   }
 
@@ -590,13 +557,10 @@ void COrchestrator::OnTick()
    // 3. Logger tick boundary (throttle window)
    m_logger.OnTickBoundary();
 
-   // 4. CircuitBreaker check (D-2 — zero-arg signature)
-   //    IMPL-FIX-008: state guard — once HALTED, skip CheckPingPong to stop
-   //    spam loop (CheckPingPong re-detects same buffer entries every tick
-   //    if EA is HALTED but CheckPingPong is unconditionally called).
-   if(m_state_enum == EA_STATE_RUNNING && m_breaker.CheckPingPong())
-      Halt("circuit_breaker_pingpong");
-      // fall through to exit pass
+   // 4. (CircuitBreaker check REMOVED per BT-002 — BR-3.6 ping-pong detector
+   //     retired 2026-05-18 due to structural incompatibility with EA's
+   //     16-active-slot concurrency; legacy parity confirms safety capability
+   //     not load-bearing. See backtrack-log § BT-002.)
 
    // 5. Indicator runtime fail-fast
    if(m_indicators.AnyHandleInvalid())
@@ -783,104 +747,6 @@ void COrchestrator::OnDeinit(const int reason)
       m_state.Save(m_state_enum, m_halt_reason);
 
    _TeardownAll();
-  }
-
-//+------------------------------------------------------------------+
-//| OnTradeTransaction — D-8 / fix-round-10 § 10.3                   |
-//|                                                                  |
-//| Producer side of CircuitBreaker BR-3.6 ping-pong defense.        |
-//| Filters MT5 trade-transaction stream to DEAL_ENTRY_OUT events    |
-//| only (closes), then feeds (magic, direction, time) into the      |
-//| breaker ring buffer. Entry .mq5 (IMPL-060) is responsible for    |
-//| forwarding the MT5 OnTradeTransaction lifecycle here.            |
-//+------------------------------------------------------------------+
-void COrchestrator::OnTradeTransaction(const MqlTradeTransaction &trans,
-                                       const MqlTradeRequest &request,
-                                       const MqlTradeResult &result)
-  {
-   // fix-round-11 § 11.3 — pre-OnInit window guard. MT5 may dispatch queued
-   //   trade events during broker reconnect before WireServices/Phase B run;
-   //   m_breaker may be non-NULL but un-Init'd. m_init_complete flips true
-   //   only at OnInit's INIT_SUCCEEDED return.
-   // fix-round-11 § 11.5 — HALTED gate. PhoenicisNex emits no new entries in
-   //   HALTED/HALTED_STABLE per ADR-010 enable matrix, so close events from
-   //   exit-pass drain should not poison the BR-3.6 ring across halt cycles.
-   if(!m_init_complete || m_breaker == NULL) return;
-   if(m_state_enum != EA_STATE_RUNNING) return;
-   if(trans.type != TRADE_TRANSACTION_DEAL_ADD) return;
-
-   ulong deal = trans.deal;
-   if(!HistoryDealSelect(deal)) return;
-
-   // fix-round-11 § 11.2 — own-symbol filter. Multi-symbol terminals fire
-   //   foreign-symbol deals that must not feed BR-3.6 (NFR-5.3 boundary
-   //   replicated at trade-transaction surface).
-   string deal_symbol = HistoryDealGetString(deal, DEAL_SYMBOL);
-   if(deal_symbol != _Symbol) return;
-
-   ENUM_DEAL_ENTRY entry = (ENUM_DEAL_ENTRY)HistoryDealGetInteger(deal, DEAL_ENTRY);
-   // ADR-014 (IMPL-FIX-012 iter-3, 2026-05-17) — admit BOTH DEAL_ENTRY_IN
-   //   (opens) and DEAL_ENTRY_OUT (closes). Pre-ADR-014 only OUT was wired,
-   //   so the ring contained only close events and CheckPingPong could not
-   //   distinguish mass-close (close+close) from ping-pong (close+open).
-   //   Now opens feed RecordOpen and closes feed RecordClose; CheckPingPong
-   //   requires DIFFERENT event_type to fire halt (see ADR-014 § Decision).
-   if(entry != DEAL_ENTRY_IN && entry != DEAL_ENTRY_OUT) return;
-
-   int magic = (int)HistoryDealGetInteger(deal, DEAL_MAGIC);
-   // fix-round-11 § 11.2 — own-magic-range filter. Manual closes (magic=0)
-   //   and other-EA magics outside [200..219] cannot feed BR-3.6 ring buffer.
-   if(!IsPhoenicisMagic(magic)) return;
-
-   ENUM_DEAL_TYPE dt = (ENUM_DEAL_TYPE)HistoryDealGetInteger(deal, DEAL_TYPE);
-   // fix-round-11 § 11.4 — defensive guard against non-trade deal types
-   //   (DEAL_TYPE_BALANCE / CREDIT / BONUS / CHARGE / ...). The DEAL_ENTRY_OUT
-   //   guard already excludes these for FBS hedging accounts (C-5), but
-   //   explicit type check protects against Phase 2 broker-mode change
-   //   per BA `03 § 5 Note`.
-   if(dt != DEAL_TYPE_BUY && dt != DEAL_TYPE_SELL) return;
-
-   // ADR-013 (IMPL-FIX-012 iter-1, 2026-05-14) — DEAL_REASON_EXPERT filter:
-   //   only EA-driven deals feed BR-3.6. Broker-driven closes (SL/TP/SO/
-   //   rollover/etc.) on independent positions can fire at the same tick
-   //   when multiple positions share an SL price — this is legitimate
-   //   market behavior, NOT EA ping-pong. BR-3.6's intent (per spec +
-   //   ADR-010) is to detect EA runaway loops, not concurrent broker fills.
-   //   IMPL-062 Run #2 + Run #3 both halted at sim 2021-01-14 14:59:21
-   //   from this exact false-positive class (2 H BUY positions w/ identical
-   //   SL=1.21311 hit broker SL same tick). See ADR-013 § Decision Validation.
-   //
-   //   ADR-014 (iter-3, 2026-05-17): filter remains; ADR-014 adds two more
-   //   defense layers at the detector itself (event_type + position_id
-   //   dedup) for the EA-driven mass-close false-positive class that
-   //   ADR-013 alone cannot catch (Run #4 sim 2021-01-27 via
-   //   OrderGroupStartWorkflow SafePort batch close, all DEAL_REASON_EXPERT).
-   ENUM_DEAL_REASON reason = (ENUM_DEAL_REASON)HistoryDealGetInteger(deal, DEAL_REASON);
-   if(reason != DEAL_REASON_EXPERT) return;
-
-   // Direction mapping (C-5 hedging mode + ADR-001):
-   //   For DEAL_ENTRY_OUT (close): deal type is OPPOSITE the position direction.
-   //     DEAL_TYPE_SELL closes a long  ⇒ direction = 1 (was BUY)
-   //     DEAL_TYPE_BUY  closes a short ⇒ direction = 0 (was SELL)
-   //   For DEAL_ENTRY_IN (open): deal type IS the position direction.
-   //     DEAL_TYPE_BUY  opens a long   ⇒ direction = 1 (BUY)
-   //     DEAL_TYPE_SELL opens a short  ⇒ direction = 0 (SELL)
-   //   Convention in ring buffer: direction encodes the POSITION direction
-   //   (1=BUY, 0=SELL), consistent across opens and closes so CheckPingPong
-   //   can compare apples to apples.
-   int direction;
-   if(entry == DEAL_ENTRY_OUT)
-      direction = (dt == DEAL_TYPE_SELL) ? 1 : 0;   // close inverts
-   else  // DEAL_ENTRY_IN
-      direction = (dt == DEAL_TYPE_BUY)  ? 1 : 0;   // open is direct
-
-   datetime t = (datetime)HistoryDealGetInteger(deal, DEAL_TIME);
-   ulong position_id = (ulong)HistoryDealGetInteger(deal, DEAL_POSITION_ID);
-
-   if(entry == DEAL_ENTRY_OUT)
-      m_breaker.RecordClose(magic, direction, t, position_id);
-   else  // DEAL_ENTRY_IN
-      m_breaker.RecordOpen(magic, direction, t, position_id);
   }
 
 //+------------------------------------------------------------------+

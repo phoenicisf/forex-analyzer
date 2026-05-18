@@ -22,8 +22,9 @@
 //|   OnTick              — F1 14-step pipeline (TD-02 §7.2)          |
 //|   OnDeinit            — inverse-order release                     |
 //|   OnTester            — Strategy Tester custom score              |
-//|   OnTradeTransaction  — close-deal feed → CircuitBreaker BR-3.6   |
-//|                          (D-8 / fix-round-10 § 10.3)              |
+//|                                                                   |
+//| OnTradeTransaction surface REMOVED 2026-05-18 per BT-002 (was     |
+//| CircuitBreaker BR-3.6 producer; detector retired legacy-parity).  |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, PhoenicisNex"
 #property link      "https://phoenicisnex.com"
@@ -78,18 +79,6 @@ void OnDeinit(const int reason)
 double OnTester()
   {
    return g_orchestrator.OnTester();
-  }
-
-//+------------------------------------------------------------------+
-//| OnTradeTransaction — feed CircuitBreaker BR-3.6 close stream     |
-//|   D-8 / fix-round-10 § 10.3: producer-side wiring required so    |
-//|   the ping-pong detector receives non-empty input.               |
-//+------------------------------------------------------------------+
-void OnTradeTransaction(const MqlTradeTransaction &trans,
-                        const MqlTradeRequest      &request,
-                        const MqlTradeResult       &result)
-  {
-   g_orchestrator.OnTradeTransaction(trans, request, result);
   }
 
 //+------------------------------------------------------------------+

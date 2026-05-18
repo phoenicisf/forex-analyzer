@@ -53,9 +53,5 @@ double OnTester()
    return g_orchestrator.OnTester();
   }
 
-void OnTradeTransaction(const MqlTradeTransaction &trans,
-                        const MqlTradeRequest      &request,
-                        const MqlTradeResult       &result)
-  {
-   g_orchestrator.OnTradeTransaction(trans, request, result);
-  }
+// OnTradeTransaction surface REMOVED 2026-05-18 per BT-002 (CircuitBreaker
+// retired; producer no longer exists in COrchestrator).
