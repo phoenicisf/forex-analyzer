@@ -4,6 +4,61 @@
 
 ## Last completed action
 
+**🔴 IMPL-062 Bucket A 5-yr Run #6 EXECUTED 2026-05-19 on post-BT-002 rewrite-no-detector default build — NFR-1.1 CATASTROPHIC FAIL (drift = −100.0041%; account-bankrupt via MT5 broker stop-out at margin 17.72% sim 2021-08-04 16:06:00; final balance $0.84 USD).** Operator session 15:08:46 launch → 15:18:37 kill (9m35s Tester wall-clock; operator observed account-bankrupt zombie state at ~+8 min wall-clock and signaled "test is zombie now. it's bankrupt"). G1 PASS pre-flight fresh recompile (`Result: 0 errors, 0 warnings, 30519 ms elapsed`; default G4-ON build with no `#define DISABLE_G4_FIXES`; `.ex5` size 353,754 bytes mtime 2026-05-19 15:05:48). MT5 GUI PID 41780 (FBS-Demo EURUSD,M5 chart) closed pre-launch via `Stop-Process -Force`. `.ini` patched with `ShutdownTerminal=1` line locally at `MQL5/Profiles/Tester/PhoenicisNex.EURUSD.H4.20210101_20251231.400.ini` (UTF-16LE-preserving PowerShell edit) — Note: committed `simulation/headless-tests/regression_5yr_g4.ini` was deleted by path-modernization commit `47381a9`, so the IMPL-FIX-013 local-only `.ini` precedent applies; separate ticket to restore committed test `.ini` reproducibility recommended.
+
+**Empirical outcome:**
+- **216 sim days covered** (2021-01-01 → 2021-08-04 16:06; ~11.78% of 5-yr window) — **deepest sim depth of any IMPL-062 run** (vs prior 14-day ping_pong halts in Runs #2/#3)
+- **0 EA-side halt events** ✅ — `event_type=halt` grep on 578-record journal returns 0; CircuitBreaker class structurally absent per BT-002 cleanup commits `32f1209` + `21161fc` (2026-05-18). BT-002 architectural decision empirically confirmed correct — no false-positive halt-class can exist by construction.
+- **Broker stop-out cascade** at margin 17.72% sim 2021-08-04 16:06:00 (Tester log: `position stop out triggered at 17.72% [#563 sell 0.01 EURUSD 1.18718 sl: 1.19518]` + `position stop out triggered at 17.72% [#622 sell 0.01 EURUSD 1.18773 sl: 1.19573]` + `Tester	final balance 0.84 USD`); Tester closed remaining positions due-end-of-test; stop-out occurred on 11% of testing interval per Tester summary line
+- **Journal 578 records:** 314 entry + 264 exit + **0 halt** + **0 order_failed/skipped** (clean RiskManager dispatch); per-slot entry distribution diagnoses R-13 long-tail gap in full
+- **0 `[ERROR]` markers in 174,664-line decoded Tester log** ✅
+- **journal_latency_report (NFR-2.2 informational):** writes=578 avg=73µs p95=49µs max=24.5ms (per-type: entry avg=110µs / exit avg=30µs) — well within NFR-2.2 ≤ 5ms p95 budget ✅. **IMPL-066 deferred E-AC drained as side-product** of Run #6.
+
+**Per-slot entry distribution (Run #6 pre-bankrupt window):**
+
+| Slot | Baseline (5-yr) | Run #6 (7 sim mo) | Pattern |
+|------|----------------:|------------------:|---------|
+| **BI** | **0**  | **101** | **MASSIVE OVER-FIRE** (primary blow-up vector; pyramid gate over-permissive) |
+| **H**  | **7**  | **95**  | **13.5× over** (Slot_H clustering — same that BR-3.6 was masking) |
+| **LX** | **1**  | **15**  | **15× over** (pyramid gate over-permissive) |
+| **B**  | 18 | 42 | 2.3× over (parent of BR/BI chain; cascades) |
+| **L**  | 7  | 16 | 2.3× over |
+| **T**  | 24 | 15 | 0.6× under (truncated window) |
+| **BR** | 7  | 9  | 1.3× (within tolerance) |
+| **S**  | 13 | 8  | 0.6× under |
+| **K**  | 32 | 6  | 0.2× under |
+| **R/Q/M/I/G2/G/C** | (mixed) | ≤1 each | severely under-fire |
+| **D/F/J/GO/P** | (mixed) | 0 | silent |
+| **Totals** | 231 | 314 | +36% volume excess (driven by BI/H/LX/B over-fire) |
+
+**Root cause analysis:** The post-BT-002 build has eliminated the false-positive halt-class as designed, but **exposed the deeper R-13 long-tail trading-logic translation gap** that the prior detector had been masking by halting at sim 2021-01-14 in Runs #2/#3. The rewrite has the **inverse of the desired slot distribution**: pyramid slots (BI/LX/H/B) over-fire systematically; disciplined-trend slots (C/D/G/J/M/P/Q/R/K) under-fire systematically. Legacy `PhoenicisN2.10_stable.mq5` achieves $24.27M Net Profit not via a safety detector (BT-002 § Reason proves legacy lacks the detector entirely) but by **never producing the BI/H/LX over-fire pattern in the first place**. The slot eligibility predicates need calibration at multiple slots — this is the full R-13 long-tail trading-logic translation gap exposed, NOT a Slot_H-specific issue.
+
+**Pattern across all 6 IMPL-062 runs:** Bucket A drift ≈ −100% regardless of (a) G4-on-vs-off (Runs #1/#2 vs #3+), (b) detector-on-vs-off (Runs #2/#3/#4/#5 vs #6), (c) ADR-013/014 producer-side filter present-vs-absent (Runs #4/#5 vs #6). Each detector-layer intervention (ADR-013 / ADR-014 / BT-002) only changed WHERE the halt fires (Jan-14 → Jan-27 → Jan-06 → broker stop-out at Aug-04), never WHETHER the rewrite is competitive with the baseline. **Resolution path requires slot eligibility predicate calibration**, not further detector adjustments.
+
+**Recommended next action (operator decision):**
+
+1. **`/impl-plan-review all`** [engineer recommendation] — re-decompose IMPL-062 acceptance + author IMPL-FIX-014 (Slot_BI pyramid gate calibration) + IMPL-FIX-015 (Slot_H over-fire calibration) + IMPL-FIX-016 (Slot_LX pyramid gate calibration). Concrete acceptance criteria derivable from the 314-record Run #6 journal entry pattern attribution.
+2. **`/backtrack sd`** — re-examine slot trading-logic translation contract at the SD layer (CodeWiki §3.X mirroring vs slot eligibility predicates). Likely cascade: SD § 1.1 FR-2/3 trace updates + ADR-NNN authored for pyramid-gate predicate calibration policy + `08-product-breakdown.md` IMPL-019..039 task descriptions re-audited. Higher cost than option (1) but addresses the structural cause.
+3. **`/backtrack ba`** — re-baseline NFR-1.1 contract. Acknowledge that exact $24.27M parity is unachievable at MVP scope; redefine NFR-1.1 acceptance as "rewrite achieves positive Net Profit over 5-yr window AND maintains Account Equity > $1 (does not blow up the account)" — much weaker but achievable. Cascades broadly through BA/SD/TD/bootstrap.
+
+**IMPL-062 task closure status:**
+- S-AC: 3/3 stay `[x]` (no S-AC changes; structural build + `.ini` + 8-section report skeleton existed pre-Run-#6)
+- E-AC #1 (|drift| ≤ 25% NFR-1.1): stays `[ ]` — **🔴 EXERCISED via Run #6 → drift = −100.0041% CATASTROPHIC FAIL**; registry row Active with renewal #2 (last allowed per Phase 1.3.2) expiry 2026-06-02
+- E-AC #2 (all 21 per-slot deviations ≤ 10% NFR-1.6): stays `[ ]` — N/A as 5-yr drift but pattern attribution COMPLETE (§4b-r6 in `regression-bucket-a.md`)
+
+**State Reconciliation 3-file rule honored:**
+- Layer 1 primary `impl-plan.md`: TL;DR top entry (this commit) + IMPL-062 task block Status append (this commit) + Phase Status Snapshot P4 row Notes refresh (this commit) + Open Risks R-3 re-confirmed (this commit)
+- Layer 2 derived `overview.md` row 20 (Impl Tasks): refresh narrative + preserve prior BT-002 invalidated annotation as audit history per R10 §10.6 strikethrough-append precedent
+- Layer 3 transient `current_handoff.md`: THIS section (new Last completed action) + 3 evidence sidecars at `_session-handoff/IMPL-062-bucket-a-5yr-run6-20260519.{md,jsonl,-tester-abridged.txt}`
+
+**Plan Staleness Sentinel:** unchanged at 1 IMPL-NNN main task closure since R09 — Run #6 is empirical verification of an existing task whose structural closure landed 2026-05-05; not a new main task closure per `workflow.md` Gate #4 + fix-round-10 precedent.
+
+**Side benefit (regression-bucket-a.md §5 pass criterion #5 new row):** IMPL-066 NFR-2.2 journal write latency p95 ≤ 5ms E-AC empirically drained as side-product (avg 73µs / p95 49µs / max 24.5ms ≪ 5ms budget); informational since not a Bucket A gate but the deferred E-AC moved to Resolved status by this run.
+
+**Triggered by** `/next` Navigation Decision Layer §1.9.1 priority #12 (Tier 1 task incomplete + Pre-check 0 Path B expired Deferred-AC rows pending IMPL-062 5-yr regression) recommendation + operator "test is zombie now. it's bankrupt" signal during run forcing kill-and-parse before natural Tester finish.
+
+**Prior completed action (preserved for audit per R10 §10.6 strikethrough-append discipline):**
+
 **🟢 IMPL-FIX-013 (BT-002 impl-code cleanup) ✅ CLOSED 2026-05-18 — 4-gate Definition of Done PASS (G1 + G3 + G4; G2 substituted by G3 init_ok evidence).** Commits `2b5d030` (TD R09/R10 + regen residue) + `32f1209` (impl-code delete + strip OnTradeTransaction surface).
 
 **Scope** per `backtrack-log.md § BT-002 § Impacted phases → Impl Code` + TD `claim-review-10.md § Recommendation` operator-action #3: (1) DELETED `services/CircuitBreaker.mqh` + `spike/Spike_CircuitBreaker.mq5`; (2) stripped `core/Orchestrator.mqh` — include, m_breaker member, ctor init, Phase B step 10 Init, WIRE macro, `_TeardownAll` delete, OnTick step 4 CheckPingPong→Halt dispatch, entire `OnTradeTransaction` method (~100 LOC: ADR-013 DEAL_REASON filter + ADR-014 DEAL_ENTRY dedup + RecordOpen/RecordClose), `m_init_complete` lifecycle flag, D-2/D-8/D-9 banner sections; (3) stripped `PhoenicisNex.mq5` + `PhoenicisNex_TickLatencyProbe.mq5` MT5-lifecycle `OnTradeTransaction` exports; (4) updated `spike/Spike_Orchestrator.mq5` IsPhoenicisMagic SelfTest banner + service-count comments. `IsPhoenicisMagic` gate in `domain/EnumTypes.mqh` PRESERVED. Halt triggers reduced to handle-invalid + sustained journal failure per ADR-010 (amended 2026-05-17).
